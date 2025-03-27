@@ -48,8 +48,8 @@ const MOCK_ORDERS = Array.from({ length: 20 }, (_, i) => {
 const OrderList = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [dateFilter, setDateFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
   const [orders] = useState(MOCK_ORDERS);
 
   const filteredOrders = orders.filter(order => {
@@ -57,7 +57,7 @@ const OrderList = () => {
       order.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.customerName.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesStatus = statusFilter === '' || order.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     
     let matchesDate = true;
     if (dateFilter === 'today') {
@@ -144,7 +144,7 @@ const OrderList = () => {
                 </div>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos os status</SelectItem>
+                <SelectItem value="all">Todos os status</SelectItem>
                 <SelectItem value="pending">Pendente</SelectItem>
                 <SelectItem value="confirmed">Confirmado</SelectItem>
                 <SelectItem value="delivered">Entregue</SelectItem>
@@ -159,7 +159,7 @@ const OrderList = () => {
                 </div>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos os períodos</SelectItem>
+                <SelectItem value="all">Todos os períodos</SelectItem>
                 <SelectItem value="today">Hoje</SelectItem>
                 <SelectItem value="week">Últimos 7 dias</SelectItem>
                 <SelectItem value="month">Último mês</SelectItem>
