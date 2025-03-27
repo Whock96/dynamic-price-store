@@ -369,7 +369,7 @@ const Cart = () => {
                 {discountOptions.map(option => (
                   <div key={option.id} className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium">{option.name}</p>
+                      <p className="font-medium">{option.name} {option.type === 'discount' ? '(-' : '(+'}{option.value}%)</p>
                       <p className="text-sm text-gray-500">{option.description}</p>
                     </div>
                     <Switch
@@ -378,6 +378,12 @@ const Cart = () => {
                     />
                   </div>
                 ))}
+                
+                {discountOptions.length === 0 && (
+                  <div className="text-center py-4">
+                    <p className="text-gray-500">Nenhuma opção de desconto disponível.</p>
+                  </div>
+                )}
               </div>
               
               <Separator />
@@ -385,7 +391,11 @@ const Cart = () => {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="shipping">Entrega</Label>
-                  <Select value={shipping} onValueChange={(value: 'delivery' | 'pickup') => setShipping(value)}>
+                  <Select value={shipping} onValueChange={(value) => {
+                    if (value === 'delivery' || value === 'pickup') {
+                      setShipping(value);
+                    }
+                  }}>
                     <SelectTrigger id="shipping" className="w-40">
                       <SelectValue placeholder="Tipo de entrega" />
                     </SelectTrigger>
@@ -416,7 +426,11 @@ const Cart = () => {
                 
                 <div className="flex items-center justify-between">
                   <Label htmlFor="paymentMethod">Forma de Pagamento</Label>
-                  <Select value={paymentMethod} onValueChange={(value: 'cash' | 'credit') => setPaymentMethod(value)}>
+                  <Select value={paymentMethod} onValueChange={(value) => {
+                    if (value === 'cash' || value === 'credit') {
+                      setPaymentMethod(value);
+                    }
+                  }}>
                     <SelectTrigger id="paymentMethod" className="w-40">
                       <SelectValue placeholder="Forma de pagamento" />
                     </SelectTrigger>
