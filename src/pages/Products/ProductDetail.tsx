@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,18 +6,9 @@ import {
   ShoppingCart, ArrowLeft, Package, Truck, Weight, Box
 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { toast } from 'sonner';
 
-// Mock data for a single product - we need to make this more consistent
-// Using a function that returns a fixed value for a given ID rather than random values each time
+// Mock data for a single product - using a cache for consistent product data
 const productDetailsCache = new Map();
 
 const getProductDetails = (id: string) => {
@@ -83,8 +74,7 @@ const ProductDetail = () => {
   ];
   
   const handleAddToCart = () => {
-    // Create a stable product reference
-    const productToAdd = { ...product };
+    const productToAdd = { ...product }; // Create a copy to prevent reference issues
     addItem(productToAdd, quantity);
   };
   

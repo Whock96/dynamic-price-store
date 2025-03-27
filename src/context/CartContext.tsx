@@ -123,11 +123,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Calculate total discount amount
   const totalDiscount = items.reduce((total, item) => {
     const fullPrice = item.product.listPrice * item.quantity;
-    return total + (fullPrice - item.subtotal);
+    return total + (fullPrice - (item.subtotal || 0));
   }, 0);
 
   // Final total
-  const total = items.reduce((total, item) => total + item.subtotal, 0);
+  const total = items.reduce((total, item) => total + (item.subtotal || 0), 0);
 
   const addItem = (product: Product, quantity: number) => {
     if (!product || !product.id) {
@@ -144,29 +144,30 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const existingItem = newItems[existingItemIndex];
       const newQuantity = existingItem.quantity + quantity;
       
-      // Update the quantity but don't modify the product reference
       newItems[existingItemIndex] = {
         ...existingItem,
         quantity: newQuantity,
+        subtotal: existingItem.finalPrice * newQuantity
       };
       
       setItems(newItems);
-      recalculateCart();
       toast.success(`Quantidade de ${product.name} atualizada no carrinho`);
     } else {
-      // Add new item with fixed product reference
+      // Add new item
+      const totalDiscountPercentage = getTotalDiscountPercentage();
+      const finalPrice = product.listPrice * (1 - totalDiscountPercentage / 100);
+      
       const newItem: CartItem = {
         id: Date.now().toString(),
         productId: product.id,
-        product: { ...product }, // Create a stable copy of the product
+        product: { ...product }, // Create a copy to prevent reference issues
         quantity,
         discount: 0,
-        finalPrice: product.listPrice,
-        subtotal: product.listPrice * quantity
+        finalPrice,
+        subtotal: finalPrice * quantity
       };
       
       setItems(prevItems => [...prevItems, newItem]);
-      recalculateCart();
       toast.success(`${product.name} adicionado ao carrinho`);
     }
   };
