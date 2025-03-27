@@ -1,8 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
-  Trash2, ShoppingCart, Package, Percent, CreditCard, 
-  FileText, ArrowLeft, UserPlus, Search, Send 
+  Trash2, ShoppingCart, Package, Search, Send 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,13 +16,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useCart } from '../../context/CartContext';
@@ -94,8 +87,7 @@ const Cart = () => {
   const { 
     items, customer, setCustomer, addItem, removeItem, updateItemQuantity,
     updateItemDiscount, discountOptions, toggleDiscountOption, isDiscountOptionSelected,
-    shipping, setShipping, fullInvoice, setFullInvoice, taxSubstitution, setTaxSubstitution,
-    paymentMethod, setPaymentMethod, totalItems, subtotal, totalDiscount, total, sendOrder, clearCart
+    totalItems, subtotal, totalDiscount, total, sendOrder, clearCart
   } = useCart();
   
   const [customerSearch, setCustomerSearch] = useState('');
@@ -161,18 +153,6 @@ const Cart = () => {
       setIsSubmitting(false);
     }
   };
-
-  const handleShippingChange = (value: string) => {
-    if (value === 'delivery' || value === 'pickup') {
-      setShipping(value as 'delivery' | 'pickup');
-    }
-  };
-
-  const handlePaymentMethodChange = (value: string) => {
-    if (value === 'cash' || value === 'credit') {
-      setPaymentMethod(value as 'cash' | 'credit');
-    }
-  };
   
   return (
     <div className="space-y-6 animate-fade-in">
@@ -184,7 +164,7 @@ const Cart = () => {
             className="mr-4 text-gray-500"
             onClick={() => navigate(-1)}
           >
-            <ArrowLeft className="h-4 w-4" />
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
           </Button>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Carrinho</h1>
@@ -285,7 +265,7 @@ const Cart = () => {
                           navigate('/customers/new');
                         }}
                       >
-                        <UserPlus className="h-4 w-4 mr-1" />
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M16 11h6"/></svg>
                         Novo
                       </Button>
                     </div>
@@ -374,72 +354,26 @@ const Cart = () => {
             <CardHeader className="pb-3">
               <CardTitle className="text-lg font-medium">Opções de Desconto</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                {discountOptions.map(option => (
-                  <div key={option.id} className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{option.name} {option.type === 'discount' ? '(-' : '(+'}{option.value}%)</p>
-                      <p className="text-sm text-gray-500">{option.description}</p>
+            <CardContent>
+              <div className="space-y-4">
+                {discountOptions.length > 0 ? (
+                  discountOptions.map(option => (
+                    <div key={option.id} className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{option.name} {option.type === 'discount' ? '(-' : '(+'}{option.value}%)</p>
+                        <p className="text-sm text-gray-500">{option.description}</p>
+                      </div>
+                      <Switch
+                        checked={isDiscountOptionSelected(option.id)}
+                        onCheckedChange={() => toggleDiscountOption(option.id)}
+                      />
                     </div>
-                    <Switch
-                      checked={isDiscountOptionSelected(option.id)}
-                      onCheckedChange={() => toggleDiscountOption(option.id)}
-                    />
-                  </div>
-                ))}
-                
-                {discountOptions.length === 0 && (
+                  ))
+                ) : (
                   <div className="text-center py-4">
-                    <p className="text-gray-500">Nenhuma opção de desconto disponível.</p>
+                    <p className="text-gray-500">Nenhuma opção de desconto cadastrada.</p>
                   </div>
                 )}
-              </div>
-              
-              <Separator />
-              
-              <div className="flex items-center justify-between">
-                <Label htmlFor="shipping">Entrega</Label>
-                <Select value={shipping} onValueChange={handleShippingChange}>
-                  <SelectTrigger id="shipping" className="w-40">
-                    <SelectValue placeholder="Tipo de entrega" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pickup">Retirada</SelectItem>
-                    <SelectItem value="delivery">Entrega</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <Label htmlFor="fullInvoice">Nota Cheia</Label>
-                <Switch
-                  id="fullInvoice"
-                  checked={fullInvoice}
-                  onCheckedChange={setFullInvoice}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <Label htmlFor="taxSubstitution">Substituição Tributária</Label>
-                <Switch
-                  id="taxSubstitution"
-                  checked={taxSubstitution}
-                  onCheckedChange={setTaxSubstitution}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <Label htmlFor="paymentMethod">Forma de Pagamento</Label>
-                <Select value={paymentMethod} onValueChange={handlePaymentMethodChange}>
-                  <SelectTrigger id="paymentMethod" className="w-40">
-                    <SelectValue placeholder="Forma de pagamento" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">À Vista</SelectItem>
-                    <SelectItem value="credit">A Prazo</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </CardContent>
           </Card>
@@ -477,7 +411,7 @@ const Cart = () => {
                   </>
                 ) : (
                   <>
-                    <FileText className="mr-2 h-5 w-5" />
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 h-5 w-5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
                     Finalizar Pedido
                   </>
                 )}

@@ -8,10 +8,6 @@ interface CartContextType {
   customer: Customer | null;
   discountOptions: DiscountOption[];
   selectedDiscountOptions: string[];
-  shipping: 'delivery' | 'pickup';
-  fullInvoice: boolean;
-  taxSubstitution: boolean;
-  paymentMethod: 'cash' | 'credit';
   totalItems: number;
   subtotal: number;
   totalDiscount: number;
@@ -22,10 +18,6 @@ interface CartContextType {
   updateItemQuantity: (id: string, quantity: number) => void;
   updateItemDiscount: (id: string, discount: number) => void;
   toggleDiscountOption: (id: string) => void;
-  setShipping: (method: 'delivery' | 'pickup') => void;
-  setFullInvoice: (value: boolean) => void;
-  setTaxSubstitution: (value: boolean) => void;
-  setPaymentMethod: (method: 'cash' | 'credit') => void;
   clearCart: () => void;
   sendOrder: () => Promise<void>;
   isDiscountOptionSelected: (id: string) => boolean;
@@ -37,26 +29,26 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 const MOCK_DISCOUNT_OPTIONS: DiscountOption[] = [
   {
     id: '1',
-    name: 'Retirada',
-    description: 'Desconto para retirada na loja',
-    value: 1,
+    name: 'Desconto A',
+    description: 'Desconto para clientes preferenciais',
+    value: 5,
     type: 'discount',
     isActive: true,
   },
   {
     id: '2',
-    name: 'Meia nota',
-    description: 'Desconto para meia nota fiscal',
+    name: 'Desconto B',
+    description: 'Desconto para grandes volumes',
     value: 3,
     type: 'discount',
     isActive: true,
   },
   {
     id: '3',
-    name: 'Substituição tributária',
-    description: 'Acréscimo para substituição tributária',
-    value: 7.8,
-    type: 'surcharge',
+    name: 'Desconto C',
+    description: 'Desconto para pagamento à vista',
+    value: 2,
+    type: 'discount',
     isActive: true,
   }
 ];
@@ -66,10 +58,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [discountOptions] = useState<DiscountOption[]>(MOCK_DISCOUNT_OPTIONS);
   const [selectedDiscountOptions, setSelectedDiscountOptions] = useState<string[]>([]);
-  const [shipping, setShipping] = useState<'delivery' | 'pickup'>('pickup');
-  const [fullInvoice, setFullInvoice] = useState(false);
-  const [taxSubstitution, setTaxSubstitution] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit'>('cash');
 
   // Calculate cart totals
   const totalItems = items.reduce((total, item) => total + item.quantity, 0);
@@ -118,36 +106,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     setItems(updatedItems);
   };
-
-  // Atualizar automaticamente as opções selecionadas quando as opções de envio, nota e pagamento mudarem
-  useEffect(() => {
-    // Opção de Retirada (ID: 1)
-    if (shipping === 'pickup') {
-      if (!selectedDiscountOptions.includes('1')) {
-        setSelectedDiscountOptions(prev => [...prev, '1']);
-      }
-    } else {
-      setSelectedDiscountOptions(prev => prev.filter(id => id !== '1'));
-    }
-    
-    // Opção de Meia Nota (ID: 2)
-    if (!fullInvoice) {
-      if (!selectedDiscountOptions.includes('2')) {
-        setSelectedDiscountOptions(prev => [...prev, '2']);
-      }
-    } else {
-      setSelectedDiscountOptions(prev => prev.filter(id => id !== '2'));
-    }
-    
-    // Opção de Substituição Tributária (ID: 3)
-    if (taxSubstitution) {
-      if (!selectedDiscountOptions.includes('3')) {
-        setSelectedDiscountOptions(prev => [...prev, '3']);
-      }
-    } else {
-      setSelectedDiscountOptions(prev => prev.filter(id => id !== '3'));
-    }
-  }, [shipping, fullInvoice, taxSubstitution]);
 
   // Recalculate when relevant state changes
   useEffect(() => {
@@ -230,29 +188,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const toggleDiscountOption = (id: string) => {
-    const option = discountOptions.find(opt => opt.id === id);
-    if (!option) return;
-    
-    // Atualizar as opções correspondentes no carrinho
-    if (id === '1') {
-      // Retirada
-      setShipping(selectedDiscountOptions.includes(id) ? 'delivery' : 'pickup');
-    } else if (id === '2') {
-      // Meia Nota
-      setFullInvoice(selectedDiscountOptions.includes(id));
-    } else if (id === '3') {
-      // Substituição Tributária
-      setTaxSubstitution(!selectedDiscountOptions.includes(id));
-    } else {
-      // Para outras opções de desconto
-      setSelectedDiscountOptions(prev => {
-        if (prev.includes(id)) {
-          return prev.filter(optId => optId !== id);
-        } else {
-          return [...prev, id];
-        }
-      });
-    }
+    setSelectedDiscountOptions(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(optId => optId !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
   };
 
   const isDiscountOptionSelected = (id: string) => {
@@ -263,10 +205,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setItems([]);
     setCustomer(null);
     setSelectedDiscountOptions([]);
-    setShipping('pickup');
-    setFullInvoice(false);
-    setTaxSubstitution(false);
-    setPaymentMethod('cash');
     toast.info('Carrinho limpo');
   };
 
@@ -290,10 +228,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         discountOptions: selectedDiscountOptions.map(id => 
           discountOptions.find(opt => opt.id === id)
         ),
-        shipping,
-        fullInvoice,
-        taxSubstitution,
-        paymentMethod,
         subtotal,
         totalDiscount,
         total,
@@ -325,10 +259,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       customer,
       discountOptions,
       selectedDiscountOptions,
-      shipping,
-      fullInvoice,
-      taxSubstitution,
-      paymentMethod,
       totalItems,
       subtotal,
       totalDiscount,
@@ -339,10 +269,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateItemQuantity,
       updateItemDiscount,
       toggleDiscountOption,
-      setShipping,
-      setFullInvoice,
-      setTaxSubstitution,
-      setPaymentMethod,
       clearCart,
       sendOrder,
       isDiscountOptionSelected
