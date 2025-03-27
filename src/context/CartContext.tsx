@@ -120,6 +120,27 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     recalculateCart();
   }, [customer, selectedDiscountOptions]);
 
+  // When customer changes, update the individual discount of each item
+  useEffect(() => {
+    if (customer) {
+      // Update each item to include the customer's default discount
+      setItems(prevItems => 
+        prevItems.map(item => ({
+          ...item,
+          discount: customer.defaultDiscount
+        }))
+      );
+    } else {
+      // If customer is removed, reset individual discounts to 0
+      setItems(prevItems => 
+        prevItems.map(item => ({
+          ...item,
+          discount: 0
+        }))
+      );
+    }
+  }, [customer]);
+
   // Calculate total discount amount
   const totalDiscount = items.reduce((total, item) => {
     const fullPrice = item.product.listPrice * item.quantity;
@@ -162,7 +183,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         productId: product.id,
         product: { ...product }, // Create a copy to prevent reference issues
         quantity,
-        discount: 0,
+        // If customer exists, apply their default discount to the item
+        discount: customer ? customer.defaultDiscount : 0,
         finalPrice,
         subtotal: finalPrice * quantity
       };
