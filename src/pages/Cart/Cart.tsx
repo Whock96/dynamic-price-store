@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -17,7 +16,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { useCart } from '../../context/CartContext';
 import { Customer, Product } from '@/types/types';
 import { toast } from 'sonner';
@@ -360,7 +358,9 @@ const Cart = () => {
                   discountOptions.map(option => (
                     <div key={option.id} className="flex items-center justify-between">
                       <div>
-                        <p className="font-medium">{option.name} {option.type === 'discount' ? '(-' : '(+'}{option.value}%)</p>
+                        <p className="font-medium">
+                          {option.name} {option.type === 'discount' ? '(-' : '(+'}{option.value}%)
+                        </p>
                         <p className="text-sm text-gray-500">{option.description}</p>
                       </div>
                       <Switch

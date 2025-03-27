@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product } from '../types/types';
 import { toast } from 'sonner';
@@ -25,29 +24,37 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-// Opções de desconto disponíveis
+// Opções de desconto disponíveis - match the ones from DiscountManagement.tsx
 const MOCK_DISCOUNT_OPTIONS: DiscountOption[] = [
   {
     id: '1',
-    name: 'Desconto A',
-    description: 'Desconto para clientes preferenciais',
-    value: 5,
+    name: 'Retirada',
+    description: 'Desconto para retirada na loja',
+    value: 1,
     type: 'discount',
     isActive: true,
   },
   {
     id: '2',
-    name: 'Desconto B',
-    description: 'Desconto para grandes volumes',
+    name: 'Meia nota',
+    description: 'Desconto para meia nota fiscal',
     value: 3,
     type: 'discount',
     isActive: true,
   },
   {
     id: '3',
-    name: 'Desconto C',
+    name: 'Substituição tributária',
+    description: 'Acréscimo para substituição tributária',
+    value: 7.8,
+    type: 'surcharge',
+    isActive: true,
+  },
+  {
+    id: '4',
+    name: 'A Vista',
     description: 'Desconto para pagamento à vista',
-    value: 2,
+    value: 1,
     type: 'discount',
     isActive: true,
   }
