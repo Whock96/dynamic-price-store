@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,56 +5,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { 
   ShoppingCart, ArrowLeft, Package, Truck, Weight, Box
 } from 'lucide-react';
+import { useProducts } from '@/context/ProductContext';
 import { useCart } from '../../context/CartContext';
 import { Input } from '@/components/ui/input';
-
-// Mock data for a single product - using a cache for consistent product data
-const productDetailsCache = new Map();
-
-const getProductDetails = (id: string) => {
-  // If we already have the product details cached, return them
-  if (productDetailsCache.has(id)) {
-    return productDetailsCache.get(id);
-  }
-  
-  // Otherwise, create the product details and cache them
-  const productId = id.split('-')[1] || '1';
-  const numericId = parseInt(productId);
-  
-  // Using deterministic values based on product ID to ensure consistency
-  const product = {
-    id,
-    name: `Produto ${productId}`,
-    description: `Este é um produto de alta qualidade desenvolvido pela Ferplas. O Produto ${productId} é reconhecido pela sua durabilidade e desempenho superior. Ideal para aplicações industriais e comerciais, este produto atende aos mais rigorosos padrões de qualidade e é amplamente utilizado em diversos setores.`,
-    listPrice: 100 + (numericId * 50), // deterministic price based on ID
-    minPrice: 50 + (numericId * 10),
-    weight: 0.5 + (numericId * 0.5),
-    quantity: 10 + (numericId * 5),
-    volume: 1 + (numericId % 3),
-    categoryId: '1',
-    subcategoryId: '2',
-    imageUrl: 'https://via.placeholder.com/500',
-    specifications: [
-      { name: 'Material', value: 'Polietileno de alta densidade' },
-      { name: 'Dimensões', value: '30cm x 20cm x 15cm' },
-      { name: 'Cor', value: 'Verde' },
-      { name: 'Garantia', value: '12 meses' },
-    ],
-    categoryName: 'Acessórios',
-    subcategoryName: 'Conexões',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-  
-  // Cache the product details
-  productDetailsCache.set(id, product);
-  
-  return product;
-};
+import { formatCurrency } from '@/utils/formatters';
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { getProductById, getCategoryName, getSubcategoryName } = useProducts();
   const { addItem } = useCart();
   
   const [quantity, setQuantity] = useState(1);
@@ -67,7 +25,13 @@ const ProductDetail = () => {
     return null;
   }
   
-  const product = getProductDetails(id);
+  const product = getProductById(id);
+  
+  // If product not found, navigate back to products list
+  if (!product) {
+    navigate('/products');
+    return null;
+  }
   
   // Mock multiple images for the gallery
   const productImages = [
@@ -78,16 +42,7 @@ const ProductDetail = () => {
   ];
   
   const handleAddToCart = () => {
-    const productToAdd = { ...product }; // Create a copy to prevent reference issues
-    addItem(productToAdd, quantity);
-  };
-  
-  // Format currency properly
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
+    addItem(product, quantity);
   };
   
   return (
@@ -115,7 +70,7 @@ const ProductDetail = () => {
               className="absolute inset-0 w-full h-full object-cover transition-all duration-500 ease-in-out"
             />
             <div className="absolute top-2 right-2 bg-ferplas-500 text-white text-xs px-2 py-1 rounded-full">
-              {product.categoryName}
+              {getCategoryName(product.categoryId)}
             </div>
           </div>
           
@@ -145,9 +100,9 @@ const ProductDetail = () => {
         <div className="space-y-6">
           <div>
             <div className="flex items-center text-sm text-gray-500 mb-2">
-              <span>{product.categoryName}</span>
+              <span>{getCategoryName(product.categoryId)}</span>
               <span className="mx-2">›</span>
-              <span>{product.subcategoryName}</span>
+              <span>{getSubcategoryName(product.categoryId, product.subcategoryId)}</span>
             </div>
             <h1 className="text-3xl font-bold tracking-tight">{product.name}</h1>
             <div className="flex items-center mt-2">
@@ -258,7 +213,6 @@ const ProductDetail = () => {
         </div>
       </div>
       
-      {/* Product specifications */}
       <div className="mt-12">
         <h2 className="text-2xl font-bold mb-4">Especificações</h2>
         <Card>
@@ -275,7 +229,6 @@ const ProductDetail = () => {
         </Card>
       </div>
       
-      {/* Related products placeholder */}
       <div className="mt-12">
         <h2 className="text-2xl font-bold mb-4">Produtos Relacionados</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

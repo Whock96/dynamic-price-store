@@ -12,36 +12,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-// Mock data for products
-const MOCK_PRODUCTS = Array.from({ length: 20 }, (_, i) => ({
-  id: `product-${i + 1}`,
-  name: `Produto ${i + 1}`,
-  description: `Descrição do produto ${i + 1}. Este é um produto de alta qualidade.`,
-  listPrice: Math.floor(Math.random() * 900) + 100,
-  minPrice: Math.floor(Math.random() * 80) + 50,
-  weight: Math.floor(Math.random() * 5) + 0.5,
-  quantity: Math.floor(Math.random() * 100) + 10,
-  volume: Math.floor(Math.random() * 3) + 1,
-  categoryId: i % 3 === 0 ? '1' : i % 3 === 1 ? '2' : '3',
-  subcategoryId: i % 5 === 0 ? '1' : i % 5 === 1 ? '2' : i % 5 === 2 ? '3' : i % 5 === 3 ? '4' : '5',
-  imageUrl: 'https://via.placeholder.com/150',
-  createdAt: new Date(),
-  updatedAt: new Date(),
-}));
-
-// Mock data for categories
-const MOCK_CATEGORIES = [
-  { id: '1', name: 'Acessórios' },
-  { id: '2', name: 'Peças' },
-  { id: '3', name: 'Ferramentas' },
-];
+import { useProducts } from '@/context/ProductContext';
+import { formatCurrency } from '@/utils/formatters';
 
 const ProductList = () => {
   const navigate = useNavigate();
+  const { products, getCategoryName } = useProducts();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [products] = useState(MOCK_PRODUCTS);
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -50,19 +28,6 @@ const ProductList = () => {
     
     return matchesSearch && matchesCategory;
   });
-
-  const getCategoryName = (categoryId: string) => {
-    const category = MOCK_CATEGORIES.find(cat => cat.id === categoryId);
-    return category ? category.name : 'Sem categoria';
-  };
-
-  // Format currency properly
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
-  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -76,10 +41,10 @@ const ProductList = () => {
         <div className="flex gap-2">
           <Button 
             className="bg-ferplas-500 hover:bg-ferplas-600 button-transition"
-            onClick={() => navigate('/settings/products/new')}
+            onClick={() => navigate('/settings/products')}
           >
             <Package className="mr-2 h-4 w-4" />
-            Novo Produto
+            Gerenciar Produtos
           </Button>
         </div>
       </header>
@@ -109,7 +74,7 @@ const ProductList = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as categorias</SelectItem>
-                {MOCK_CATEGORIES.map(category => (
+                {useProducts().categories.map(category => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}
                   </SelectItem>
