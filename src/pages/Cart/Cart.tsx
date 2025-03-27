@@ -58,7 +58,7 @@ const MOCK_CUSTOMERS: Customer[] = Array.from({ length: 10 }, (_, i) => ({
   phone: `(${Math.floor(Math.random() * 90) + 10}) ${Math.floor(Math.random() * 90000) + 10000}-${Math.floor(Math.random() * 9000) + 1000}`,
   email: `cliente${i + 1}@example.com`,
   defaultDiscount: Math.floor(Math.random() * 10),
-  maxDiscount: Math.floor(Math.random() * 10) + 10, // Adding maxDiscount property with a random value between 10-19
+  maxDiscount: Math.floor(Math.random() * 10) + 10,
   createdAt: new Date(),
   updatedAt: new Date(),
 }));
@@ -559,7 +559,7 @@ const Cart = () => {
                         />
                       </div>
                       
-                      {option.id === '1' && isDiscountOptionSelected(option.id) && (
+                      {option.id === '1' && !isDiscountOptionSelected(option.id) && (
                         <div className="ml-6 p-3 border-l-2 border-ferplas-100 bg-gray-50 rounded-md">
                           <div className="flex items-center mb-1">
                             <MapPin className="h-4 w-4 text-ferplas-500 mr-1" />
