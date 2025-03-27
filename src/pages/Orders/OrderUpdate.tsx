@@ -209,6 +209,20 @@ const OrderUpdate = () => {
     });
   };
 
+  // Fix for the shipping method selection - add type assertion to ensure correct types
+  const handleShippingChange = (value: string) => {
+    if (value === 'delivery' || value === 'pickup') {
+      setShipping(value);
+    }
+  };
+
+  // Fix for the payment method selection - add type assertion to ensure correct types
+  const handlePaymentMethodChange = (value: string) => {
+    if (value === 'cash' || value === 'credit') {
+      setPaymentMethod(value);
+    }
+  };
+
   const handleSave = () => {
     if (order.items.length === 0) {
       toast.error('O pedido deve ter pelo menos um item');
@@ -524,7 +538,7 @@ const OrderUpdate = () => {
                 
                 <div className="flex items-center justify-between">
                   <Label htmlFor="shipping">Entrega</Label>
-                  <Select value={shipping} onValueChange={(value: 'delivery' | 'pickup') => setShipping(value)}>
+                  <Select value={shipping} onValueChange={handleShippingChange}>
                     <SelectTrigger id="shipping" className="w-40">
                       <SelectValue placeholder="Tipo de entrega" />
                     </SelectTrigger>
@@ -569,7 +583,7 @@ const OrderUpdate = () => {
                 
                 <div className="flex items-center justify-between">
                   <Label htmlFor="paymentMethod">Forma de Pagamento</Label>
-                  <Select value={paymentMethod} onValueChange={(value: 'cash' | 'credit') => setPaymentMethod(value)}>
+                  <Select value={paymentMethod} onValueChange={handlePaymentMethodChange}>
                     <SelectTrigger id="paymentMethod" className="w-40">
                       <SelectValue placeholder="Pagamento" />
                     </SelectTrigger>
