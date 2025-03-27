@@ -202,16 +202,12 @@ const OrderUpdate = () => {
     });
   };
 
-  const handleShippingChange = (value: string) => {
-    if (value === 'delivery' || value === 'pickup') {
-      setShipping(value as 'delivery' | 'pickup');
-    }
+  const handleShippingChange = (value: 'delivery' | 'pickup') => {
+    setShipping(value);
   };
 
-  const handlePaymentMethodChange = (value: string) => {
-    if (value === 'cash' || value === 'credit') {
-      setPaymentMethod(value as 'cash' | 'credit');
-    }
+  const handlePaymentMethodChange = (value: 'cash' | 'credit') => {
+    setPaymentMethod(value);
   };
 
   const handleSave = () => {
@@ -526,7 +522,10 @@ const OrderUpdate = () => {
                 
                 <div className="flex items-center justify-between">
                   <Label htmlFor="shipping">Entrega</Label>
-                  <Select value={shipping} onValueChange={handleShippingChange}>
+                  <Select 
+                    value={shipping} 
+                    onValueChange={(value) => handleShippingChange(value as 'delivery' | 'pickup')}
+                  >
                     <SelectTrigger id="shipping" className="w-40">
                       <SelectValue placeholder="Tipo de entrega" />
                     </SelectTrigger>
