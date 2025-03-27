@@ -56,6 +56,14 @@ const ProductList = () => {
     return category ? category.name : 'Sem categoria';
   };
 
+  // Format currency properly
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(value);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -136,7 +144,7 @@ const ProductList = () => {
               <div className="flex justify-between items-end mt-2">
                 <div>
                   <p className="text-xs text-gray-500">Preço de tabela</p>
-                  <p className="text-lg font-bold text-ferplas-600">R$ {product.listPrice.toFixed(2)}</p>
+                  <p className="text-lg font-bold text-ferplas-600">{formatCurrency(product.listPrice)}</p>
                 </div>
                 <Button 
                   variant="outline" 
@@ -144,7 +152,7 @@ const ProductList = () => {
                   className="text-ferplas-500 border-ferplas-500 hover:bg-ferplas-50"
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate(`/cart?product=${product.id}`);
+                    navigate(`/products/${product.id}`);
                   }}
                 >
                   Ver detalhes

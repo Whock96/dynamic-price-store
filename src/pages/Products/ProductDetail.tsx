@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -19,15 +20,18 @@ const getProductDetails = (id: string) => {
   
   // Otherwise, create the product details and cache them
   const productId = id.split('-')[1] || '1';
+  const numericId = parseInt(productId);
+  
+  // Using deterministic values based on product ID to ensure consistency
   const product = {
     id,
     name: `Produto ${productId}`,
     description: `Este é um produto de alta qualidade desenvolvido pela Ferplas. O Produto ${productId} é reconhecido pela sua durabilidade e desempenho superior. Ideal para aplicações industriais e comerciais, este produto atende aos mais rigorosos padrões de qualidade e é amplamente utilizado em diversos setores.`,
-    listPrice: 100 + (parseInt(productId) * 50), // deterministic price based on ID
-    minPrice: 50 + (parseInt(productId) * 10),
-    weight: 0.5 + (parseInt(productId) * 0.5),
-    quantity: 10 + (parseInt(productId) * 5),
-    volume: 1 + (parseInt(productId) % 3),
+    listPrice: 100 + (numericId * 50), // deterministic price based on ID
+    minPrice: 50 + (numericId * 10),
+    weight: 0.5 + (numericId * 0.5),
+    quantity: 10 + (numericId * 5),
+    volume: 1 + (numericId % 3),
     categoryId: '1',
     subcategoryId: '2',
     imageUrl: 'https://via.placeholder.com/500',
@@ -76,6 +80,14 @@ const ProductDetail = () => {
   const handleAddToCart = () => {
     const productToAdd = { ...product }; // Create a copy to prevent reference issues
     addItem(productToAdd, quantity);
+  };
+  
+  // Format currency properly
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(value);
   };
   
   return (
@@ -189,8 +201,8 @@ const ProductDetail = () => {
             <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6">
               <div>
                 <p className="text-sm text-gray-500">Preço de tabela</p>
-                <p className="text-3xl font-bold text-ferplas-600">R$ {product.listPrice.toFixed(2)}</p>
-                <p className="text-xs text-gray-500">Preço mínimo: R$ {product.minPrice.toFixed(2)}</p>
+                <p className="text-3xl font-bold text-ferplas-600">{formatCurrency(product.listPrice)}</p>
+                <p className="text-xs text-gray-500">Preço mínimo: {formatCurrency(product.minPrice)}</p>
               </div>
               <div className="mt-4 sm:mt-0">
                 <p className="text-sm text-gray-500 mb-1">Quantidade</p>
@@ -278,7 +290,7 @@ const ProductDetail = () => {
               </div>
               <CardContent className="p-4">
                 <h3 className="text-lg font-medium truncate">Produto Relacionado {i + 1}</h3>
-                <p className="text-ferplas-600 font-bold mt-2">R$ {(Math.floor(Math.random() * 500) + 100).toFixed(2)}</p>
+                <p className="text-ferplas-600 font-bold mt-2">{formatCurrency((Math.floor(Math.random() * 500) + 100))}</p>
               </CardContent>
             </Card>
           ))}
