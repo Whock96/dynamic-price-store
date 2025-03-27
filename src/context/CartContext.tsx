@@ -33,7 +33,7 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-// Opções de desconto atualizadas
+// Opções de desconto disponíveis
 const MOCK_DISCOUNT_OPTIONS: DiscountOption[] = [
   {
     id: '1',

@@ -97,7 +97,7 @@ const Cart = () => {
     items, customer, setCustomer, addItem, removeItem, updateItemQuantity,
     updateItemDiscount, discountOptions, toggleDiscountOption, isDiscountOptionSelected,
     shipping, setShipping, fullInvoice, setFullInvoice, taxSubstitution, setTaxSubstitution,
-    paymentMethod, setPaymentMethod, totalItems, subtotal, totalDiscount, total, sendOrder
+    paymentMethod, setPaymentMethod, totalItems, subtotal, totalDiscount, total, sendOrder, clearCart
   } = useCart();
   
   const [customerSearch, setCustomerSearch] = useState('');
@@ -217,9 +217,7 @@ const Cart = () => {
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                 <AlertDialogAction 
                   className="bg-red-600 hover:bg-red-700"
-                  onClick={() => {
-                    clearCart();
-                  }}
+                  onClick={() => clearCart()}
                 >
                   Limpar Carrinho
                 </AlertDialogAction>
