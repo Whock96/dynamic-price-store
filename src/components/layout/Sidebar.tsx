@@ -81,7 +81,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
     <div 
       ref={sidebarRef}
       className={cn(
-        "h-screen fixed left-0 top-16 bg-sidebar z-40 transition-all duration-300 ease-in-out border-r border-sidebar-border",
+        "h-screen fixed left-0 top-0 z-40 bg-sidebar transition-all duration-300 ease-in-out border-r border-sidebar-border pt-16",
         isExpanded ? "sidebar-expanded" : "sidebar-collapsed"
       )}
     >
