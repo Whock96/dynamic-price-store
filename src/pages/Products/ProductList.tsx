@@ -40,13 +40,13 @@ const MOCK_CATEGORIES = [
 const ProductList = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [products] = useState(MOCK_PRODUCTS);
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          product.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = categoryFilter === '' || product.categoryId === categoryFilter;
+    const matchesCategory = categoryFilter === 'all' || product.categoryId === categoryFilter;
     
     return matchesSearch && matchesCategory;
   });
@@ -100,7 +100,7 @@ const ProductList = () => {
                 </div>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas as categorias</SelectItem>
+                <SelectItem value="all">Todas as categorias</SelectItem>
                 {MOCK_CATEGORIES.map(category => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}

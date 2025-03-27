@@ -51,15 +51,15 @@ const MOCK_SALESPEOPLE = [
 const CustomerList = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [cityFilter, setCityFilter] = useState('');
-  const [salesPersonFilter, setSalesPersonFilter] = useState('');
+  const [cityFilter, setCityFilter] = useState('all');
+  const [salesPersonFilter, setSalesPersonFilter] = useState('all');
   const [customers] = useState(MOCK_CUSTOMERS);
 
   const filteredCustomers = customers.filter(customer => {
     const matchesSearch = customer.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          customer.document.includes(searchQuery);
-    const matchesCity = cityFilter === '' || customer.city === cityFilter;
-    const matchesSalesPerson = salesPersonFilter === '' || customer.salesPersonId === salesPersonFilter;
+    const matchesCity = cityFilter === 'all' || customer.city === cityFilter;
+    const matchesSalesPerson = salesPersonFilter === 'all' || customer.salesPersonId === salesPersonFilter;
     
     return matchesSearch && matchesCity && matchesSalesPerson;
   });
@@ -115,7 +115,7 @@ const CustomerList = () => {
                 </div>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas as cidades</SelectItem>
+                <SelectItem value="all">Todas as cidades</SelectItem>
                 {uniqueCities.map(city => (
                   <SelectItem key={city} value={city}>
                     {city}
@@ -131,7 +131,7 @@ const CustomerList = () => {
                 </div>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos os vendedores</SelectItem>
+                <SelectItem value="all">Todos os vendedores</SelectItem>
                 {MOCK_SALESPEOPLE.map(salesPerson => (
                   <SelectItem key={salesPerson.id} value={salesPerson.id}>
                     {salesPerson.name}

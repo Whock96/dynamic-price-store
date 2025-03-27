@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -50,7 +49,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-// Mock data for customers
 const MOCK_CUSTOMERS: Customer[] = Array.from({ length: 10 }, (_, i) => ({
   id: `customer-${i + 1}`,
   companyName: `Cliente ${i + 1} Ltda.`,
@@ -70,7 +68,6 @@ const MOCK_CUSTOMERS: Customer[] = Array.from({ length: 10 }, (_, i) => ({
   updatedAt: new Date(),
 }));
 
-// Mock data for products
 const MOCK_PRODUCTS: Product[] = Array.from({ length: 20 }, (_, i) => ({
   id: `product-${i + 1}`,
   name: `Produto ${i + 1}`,
@@ -107,21 +104,17 @@ const Cart = () => {
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   
-  // Filter customers based on search
   const filteredCustomers = MOCK_CUSTOMERS.filter(c => 
     c.companyName.toLowerCase().includes(customerSearch.toLowerCase()) ||
     c.document.includes(customerSearch)
   );
   
-  // Filter products based on search
   const filteredProducts = MOCK_PRODUCTS.filter(p => 
     p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
     p.description.toLowerCase().includes(productSearch.toLowerCase())
   );
   
-  // Handle auto-selection from URL params
   useEffect(() => {
-    // Auto-select customer from URL param
     if (customerParam && !customer) {
       const selectedCustomer = MOCK_CUSTOMERS.find(c => c.id === customerParam);
       if (selectedCustomer) {
@@ -130,12 +123,10 @@ const Cart = () => {
       }
     }
     
-    // Auto-add product from URL param
     if (productParam) {
       const selectedProduct = MOCK_PRODUCTS.find(p => p.id === productParam);
       if (selectedProduct) {
         addItem(selectedProduct, 1);
-        // Clear the product param after adding to avoid adding multiple times on page refresh
         navigate('/cart', { replace: true });
       }
     }
@@ -242,9 +233,7 @@ const Cart = () => {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Customer and cart options */}
         <div className="lg:col-span-1 space-y-6">
-          {/* Customer selection */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg font-medium flex justify-between items-center">
@@ -371,7 +360,6 @@ const Cart = () => {
             </CardContent>
           </Card>
           
-          {/* Discount options */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg font-medium">Opções de Desconto</CardTitle>
@@ -442,7 +430,6 @@ const Cart = () => {
             </CardContent>
           </Card>
           
-          {/* Order summary */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg font-medium">Resumo do Pedido</CardTitle>
@@ -485,7 +472,6 @@ const Cart = () => {
           </Card>
         </div>
         
-        {/* Shopping cart items */}
         <div className="lg:col-span-2">
           <Card>
             <CardHeader className="pb-3">
@@ -669,7 +655,6 @@ const Cart = () => {
             </CardContent>
           </Card>
           
-          {/* Applied discounts */}
           {items.length > 0 && (
             <Card className="mt-6">
               <CardHeader className="pb-3">
