@@ -1,9 +1,21 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
+import { AuthProvider } from "./context/AuthContext";
+import { CartProvider } from "./context/CartContext";
+import PageContainer from "./components/layout/PageContainer";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+import ProductList from "./pages/Products/ProductList";
+import ProductDetail from "./pages/Products/ProductDetail";
+import CustomerList from "./pages/Customers/CustomerList";
+import CustomerForm from "./pages/Customers/CustomerForm";
+import OrderList from "./pages/Orders/OrderList";
+import Cart from "./pages/Cart/Cart";
+import Settings from "./pages/Settings/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -11,15 +23,41 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <AuthProvider>
+        <CartProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/" element={<PageContainer><Dashboard /></PageContainer>} />
+              <Route path="/dashboard" element={<PageContainer><Dashboard /></PageContainer>} />
+              
+              {/* Product routes */}
+              <Route path="/products" element={<PageContainer><ProductList /></PageContainer>} />
+              <Route path="/products/:id" element={<PageContainer><ProductDetail /></PageContainer>} />
+              
+              {/* Customer routes */}
+              <Route path="/customers" element={<PageContainer><CustomerList /></PageContainer>} />
+              <Route path="/customers/new" element={<PageContainer><CustomerForm /></PageContainer>} />
+              <Route path="/customers/:id" element={<PageContainer><CustomerForm /></PageContainer>} />
+              <Route path="/customers/:id/edit" element={<PageContainer><CustomerForm /></PageContainer>} />
+              
+              {/* Order routes */}
+              <Route path="/orders" element={<PageContainer><OrderList /></PageContainer>} />
+              
+              {/* Cart route */}
+              <Route path="/cart" element={<PageContainer><Cart /></PageContainer>} />
+              
+              {/* Settings routes */}
+              <Route path="/settings" element={<PageContainer><Settings /></PageContainer>} />
+              
+              {/* Catch-all route */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </CartProvider>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

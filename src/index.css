@@ -1,3 +1,6 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -13,42 +16,35 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 156 100% 19.4%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 156 23% 94%;
+    --secondary-foreground: 156 100% 19.4%;
 
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 156 23% 94%;
+    --accent-foreground: 156 100% 19.4%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --ring: 156 100% 19.4%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 156 100% 19.4%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 156 100% 19.4%;
+    --sidebar-accent: 156 40% 25%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 156 40% 25%;
+    --sidebar-ring: 156 70% 40%;
   }
 
   .dark {
@@ -61,16 +57,16 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 156 100% 19.4%;
+    --primary-foreground: 210 40% 98%;
 
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 156 40% 25%;
     --secondary-foreground: 210 40% 98%;
 
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 156 40% 25%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 62.8% 30.6%;
@@ -78,15 +74,7 @@
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --ring: 156 100% 19.4%;
   }
 }
 
@@ -96,6 +84,62 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-lg;
+  }
+
+  .sidebar-icon {
+    @apply relative flex items-center justify-center h-12 w-12 mt-2 mb-2 mx-auto text-sidebar-foreground
+           hover:bg-sidebar-accent rounded-3xl hover:rounded-xl transition-all duration-300 ease-linear cursor-pointer;
+  }
+
+  .sidebar-tooltip {
+    @apply absolute w-auto p-2 min-w-max left-14 rounded-md shadow-md text-white bg-ferplas-600
+           text-xs font-bold transition-all duration-100 origin-left scale-0 z-50;
+  }
+
+  .sidebar-expanded {
+    @apply w-64 transition-all duration-300 ease-in-out;
+  }
+
+  .sidebar-collapsed {
+    @apply w-16 transition-all duration-300 ease-in-out;
+  }
+  
+  .hover-slide-effect {
+    @apply relative overflow-hidden;
+  }
+  
+  .hover-slide-effect::after {
+    @apply content-[''] absolute bottom-0 left-0 w-0 h-0.5 bg-ferplas-500 transition-all duration-300 ease-in-out;
+  }
+  
+  .hover-slide-effect:hover::after {
+    @apply w-full;
+  }
+  
+  .input-transition {
+    @apply transition-all duration-300 ease-in-out focus:ring-2 focus:ring-ferplas-500 focus:border-transparent;
+  }
+  
+  .button-transition {
+    @apply transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95;
+  }
+  
+  .card-transition {
+    @apply transition-all duration-300 ease-in-out transform hover:shadow-lg hover:-translate-y-1;
+  }
+  
+  .nav-item {
+    @apply px-4 py-2 hover:bg-ferplas-100 rounded-md transition-all duration-200 ease-in-out flex items-center gap-2;
+  }
+  
+  .dropdown-transition {
+    @apply transition-all duration-300 ease-in-out transform origin-top;
   }
 }

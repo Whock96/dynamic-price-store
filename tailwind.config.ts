@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,19 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				ferplas: {
+					DEFAULT: '#006341',
+					50: '#E6F3EE',
+					100: '#CCE8DD',
+					200: '#99D1BB',
+					300: '#66BA99',
+					400: '#33A377',
+					500: '#006341',
+					600: '#004F34',
+					700: '#003B28',
+					800: '#00281B',
+					900: '#00140D',
 				}
 			},
 			borderRadius: {
@@ -84,12 +98,49 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'fade-in': {
+					'0%': { opacity: '0' },
+					'100%': { opacity: '1' }
+				},
+				'fade-out': {
+					'0%': { opacity: '1' },
+					'100%': { opacity: '0' }
+				},
+				'slide-in-right': {
+					'0%': { transform: 'translateX(-100%)' },
+					'100%': { transform: 'translateX(0)' }
+				},
+				'slide-out-left': {
+					'0%': { transform: 'translateX(0)' },
+					'100%': { transform: 'translateX(-100%)' }
+				},
+				'expand-width': {
+					'0%': { width: '4rem' },
+					'100%': { width: '16rem' }
+				},
+				'shrink-width': {
+					'0%': { width: '16rem' },
+					'100%': { width: '4rem' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
-			}
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'fade-in': 'fade-in 0.3s ease-in-out',
+				'fade-out': 'fade-out 0.3s ease-in-out',
+				'slide-in-right': 'slide-in-right 0.3s ease-in-out',
+				'slide-out-left': 'slide-out-left 0.3s ease-in-out',
+				'expand-width': 'expand-width 0.2s ease-in-out',
+				'shrink-width': 'shrink-width 0.2s ease-in-out'
+			},
+			fontFamily: {
+				sans: ['Inter', 'sans-serif'],
+			},
+			backdropFilter: {
+				'none': 'none',
+				'blur': 'blur(20px)',
+			},
 		}
 	},
 	plugins: [require("tailwindcss-animate")],
