@@ -14,6 +14,12 @@ import ProductDetail from "./pages/Products/ProductDetail";
 import CustomerList from "./pages/Customers/CustomerList";
 import CustomerForm from "./pages/Customers/CustomerForm";
 import OrderList from "./pages/Orders/OrderList";
+import OrderDetail from "./pages/Orders/OrderDetail";
+import OrderUpdate from "./pages/Orders/OrderUpdate";
+import ProductManagement from "./pages/Settings/ProductManagement";
+import UserManagement from "./pages/Settings/UserManagement";
+import CategoryManagement from "./pages/Settings/CategoryManagement";
+import DiscountManagement from "./pages/Settings/DiscountManagement";
 import Cart from "./pages/Cart/Cart";
 import Settings from "./pages/Settings/Settings";
 import NotFound from "./pages/NotFound";
@@ -45,12 +51,18 @@ const App = () => (
               
               {/* Order routes */}
               <Route path="/orders" element={<PageContainer><OrderList /></PageContainer>} />
+              <Route path="/orders/:id" element={<PageContainer><OrderDetail /></PageContainer>} />
+              <Route path="/orders/:id/edit" element={<PageContainer><OrderUpdate /></PageContainer>} />
               
               {/* Cart route */}
               <Route path="/cart" element={<PageContainer><Cart /></PageContainer>} />
               
               {/* Settings routes */}
               <Route path="/settings" element={<PageContainer><Settings /></PageContainer>} />
+              <Route path="/settings/products" element={<PageContainer><ProductManagement /></PageContainer>} />
+              <Route path="/settings/users" element={<PageContainer><UserManagement /></PageContainer>} />
+              <Route path="/settings/categories" element={<PageContainer><CategoryManagement /></PageContainer>} />
+              <Route path="/settings/discounts" element={<PageContainer><DiscountManagement /></PageContainer>} />
               
               {/* Catch-all route */}
               <Route path="*" element={<NotFound />} />
