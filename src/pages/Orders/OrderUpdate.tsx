@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
@@ -41,10 +40,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// Simulando o pedido com base no ID da URL (mesma função do OrderDetail)
 const getOrderById = (id: string) => {
-  // Aqui seria uma chamada à API para buscar o pedido pelo ID
-  // Por enquanto, vamos simular um pedido
   const today = new Date();
   const date = new Date(today);
   date.setDate(today.getDate() - Math.floor(Math.random() * 30));
@@ -81,7 +77,7 @@ const getOrderById = (id: string) => {
     subtotal: Math.floor(Math.random() * 9000) + 1000,
     totalDiscount: Math.floor(Math.random() * 500) + 100,
     total: Math.floor(Math.random() * 8500) + 900,
-    status: 'pending', // Apenas pedidos pendentes podem ser editados
+    status: 'pending',
     createdAt: date,
     customer: {
       id: `customer-${Math.floor(Math.random() * 10) + 1}`,
@@ -99,7 +95,6 @@ const getOrderById = (id: string) => {
   };
 };
 
-// Lista de descontos disponíveis
 const AVAILABLE_DISCOUNTS = [
   { id: '1', name: 'Retirada', value: 1, type: 'discount', description: 'Desconto para retirada na loja' },
   { id: '2', name: 'Meia nota', value: 3, type: 'discount', description: 'Desconto para meia nota fiscal' },
@@ -122,7 +117,6 @@ const OrderUpdate = () => {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit'>('cash');
   const [selectedDiscounts, setSelectedDiscounts] = useState<string[]>([]);
   
-  // Verificar se o usuário é administrador
   useEffect(() => {
     if (user?.role !== 'administrator') {
       toast.error('Você não tem permissão para editar pedidos');
@@ -132,7 +126,6 @@ const OrderUpdate = () => {
 
   useEffect(() => {
     if (id) {
-      // Simulando uma chamada à API
       setTimeout(() => {
         const fetchedOrder = getOrderById(id);
         setOrder(fetchedOrder);
@@ -209,14 +202,12 @@ const OrderUpdate = () => {
     });
   };
 
-  // Fix for the shipping method selection - add type assertion to ensure correct types
   const handleShippingChange = (value: string) => {
     if (value === 'delivery' || value === 'pickup') {
       setShipping(value);
     }
   };
 
-  // Fix for the payment method selection - add type assertion to ensure correct types
   const handlePaymentMethodChange = (value: string) => {
     if (value === 'cash' || value === 'credit') {
       setPaymentMethod(value);
@@ -231,10 +222,8 @@ const OrderUpdate = () => {
 
     setSaving(true);
     
-    // Calcular novos totais
     const subtotal = order.items.reduce((sum: number, item: any) => sum + item.subtotal, 0);
     
-    // Simulando uma chamada à API para salvar o pedido
     setTimeout(() => {
       setSaving(false);
       toast.success('Pedido atualizado com sucesso!');
@@ -250,7 +239,6 @@ const OrderUpdate = () => {
     
     setSaving(true);
     
-    // Simulando uma chamada à API para cancelar o pedido
     setTimeout(() => {
       setSaving(false);
       toast.success('Pedido cancelado com sucesso!');
