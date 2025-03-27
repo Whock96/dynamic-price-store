@@ -204,13 +204,13 @@ const OrderUpdate = () => {
 
   const handleShippingChange = (value: string) => {
     if (value === 'delivery' || value === 'pickup') {
-      setShipping(value);
+      setShipping(value as 'delivery' | 'pickup');
     }
   };
 
   const handlePaymentMethodChange = (value: string) => {
     if (value === 'cash' || value === 'credit') {
-      setPaymentMethod(value);
+      setPaymentMethod(value as 'cash' | 'credit');
     }
   };
 
