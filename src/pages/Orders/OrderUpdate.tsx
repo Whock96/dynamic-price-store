@@ -21,7 +21,6 @@ import { Order, Customer, CartItem } from '@/types/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-// Mock data - order details
 const MOCK_ORDER: Order = {
   id: "order-123",
   customerId: "customer-1",
@@ -133,7 +132,6 @@ const MOCK_ORDER: Order = {
   updatedAt: new Date(2023, 5, 15, 14, 30),
 };
 
-// Status options - updated to match the Order type
 const ORDER_STATUS_OPTIONS = [
   { value: "pending", label: "Pendente" },
   { value: "confirmed", label: "Confirmado" },
@@ -158,10 +156,8 @@ const OrderUpdate = () => {
   const [isSaving, setIsSaving] = useState(false);
   
   useEffect(() => {
-    // In a real app, this would be an API call
     setIsLoading(true);
     
-    // Simulate API delay
     setTimeout(() => {
       setOrder(MOCK_ORDER);
       setNotes(MOCK_ORDER.notes);
@@ -205,9 +201,7 @@ const OrderUpdate = () => {
     
     setIsSaving(true);
     
-    // In a real app, this would be an API call
     try {
-      // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       toast({
@@ -432,24 +426,7 @@ const OrderUpdate = () => {
               <div>
                 <h3 className="text-sm font-medium text-gray-500">Status Atual</h3>
                 <div className="mt-1">
-                  {status === "pending" && (
-                    <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Pendente</Badge>
-                  )}
-                  {status === "confirmed" && (
-                    <Badge className="bg-blue-100 text-blue-800 border-blue-200">Confirmado</Badge>
-                  )}
-                  {status === "delivered" && (
-                    <Badge className="bg-green-100 text-green-800 border-green-200">Entregue</Badge>
-                  )}
-                  {status === "canceled" && (
-                    <Badge className="bg-red-100 text-red-800 border-red-200">Cancelado</Badge>
-                  )}
-                  {status === "invoiced" && (
-                    <Badge className="bg-purple-100 text-purple-800 border-purple-200">Faturado</Badge>
-                  )}
-                  {status === "completed" && (
-                    <Badge className="bg-green-100 text-green-800 border-green-200">Concluído</Badge>
-                  )}
+                  <OrderStatusBadge status={status} />
                 </div>
               </div>
               
