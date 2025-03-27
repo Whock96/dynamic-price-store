@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -50,7 +49,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-// Mock data for customers and products
 const MOCK_CUSTOMERS: Customer[] = Array.from({ length: 10 }, (_, i) => ({
   id: `customer-${i + 1}`,
   companyName: `Cliente ${i + 1} Ltda.`,
@@ -400,50 +398,48 @@ const Cart = () => {
               
               <Separator />
               
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="shipping">Entrega</Label>
-                  <Select value={shipping} onValueChange={handleShippingChange}>
-                    <SelectTrigger id="shipping" className="w-40">
-                      <SelectValue placeholder="Tipo de entrega" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pickup">Retirada</SelectItem>
-                      <SelectItem value="delivery">Entrega</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="fullInvoice">Nota Cheia</Label>
-                  <Switch
-                    id="fullInvoice"
-                    checked={fullInvoice}
-                    onCheckedChange={setFullInvoice}
-                  />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="taxSubstitution">Substituição Tributária</Label>
-                  <Switch
-                    id="taxSubstitution"
-                    checked={taxSubstitution}
-                    onCheckedChange={setTaxSubstitution}
-                  />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="paymentMethod">Forma de Pagamento</Label>
-                  <Select value={paymentMethod} onValueChange={handlePaymentMethodChange}>
-                    <SelectTrigger id="paymentMethod" className="w-40">
-                      <SelectValue placeholder="Forma de pagamento" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">À Vista</SelectItem>
-                      <SelectItem value="credit">A Prazo</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="shipping">Entrega</Label>
+                <Select value={shipping} onValueChange={handleShippingChange}>
+                  <SelectTrigger id="shipping" className="w-40">
+                    <SelectValue placeholder="Tipo de entrega" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pickup">Retirada</SelectItem>
+                    <SelectItem value="delivery">Entrega</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <Label htmlFor="fullInvoice">Nota Cheia</Label>
+                <Switch
+                  id="fullInvoice"
+                  checked={fullInvoice}
+                  onCheckedChange={setFullInvoice}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <Label htmlFor="taxSubstitution">Substituição Tributária</Label>
+                <Switch
+                  id="taxSubstitution"
+                  checked={taxSubstitution}
+                  onCheckedChange={setTaxSubstitution}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <Label htmlFor="paymentMethod">Forma de Pagamento</Label>
+                <Select value={paymentMethod} onValueChange={handlePaymentMethodChange}>
+                  <SelectTrigger id="paymentMethod" className="w-40">
+                    <SelectValue placeholder="Forma de pagamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">À Vista</SelectItem>
+                    <SelectItem value="credit">A Prazo</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>
@@ -672,61 +668,6 @@ const Cart = () => {
               )}
             </CardContent>
           </Card>
-          
-          {items.length > 0 && (
-            <Card className="mt-6">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-medium">Descontos Aplicados</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {customer && customer.defaultDiscount > 0 && (
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className="w-8 h-8 rounded-full bg-ferplas-100 flex items-center justify-center mr-3">
-                          <Percent className="h-4 w-4 text-ferplas-600" />
-                        </div>
-                        <div>
-                          <p className="font-medium">Desconto Padrão do Cliente</p>
-                          <p className="text-sm text-gray-500">Aplicado a todos os produtos</p>
-                        </div>
-                      </div>
-                      <span className="font-medium text-ferplas-600">{customer.defaultDiscount}%</span>
-                    </div>
-                  )}
-                  
-                  {discountOptions.filter(opt => isDiscountOptionSelected(opt.id)).map(option => (
-                    <div key={option.id} className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className="w-8 h-8 rounded-full bg-ferplas-100 flex items-center justify-center mr-3">
-                          {option.type === 'discount' ? (
-                            <Percent className="h-4 w-4 text-ferplas-600" />
-                          ) : (
-                            <CreditCard className="h-4 w-4 text-amber-600" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-medium">{option.name}</p>
-                          <p className="text-sm text-gray-500">{option.description}</p>
-                        </div>
-                      </div>
-                      <span className={`font-medium ${option.type === 'discount' ? 'text-ferplas-600' : 'text-amber-600'}`}>
-                        {option.type === 'discount' ? '-' : '+'}
-                        {option.value}%
-                      </span>
-                    </div>
-                  ))}
-                  
-                  {(!customer || customer.defaultDiscount === 0) && 
-                   discountOptions.filter(opt => isDiscountOptionSelected(opt.id)).length === 0 && (
-                    <div className="text-center py-4 text-gray-500">
-                      Nenhum desconto aplicado.
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
     </div>
