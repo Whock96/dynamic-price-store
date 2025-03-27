@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,6 +7,13 @@ import {
   ShoppingCart, ArrowLeft, Package, Truck, Weight, Box
 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 

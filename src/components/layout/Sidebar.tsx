@@ -81,10 +81,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
     <div 
       ref={sidebarRef}
       className={cn(
-        "h-screen fixed left-0 top-0 z-30 bg-sidebar transition-all duration-300 ease-in-out border-r border-sidebar-border",
-        isExpanded ? "w-64" : "w-16"
+        "h-screen fixed left-0 top-16 bg-sidebar z-40 transition-all duration-300 ease-in-out border-r border-sidebar-border",
+        isExpanded ? "sidebar-expanded" : "sidebar-collapsed"
       )}
-      style={{ paddingTop: '64px' }}
     >
       <div className="flex flex-col h-full py-4">
         <nav className="flex-1 space-y-1 px-2">
@@ -121,7 +120,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
               
               {/* Tooltip for collapsed sidebar */}
               {!isExpanded && (
-                <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                <div className="sidebar-tooltip group-hover:scale-100">
                   {item.name}
                 </div>
               )}

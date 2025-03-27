@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import Navbar from './Navbar';
+import Sidebar from './Sidebar';
 import { cn } from '@/lib/utils';
 
 interface PageContainerProps {
@@ -15,10 +17,23 @@ const PageContainer: React.FC<PageContainerProps> = ({
 }) => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const [isExpanded, setIsExpanded] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // Set initial expanded state based on screen size
+    const handleResize = () => {
+      setIsExpanded(window.innerWidth >= 1024);
+    };
+
+    // Call once on mount
+    handleResize();
     setMounted(true);
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   useEffect(() => {
@@ -26,6 +41,10 @@ const PageContainer: React.FC<PageContainerProps> = ({
       navigate('/login');
     }
   }, [user, loading, navigate, requireAuth]);
+
+  const toggleSidebar = () => {
+    setIsExpanded(prev => !prev);
+  };
 
   if (loading || !mounted) {
     return (
@@ -43,8 +62,22 @@ const PageContainer: React.FC<PageContainerProps> = ({
   }
 
   return (
-    <div className="p-6 mx-auto w-full max-w-[1920px]">
-      {children}
+    <div className="flex flex-col min-h-screen bg-gray-50">
+      {user && <Navbar toggleSidebar={toggleSidebar} />}
+      
+      <div className="flex flex-1">
+        {user && <Sidebar isExpanded={isExpanded} setIsExpanded={setIsExpanded} />}
+        
+        <main 
+          className={cn(
+            "flex-1 transition-all duration-300 ease-in-out pt-6 px-4 sm:px-6 lg:px-8 pb-12",
+            user ? "ml-16 lg:ml-16" : "",
+            isExpanded && "lg:ml-64"
+          )}
+        >
+          {children}
+        </main>
+      </div>
     </div>
   );
 };
