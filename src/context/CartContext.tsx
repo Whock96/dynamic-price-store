@@ -33,7 +33,7 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-// Opções de desconto atualizadas conforme solicitado
+// Opções de desconto atualizadas
 const MOCK_DISCOUNT_OPTIONS: DiscountOption[] = [
   {
     id: '1',
@@ -58,15 +58,7 @@ const MOCK_DISCOUNT_OPTIONS: DiscountOption[] = [
     value: 7.8,
     type: 'surcharge',
     isActive: true,
-  },
-  {
-    id: '4',
-    name: 'A Vista',
-    description: 'Desconto para pagamento à vista',
-    value: 1,
-    type: 'discount',
-    isActive: true,
-  },
+  }
 ];
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -155,16 +147,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else {
       setSelectedDiscountOptions(prev => prev.filter(id => id !== '3'));
     }
-    
-    // Opção de Pagamento À Vista (ID: 4)
-    if (paymentMethod === 'cash') {
-      if (!selectedDiscountOptions.includes('4')) {
-        setSelectedDiscountOptions(prev => [...prev, '4']);
-      }
-    } else {
-      setSelectedDiscountOptions(prev => prev.filter(id => id !== '4'));
-    }
-  }, [shipping, fullInvoice, taxSubstitution, paymentMethod]);
+  }, [shipping, fullInvoice, taxSubstitution]);
 
   // Recalculate when relevant state changes
   useEffect(() => {
@@ -260,9 +243,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else if (id === '3') {
       // Substituição Tributária
       setTaxSubstitution(!selectedDiscountOptions.includes(id));
-    } else if (id === '4') {
-      // A Vista
-      setPaymentMethod(selectedDiscountOptions.includes(id) ? 'credit' : 'cash');
     } else {
       // Para outras opções de desconto
       setSelectedDiscountOptions(prev => {

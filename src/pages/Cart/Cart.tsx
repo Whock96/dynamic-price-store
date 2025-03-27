@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
-  Trash2, ShoppingCart, Truck, Package, Percent, CreditCard, 
+  Trash2, ShoppingCart, Package, Percent, CreditCard, 
   FileText, ArrowLeft, UserPlus, Search, Send 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -49,6 +50,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
+// Mock data for customers and products
 const MOCK_CUSTOMERS: Customer[] = Array.from({ length: 10 }, (_, i) => ({
   id: `customer-${i + 1}`,
   companyName: `Cliente ${i + 1} Ltda.`,
@@ -130,7 +132,7 @@ const Cart = () => {
         navigate('/cart', { replace: true });
       }
     }
-  }, [customerParam, productParam]);
+  }, [customerParam, productParam, customer, addItem, navigate, setCustomer]);
   
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -159,6 +161,18 @@ const Cart = () => {
       console.error('Error submitting order:', error);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleShippingChange = (value: string) => {
+    if (value === 'delivery' || value === 'pickup') {
+      setShipping(value as 'delivery' | 'pickup');
+    }
+  };
+
+  const handlePaymentMethodChange = (value: string) => {
+    if (value === 'cash' || value === 'credit') {
+      setPaymentMethod(value as 'cash' | 'credit');
     }
   };
   
@@ -204,7 +218,7 @@ const Cart = () => {
                 <AlertDialogAction 
                   className="bg-red-600 hover:bg-red-700"
                   onClick={() => {
-                    useCart().clearCart();
+                    clearCart();
                   }}
                 >
                   Limpar Carrinho
@@ -391,11 +405,7 @@ const Cart = () => {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="shipping">Entrega</Label>
-                  <Select value={shipping} onValueChange={(value) => {
-                    if (value === 'delivery' || value === 'pickup') {
-                      setShipping(value);
-                    }
-                  }}>
+                  <Select value={shipping} onValueChange={handleShippingChange}>
                     <SelectTrigger id="shipping" className="w-40">
                       <SelectValue placeholder="Tipo de entrega" />
                     </SelectTrigger>
@@ -426,11 +436,7 @@ const Cart = () => {
                 
                 <div className="flex items-center justify-between">
                   <Label htmlFor="paymentMethod">Forma de Pagamento</Label>
-                  <Select value={paymentMethod} onValueChange={(value) => {
-                    if (value === 'cash' || value === 'credit') {
-                      setPaymentMethod(value);
-                    }
-                  }}>
+                  <Select value={paymentMethod} onValueChange={handlePaymentMethodChange}>
                     <SelectTrigger id="paymentMethod" className="w-40">
                       <SelectValue placeholder="Forma de pagamento" />
                     </SelectTrigger>
