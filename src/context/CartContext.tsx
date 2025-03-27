@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product } from '../types/types';
 import { toast } from 'sonner';
@@ -129,19 +130,35 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const total = items.reduce((total, item) => total + item.subtotal, 0);
 
   const addItem = (product: Product, quantity: number) => {
-    // Check if item already exists in cart
-    const existingItem = items.find(item => item.productId === product.id);
+    if (!product || !product.id) {
+      toast.error("Produto inválido");
+      return;
+    }
     
-    if (existingItem) {
+    // Check if item already exists in cart
+    const existingItemIndex = items.findIndex(item => item.productId === product.id);
+    
+    if (existingItemIndex >= 0) {
       // Update quantity of existing item
-      updateItemQuantity(existingItem.id, existingItem.quantity + quantity);
+      const newItems = [...items];
+      const existingItem = newItems[existingItemIndex];
+      const newQuantity = existingItem.quantity + quantity;
+      
+      // Update the quantity but don't modify the product reference
+      newItems[existingItemIndex] = {
+        ...existingItem,
+        quantity: newQuantity,
+      };
+      
+      setItems(newItems);
+      recalculateCart();
       toast.success(`Quantidade de ${product.name} atualizada no carrinho`);
     } else {
-      // Add new item
+      // Add new item with fixed product reference
       const newItem: CartItem = {
         id: Date.now().toString(),
         productId: product.id,
-        product,
+        product: { ...product }, // Create a stable copy of the product
         quantity,
         discount: 0,
         finalPrice: product.listPrice,

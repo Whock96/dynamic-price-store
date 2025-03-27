@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,30 +16,47 @@ import {
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 
-// Mock data for a single product
-const getProductDetails = (id: string) => ({
-  id,
-  name: `Produto ${id.split('-')[1]}`,
-  description: `Este é um produto de alta qualidade desenvolvido pela Ferplas. O Produto ${id.split('-')[1]} é reconhecido pela sua durabilidade e desempenho superior. Ideal para aplicações industriais e comerciais, este produto atende aos mais rigorosos padrões de qualidade e é amplamente utilizado em diversos setores.`,
-  listPrice: Math.floor(Math.random() * 900) + 100,
-  minPrice: Math.floor(Math.random() * 80) + 50,
-  weight: Math.floor(Math.random() * 5) + 0.5,
-  quantity: Math.floor(Math.random() * 100) + 10,
-  volume: Math.floor(Math.random() * 3) + 1,
-  categoryId: '1',
-  subcategoryId: '2',
-  imageUrl: 'https://via.placeholder.com/500',
-  specifications: [
-    { name: 'Material', value: 'Polietileno de alta densidade' },
-    { name: 'Dimensões', value: '30cm x 20cm x 15cm' },
-    { name: 'Cor', value: 'Verde' },
-    { name: 'Garantia', value: '12 meses' },
-  ],
-  categoryName: 'Acessórios',
-  subcategoryName: 'Conexões',
-  createdAt: new Date(),
-  updatedAt: new Date(),
-});
+// Mock data for a single product - we need to make this more consistent
+// Using a function that returns a fixed value for a given ID rather than random values each time
+const productDetailsCache = new Map();
+
+const getProductDetails = (id: string) => {
+  // If we already have the product details cached, return them
+  if (productDetailsCache.has(id)) {
+    return productDetailsCache.get(id);
+  }
+  
+  // Otherwise, create the product details and cache them
+  const productId = id.split('-')[1] || '1';
+  const product = {
+    id,
+    name: `Produto ${productId}`,
+    description: `Este é um produto de alta qualidade desenvolvido pela Ferplas. O Produto ${productId} é reconhecido pela sua durabilidade e desempenho superior. Ideal para aplicações industriais e comerciais, este produto atende aos mais rigorosos padrões de qualidade e é amplamente utilizado em diversos setores.`,
+    listPrice: 100 + (parseInt(productId) * 50), // deterministic price based on ID
+    minPrice: 50 + (parseInt(productId) * 10),
+    weight: 0.5 + (parseInt(productId) * 0.5),
+    quantity: 10 + (parseInt(productId) * 5),
+    volume: 1 + (parseInt(productId) % 3),
+    categoryId: '1',
+    subcategoryId: '2',
+    imageUrl: 'https://via.placeholder.com/500',
+    specifications: [
+      { name: 'Material', value: 'Polietileno de alta densidade' },
+      { name: 'Dimensões', value: '30cm x 20cm x 15cm' },
+      { name: 'Cor', value: 'Verde' },
+      { name: 'Garantia', value: '12 meses' },
+    ],
+    categoryName: 'Acessórios',
+    subcategoryName: 'Conexões',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  
+  // Cache the product details
+  productDetailsCache.set(id, product);
+  
+  return product;
+};
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -67,8 +83,9 @@ const ProductDetail = () => {
   ];
   
   const handleAddToCart = () => {
-    addItem(product, quantity);
-    toast.success(`${product.name} adicionado ao carrinho`);
+    // Create a stable product reference
+    const productToAdd = { ...product };
+    addItem(productToAdd, quantity);
   };
   
   return (
