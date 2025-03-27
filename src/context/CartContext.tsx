@@ -74,10 +74,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return total + (item.product.listPrice * item.quantity);
   }, 0);
 
-  // Calculate the total discount percentage from all applied discounts
-  const getTotalDiscountPercentage = () => {
-    // Start with customer default discount if customer is selected
-    let totalPercentage = customer?.defaultDiscount || 0;
+  // Calculate the total discount percentage from selected discount options
+  const getGlobalDiscountPercentage = () => {
+    let totalPercentage = 0;
     
     // Add selected discount options
     selectedDiscountOptions.forEach(id => {
@@ -93,14 +92,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const recalculateCart = () => {
-    const totalDiscountPercentage = getTotalDiscountPercentage();
+    const globalDiscountPercentage = getGlobalDiscountPercentage();
     
     const updatedItems = items.map(item => {
-      // Combine global discounts with product-specific discount
-      const combinedDiscount = totalDiscountPercentage + (item.discount || 0);
+      // Item-specific discount (manually entered per item)
+      const itemDiscount = item.discount || 0;
       
-      // Calculate final price after discount
-      const finalPrice = item.product.listPrice * (1 - combinedDiscount / 100);
+      // Combined discount: item-specific + global options
+      // If globalDiscountPercentage is negative, it means it's a surcharge overall
+      const effectiveDiscount = itemDiscount + globalDiscountPercentage;
+      
+      // Calculate final price after all discounts
+      const finalPrice = item.product.listPrice * (1 - effectiveDiscount / 100);
       
       // Calculate subtotal
       const subtotal = finalPrice * item.quantity;
@@ -118,7 +121,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Recalculate when relevant state changes
   useEffect(() => {
     recalculateCart();
-  }, [customer, selectedDiscountOptions]);
+  }, [selectedDiscountOptions]);
 
   // When customer changes, update the individual discount of each item
   useEffect(() => {
@@ -175,8 +178,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast.success(`Quantidade de ${product.name} atualizada no carrinho`);
     } else {
       // Add new item
-      const totalDiscountPercentage = getTotalDiscountPercentage();
-      const finalPrice = product.listPrice * (1 - totalDiscountPercentage / 100);
+      const initialDiscount = customer ? customer.defaultDiscount : 0;
+      const globalDiscountPercentage = getGlobalDiscountPercentage();
+      const combinedDiscount = initialDiscount + globalDiscountPercentage;
+      const finalPrice = product.listPrice * (1 - combinedDiscount / 100);
       
       const newItem: CartItem = {
         id: Date.now().toString(),
@@ -184,7 +189,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         product: { ...product }, // Create a copy to prevent reference issues
         quantity,
         // If customer exists, apply their default discount to the item
-        discount: customer ? customer.defaultDiscount : 0,
+        discount: initialDiscount,
         finalPrice,
         subtotal: finalPrice * quantity
       };
@@ -225,10 +230,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       discount = customer.maxDiscount;
     }
     
+    // Get the global discount percentage from selected options
+    const globalDiscountPercentage = getGlobalDiscountPercentage();
+    
     setItems(prevItems => prevItems.map(item => {
       if (item.id === id) {
-        // Apply individual discount
-        const finalPrice = item.product.listPrice * (1 - discount / 100);
+        // Combined discount: item-specific + global options
+        const combinedDiscount = discount + globalDiscountPercentage;
+        
+        // Calculate final price with all discounts applied
+        const finalPrice = item.product.listPrice * (1 - combinedDiscount / 100);
+        
         return {
           ...item,
           discount,
