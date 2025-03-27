@@ -90,7 +90,7 @@ const Cart = () => {
     items, customer, setCustomer, addItem, removeItem, updateItemQuantity,
     updateItemDiscount, discountOptions, toggleDiscountOption, isDiscountOptionSelected,
     deliveryLocation, setDeliveryLocation, halfInvoicePercentage, setHalfInvoicePercentage,
-    totalItems, subtotal, totalDiscount, total, sendOrder, clearCart
+    totalItems, subtotal, totalDiscount, total, sendOrder, clearCart, deliveryFee
   } = useCart();
   
   const [customerSearch, setCustomerSearch] = useState('');
@@ -639,6 +639,12 @@ const Cart = () => {
                 <span>Descontos:</span>
                 <span>-{formatCurrency(totalDiscount)}</span>
               </div>
+              {deliveryLocation && (
+                <div className="flex justify-between text-sm text-amber-600">
+                  <span>Taxa de entrega ({deliveryLocation === 'capital' ? 'Capital' : 'Interior'}):</span>
+                  <span>{formatCurrency(deliveryFee)}</span>
+                </div>
+              )}
               <Separator className="my-2" />
               <div className="flex justify-between font-medium text-lg">
                 <span>Total:</span>

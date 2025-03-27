@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product } from '../types/types';
 import { toast } from 'sonner';
@@ -14,6 +13,7 @@ interface CartContextType {
   subtotal: number;
   totalDiscount: number;
   total: number;
+  deliveryFee: number;
   setCustomer: (customer: Customer | null) => void;
   addItem: (product: Product, quantity: number) => void;
   removeItem: (id: string) => void;
@@ -97,6 +97,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return totalPercentage;
   };
 
+  // Calculate delivery fee based on location
+  const deliveryFee = deliveryLocation === 'capital' ? 25 : deliveryLocation === 'interior' ? 50 : 0;
+
   const recalculateCart = () => {
     const globalDiscountPercentage = getGlobalDiscountPercentage();
     
@@ -156,8 +159,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return total + (fullPrice - (item.subtotal || 0));
   }, 0);
 
-  // Final total
-  const total = items.reduce((total, item) => total + (item.subtotal || 0), 0);
+  // Final total including delivery fee
+  const total = items.reduce((total, item) => total + (item.subtotal || 0), 0) + deliveryFee;
 
   const addItem = (product: Product, quantity: number) => {
     if (!product || !product.id) {
@@ -312,6 +315,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           discountOptions.find(opt => opt.id === id)
         ),
         deliveryLocation,
+        deliveryFee,
         halfInvoicePercentage: isDiscountOptionSelected('2') ? halfInvoicePercentage : null,
         subtotal,
         totalDiscount,
@@ -350,6 +354,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subtotal,
       totalDiscount,
       total,
+      deliveryFee,
       setCustomer,
       addItem,
       removeItem,
