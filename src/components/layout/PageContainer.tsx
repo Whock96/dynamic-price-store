@@ -43,7 +43,7 @@ const PageContainer: React.FC<PageContainerProps> = ({
   }
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 py-6">
+    <div className="p-6 mx-auto w-full max-w-[1920px]">
       {children}
     </div>
   );

@@ -84,7 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
         "h-screen fixed left-0 top-0 z-30 bg-sidebar transition-all duration-300 ease-in-out border-r border-sidebar-border",
         isExpanded ? "w-64" : "w-16"
       )}
-      style={{ paddingTop: '4rem' }}
+      style={{ paddingTop: '64px' }}
     >
       <div className="flex flex-col h-full py-4">
         <nav className="flex-1 space-y-1 px-2">
