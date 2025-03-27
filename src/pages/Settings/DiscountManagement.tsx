@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -51,7 +50,7 @@ import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
 import { DiscountOption } from '@/types/types';
 
-// Mock data para opções de desconto, agora usando os valores solicitados
+// Mock data para opções de desconto, agora sem a opção "A Vista"
 const INITIAL_DISCOUNTS: DiscountOption[] = [
   {
     id: '1',
@@ -75,14 +74,6 @@ const INITIAL_DISCOUNTS: DiscountOption[] = [
     description: 'Acréscimo para substituição tributária',
     value: 7.8,
     type: 'surcharge',
-    isActive: true,
-  },
-  {
-    id: '4',
-    name: 'A Vista',
-    description: 'Desconto para pagamento à vista',
-    value: 1,
-    type: 'discount',
     isActive: true,
   },
 ];
