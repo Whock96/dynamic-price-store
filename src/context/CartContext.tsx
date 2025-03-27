@@ -8,6 +8,8 @@ interface CartContextType {
   customer: Customer | null;
   discountOptions: DiscountOption[];
   selectedDiscountOptions: string[];
+  deliveryLocation: 'capital' | 'interior' | null;
+  halfInvoicePercentage: number;
   totalItems: number;
   subtotal: number;
   totalDiscount: number;
@@ -18,6 +20,8 @@ interface CartContextType {
   updateItemQuantity: (id: string, quantity: number) => void;
   updateItemDiscount: (id: string, discount: number) => void;
   toggleDiscountOption: (id: string) => void;
+  setDeliveryLocation: (location: 'capital' | 'interior' | null) => void;
+  setHalfInvoicePercentage: (percentage: number) => void;
   clearCart: () => void;
   sendOrder: () => Promise<void>;
   isDiscountOptionSelected: (id: string) => boolean;
@@ -66,6 +70,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [discountOptions] = useState<DiscountOption[]>(MOCK_DISCOUNT_OPTIONS);
   const [selectedDiscountOptions, setSelectedDiscountOptions] = useState<string[]>([]);
+  const [deliveryLocation, setDeliveryLocation] = useState<'capital' | 'interior' | null>(null);
+  const [halfInvoicePercentage, setHalfInvoicePercentage] = useState<number>(50);
 
   // Calculate cart totals
   const totalItems = items.reduce((total, item) => total + item.quantity, 0);
@@ -255,6 +261,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const toggleDiscountOption = (id: string) => {
     setSelectedDiscountOptions(prev => {
       if (prev.includes(id)) {
+        // If removing Retirada option, also clear delivery location
+        if (id === '1') {
+          setDeliveryLocation(null);
+        }
+        
+        // If removing Meia nota option, reset half invoice percentage
+        if (id === '2') {
+          setHalfInvoicePercentage(50);
+        }
+        
         return prev.filter(optId => optId !== id);
       } else {
         return [...prev, id];
@@ -270,6 +286,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setItems([]);
     setCustomer(null);
     setSelectedDiscountOptions([]);
+    setDeliveryLocation(null);
+    setHalfInvoicePercentage(50);
     toast.info('Carrinho limpo');
   };
 
@@ -293,6 +311,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         discountOptions: selectedDiscountOptions.map(id => 
           discountOptions.find(opt => opt.id === id)
         ),
+        deliveryLocation,
+        halfInvoicePercentage: isDiscountOptionSelected('2') ? halfInvoicePercentage : null,
         subtotal,
         totalDiscount,
         total,
@@ -324,6 +344,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       customer,
       discountOptions,
       selectedDiscountOptions,
+      deliveryLocation,
+      halfInvoicePercentage,
       totalItems,
       subtotal,
       totalDiscount,
@@ -334,6 +356,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateItemQuantity,
       updateItemDiscount,
       toggleDiscountOption,
+      setDeliveryLocation,
+      setHalfInvoicePercentage,
       clearCart,
       sendOrder,
       isDiscountOptionSelected

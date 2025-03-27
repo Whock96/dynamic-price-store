@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
-  Trash2, ShoppingCart, Package, Search, Send 
+  Trash2, ShoppingCart, Package, Search, Send, MapPin, Percent
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
 import { useCart } from '../../context/CartContext';
 import { Customer, Product } from '@/types/types';
 import { toast } from 'sonner';
@@ -86,6 +89,7 @@ const Cart = () => {
   const { 
     items, customer, setCustomer, addItem, removeItem, updateItemQuantity,
     updateItemDiscount, discountOptions, toggleDiscountOption, isDiscountOptionSelected,
+    deliveryLocation, setDeliveryLocation, halfInvoicePercentage, setHalfInvoicePercentage,
     totalItems, subtotal, totalDiscount, total, sendOrder, clearCart
   } = useCart();
   
@@ -539,20 +543,79 @@ const Cart = () => {
           <CardContent>
             <div className="space-y-4">
               {discountOptions.length > 0 ? (
-                discountOptions.map(option => (
-                  <div key={option.id} className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">
-                        {option.name} {option.type === 'discount' ? '(-' : '(+'}{option.value}%)
-                      </p>
-                      <p className="text-sm text-gray-500">{option.description}</p>
+                <>
+                  {discountOptions.map(option => (
+                    <div key={option.id} className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">
+                            {option.name} {option.type === 'discount' ? '(-' : '(+'}{option.value}%)
+                          </p>
+                          <p className="text-sm text-gray-500">{option.description}</p>
+                        </div>
+                        <Switch
+                          checked={isDiscountOptionSelected(option.id)}
+                          onCheckedChange={() => toggleDiscountOption(option.id)}
+                        />
+                      </div>
+                      
+                      {option.id === '1' && isDiscountOptionSelected(option.id) && (
+                        <div className="ml-6 p-3 border-l-2 border-ferplas-100 bg-gray-50 rounded-md">
+                          <div className="flex items-center mb-1">
+                            <MapPin className="h-4 w-4 text-ferplas-500 mr-1" />
+                            <span className="text-sm font-medium text-gray-700">Local de entrega:</span>
+                          </div>
+                          <RadioGroup 
+                            value={deliveryLocation || ''} 
+                            onValueChange={(value) => setDeliveryLocation(value as 'capital' | 'interior')}
+                            className="flex space-x-4 mt-1"
+                          >
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="capital" id="capital" />
+                              <Label htmlFor="capital" className="text-sm">Capital</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="interior" id="interior" />
+                              <Label htmlFor="interior" className="text-sm">Interior</Label>
+                            </div>
+                          </RadioGroup>
+                        </div>
+                      )}
+                      
+                      {option.id === '2' && isDiscountOptionSelected(option.id) && (
+                        <div className="ml-6 p-3 border-l-2 border-ferplas-100 bg-gray-50 rounded-md">
+                          <div className="flex items-center mb-2">
+                            <Percent className="h-4 w-4 text-ferplas-500 mr-1" />
+                            <span className="text-sm font-medium text-gray-700">Percentual da nota: {halfInvoicePercentage}%</span>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <Slider
+                              value={[halfInvoicePercentage]}
+                              min={0}
+                              max={100}
+                              step={1}
+                              onValueChange={(value) => setHalfInvoicePercentage(value[0])}
+                              className="w-full"
+                            />
+                            <Input
+                              type="number"
+                              value={halfInvoicePercentage}
+                              onChange={(e) => {
+                                const val = Number(e.target.value);
+                                if (val >= 0 && val <= 100) {
+                                  setHalfInvoicePercentage(val);
+                                }
+                              }}
+                              className="w-20"
+                              min={0}
+                              max={100}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <Switch
-                      checked={isDiscountOptionSelected(option.id)}
-                      onCheckedChange={() => toggleDiscountOption(option.id)}
-                    />
-                  </div>
-                ))
+                  ))}
+                </>
               ) : (
                 <div className="text-center py-4">
                   <p className="text-gray-500">Nenhuma opção de desconto cadastrada.</p>
