@@ -30,8 +30,8 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
-        <BrowserRouter>
-          <CartProvider>
+        <CartProvider>
+          <BrowserRouter>
             <Toaster />
             <Sonner />
             <Routes>
@@ -67,8 +67,8 @@ const App = () => (
               {/* Catch-all route */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </CartProvider>
-        </BrowserRouter>
+          </BrowserRouter>
+        </CartProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
