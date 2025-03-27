@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product } from '../types/types';
 import { toast } from 'sonner';
@@ -9,6 +10,7 @@ interface CartContextType {
   selectedDiscountOptions: string[];
   deliveryLocation: 'capital' | 'interior' | null;
   halfInvoicePercentage: number;
+  observations: string;
   totalItems: number;
   subtotal: number;
   totalDiscount: number;
@@ -22,6 +24,7 @@ interface CartContextType {
   toggleDiscountOption: (id: string) => void;
   setDeliveryLocation: (location: 'capital' | 'interior' | null) => void;
   setHalfInvoicePercentage: (percentage: number) => void;
+  setObservations: (text: string) => void;
   clearCart: () => void;
   sendOrder: () => Promise<void>;
   isDiscountOptionSelected: (id: string) => boolean;
@@ -72,6 +75,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [selectedDiscountOptions, setSelectedDiscountOptions] = useState<string[]>([]);
   const [deliveryLocation, setDeliveryLocation] = useState<'capital' | 'interior' | null>(null);
   const [halfInvoicePercentage, setHalfInvoicePercentage] = useState<number>(50);
+  const [observations, setObservations] = useState<string>('');
 
   // Calculate cart totals
   const totalItems = items.reduce((total, item) => total + item.quantity, 0);
@@ -291,6 +295,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSelectedDiscountOptions([]);
     setDeliveryLocation(null);
     setHalfInvoicePercentage(50);
+    setObservations('');
     toast.info('Carrinho limpo');
   };
 
@@ -317,6 +322,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deliveryLocation,
         deliveryFee,
         halfInvoicePercentage: isDiscountOptionSelected('2') ? halfInvoicePercentage : null,
+        observations,
         subtotal,
         totalDiscount,
         total,
@@ -350,6 +356,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       selectedDiscountOptions,
       deliveryLocation,
       halfInvoicePercentage,
+      observations,
       totalItems,
       subtotal,
       totalDiscount,
@@ -363,6 +370,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toggleDiscountOption,
       setDeliveryLocation,
       setHalfInvoicePercentage,
+      setObservations,
       clearCart,
       sendOrder,
       isDiscountOptionSelected

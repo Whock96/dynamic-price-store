@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
-  Trash2, ShoppingCart, Package, Search, Send, MapPin, Percent
+  Trash2, ShoppingCart, Package, Search, Send, MapPin, Percent, FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -90,7 +91,7 @@ const Cart = () => {
     items, customer, setCustomer, addItem, removeItem, updateItemQuantity,
     updateItemDiscount, discountOptions, toggleDiscountOption, isDiscountOptionSelected,
     deliveryLocation, setDeliveryLocation, halfInvoicePercentage, setHalfInvoicePercentage,
-    totalItems, subtotal, totalDiscount, total, sendOrder, clearCart, deliveryFee
+    observations, setObservations, totalItems, subtotal, totalDiscount, total, sendOrder, clearCart, deliveryFee
   } = useCart();
   
   const [customerSearch, setCustomerSearch] = useState('');
@@ -622,6 +623,20 @@ const Cart = () => {
                 </div>
               )}
             </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-medium">Observações do Pedido</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              placeholder="Digite aqui observações importantes sobre este pedido, como instruções de entrega, detalhes específicos ou outras informações relevantes..."
+              className="min-h-[120px] resize-y"
+              value={observations}
+              onChange={(e) => setObservations(e.target.value)}
+            />
           </CardContent>
         </Card>
         
