@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   username: string;
@@ -95,7 +96,7 @@ export interface Order {
   totalDiscount: number;
   subtotal: number;
   total: number;
-  status: 'pending' | 'confirmed' | 'canceled' | 'delivered';
+  status: 'pending' | 'confirmed' | 'invoiced' | 'completed' | 'canceled';
   shipping: 'delivery' | 'pickup';
   fullInvoice: boolean;
   taxSubstitution: boolean;

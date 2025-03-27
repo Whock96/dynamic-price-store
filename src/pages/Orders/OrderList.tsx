@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, Calendar, FileText, ShoppingCart } from 'lucide-react';
+import { Search, Filter, Calendar, FileText, ShoppingCart, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,42 +20,71 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
+import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Order } from '@/types/types';
 
 // Mock data for orders
-const MOCK_ORDERS = Array.from({ length: 20 }, (_, i) => {
+const MOCK_ORDERS: Partial<Order>[] = Array.from({ length: 20 }, (_, i) => {
   const today = new Date();
   const date = new Date(today);
   date.setDate(today.getDate() - Math.floor(Math.random() * 30));
   
+  const statuses: Order['status'][] = ['pending', 'confirmed', 'invoiced', 'completed', 'canceled'];
+  
   return {
     id: `order-${i + 1}`,
-    number: `#${10000 + i}`,
     customerId: `customer-${Math.floor(Math.random() * 10) + 1}`,
-    customerName: `Cliente ${Math.floor(Math.random() * 10) + 1} Ltda.`,
+    customer: {
+      id: `customer-${Math.floor(Math.random() * 10) + 1}`,
+      companyName: `Cliente ${Math.floor(Math.random() * 10) + 1} Ltda.`,
+      document: `${Math.floor(Math.random() * 100000000000)}-${Math.floor(Math.random() * 100)}`,
+      salesPersonId: `user-${Math.floor(Math.random() * 3) + 1}`,
+      street: "",
+      number: "",
+      noNumber: false,
+      complement: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      phone: "",
+      email: "",
+      defaultDiscount: 0,
+      maxDiscount: 0,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    },
     userId: `user-${Math.floor(Math.random() * 3) + 1}`,
-    userName: i % 3 === 0 ? 'João Silva' : i % 3 === 1 ? 'Maria Oliveira' : 'Carlos Santos',
-    items: Math.floor(Math.random() * 10) + 1,
+    user: {
+      id: `user-${Math.floor(Math.random() * 3) + 1}`,
+      username: i % 3 === 0 ? 'joao' : i % 3 === 1 ? 'maria' : 'carlos',
+      name: i % 3 === 0 ? 'João Silva' : i % 3 === 1 ? 'Maria Oliveira' : 'Carlos Santos',
+      role: 'salesperson',
+      permissions: [],
+      email: "",
+      createdAt: new Date()
+    },
+    items: Array(Math.floor(Math.random() * 10) + 1).fill(null),
     subtotal: Math.floor(Math.random() * 9000) + 1000,
     total: Math.floor(Math.random() * 10000) + 1000,
-    status: i % 4 === 0 ? 'pending' : i % 4 === 1 ? 'confirmed' : i % 4 === 2 ? 'delivered' : 'canceled',
+    status: statuses[i % 5],
     createdAt: date,
+    updatedAt: date,
   };
-});
+}) as Order[];
 
 const OrderList = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
-  const [orders] = useState(MOCK_ORDERS);
+  const [orders] = useState<Order[]>(MOCK_ORDERS as Order[]);
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
-      order.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.customerName.toLowerCase().includes(searchQuery.toLowerCase());
+      order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.customer.companyName.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     
@@ -77,21 +106,6 @@ const OrderList = () => {
     
     return matchesSearch && matchesStatus && matchesDate;
   });
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Pendente</Badge>;
-      case 'confirmed':
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Confirmado</Badge>;
-      case 'delivered':
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Entregue</Badge>;
-      case 'canceled':
-        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Cancelado</Badge>;
-      default:
-        return <Badge variant="outline">Desconhecido</Badge>;
-    }
-  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -147,7 +161,8 @@ const OrderList = () => {
                 <SelectItem value="all">Todos os status</SelectItem>
                 <SelectItem value="pending">Pendente</SelectItem>
                 <SelectItem value="confirmed">Confirmado</SelectItem>
-                <SelectItem value="delivered">Entregue</SelectItem>
+                <SelectItem value="invoiced">Faturado</SelectItem>
+                <SelectItem value="completed">Concluído</SelectItem>
                 <SelectItem value="canceled">Cancelado</SelectItem>
               </SelectContent>
             </Select>
@@ -192,29 +207,45 @@ const OrderList = () => {
                   className="cursor-pointer hover:bg-gray-50"
                   onClick={() => navigate(`/orders/${order.id}`)}
                 >
-                  <TableCell className="font-medium">{order.number}</TableCell>
-                  <TableCell>{order.customerName}</TableCell>
+                  <TableCell className="font-medium">#{order.id.slice(-4)}</TableCell>
+                  <TableCell>{order.customer.companyName}</TableCell>
                   <TableCell>
                     {format(order.createdAt, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                   </TableCell>
-                  <TableCell>{order.userName}</TableCell>
-                  <TableCell>{order.items}</TableCell>
+                  <TableCell>{order.user.name}</TableCell>
+                  <TableCell>{order.items.length}</TableCell>
                   <TableCell>{formatCurrency(order.total)}</TableCell>
-                  <TableCell>{getStatusBadge(order.status)}</TableCell>
+                  <TableCell>
+                    <OrderStatusBadge status={order.status} />
+                  </TableCell>
                   <TableCell className="text-right">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="h-8 px-2"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // In a real app, this would generate or download a PDF
-                        alert('Gerando nota fiscal...');
-                      }}
-                    >
-                      <FileText className="h-4 w-4 mr-1" />
-                      Nota
-                    </Button>
+                    <div className="flex justify-end space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="h-8 px-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/orders/${order.id}/edit`);
+                        }}
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Editar
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="h-8 px-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // In a real app, this would generate or download a PDF
+                          alert('Gerando nota fiscal...');
+                        }}
+                      >
+                        <FileText className="h-4 w-4 mr-1" />
+                        Nota
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
