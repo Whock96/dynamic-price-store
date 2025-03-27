@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
 import Navbar from './components/layout/Navbar';
@@ -28,6 +28,12 @@ import { CartProvider } from './context/CartContext';
 const queryClient = new QueryClient();
 
 function App() {
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  
+  const toggleSidebar = () => {
+    setIsSidebarExpanded(prev => !prev);
+  };
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -36,9 +42,12 @@ function App() {
             <CartProvider>
               <Router>
                 <div className="flex h-screen overflow-hidden bg-muted/10">
-                  <Sidebar />
+                  <Sidebar 
+                    isExpanded={isSidebarExpanded} 
+                    setIsExpanded={setIsSidebarExpanded} 
+                  />
                   <div className="flex-1 flex flex-col overflow-hidden">
-                    <Navbar />
+                    <Navbar toggleSidebar={toggleSidebar} />
                     <PageContainer>
                       <Routes>
                         <Route path="/" element={<Dashboard />} />
