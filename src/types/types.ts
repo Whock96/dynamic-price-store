@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   username: string;
@@ -61,6 +60,7 @@ export interface Customer {
   phone: string;
   email: string;
   defaultDiscount: number;
+  maxDiscount: number; // Maximum allowed discount percentage
   createdAt: Date;
   updatedAt: Date;
 }

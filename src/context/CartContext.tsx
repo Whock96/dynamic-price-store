@@ -219,6 +219,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateItemDiscount = (id: string, discount: number) => {
     if (discount < 0) return;
     
+    // Check if the discount exceeds the customer's max discount
+    if (customer && discount > customer.maxDiscount) {
+      toast.warning(`Desconto limitado a ${customer.maxDiscount}% para o cliente ${customer.companyName}`);
+      discount = customer.maxDiscount;
+    }
+    
     setItems(prevItems => prevItems.map(item => {
       if (item.id === id) {
         // Apply individual discount

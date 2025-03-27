@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Trash2, Users } from 'lucide-react';
@@ -81,6 +80,7 @@ const EMPTY_CUSTOMER = {
   phone: '',
   email: '',
   defaultDiscount: 0,
+  maxDiscount: 15, // Default maximum discount of 15%
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -101,6 +101,7 @@ const getCustomerById = (id: string) => ({
   phone: `(11) ${Math.floor(Math.random() * 90000) + 10000}-${Math.floor(Math.random() * 9000) + 1000}`,
   email: `cliente${id.split('-')[1]}@example.com`,
   defaultDiscount: Math.floor(Math.random() * 10),
+  maxDiscount: Math.floor(Math.random() * 15) + 10, // Random max discount between 10-25%
   createdAt: new Date(),
   updatedAt: new Date(),
 });
@@ -116,7 +117,6 @@ const CustomerForm = () => {
 
   useEffect(() => {
     if (isEditMode && id) {
-      // In a real app, we would fetch data from an API
       const customerData = getCustomerById(id);
       setFormData(customerData);
     }
@@ -126,7 +126,6 @@ const CustomerForm = () => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     
-    // Clear validation error when field is edited
     if (validationErrors[name]) {
       setValidationErrors(prev => {
         const newErrors = { ...prev };
@@ -139,7 +138,6 @@ const CustomerForm = () => {
   const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }));
     
-    // Clear validation error when field is edited
     if (validationErrors[name]) {
       setValidationErrors(prev => {
         const newErrors = { ...prev };
@@ -188,9 +186,12 @@ const CustomerForm = () => {
       errors.state = 'Estado é obrigatório';
     }
 
-    // Basic email validation
     if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
       errors.email = 'Email inválido';
+    }
+
+    if (formData.maxDiscount < formData.defaultDiscount) {
+      errors.maxDiscount = 'Desconto máximo deve ser maior ou igual ao desconto padrão';
     }
 
     setValidationErrors(errors);
@@ -208,7 +209,6 @@ const CustomerForm = () => {
     setIsSubmitting(true);
 
     try {
-      // In a real app, this would be an API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       toast.success(`Cliente ${isEditMode ? 'atualizado' : 'cadastrado'} com sucesso`);
@@ -225,7 +225,6 @@ const CustomerForm = () => {
     setIsSubmitting(true);
 
     try {
-      // In a real app, this would be an API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       toast.success('Cliente removido com sucesso');
@@ -391,6 +390,28 @@ const CustomerForm = () => {
                   onChange={handleInputChange}
                   placeholder="0"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="maxDiscount">
+                  Desconto Máximo (%) <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="maxDiscount"
+                  name="maxDiscount"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={formData.maxDiscount}
+                  onChange={handleInputChange}
+                  placeholder="15"
+                  className={validationErrors.maxDiscount ? 'border-red-500' : ''}
+                />
+                {validationErrors.maxDiscount && (
+                  <p className="text-xs text-red-500">{validationErrors.maxDiscount}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Limite máximo de desconto que pode ser aplicado aos produtos deste cliente
+                </p>
               </div>
             </div>
           </CardContent>
