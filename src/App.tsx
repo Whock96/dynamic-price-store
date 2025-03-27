@@ -48,23 +48,25 @@ function App() {
                   />
                   <div className="flex-1 flex flex-col overflow-hidden">
                     <Navbar toggleSidebar={toggleSidebar} />
-                    <PageContainer>
-                      <Routes>
-                        <Route path="/" element={<Dashboard />} />
-                        <Route path="/products" element={<ProductList />} />
-                        <Route path="/products/:id" element={<ProductDetail />} />
-                        <Route path="/customers" element={<CustomerList />} />
-                        <Route path="/customers/new" element={<CustomerForm />} />
-                        <Route path="/customers/:id" element={<CustomerForm />} />
-                        <Route path="/orders" element={<OrderList />} />
-                        <Route path="/orders/:id" element={<OrderDetail />} />
-                        <Route path="/orders/:id/update" element={<OrderUpdate />} />
-                        <Route path="/cart" element={<Cart />} />
-                        <Route path="/settings/*" element={<Settings />} />
-                        <Route path="/login" element={<Login />} />
-                        <Route path="*" element={<NotFound />} />
-                      </Routes>
-                    </PageContainer>
+                    <div className="flex-1 overflow-y-auto pt-16">
+                      <PageContainer>
+                        <Routes>
+                          <Route path="/" element={<Dashboard />} />
+                          <Route path="/products" element={<ProductList />} />
+                          <Route path="/products/:id" element={<ProductDetail />} />
+                          <Route path="/customers" element={<CustomerList />} />
+                          <Route path="/customers/new" element={<CustomerForm />} />
+                          <Route path="/customers/:id" element={<CustomerForm />} />
+                          <Route path="/orders" element={<OrderList />} />
+                          <Route path="/orders/:id" element={<OrderDetail />} />
+                          <Route path="/orders/:id/update" element={<OrderUpdate />} />
+                          <Route path="/cart" element={<Cart />} />
+                          <Route path="/settings/*" element={<Settings />} />
+                          <Route path="/login" element={<Login />} />
+                          <Route path="*" element={<NotFound />} />
+                        </Routes>
+                      </PageContainer>
+                    </div>
                   </div>
                 </div>
                 <Toaster />
