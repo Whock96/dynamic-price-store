@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, X, Package, User, Calendar } from 'lucide-react';
@@ -41,6 +40,7 @@ const MOCK_ORDER: Order = {
     phone: "(11) 3000-0000",
     email: "contato@empresa.com",
     defaultDiscount: 5,
+    maxDiscount: 10,
     createdAt: new Date(2023, 5, 15),
     updatedAt: new Date(2023, 5, 15),
   },
