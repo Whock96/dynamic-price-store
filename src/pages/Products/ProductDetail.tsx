@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,15 @@ const ProductDetail = () => {
   const handleAddToCart = () => {
     addItem(product, quantity);
   };
+
+  // Mock product specifications since they don't exist in the Product type
+  const mockSpecifications = [
+    { name: "Material", value: "PVC" },
+    { name: "Cor", value: "Branco" },
+    { name: "Dimensões", value: `${product.volume} m³` },
+    { name: "Peso", value: `${product.weight} kg` },
+    { name: "Código do Produto", value: product.id }
+  ];
   
   return (
     <div className="space-y-6 animate-fade-in">
@@ -218,7 +228,7 @@ const ProductDetail = () => {
         <Card>
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {product.specifications.map((spec, index) => (
+              {mockSpecifications.map((spec, index) => (
                 <div key={index} className="flex justify-between border-b pb-2">
                   <span className="font-medium">{spec.name}</span>
                   <span className="text-gray-600">{spec.value}</span>
