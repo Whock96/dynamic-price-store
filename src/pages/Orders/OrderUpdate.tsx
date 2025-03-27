@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import { Switch } from '@/components/ui/switch';
 import {
   Select,
@@ -133,12 +133,13 @@ const MOCK_ORDER: Order = {
   updatedAt: new Date(2023, 5, 15, 14, 30),
 };
 
-// Status options
+// Status options - updated to match the Order type
 const ORDER_STATUS_OPTIONS = [
   { value: "pending", label: "Pendente" },
   { value: "confirmed", label: "Confirmado" },
+  { value: "invoiced", label: "Faturado" },
+  { value: "completed", label: "Concluído" },
   { value: "canceled", label: "Cancelado" },
-  { value: "delivered", label: "Entregue" },
 ];
 
 const OrderUpdate = () => {
@@ -149,7 +150,7 @@ const OrderUpdate = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [order, setOrder] = useState<Order | null>(null);
   const [notes, setNotes] = useState("");
-  const [status, setStatus] = useState<"pending" | "confirmed" | "canceled" | "delivered">("pending");
+  const [status, setStatus] = useState<"pending" | "confirmed" | "invoiced" | "completed" | "canceled">("pending");
   const [shipping, setShipping] = useState<"delivery" | "pickup">("delivery");
   const [fullInvoice, setFullInvoice] = useState(false);
   const [taxSubstitution, setTaxSubstitution] = useState(false);
@@ -174,8 +175,14 @@ const OrderUpdate = () => {
   }, [id]);
   
   const handleStatusChange = (value: string) => {
-    if (value === "pending" || value === "confirmed" || value === "canceled" || value === "delivered") {
-      setStatus(value);
+    if (
+      value === "pending" || 
+      value === "confirmed" || 
+      value === "invoiced" || 
+      value === "completed" || 
+      value === "canceled"
+    ) {
+      setStatus(value as "pending" | "confirmed" | "invoiced" | "completed" | "canceled");
     }
   };
   
@@ -436,6 +443,12 @@ const OrderUpdate = () => {
                   )}
                   {status === "canceled" && (
                     <Badge className="bg-red-100 text-red-800 border-red-200">Cancelado</Badge>
+                  )}
+                  {status === "invoiced" && (
+                    <Badge className="bg-purple-100 text-purple-800 border-purple-200">Faturado</Badge>
+                  )}
+                  {status === "completed" && (
+                    <Badge className="bg-green-100 text-green-800 border-green-200">Concluído</Badge>
                   )}
                 </div>
               </div>
