@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -67,6 +68,7 @@ const Cart = () => {
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   
+  // Display all customers that match the search, not just the first 10
   const filteredCustomers = customers.filter(c => 
     c.companyName.toLowerCase().includes(customerSearch.toLowerCase()) ||
     c.document.includes(customerSearch)
