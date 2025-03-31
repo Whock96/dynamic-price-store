@@ -92,10 +92,14 @@ const MOCK_ORDERS: Partial<Order>[] = Array.from({ length: 20 }, (_, i) => {
   };
 }) as Order[];
 
+// Create a key for localStorage
+const ORDERS_STORAGE_KEY = 'ferplas-orders-data';
+
 interface OrderContextType {
   orders: Order[];
   addOrder: (newOrder: Partial<Order>) => void;
   updateOrderStatus: (orderId: string, status: Order['status']) => void;
+  updateOrder: (orderId: string, orderData: Partial<Order>) => void;
   getOrderById: (id: string) => Order | undefined;
 }
 
@@ -103,7 +107,44 @@ const OrderContext = createContext<OrderContextType | undefined>(undefined);
 
 export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const [orders, setOrders] = useState<Order[]>(MOCK_ORDERS as Order[]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  
+  // Load orders from localStorage on initial render
+  useEffect(() => {
+    const savedOrders = localStorage.getItem(ORDERS_STORAGE_KEY);
+    if (savedOrders) {
+      try {
+        // Parse dates properly when loading from localStorage
+        const parsedOrders = JSON.parse(savedOrders, (key, value) => {
+          if (key === 'createdAt' || key === 'updatedAt') {
+            return new Date(value);
+          }
+          return value;
+        });
+        if (Array.isArray(parsedOrders) && parsedOrders.length > 0) {
+          console.log('Loaded orders from localStorage:', parsedOrders.length);
+          setOrders(parsedOrders);
+        } else {
+          console.log('No valid orders in localStorage, loading mock data');
+          setOrders(MOCK_ORDERS as Order[]);
+        }
+      } catch (error) {
+        console.error('Error loading orders from localStorage:', error);
+        setOrders(MOCK_ORDERS as Order[]);
+      }
+    } else {
+      console.log('No orders in localStorage, loading mock data');
+      setOrders(MOCK_ORDERS as Order[]);
+    }
+  }, []);
+  
+  // Save orders to localStorage whenever they change
+  useEffect(() => {
+    if (orders.length > 0) {
+      console.log('Saving orders to localStorage:', orders.length);
+      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+    }
+  }, [orders]);
 
   const addOrder = (newOrder: Partial<Order>) => {
     const orderId = `order-${orders.length + 1}`;
@@ -131,6 +172,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const updateOrderStatus = (orderId: string, status: Order['status']) => {
+    console.log(`Updating order status: ${orderId} to ${status}`);
+    
     setOrders(prevOrders =>
       prevOrders.map(order =>
         order.id === orderId
@@ -139,6 +182,23 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       )
     );
     toast.success(`Status do pedido #${orderId.slice(-4)} atualizado para ${status}`);
+  };
+  
+  const updateOrder = (orderId: string, orderData: Partial<Order>) => {
+    console.log(`Updating order: ${orderId}`, orderData);
+    
+    setOrders(prevOrders =>
+      prevOrders.map(order =>
+        order.id === orderId
+          ? { 
+              ...order, 
+              ...orderData, 
+              updatedAt: new Date() 
+            }
+          : order
+      )
+    );
+    toast.success(`Pedido #${orderId.slice(-4)} atualizado com sucesso!`);
   };
 
   const getOrderById = (id: string) => {
@@ -152,7 +212,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   return (
-    <OrderContext.Provider value={{ orders, addOrder, updateOrderStatus, getOrderById }}>
+    <OrderContext.Provider value={{ orders, addOrder, updateOrderStatus, updateOrder, getOrderById }}>
       {children}
     </OrderContext.Provider>
   );

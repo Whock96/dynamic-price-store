@@ -33,7 +33,7 @@ const ORDER_STATUS_OPTIONS = [
 const OrderUpdate = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { getOrderById, updateOrderStatus } = useOrders();
+  const { getOrderById, updateOrderStatus, updateOrder } = useOrders();
   
   const [isLoading, setIsLoading] = useState(true);
   const [order, setOrder] = useState<Order | null>(null);
@@ -137,15 +137,30 @@ const OrderUpdate = () => {
     setIsSaving(true);
     
     try {
-      // Update order status
-      updateOrderStatus(id, status);
+      // Create update object with all modified fields
+      const updatedOrderData: Partial<Order> = {
+        status,
+        notes,
+        shipping,
+        fullInvoice,
+        taxSubstitution,
+        paymentMethod,
+        deliveryLocation,
+        halfInvoicePercentage: !fullInvoice ? halfInvoicePercentage : undefined,
+        // Include other fields that might have changed
+        observations: notes,
+      };
       
-      // Additional updates would go here in a real application
+      console.log("Saving order with data:", updatedOrderData);
+      
+      // Use the new updateOrder function to save all changes at once
+      updateOrder(id, updatedOrderData);
       
       toast.success(`Pedido #${id.slice(-4)} foi atualizado com sucesso.`);
       
       navigate(`/orders/${id}`);
     } catch (error) {
+      console.error("Error saving order:", error);
       toast.error("Ocorreu um erro ao salvar as alterações. Tente novamente.");
     } finally {
       setIsSaving(false);
