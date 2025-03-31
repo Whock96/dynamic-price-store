@@ -270,7 +270,11 @@ const OrderList = () => {
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <ShoppingCart className="h-12 w-12 text-gray-300 mb-4" />
               <h2 className="text-xl font-medium text-gray-600">Nenhum pedido encontrado</h2>
-              <p className="text-gray-500 mt-1">Tente ajustar seus filtros ou realizar uma nova busca.</p>
+              <p className="text-gray-500 mt-1">
+                {orders.length === 0 
+                  ? "Não há pedidos registrados no sistema. Clique em 'Novo Pedido' para criar um."
+                  : "Tente ajustar seus filtros ou realizar uma nova busca."}
+              </p>
             </div>
           )}
         </CardContent>
