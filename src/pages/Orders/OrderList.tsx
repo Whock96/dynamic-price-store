@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Filter, Calendar, ShoppingCart, ArrowDown, ArrowUp, Plus, FileText } from 'lucide-react';
@@ -130,8 +131,9 @@ const OrderList = () => {
     navigate(`/orders/${orderId}`);
   };
 
-  const handleGenerateInvoice = (e: React.MouseEvent) => {
+  const handleGenerateInvoice = (e: React.MouseEvent, orderId: string) => {
     e.stopPropagation();
+    console.log(`Generating invoice for order: ${orderId}`);
     alert('Gerando nota fiscal...');
   };
 
@@ -252,7 +254,7 @@ const OrderList = () => {
                         variant="outline" 
                         size="sm"
                         className="h-8 px-2"
-                        onClick={handleGenerateInvoice}
+                        onClick={(e) => handleGenerateInvoice(e, order.id)}
                       >
                         <FileText className="h-4 w-4 mr-1" />
                         Nota

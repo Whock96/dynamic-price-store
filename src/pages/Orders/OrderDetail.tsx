@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   ArrowLeft, Edit, FileText, Truck, Package, 
-  Calendar, User, Phone, Mail, MapPin 
+  Calendar, User, Phone, Mail, MapPin, Receipt, ShoppingCart
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,7 +28,7 @@ const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { getOrderById } = useOrders();
+  const { getOrderById, updateOrderStatus } = useOrders();
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -42,6 +42,7 @@ const OrderDetail = () => {
         setOrder(fetchedOrder);
       } else {
         console.error(`Order with ID ${id} not found`);
+        toast.error("Pedido não encontrado");
       }
       
       setLoading(false);
@@ -88,13 +89,16 @@ const OrderDetail = () => {
 
   // Ensure these properties exist with default values
   const totalDiscount = order.totalDiscount || 0;
-  const appliedDiscounts = order.appliedDiscounts || [];
+  const appliedDiscounts = order.discountOptions || [];
   const items = order.items || [];
   const shipping = order.shipping || 'delivery';
-  const notes = order.notes || '';
+  const notes = order.observations || order.notes || '';
   const fullInvoice = order.fullInvoice || false;
   const taxSubstitution = order.taxSubstitution || false;
   const paymentMethod = order.paymentMethod || 'cash';
+  const deliveryLocation = order.deliveryLocation || null;
+  const deliveryFee = order.deliveryFee || 0;
+  const halfInvoicePercentage = order.halfInvoicePercentage || 50;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -119,7 +123,7 @@ const OrderDetail = () => {
           </div>
         </div>
         <div className="flex gap-2">
-          {user?.role === 'administrator' && order.status === 'pending' && (
+          {user?.role === 'administrator' && order.status !== 'canceled' && (
             <Button 
               className="bg-ferplas-500 hover:bg-ferplas-600 button-transition"
               onClick={() => navigate(`/orders/${id}/edit`)}
@@ -284,10 +288,41 @@ const OrderDetail = () => {
                 <span>Descontos:</span>
                 <span>-{formatCurrency(totalDiscount)}</span>
               </div>
+              {deliveryFee > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span>Taxa de Entrega:</span>
+                  <span>{formatCurrency(deliveryFee)}</span>
+                </div>
+              )}
               <Separator className="my-2" />
               <div className="flex justify-between font-medium text-lg">
                 <span>Total:</span>
                 <span className="text-ferplas-600">{formatCurrency(order.total)}</span>
+              </div>
+            </div>
+
+            {/* Condições de pagamento */}
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <h3 className="text-sm font-medium text-gray-500 mb-2">Condições de Pagamento</h3>
+              <div className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span>Forma de Pagamento:</span>
+                  <span>{paymentMethod === 'cash' ? 'À Vista' : 'A Prazo'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Tipo de Nota:</span>
+                  <span>{fullInvoice ? 'Nota Cheia' : 'Meia Nota'}</span>
+                </div>
+                {!fullInvoice && halfInvoicePercentage && (
+                  <div className="flex justify-between text-sm">
+                    <span>Percentual da Nota:</span>
+                    <span>{halfInvoicePercentage}%</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span>Substituição Tributária:</span>
+                  <span>{taxSubstitution ? 'Sim' : 'Não'}</span>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -297,7 +332,10 @@ const OrderDetail = () => {
       {/* Itens do Pedido */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-medium">Itens do Pedido</CardTitle>
+          <CardTitle className="text-lg font-medium flex items-center">
+            <ShoppingCart className="mr-2 h-5 w-5" />
+            Itens do Pedido
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -315,7 +353,6 @@ const OrderDetail = () => {
               {items.map((item: any, index: number) => (
                 <TableRow key={item?.id || `item-${index}`}>
                   <TableCell className="font-medium">
-                    {/* Fix the null check for item and item.product */}
                     {item?.product?.name || item?.productName || `Produto ${index + 1}`}
                   </TableCell>
                   <TableCell>{formatCurrency(item?.listPrice || item?.product?.listPrice || 0)}</TableCell>
@@ -327,22 +364,34 @@ const OrderDetail = () => {
               ))}
             </TableBody>
           </Table>
+          
+          {items.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Package className="h-12 w-12 text-gray-300 mb-4" />
+              <h2 className="text-xl font-medium text-gray-600">Nenhum item no pedido</h2>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Descontos Aplicados */}
+      {/* Descontos e Acréscimos Aplicados */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-medium">Descontos Aplicados</CardTitle>
+          <CardTitle className="text-lg font-medium flex items-center">
+            <Receipt className="mr-2 h-5 w-5" />
+            Descontos e Acréscimos Aplicados
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {appliedDiscounts.length > 0 ? (
+            {appliedDiscounts && appliedDiscounts.length > 0 ? (
               appliedDiscounts.map((discount: any, index: number) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-full bg-ferplas-100 flex items-center justify-center mr-3">
-                      {discount.type === 'discount' ? '-' : '+'}
+                    <div className={`w-8 h-8 rounded-full ${discount.type === 'discount' ? 'bg-green-100' : 'bg-red-100'} flex items-center justify-center mr-3`}>
+                      <span className={`${discount.type === 'discount' ? 'text-green-600' : 'text-red-600'} font-bold`}>
+                        {discount.type === 'discount' ? '-' : '+'}
+                      </span>
                     </div>
                     <div>
                       <p className="font-medium">{discount.name}</p>
@@ -351,7 +400,7 @@ const OrderDetail = () => {
                       </p>
                     </div>
                   </div>
-                  <span className="font-medium text-ferplas-600">
+                  <span className={`font-medium ${discount.type === 'discount' ? 'text-green-600' : 'text-red-600'}`}>
                     {discount.type === 'discount' ? '-' : '+'}
                     {discount.value}%
                   </span>
@@ -359,24 +408,23 @@ const OrderDetail = () => {
               ))
             ) : (
               <div className="text-center py-4 text-gray-500">
-                Nenhum desconto aplicado.
+                Nenhum desconto ou acréscimo aplicado.
               </div>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Detalhes do Pedido */}
+      {/* Entrega */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-medium">Detalhes do Pedido</CardTitle>
+          <CardTitle className="text-lg font-medium flex items-center">
+            <Truck className="mr-2 h-5 w-5" />
+            Entrega
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Vendedor</h3>
-              <p className="text-lg">{order.user?.name || 'Vendedor não identificado'}</p>
-            </div>
             <div>
               <h3 className="text-sm font-medium text-gray-500">Tipo de Entrega</h3>
               <p className="text-lg flex items-center">
@@ -393,30 +441,57 @@ const OrderDetail = () => {
                 )}
               </p>
             </div>
+            
+            {shipping === 'delivery' && deliveryLocation && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-500">Região</h3>
+                <p className="text-lg">{deliveryLocation === 'capital' ? 'Capital' : 'Interior'}</p>
+              </div>
+            )}
+            
+            {shipping === 'delivery' && deliveryFee > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-500">Taxa de Entrega</h3>
+                <p className="text-lg">{formatCurrency(deliveryFee)}</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Informações Adicionais */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg font-medium">Informações Adicionais</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Nota Fiscal</h3>
-              <p className="text-lg">{fullInvoice ? 'Nota Cheia' : 'Meia Nota'}</p>
+              <h3 className="text-sm font-medium text-gray-500">Vendedor</h3>
+              <p className="text-lg">{order.user?.name || 'Vendedor não identificado'}</p>
             </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Substituição Tributária</h3>
-              <p className="text-lg">{taxSubstitution ? 'Sim' : 'Não'}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Forma de Pagamento</h3>
-              <p className="text-lg">{paymentMethod === 'cash' ? 'À Vista' : 'A Prazo'}</p>
-            </div>
+            
             <div>
               <h3 className="text-sm font-medium text-gray-500">Data do Pedido</h3>
               <p className="text-lg">
                 {format(new Date(order.createdAt), "dd/MM/yyyy", { locale: ptBR })}
               </p>
             </div>
+            
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Status Atual</h3>
+              <div className="mt-1">
+                {getStatusBadge(order.status)}
+              </div>
+            </div>
           </div>
 
           {notes && (
             <div className="mt-4 pt-4 border-t border-gray-200">
-              <h3 className="text-sm font-medium text-gray-500">Observações</h3>
-              <p className="mt-1">{notes}</p>
+              <h3 className="text-sm font-medium text-gray-500 mb-2">Observações</h3>
+              <div className="bg-gray-50 p-3 rounded-md border border-gray-100">
+                <p>{notes}</p>
+              </div>
             </div>
           )}
         </CardContent>
