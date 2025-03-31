@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
@@ -122,7 +123,7 @@ const OrderDetail = () => {
   };
   
   // Simple HTML template for the fallback rendering
-  const renderPrintableOrderHTML = (order, companyInfo) => {
+  const renderPrintableOrderHTML = (order: any, companyInfo: any) => {
     // Generate HTML for the printable order - more compact version
     return `
       <div style="max-width: 800px; margin: 0 auto; padding: 12px; font-family: Arial, sans-serif; font-size: 11px;">
@@ -192,7 +193,7 @@ const OrderDetail = () => {
               </tr>
             </thead>
             <tbody>
-              ${(order.items || []).map((item, index) => `
+              ${(order.items || []).map((item: any, index: number) => `
                 <tr>
                   <td style="border: 1px solid #ddd; padding: 3px;">${item?.product?.name || item?.productName || `Produto ${index + 1}`}</td>
                   <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">
@@ -644,4 +645,37 @@ const OrderDetail = () => {
             
             {shipping === 'delivery' && deliveryLocation && (
               <div>
-                <h3 className="text-sm font
+                <h3 className="text-sm font-medium text-gray-500">Região de Entrega</h3>
+                <p className="text-lg">
+                  {deliveryLocation === 'capital' ? 'Capital' : 'Interior'}
+                </p>
+              </div>
+            )}
+            
+            {shipping === 'delivery' && deliveryFee > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-500">Taxa de Entrega</h3>
+                <p className="text-lg">{formatCurrency(deliveryFee)}</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {notes && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-medium">Observações</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm bg-gray-50 border border-gray-200 rounded p-3">
+              {notes}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+export default OrderDetail;
