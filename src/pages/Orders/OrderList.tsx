@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, Calendar, ShoppingCart, ArrowDown, ArrowUp } from 'lucide-react';
+import { Search, Filter, Calendar, ShoppingCart, ArrowDown, ArrowUp, Plus, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,10 +39,8 @@ const OrderList = () => {
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      // Toggle direction if clicking the same field
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
-      // Set new field and default to ascending
       setSortField(field);
       setSortDirection('asc');
     }
@@ -74,7 +71,6 @@ const OrderList = () => {
     
     return matchesSearch && matchesStatus && matchesDate;
   }).sort((a, b) => {
-    // Sort logic based on the current sort field and direction
     const modifier = sortDirection === 'asc' ? 1 : -1;
     
     switch (sortField) {
@@ -104,7 +100,6 @@ const OrderList = () => {
     }).format(value);
   };
 
-  // Function to render sort indicator
   const renderSortIndicator = (field: SortField) => {
     if (sortField === field) {
       return sortDirection === 'asc' ? <ArrowUp className="ml-1 h-4 w-4" /> : <ArrowDown className="ml-1 h-4 w-4" />;
@@ -112,7 +107,6 @@ const OrderList = () => {
     return null;
   };
 
-  // Function to create sortable column header
   const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
     <TableHead 
       className="cursor-pointer hover:bg-gray-50"
@@ -145,7 +139,6 @@ const OrderList = () => {
         </div>
       </header>
 
-      {/* Filters */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg font-medium">Filtros</CardTitle>
@@ -195,7 +188,6 @@ const OrderList = () => {
         </CardContent>
       </Card>
 
-      {/* Orders table */}
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -249,7 +241,6 @@ const OrderList = () => {
                         className="h-8 px-2"
                         onClick={(e) => {
                           e.stopPropagation();
-                          // In a real app, this would generate or download a PDF
                           alert('Gerando nota fiscal...');
                         }}
                       >
