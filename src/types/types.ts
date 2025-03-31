@@ -106,6 +106,7 @@ export interface Order {
   fullInvoice: boolean;
   taxSubstitution: boolean;
   paymentMethod: 'cash' | 'credit';
+  paymentTerms?: string;
   notes: string;
   createdAt: Date;
   updatedAt: Date;

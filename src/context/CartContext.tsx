@@ -13,6 +13,7 @@ interface CartContextType {
   deliveryLocation: 'capital' | 'interior' | null;
   halfInvoicePercentage: number;
   observations: string;
+  paymentTerms: string;
   totalItems: number;
   subtotal: number;
   totalDiscount: number;
@@ -28,6 +29,7 @@ interface CartContextType {
   setDeliveryLocation: (location: 'capital' | 'interior' | null) => void;
   setHalfInvoicePercentage: (percentage: number) => void;
   setObservations: (text: string) => void;
+  setPaymentTerms: (terms: string) => void;
   clearCart: () => void;
   sendOrder: () => Promise<void>;
   isDiscountOptionSelected: (id: string) => boolean;
@@ -81,6 +83,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [deliveryLocation, setDeliveryLocation] = useState<'capital' | 'interior' | null>(null);
   const [halfInvoicePercentage, setHalfInvoicePercentage] = useState<number>(50);
   const [observations, setObservations] = useState<string>('');
+  const [paymentTerms, setPaymentTerms] = useState<string>('');
   const [applyDiscounts, setApplyDiscounts] = useState<boolean>(true);
 
   const totalItems = items.reduce((total, item) => total + item.quantity, 0);
@@ -264,6 +267,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (id === '2') {
           setHalfInvoicePercentage(50);
         }
+        if (id === '4') {
+          // Clear payment terms when switching to "A Vista" (cash)
+          setPaymentTerms('');
+        }
         return prev.filter(optId => optId !== id);
       } else {
         return [...prev, id];
@@ -282,6 +289,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setDeliveryLocation(null);
     setHalfInvoicePercentage(50);
     setObservations('');
+    setPaymentTerms('');
     toast.info('Carrinho limpo');
   };
 
@@ -317,6 +325,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         total,
         shipping: shippingValue,
         paymentMethod: paymentMethodValue,
+        paymentTerms: !isDiscountOptionSelected('4') ? paymentTerms : undefined,
         fullInvoice: !isDiscountOptionSelected('2'),
         taxSubstitution: isDiscountOptionSelected('3'),
         status: 'pending',
@@ -351,6 +360,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       deliveryLocation,
       halfInvoicePercentage,
       observations,
+      paymentTerms,
       totalItems,
       subtotal,
       totalDiscount,
@@ -366,6 +376,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setDeliveryLocation,
       setHalfInvoicePercentage,
       setObservations,
+      setPaymentTerms,
       clearCart,
       sendOrder,
       isDiscountOptionSelected,

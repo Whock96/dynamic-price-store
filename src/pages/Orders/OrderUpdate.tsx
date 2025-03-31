@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, Package, User, Calendar, Truck, Receipt, ShoppingCart, Trash } from 'lucide-react';
@@ -55,12 +54,12 @@ const OrderUpdate = () => {
   const [fullInvoice, setFullInvoice] = useState(false);
   const [taxSubstitution, setTaxSubstitution] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "credit">("cash");
+  const [paymentTerms, setPaymentTerms] = useState("");
   const [deliveryLocation, setDeliveryLocation] = useState<'capital' | 'interior' | null>(null);
   const [halfInvoicePercentage, setHalfInvoicePercentage] = useState(50);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  // Discount options match the cart
   const [selectedDiscountOptions, setSelectedDiscountOptions] = useState<string[]>([]);
   
   useEffect(() => {
@@ -69,39 +68,34 @@ const OrderUpdate = () => {
     setIsLoading(true);
     console.log(`Loading order with ID: ${id}`);
     
-    // Fetch order data using the ID from URL params
     const orderData = getOrderById(id);
     console.log(`Fetched order:`, orderData);
     
     if (orderData) {
       setOrder(orderData);
       
-      // Set all form fields from the order data
       setNotes(orderData.notes || orderData.observations || "");
       setStatus(orderData.status);
       
-      // Fix for shipping field - ensure it's always one of the valid values
       setShipping(orderData.shipping === "pickup" ? "pickup" : "delivery");
       
       setFullInvoice(Boolean(orderData.fullInvoice));
       setTaxSubstitution(Boolean(orderData.taxSubstitution));
       
-      // Fix for payment method - ensure it's always one of the valid values
       setPaymentMethod(orderData.paymentMethod === "credit" ? "credit" : "cash");
+      
+      setPaymentTerms(orderData.paymentTerms || "");
       
       setDeliveryLocation(orderData.deliveryLocation || null);
       
-      // Set half invoice percentage if available
       if (orderData.halfInvoicePercentage) {
         setHalfInvoicePercentage(orderData.halfInvoicePercentage);
       }
       
-      // Set selected discount options if available
       if (orderData.discountOptions && Array.isArray(orderData.discountOptions)) {
         const discountIds = orderData.discountOptions.map((discount) => discount.id);
         setSelectedDiscountOptions(discountIds);
       } else if (orderData.appliedDiscounts && Array.isArray(orderData.appliedDiscounts)) {
-        // Fallback to appliedDiscounts if discountOptions is not available
         const discountIds = orderData.appliedDiscounts.map(discount => discount.id);
         setSelectedDiscountOptions(discountIds);
       }
@@ -129,7 +123,6 @@ const OrderUpdate = () => {
     if (value === "delivery" || value === "pickup") {
       setShipping(value as "delivery" | "pickup");
       
-      // If changed to pickup, reset delivery location
       if (value === "pickup") {
         setDeliveryLocation(null);
       }
@@ -139,6 +132,10 @@ const OrderUpdate = () => {
   const handlePaymentMethodChange = (value: string) => {
     if (value === "cash" || value === "credit") {
       setPaymentMethod(value as "cash" | "credit");
+      
+      if (value === "cash") {
+        setPaymentTerms("");
+      }
     }
   };
 
@@ -158,7 +155,6 @@ const OrderUpdate = () => {
     setIsSaving(true);
     
     try {
-      // Create update object with all modified fields
       const updatedOrderData: Partial<Order> = {
         status,
         notes,
@@ -166,16 +162,14 @@ const OrderUpdate = () => {
         fullInvoice,
         taxSubstitution,
         paymentMethod,
+        paymentTerms: paymentMethod === "credit" ? paymentTerms : undefined,
         deliveryLocation,
-        // Only include halfInvoicePercentage if not using full invoice
         halfInvoicePercentage: !fullInvoice ? halfInvoicePercentage : undefined,
-        // Include other fields that might have changed
-        observations: notes, // For backward compatibility
+        observations: notes,
       };
       
       console.log("Saving order with data:", updatedOrderData);
       
-      // Use the updateOrder function to save all changes at once
       updateOrder(id, updatedOrderData);
       
       toast.success(`Pedido #${id.slice(-4)} foi atualizado com sucesso.`);
@@ -327,7 +321,6 @@ const OrderUpdate = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                {/* Tipo de Entrega */}
                 <div className="space-y-4">
                   <div>
                     <Label className="text-base">Tipo de Entrega</Label>
@@ -344,7 +337,6 @@ const OrderUpdate = () => {
                   </Select>
                 </div>
 
-                {/* Local de entrega - apenas se for entrega */}
                 {shipping === "delivery" && (
                   <div className="space-y-4 pt-4 border-t">
                     <div>
@@ -368,7 +360,6 @@ const OrderUpdate = () => {
 
                 <Separator />
 
-                {/* Nota Fiscal */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -379,7 +370,6 @@ const OrderUpdate = () => {
                   </div>
                 </div>
 
-                {/* Meia Nota - mostrar apenas se não for nota cheia */}
                 {!fullInvoice && (
                   <div className="space-y-4">
                     <div>
@@ -404,7 +394,6 @@ const OrderUpdate = () => {
 
                 <Separator />
 
-                {/* Substituição Tributária */}
                 <div className="flex items-center justify-between">
                   <div>
                     <Label className="text-base">Substituição Tributária</Label>
@@ -415,7 +404,6 @@ const OrderUpdate = () => {
 
                 <Separator />
 
-                {/* Forma de Pagamento */}
                 <div className="space-y-4">
                   <div>
                     <Label className="text-base">Forma de Pagamento</Label>
@@ -430,6 +418,19 @@ const OrderUpdate = () => {
                       <SelectItem value="credit">A Prazo</SelectItem>
                     </SelectContent>
                   </Select>
+                  
+                  {paymentMethod === "credit" && (
+                    <div className="space-y-2 pt-2">
+                      <Label htmlFor="paymentTerms" className="text-sm">Prazo de Pagamento</Label>
+                      <Input
+                        id="paymentTerms"
+                        placeholder="Ex: 30/60/90 ou 28 DDL"
+                        value={paymentTerms}
+                        onChange={(e) => setPaymentTerms(e.target.value)}
+                      />
+                      <p className="text-xs text-gray-500">Informe o prazo de pagamento combinado com o cliente</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -569,6 +570,16 @@ const OrderUpdate = () => {
                     <span>{formatCurrency(order.total)}</span>
                   </div>
                 </div>
+              </div>
+              
+              <Separator />
+              
+              <div>
+                <h3 className="text-sm font-medium text-gray-500">Pagamento</h3>
+                <p>{paymentMethod === "cash" ? "À Vista" : "A Prazo"}</p>
+                {paymentMethod === "credit" && paymentTerms && (
+                  <p className="text-sm text-gray-600">Prazo: {paymentTerms}</p>
+                )}
               </div>
             </CardContent>
           </Card>
