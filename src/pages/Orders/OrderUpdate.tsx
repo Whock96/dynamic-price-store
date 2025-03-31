@@ -17,120 +17,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { Order, Customer, CartItem } from '@/types/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-
-const MOCK_ORDER: Order = {
-  id: "order-123",
-  customerId: "customer-1",
-  customer: {
-    id: "customer-1",
-    companyName: "Empresa Cliente Ltda.",
-    document: "12.345.678/0001-90",
-    salesPersonId: "1",
-    street: "Rua das Indústrias",
-    number: "1000",
-    noNumber: false,
-    complement: "Galpão 7",
-    city: "São Paulo",
-    state: "SP",
-    zipCode: "04000-000",
-    phone: "(11) 3000-0000",
-    email: "contato@empresa.com",
-    defaultDiscount: 5,
-    maxDiscount: 10,
-    createdAt: new Date(2023, 5, 15),
-    updatedAt: new Date(2023, 5, 15),
-  },
-  userId: "user-1",
-  user: {
-    id: "user-1",
-    username: "vendedor1",
-    name: "João Silva",
-    role: "salesperson",
-    permissions: [],
-    email: "joao@example.com",
-    createdAt: new Date(2023, 1, 1),
-  },
-  items: [
-    {
-      id: "item-1",
-      productId: "product-1",
-      product: {
-        id: "product-1",
-        name: "Caixa Plástica Organizadora 50L",
-        description: "Caixa plástica resistente para organização e armazenamento",
-        listPrice: 89.90,
-        minPrice: 75.00,
-        weight: 1.5,
-        quantity: 100,
-        volume: 2,
-        categoryId: "1",
-        subcategoryId: "1",
-        imageUrl: "https://via.placeholder.com/150",
-        createdAt: new Date(2023, 1, 1),
-        updatedAt: new Date(2023, 3, 15),
-      },
-      quantity: 10,
-      discount: 5,
-      finalPrice: 85.41,
-      subtotal: 854.10
-    },
-    {
-      id: "item-2",
-      productId: "product-2",
-      product: {
-        id: "product-2",
-        name: "Contêiner Plástico 100L",
-        description: "Contêiner plástico industrial para armazenamento",
-        listPrice: 259.90,
-        minPrice: 220.00,
-        weight: 5.2,
-        quantity: 50,
-        volume: 3,
-        categoryId: "1",
-        subcategoryId: "2",
-        imageUrl: "https://via.placeholder.com/150",
-        createdAt: new Date(2023, 1, 1),
-        updatedAt: new Date(2023, 3, 15),
-      },
-      quantity: 5,
-      discount: 8,
-      finalPrice: 239.11,
-      subtotal: 1195.55
-    }
-  ],
-  appliedDiscounts: [
-    {
-      id: "1",
-      name: "Retirada",
-      description: "Desconto para retirada na loja",
-      value: 1,
-      type: "discount",
-      isActive: true,
-    },
-    {
-      id: "2",
-      name: "Meia nota",
-      description: "Desconto para meia nota fiscal",
-      value: 3,
-      type: "discount",
-      isActive: true,
-    }
-  ],
-  totalDiscount: 204.95,
-  subtotal: 2049.50,
-  total: 1844.55,
-  status: "pending",
-  shipping: "pickup",
-  fullInvoice: false,
-  taxSubstitution: false,
-  paymentMethod: "cash",
-  notes: "Pedido prioritário para entrega. Cliente solicita entrega para o dia 20/06.",
-  createdAt: new Date(2023, 5, 15, 14, 30),
-  updatedAt: new Date(2023, 5, 15, 14, 30),
-};
+import { useOrders } from '@/context/OrderContext';
 
 const ORDER_STATUS_OPTIONS = [
   { value: "pending", label: "Pendente" },
@@ -144,6 +35,7 @@ const OrderUpdate = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { toast } = useToast();
+  const { getOrderById, updateOrderStatus } = useOrders();
   
   const [isLoading, setIsLoading] = useState(true);
   const [order, setOrder] = useState<Order | null>(null);
@@ -156,19 +48,34 @@ const OrderUpdate = () => {
   const [isSaving, setIsSaving] = useState(false);
   
   useEffect(() => {
-    setIsLoading(true);
+    if (!id) return;
     
-    setTimeout(() => {
-      setOrder(MOCK_ORDER);
-      setNotes(MOCK_ORDER.notes);
-      setStatus(MOCK_ORDER.status);
-      setShipping(MOCK_ORDER.shipping);
-      setFullInvoice(MOCK_ORDER.fullInvoice);
-      setTaxSubstitution(MOCK_ORDER.taxSubstitution);
-      setPaymentMethod(MOCK_ORDER.paymentMethod);
-      setIsLoading(false);
-    }, 1000);
-  }, [id]);
+    setIsLoading(true);
+    console.log(`Loading order with ID: ${id}`);
+    
+    // Fetch order data using the ID from URL params
+    const orderData = getOrderById(id);
+    console.log(`Fetched order:`, orderData);
+    
+    if (orderData) {
+      setOrder(orderData);
+      setNotes(orderData.notes || "");
+      setStatus(orderData.status);
+      setShipping(orderData.shipping);
+      setFullInvoice(orderData.fullInvoice || false);
+      setTaxSubstitution(orderData.taxSubstitution || false);
+      setPaymentMethod(orderData.paymentMethod);
+    } else {
+      toast({
+        title: "Pedido não encontrado",
+        description: `Não foi possível encontrar o pedido com ID: ${id}`,
+        variant: "destructive",
+      });
+      navigate('/orders');
+    }
+    
+    setIsLoading(false);
+  }, [id, getOrderById, navigate, toast]);
   
   const handleStatusChange = (value: string) => {
     if (
@@ -197,16 +104,19 @@ const OrderUpdate = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!order) return;
+    if (!order || !id) return;
     
     setIsSaving(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Update order status
+      updateOrderStatus(id, status);
+      
+      // Additional updates would go here in a real application
       
       toast({
         title: "Pedido atualizado",
-        description: `Pedido #${order.id.slice(-4)} foi atualizado com sucesso.`,
+        description: `Pedido #${id.slice(-4)} foi atualizado com sucesso.`,
       });
       
       navigate(`/orders/${id}`);

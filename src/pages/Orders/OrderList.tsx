@@ -119,6 +119,22 @@ const OrderList = () => {
     </TableHead>
   );
 
+  const handleEditClick = (e: React.MouseEvent, orderId: string) => {
+    e.stopPropagation();
+    console.log(`Navigating to edit order: ${orderId}`);
+    navigate(`/orders/${orderId}/edit`);
+  };
+
+  const handleOrderClick = (orderId: string) => {
+    console.log(`Navigating to order details: ${orderId}`);
+    navigate(`/orders/${orderId}`);
+  };
+
+  const handleGenerateInvoice = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    alert('Gerando nota fiscal...');
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -208,7 +224,7 @@ const OrderList = () => {
                 <TableRow 
                   key={order.id}
                   className="cursor-pointer hover:bg-gray-50"
-                  onClick={() => navigate(`/orders/${order.id}`)}
+                  onClick={() => handleOrderClick(order.id)}
                 >
                   <TableCell className="font-medium">#{order.id.slice(-4)}</TableCell>
                   <TableCell>{order.customer.companyName}</TableCell>
@@ -227,10 +243,7 @@ const OrderList = () => {
                         variant="outline" 
                         size="sm"
                         className="h-8 px-2"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/orders/${order.id}/edit`);
-                        }}
+                        onClick={(e) => handleEditClick(e, order.id)}
                       >
                         <Plus className="h-4 w-4 mr-1" />
                         Editar
@@ -239,10 +252,7 @@ const OrderList = () => {
                         variant="outline" 
                         size="sm"
                         className="h-8 px-2"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          alert('Gerando nota fiscal...');
-                        }}
+                        onClick={handleGenerateInvoice}
                       >
                         <FileText className="h-4 w-4 mr-1" />
                         Nota
