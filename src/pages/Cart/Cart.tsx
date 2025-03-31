@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
-  Trash2, ShoppingCart, Package, Search, Send, MapPin, Percent, FileText
+  Trash2, ShoppingCart, Package, Search, Send, MapPin, Percent
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,7 +21,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { useCart } from '../../context/CartContext';
-import { Customer, Product } from '@/types/types';
+import { useProducts } from '../../context/ProductContext';
+import { useCustomers } from '../../context/CustomerContext';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -44,45 +45,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-const MOCK_CUSTOMERS: Customer[] = Array.from({ length: 10 }, (_, i) => ({
-  id: `customer-${i + 1}`,
-  companyName: `Cliente ${i + 1} Ltda.`,
-  document: Math.random().toString().slice(2, 13),
-  salesPersonId: i % 3 === 0 ? '1' : i % 3 === 1 ? '2' : '3',
-  street: `Rua ${i + 1}`,
-  number: `${i * 10 + 100}`,
-  noNumber: false,
-  complement: i % 2 === 0 ? `Sala ${i + 1}` : '',
-  city: i % 4 === 0 ? 'São Paulo' : i % 4 === 1 ? 'Rio de Janeiro' : i % 4 === 2 ? 'Belo Horizonte' : 'Curitiba',
-  state: i % 4 === 0 ? 'SP' : i % 4 === 1 ? 'RJ' : i % 4 === 2 ? 'MG' : 'PR',
-  zipCode: `${Math.floor(Math.random() * 90000) + 10000}-${Math.floor(Math.random() * 900) + 100}`,
-  phone: `(${Math.floor(Math.random() * 90) + 10}) ${Math.floor(Math.random() * 90000) + 10000}-${Math.floor(Math.random() * 9000) + 1000}`,
-  email: `cliente${i + 1}@example.com`,
-  defaultDiscount: Math.floor(Math.random() * 10),
-  maxDiscount: Math.floor(Math.random() * 10) + 10,
-  createdAt: new Date(),
-  updatedAt: new Date(),
-}));
-
-const MOCK_PRODUCTS: Product[] = Array.from({ length: 20 }, (_, i) => ({
-  id: `product-${i + 1}`,
-  name: `Produto ${i + 1}`,
-  description: `Descrição do produto ${i + 1}. Este é um produto de alta qualidade.`,
-  listPrice: Math.floor(Math.random() * 900) + 100,
-  minPrice: Math.floor(Math.random() * 80) + 50,
-  weight: Math.floor(Math.random() * 5) + 0.5,
-  quantity: Math.floor(Math.random() * 100) + 10,
-  volume: Math.floor(Math.random() * 3) + 1,
-  categoryId: i % 3 === 0 ? '1' : i % 3 === 1 ? '2' : '3',
-  subcategoryId: i % 5 === 0 ? '1' : i % 5 === 1 ? '2' : i % 5 === 2 ? '3' : i % 5 === 3 ? '4' : '5',
-  imageUrl: 'https://via.placeholder.com/150',
-  createdAt: new Date(),
-  updatedAt: new Date(),
-}));
-
 const Cart = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { products } = useProducts();
+  const { customers } = useCustomers();
   const searchParams = new URLSearchParams(location.search);
   const productParam = searchParams.get('product');
   const customerParam = searchParams.get('customer');
@@ -100,19 +67,19 @@ const Cart = () => {
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   
-  const filteredCustomers = MOCK_CUSTOMERS.filter(c => 
+  const filteredCustomers = customers.filter(c => 
     c.companyName.toLowerCase().includes(customerSearch.toLowerCase()) ||
     c.document.includes(customerSearch)
   );
   
-  const filteredProducts = MOCK_PRODUCTS.filter(p => 
+  const filteredProducts = products.filter(p => 
     p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
     p.description.toLowerCase().includes(productSearch.toLowerCase())
   );
   
   useEffect(() => {
     if (customerParam && !customer) {
-      const selectedCustomer = MOCK_CUSTOMERS.find(c => c.id === customerParam);
+      const selectedCustomer = customers.find(c => c.id === customerParam);
       if (selectedCustomer) {
         setCustomer(selectedCustomer);
         toast.success(`Cliente "${selectedCustomer.companyName}" selecionado`);
@@ -120,13 +87,13 @@ const Cart = () => {
     }
     
     if (productParam) {
-      const selectedProduct = MOCK_PRODUCTS.find(p => p.id === productParam);
+      const selectedProduct = products.find(p => p.id === productParam);
       if (selectedProduct) {
         addItem(selectedProduct, 1);
         navigate('/cart', { replace: true });
       }
     }
-  }, [customerParam, productParam, customer, addItem, navigate, setCustomer]);
+  }, [customerParam, productParam, customer, addItem, navigate, setCustomer, products, customers]);
   
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {

@@ -1,8 +1,8 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product } from '../types/types';
 import { toast } from 'sonner';
 import { useOrders } from './OrderContext';
+import { useCustomers } from './CustomerContext';
 
 interface CartContextType {
   items: CartItem[];
@@ -31,9 +31,6 @@ interface CartContextType {
   isDiscountOptionSelected: (id: string) => boolean;
 }
 
-const CartContext = createContext<CartContextType | undefined>(undefined);
-
-// Opções de desconto disponíveis - match the ones from DiscountManagement.tsx
 const MOCK_DISCOUNT_OPTIONS: DiscountOption[] = [
   {
     id: '1',
@@ -69,8 +66,11 @@ const MOCK_DISCOUNT_OPTIONS: DiscountOption[] = [
   }
 ];
 
+const CartContext = createContext<CartContextType | undefined>(undefined);
+
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { addOrder } = useOrders();
+  const { customers } = useCustomers();
   const [items, setItems] = useState<CartItem[]>([]);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [discountOptions] = useState<DiscountOption[]>(MOCK_DISCOUNT_OPTIONS);
@@ -79,18 +79,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [halfInvoicePercentage, setHalfInvoicePercentage] = useState<number>(50);
   const [observations, setObservations] = useState<string>('');
 
-  // Calculate cart totals
   const totalItems = items.reduce((total, item) => total + item.quantity, 0);
   
   const subtotal = items.reduce((total, item) => {
     return total + (item.product.listPrice * item.quantity);
   }, 0);
 
-  // Calculate the total discount percentage from selected discount options
   const getGlobalDiscountPercentage = () => {
     let totalPercentage = 0;
     
-    // Add selected discount options
     selectedDiscountOptions.forEach(id => {
       const option = discountOptions.find(opt => opt.id === id);
       if (option) {
@@ -103,24 +100,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return totalPercentage;
   };
 
-  // Calculate delivery fee based on location
   const deliveryFee = deliveryLocation === 'capital' ? 25 : deliveryLocation === 'interior' ? 50 : 0;
 
   const recalculateCart = () => {
     const globalDiscountPercentage = getGlobalDiscountPercentage();
     
     const updatedItems = items.map(item => {
-      // Item-specific discount (manually entered per item)
       const itemDiscount = item.discount || 0;
-      
-      // Combined discount: item-specific + global options
-      // If globalDiscountPercentage is negative, it means it's a surcharge overall
       const effectiveDiscount = itemDiscount + globalDiscountPercentage;
-      
-      // Calculate final price after all discounts
       const finalPrice = item.product.listPrice * (1 - effectiveDiscount / 100);
-      
-      // Calculate subtotal
       const subtotal = finalPrice * item.quantity;
       
       return {
@@ -133,39 +121,37 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setItems(updatedItems);
   };
 
-  // Recalculate when relevant state changes
   useEffect(() => {
     recalculateCart();
   }, [selectedDiscountOptions]);
 
-  // When customer changes, update the individual discount of each item
   useEffect(() => {
     if (customer) {
-      // Update each item to include the customer's default discount
       setItems(prevItems => 
         prevItems.map(item => ({
           ...item,
-          discount: customer.defaultDiscount
+          discount: customer.defaultDiscount,
+          finalPrice: item.product.listPrice * (1 - customer.defaultDiscount / 100),
+          subtotal: item.product.listPrice * (1 - customer.defaultDiscount / 100) * item.quantity
         }))
       );
     } else {
-      // If customer is removed, reset individual discounts to 0
       setItems(prevItems => 
         prevItems.map(item => ({
           ...item,
-          discount: 0
+          discount: 0,
+          finalPrice: item.product.listPrice,
+          subtotal: item.product.listPrice * item.quantity
         }))
       );
     }
   }, [customer]);
 
-  // Calculate total discount amount
   const totalDiscount = items.reduce((total, item) => {
     const fullPrice = item.product.listPrice * item.quantity;
     return total + (fullPrice - (item.subtotal || 0));
   }, 0);
 
-  // Final total including delivery fee
   const total = items.reduce((total, item) => total + (item.subtotal || 0), 0) + deliveryFee;
 
   const addItem = (product: Product, quantity: number) => {
@@ -174,11 +160,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     
-    // Check if item already exists in cart
     const existingItemIndex = items.findIndex(item => item.productId === product.id);
     
     if (existingItemIndex >= 0) {
-      // Update quantity of existing item
       const newItems = [...items];
       const existingItem = newItems[existingItemIndex];
       const newQuantity = existingItem.quantity + quantity;
@@ -192,7 +176,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setItems(newItems);
       toast.success(`Quantidade de ${product.name} atualizada no carrinho`);
     } else {
-      // Add new item
       const initialDiscount = customer ? customer.defaultDiscount : 0;
       const globalDiscountPercentage = getGlobalDiscountPercentage();
       const combinedDiscount = initialDiscount + globalDiscountPercentage;
@@ -201,9 +184,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const newItem: CartItem = {
         id: Date.now().toString(),
         productId: product.id,
-        product: { ...product }, // Create a copy to prevent reference issues
+        product: { ...product },
         quantity,
-        // If customer exists, apply their default discount to the item
         discount: initialDiscount,
         finalPrice,
         subtotal: finalPrice * quantity
@@ -239,21 +221,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateItemDiscount = (id: string, discount: number) => {
     if (discount < 0) return;
     
-    // Check if the discount exceeds the customer's max discount
     if (customer && discount > customer.maxDiscount) {
       toast.warning(`Desconto limitado a ${customer.maxDiscount}% para o cliente ${customer.companyName}`);
       discount = customer.maxDiscount;
     }
     
-    // Get the global discount percentage from selected options
     const globalDiscountPercentage = getGlobalDiscountPercentage();
     
     setItems(prevItems => prevItems.map(item => {
       if (item.id === id) {
-        // Combined discount: item-specific + global options
         const combinedDiscount = discount + globalDiscountPercentage;
-        
-        // Calculate final price with all discounts applied
         const finalPrice = item.product.listPrice * (1 - combinedDiscount / 100);
         
         return {
@@ -270,16 +247,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const toggleDiscountOption = (id: string) => {
     setSelectedDiscountOptions(prev => {
       if (prev.includes(id)) {
-        // If removing Retirada option, also clear delivery location
         if (id === '1') {
           setDeliveryLocation(null);
         }
-        
-        // If removing Meia nota option, reset half invoice percentage
         if (id === '2') {
           setHalfInvoicePercentage(50);
         }
-        
         return prev.filter(optId => optId !== id);
       } else {
         return [...prev, id];
@@ -302,7 +275,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const sendOrder = async () => {
-    // Validate order
     if (!customer) {
       toast.error('Selecione um cliente para continuar');
       return Promise.reject('No customer selected');
@@ -313,7 +285,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return Promise.reject('Cart is empty');
     }
     
-    // In a real application, this would send data to an API
     try {
       const orderData = {
         customer,
@@ -329,18 +300,19 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         subtotal,
         totalDiscount,
         total,
+        shipping: isDiscountOptionSelected('1') ? 'pickup' : 'delivery',
+        paymentMethod: isDiscountOptionSelected('4') ? 'cash' : 'credit',
+        fullInvoice: !isDiscountOptionSelected('2'),
+        taxSubstitution: isDiscountOptionSelected('3'),
         date: new Date().toISOString()
       };
       
       console.log('Sending order:', orderData);
       
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Handle email sending (mock)
       console.log(`Sending order email to ${customer.email} and vendas@ferplas.ind.br`);
       
-      // Add the order to the orders context
       addOrder(orderData);
       
       toast.success('Pedido enviado com sucesso!');
