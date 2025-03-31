@@ -3,7 +3,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Package, Users, Tag, Percent, Settings as SettingsIcon, 
-  ShieldCheck, Bell, Database, Server
+  ShieldCheck, Bell, Database, Server, Building2
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '../../context/AuthContext';
@@ -46,6 +46,14 @@ const Settings = () => {
       icon: <Percent className="h-8 w-8 text-orange-500" />,
       path: '/settings/discounts',
       color: 'bg-orange-50 border-orange-100',
+    },
+    {
+      title: 'Dados da Empresa',
+      description: 'Informações corporativas',
+      icon: <Building2 className="h-8 w-8 text-ferplas-500" />,
+      path: '/settings/company',
+      color: 'bg-ferplas-50 border-ferplas-100',
+      highlight: true,
     },
     {
       title: 'Configurações Gerais',
@@ -97,12 +105,12 @@ const Settings = () => {
         {settingsModules.map((module, index) => (
           <Card 
             key={index} 
-            className={`cursor-pointer hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 overflow-hidden border ${module.color}`}
+            className={`cursor-pointer hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 overflow-hidden border ${module.color} ${module.highlight ? 'ring-2 ring-ferplas-300' : ''}`}
             onClick={() => navigate(module.path)}
           >
             <CardHeader className="pb-2">
               <div className="flex items-center space-x-3">
-                <div className="p-2 rounded-md bg-white border">
+                <div className={`p-2 rounded-md bg-white border ${module.highlight ? 'border-ferplas-300' : ''}`}>
                   {module.icon}
                 </div>
                 <div>
