@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, Package } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -136,8 +137,13 @@ const ProductList = () => {
                 alt={product.name}
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 hover:scale-110"
               />
-              <div className="absolute top-2 right-2 bg-ferplas-500 text-white text-xs px-2 py-1 rounded-full">
-                {getCategoryName(product.categoryId)} - {getSubcategoryName(product.categoryId, product.subcategoryId)}
+              <div className="absolute top-2 right-2">
+                <div className="bg-ferplas-500 text-white text-xs px-2 py-1 rounded-full mb-1">
+                  {getCategoryName(product.categoryId)}
+                </div>
+                <div className="bg-ferplas-600 text-white text-xs px-2 py-1 rounded-full">
+                  {getSubcategoryName(product.categoryId, product.subcategoryId)}
+                </div>
               </div>
             </div>
             <CardContent className="p-4">
