@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, Calendar, ShoppingCart, ArrowDown, ArrowUp, Plus, FileText } from 'lucide-react';
+import { Search, Filter, Calendar, ShoppingCart, ArrowDown, ArrowUp, Plus, FileText, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +25,8 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Order } from '@/types/types';
 import { useOrders } from '@/context/OrderContext';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useAuth } from '@/context/AuthContext';
 
 type SortField = 'id' | 'customer' | 'createdAt' | 'user' | 'items' | 'total' | 'status';
 type SortDirection = 'asc' | 'desc';
@@ -36,7 +38,15 @@ const OrderList = () => {
   const [dateFilter, setDateFilter] = useState('all');
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-  const { orders } = useOrders();
+  const { orders, clearAllOrders } = useOrders();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'administrator';
+
+  // Clear orders on initial load (remove after first use)
+  useEffect(() => {
+    // This is commented out so it doesn't automatically clear orders on every page load
+    // clearAllOrders();
+  }, []);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -147,6 +157,30 @@ const OrderList = () => {
           </p>
         </div>
         <div className="flex gap-2">
+          {isAdmin && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="mr-2">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Limpar Pedidos
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir Todos os Pedidos</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação irá remover permanentemente todos os pedidos do sistema. Tem certeza que deseja continuar?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={clearAllOrders} className="bg-red-500 hover:bg-red-600">
+                    Sim, excluir todos
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
           <Button 
             className="bg-ferplas-500 hover:bg-ferplas-600 button-transition"
             onClick={() => navigate('/cart')}
@@ -272,7 +306,7 @@ const OrderList = () => {
               <h2 className="text-xl font-medium text-gray-600">Nenhum pedido encontrado</h2>
               <p className="text-gray-500 mt-1">
                 {orders.length === 0 
-                  ? "Não há pedidos registrados no sistema. Clique em 'Novo Pedido' para criar um."
+                  ? "Ainda não existem pedidos registrados no sistema. Clique em 'Novo Pedido' para criar um novo pedido."
                   : "Tente ajustar seus filtros ou realizar uma nova busca."}
               </p>
             </div>

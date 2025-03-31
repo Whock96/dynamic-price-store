@@ -15,6 +15,7 @@ interface OrderContextType {
   updateOrderStatus: (orderId: string, status: Order['status']) => void;
   updateOrder: (orderId: string, orderData: Partial<Order>) => void;
   getOrderById: (id: string) => Order | undefined;
+  clearAllOrders: () => void;
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
@@ -57,6 +58,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     console.log(`Saving ${orders.length} orders to localStorage`);
     localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
   }, [orders]);
+
+  // Clear all orders from state and localStorage
+  const clearAllOrders = () => {
+    setOrders([]);
+    localStorage.removeItem(ORDERS_STORAGE_KEY);
+    toast.success('Todos os pedidos foram excluídos com sucesso!');
+  };
 
   const addOrder = (newOrder: Partial<Order>) => {
     const orderId = `order-${Date.now()}`;
@@ -124,7 +132,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   return (
-    <OrderContext.Provider value={{ orders, addOrder, updateOrderStatus, updateOrder, getOrderById }}>
+    <OrderContext.Provider value={{ orders, addOrder, updateOrderStatus, updateOrder, getOrderById, clearAllOrders }}>
       {children}
     </OrderContext.Provider>
   );
@@ -137,4 +145,3 @@ export const useOrders = () => {
   }
   return context;
 };
-
