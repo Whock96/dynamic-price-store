@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import {
   Table,
@@ -28,10 +27,9 @@ const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { getOrderById, updateOrderStatus } = useOrders();
+  const { getOrderById } = useOrders();
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [isPrintMode, setIsPrintMode] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -50,10 +48,6 @@ const OrderDetail = () => {
     }
   }, [id, getOrderById]);
 
-  const getStatusBadge = (status: string) => {
-    return <OrderStatusBadge status={status as any} />;
-  };
-
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -62,8 +56,6 @@ const OrderDetail = () => {
   };
 
   const handlePrintOrder = () => {
-    setIsPrintMode(true);
-    
     // Open in new window
     const printWindow = window.open('', '_blank');
     if (printWindow) {
@@ -75,9 +67,13 @@ const OrderDetail = () => {
           <style>
             body { font-family: Arial, sans-serif; }
             @media print {
-              body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+              body { 
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important;
+                font-size: 11px;
+              }
             }
-            @page { size: A4; margin: 10mm; }
+            @page { size: A4; margin: 8mm; }
           </style>
           <link rel="stylesheet" href="${window.location.origin}/src/index.css">
         </head>
@@ -95,42 +91,30 @@ const OrderDetail = () => {
       
       printWindow.document.close();
       
-      // Create a root div and render the React component inside it
+      // Use fallback method for rendering since we can't use React in the new window
       const mountNode = printWindow.document.getElementById('printable-content');
-      if (mountNode && typeof printWindow.require !== 'undefined') {
-        import('react-dom/client').then(({ createRoot }) => {
-          const root = createRoot(mountNode);
-          root.render(<PrintableOrder order={order} />);
-        });
-      } else {
-        // Fallback if React can't be used in the new window
+      if (mountNode) {
+        // Create an iframe to hold the content
         const iframe = document.createElement('iframe');
         iframe.style.width = '100%';
         iframe.style.height = '100vh';
         iframe.style.border = 'none';
         
-        if (mountNode) {
-          mountNode.appendChild(iframe);
-          
-          // Wait for iframe to load then add content
-          iframe.onload = function() {
-            const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-            if (iframeDoc) {
-              printWindow.document.title = `Pedido #${order.id.slice(-4)} - Impressão`;
-              window.addEventListener('message', (event) => {
-                if (event.data === 'print') {
-                  printWindow.print();
-                }
-              });
-              
-              // Add component markup directly
-              const companyInfo = JSON.parse(localStorage.getItem('ferplas-company-info') || '{}');
-              iframeDoc.body.innerHTML = renderPrintableOrderHTML(order, companyInfo);
-            }
-          };
-          
-          iframe.src = 'about:blank';
-        }
+        mountNode.appendChild(iframe);
+        
+        // Wait for iframe to load then add content
+        iframe.onload = function() {
+          const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (iframeDoc) {
+            printWindow.document.title = `Pedido #${order.id.slice(-4)} - Impressão`;
+            
+            // Add component markup directly
+            const companyInfo = JSON.parse(localStorage.getItem('ferplas-company-info') || '{}');
+            iframeDoc.body.innerHTML = renderPrintableOrderHTML(order, companyInfo);
+          }
+        };
+        
+        iframe.src = 'about:blank';
       }
     } else {
       toast.error("Não foi possível abrir a janela de impressão. Verifique se o seu navegador está bloqueando pop-ups.");
@@ -139,141 +123,147 @@ const OrderDetail = () => {
   
   // Simple HTML template for the fallback rendering
   const renderPrintableOrderHTML = (order, companyInfo) => {
-    // Generate HTML for the printable order
+    // Generate HTML for the printable order - more compact version
     return `
-      <div style="max-width: 800px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif;">
-        <!-- Company header -->
-        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; padding-bottom: 15px; margin-bottom: 20px;">
+      <div style="max-width: 800px; margin: 0 auto; padding: 12px; font-family: Arial, sans-serif; font-size: 11px;">
+        <!-- Company header - more compact -->
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-bottom: 8px;">
           <div>
-            <img src="/lovable-uploads/68daf61d-816f-4f86-8b3f-4f0970296cf0.png" width="180" height="70" style="object-fit: contain;" alt="Ferplas Logo">
+            <img src="/lovable-uploads/68daf61d-816f-4f86-8b3f-4f0970296cf0.png" width="150" height="60" style="object-fit: contain;" alt="Ferplas Logo">
           </div>
-          <div style="text-align: right; font-size: 14px;">
-            <p style="font-weight: bold; font-size: 18px; margin-bottom: 5px;">${companyInfo.name || 'Ferplas Indústria e Comércio'}</p>
-            <p>CNPJ: ${companyInfo.document || '00.000.000/0000-00'}</p>
-            <p>IE: ${companyInfo.stateRegistration || '000.000.000.000'}</p>
-            <p>${companyInfo.address || 'Av. Principal, 1234'}</p>
-            <p>${companyInfo.city || 'São Paulo'}/${companyInfo.state || 'SP'} - ${companyInfo.zipCode || '00000-000'}</p>
-            <p>Tel: ${companyInfo.phone || '(00) 0000-0000'}</p>
-            <p>${companyInfo.email || 'contato@ferplas.com.br'}</p>
-            ${companyInfo.website ? `<p>${companyInfo.website}</p>` : ''}
+          <div style="text-align: right; font-size: 11px;">
+            <p style="font-weight: bold; font-size: 14px; margin-bottom: 2px; margin-top: 0px;">${companyInfo.name || 'Ferplas Indústria e Comércio'}</p>
+            <p style="margin: 2px 0;">CNPJ: ${companyInfo.document || '00.000.000/0000-00'} | IE: ${companyInfo.stateRegistration || '000.000.000.000'}</p>
+            <p style="margin: 2px 0;">${companyInfo.address || 'Av. Principal, 1234'} - ${companyInfo.city || 'São Paulo'}/${companyInfo.state || 'SP'} - ${companyInfo.zipCode || '00000-000'}</p>
+            <p style="margin: 2px 0;">Tel: ${companyInfo.phone || '(00) 0000-0000'} | ${companyInfo.email || 'contato@ferplas.com.br'}</p>
+            ${companyInfo.website ? `<p style="margin: 2px 0;">${companyInfo.website}</p>` : ''}
           </div>
         </div>
         
         <!-- Order title -->
-        <div style="text-align: center; margin-bottom: 20px;">
-          <h1 style="font-size: 24px; font-weight: bold; border: 2px solid #ddd; display: inline-block; padding: 5px 15px;">
+        <div style="text-align: center; margin-bottom: 8px;">
+          <h1 style="font-size: 16px; font-weight: bold; border: 1px solid #ddd; display: inline-block; padding: 4px 12px; margin: 4px 0;">
             PEDIDO #${order.id.slice(-4)}
           </h1>
-          <p style="font-size: 14px; margin-top: 5px;">
+          <p style="font-size: 10px; margin: 2px 0;">
             Emitido em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
           </p>
         </div>
         
         <!-- Customer and order info -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-          <div style="border: 1px solid #ddd; border-radius: 5px; padding: 15px;">
-            <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px;">Dados do Cliente</h2>
-            <p style="font-weight: 600;">${order.customer.companyName}</p>
-            <p>CNPJ/CPF: ${order.customer.document}</p>
-            <p>${order.customer.street}, ${order.customer.number} ${order.customer.complement ? `- ${order.customer.complement}` : ''}</p>
-            <p>${order.customer.city}/${order.customer.state} - ${order.customer.zipCode}</p>
-            <p>Tel: ${order.customer.phone}</p>
-            <p>Email: ${order.customer.email}</p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+          <div style="border: 1px solid #ddd; border-radius: 4px; padding: 8px;">
+            <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Cliente</h2>
+            <p style="font-weight: 600; margin: 2px 0;">${order.customer.companyName}</p>
+            <p style="margin: 2px 0;">CNPJ/CPF: ${order.customer.document}</p>
+            <p style="margin: 2px 0;">${order.customer.street}, ${order.customer.number} ${order.customer.complement ? `- ${order.customer.complement}` : ''}</p>
+            <p style="margin: 2px 0;">${order.customer.city}/${order.customer.state} - ${order.customer.zipCode}</p>
+            <p style="margin: 2px 0;">Tel: ${order.customer.phone}</p>
           </div>
           
-          <div style="border: 1px solid #ddd; border-radius: 5px; padding: 15px;">
-            <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px;">Dados do Pedido</h2>
-            <p><span style="font-weight: 600;">Data do Pedido:</span> ${format(new Date(order.createdAt), "dd/MM/yyyy", { locale: ptBR })}</p>
-            <p><span style="font-weight: 600;">Vendedor:</span> ${order.user?.name || 'Não informado'}</p>
-            <p><span style="font-weight: 600;">Status:</span> ${
+          <div style="border: 1px solid #ddd; border-radius: 4px; padding: 8px;">
+            <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Dados do Pedido</h2>
+            <p style="margin: 2px 0;"><span style="font-weight: 600;">Data:</span> ${format(new Date(order.createdAt), "dd/MM/yyyy", { locale: ptBR })}</p>
+            <p style="margin: 2px 0;"><span style="font-weight: 600;">Vendedor:</span> ${order.user?.name || 'Não informado'}</p>
+            <p style="margin: 2px 0;"><span style="font-weight: 600;">Status:</span> ${
               order.status === 'pending' ? 'Pendente' : 
               order.status === 'confirmed' ? 'Confirmado' : 
               order.status === 'invoiced' ? 'Faturado' : 
               order.status === 'completed' ? 'Concluído' : 'Cancelado'
             }</p>
-            <p><span style="font-weight: 600;">Forma de Pagamento:</span> ${order.paymentMethod === 'cash' ? 'À Vista' : 'A Prazo'}</p>
+            <p style="margin: 2px 0;"><span style="font-weight: 600;">Pagamento:</span> ${order.paymentMethod === 'cash' ? 'À Vista' : 'A Prazo'}</p>
             ${order.paymentMethod === 'credit' && order.paymentTerms ? 
-              `<p><span style="font-weight: 600;">Prazos:</span> ${order.paymentTerms}</p>` : ''}
-            <p><span style="font-weight: 600;">Tipo de Nota:</span> ${order.fullInvoice ? 'Nota Cheia' : 'Meia Nota'}</p>
-            ${!order.fullInvoice && order.halfInvoicePercentage ? 
-              `<p><span style="font-weight: 600;">Percentual da Nota:</span> ${order.halfInvoicePercentage}%</p>` : ''}
+              `<p style="margin: 2px 0;"><span style="font-weight: 600;">Prazos:</span> ${order.paymentTerms}</p>` : ''}
           </div>
         </div>
         
         <!-- Order items -->
-        <div style="margin-bottom: 20px;">
-          <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px;">Itens do Pedido</h2>
-          <table style="width: 100%; border-collapse: collapse;">
+        <div style="margin-bottom: 8px;">
+          <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Itens do Pedido</h2>
+          <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
             <thead>
               <tr style="background-color: #f3f4f6;">
-                <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Produto</th>
-                <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">Preço Unit.</th>
-                <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">Desc.</th>
-                <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">Preço Final</th>
-                <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">Qtd.</th>
-                <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">Subtotal</th>
+                <th style="border: 1px solid #ddd; padding: 3px; text-align: left;">Produto</th>
+                <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Preço</th>
+                <th style="border: 1px solid #ddd; padding: 3px; text-align: center;">Desc.</th>
+                <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Final</th>
+                <th style="border: 1px solid #ddd; padding: 3px; text-align: center;">Qtd.</th>
+                <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Subtotal</th>
               </tr>
             </thead>
             <tbody>
               ${(order.items || []).map((item, index) => `
                 <tr>
-                  <td style="border: 1px solid #ddd; padding: 8px;">${item?.product?.name || item?.productName || `Produto ${index + 1}`}</td>
-                  <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">
+                  <td style="border: 1px solid #ddd; padding: 3px;">${item?.product?.name || item?.productName || `Produto ${index + 1}`}</td>
+                  <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">
                     ${formatCurrency(item?.listPrice || item?.product?.listPrice || 0)}
                   </td>
-                  <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${item?.discount || 0}%</td>
-                  <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${formatCurrency(item?.finalPrice || 0)}</td>
-                  <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${item?.quantity || 0}</td>
-                  <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${formatCurrency(item?.subtotal || 0)}</td>
+                  <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${item?.discount || 0}%</td>
+                  <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.finalPrice || 0)}</td>
+                  <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${item?.quantity || 0}</td>
+                  <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.subtotal || 0)}</td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
         </div>
         
-        <!-- Financial summary -->
-        <div style="margin-bottom: 20px;">
-          <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px;">Resumo Financeiro</h2>
-          <div style="display: flex; justify-content: flex-end;">
-            <table style="min-width: 300px;">
-              <tbody>
+        <!-- Two column layout for delivery and financial summary -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+          <!-- Delivery info -->
+          <div>
+            <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Entrega</h2>
+            <p style="margin: 2px 0;"><span style="font-weight: 600;">Tipo:</span> ${order.shipping === 'delivery' ? 'Entrega' : 'Retirada'}</p>
+            ${order.shipping === 'delivery' && order.deliveryLocation ? 
+              `<p style="margin: 2px 0;"><span style="font-weight: 600;">Região:</span> ${order.deliveryLocation === 'capital' ? 'Capital' : 'Interior'}</p>` : ''}
+            ${order.shipping === 'delivery' && order.deliveryFee && order.deliveryFee > 0 ? 
+              `<p style="margin: 2px 0;"><span style="font-weight: 600;">Taxa:</span> ${formatCurrency(order.deliveryFee)}</p>` : ''}
+          </div>
+          
+          <!-- Financial summary -->
+          <div>
+            <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Resumo Financeiro</h2>
+            <table style="width: 100%;">
+              <tr>
+                <td style="padding: 2px 0;">Subtotal:</td>
+                <td style="padding: 2px 0; text-align: right; font-weight: 500;">${formatCurrency(order.subtotal)}</td>
+              </tr>
+              <tr>
+                <td style="padding: 2px 0;">Descontos:</td>
+                <td style="padding: 2px 0; text-align: right; color: #dc2626; font-weight: 500;">
+                  -${formatCurrency(order.totalDiscount || 0)}
+                </td>
+              </tr>
+              ${order.deliveryFee && order.deliveryFee > 0 ? `
                 <tr>
-                  <td style="padding: 5px;">Subtotal:</td>
-                  <td style="padding: 5px; text-align: right; font-weight: 500;">${formatCurrency(order.subtotal)}</td>
+                  <td style="padding: 2px 0;">Taxa de Entrega:</td>
+                  <td style="padding: 2px 0; text-align: right; font-weight: 500;">${formatCurrency(order.deliveryFee)}</td>
                 </tr>
-                <tr>
-                  <td style="padding: 5px;">Descontos:</td>
-                  <td style="padding: 5px; text-align: right; color: #dc2626; font-weight: 500;">
-                    -${formatCurrency(order.totalDiscount || 0)}
-                  </td>
-                </tr>
-                ${order.deliveryFee && order.deliveryFee > 0 ? `
-                  <tr>
-                    <td style="padding: 5px;">Taxa de Entrega:</td>
-                    <td style="padding: 5px; text-align: right; font-weight: 500;">${formatCurrency(order.deliveryFee)}</td>
-                  </tr>
-                ` : ''}
-                <tr style="border-top: 1px solid #ddd;">
-                  <td style="padding: 8px 5px; font-weight: bold;">Total:</td>
-                  <td style="padding: 8px 5px; text-align: right; font-weight: bold; font-size: 18px;">${formatCurrency(order.total)}</td>
-                </tr>
-              </tbody>
+              ` : ''}
+              <tr style="border-top: 1px solid #ddd;">
+                <td style="padding: 3px 0; font-weight: bold;">Total:</td>
+                <td style="padding: 3px 0; text-align: right; font-weight: bold;">${formatCurrency(order.total)}</td>
+              </tr>
             </table>
           </div>
         </div>
         
         ${order.notes ? `
-          <div style="margin-bottom: 20px;">
-            <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px;">Observações</h2>
-            <p style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9;">${order.notes}</p>
+          <div style="margin-bottom: 8px;">
+            <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Observações</h2>
+            <p style="border: 1px solid #ddd; padding: 4px; background-color: #f9f9f9; margin: 0;">${order.notes}</p>
           </div>
         ` : ''}
         
-        <div style="margin-top: 50px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; font-size: 12px; color: #666;">
-          <p>Este documento não possui valor fiscal. Para mais informações entre em contato conosco.</p>
+        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd; text-align: center; font-size: 10px; color: #666;">
+          <p style="margin: 0;">Este documento não possui valor fiscal. Para mais informações entre em contato conosco.</p>
         </div>
       </div>
     `;
+  };
+
+  const getStatusBadge = (status: string) => {
+    return <OrderStatusBadge status={status as any} />;
   };
 
   if (loading) {
@@ -654,71 +644,4 @@ const OrderDetail = () => {
             
             {shipping === 'delivery' && deliveryLocation && (
               <div>
-                <h3 className="text-sm font-medium text-gray-500">Região</h3>
-                <p className="text-lg">{deliveryLocation === 'capital' ? 'Capital' : 'Interior'}</p>
-              </div>
-            )}
-            
-            {shipping === 'delivery' && deliveryFee > 0 && (
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Taxa de Entrega</h3>
-                <p className="text-lg">{formatCurrency(deliveryFee)}</p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-medium">Informações Adicionais</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Vendedor</h3>
-              <p className="text-lg">{order.user?.name || 'Vendedor não identificado'}</p>
-            </div>
-            
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Data do Pedido</h3>
-              <p className="text-lg">
-                {format(new Date(order.createdAt), "dd/MM/yyyy", { locale: ptBR })}
-              </p>
-            </div>
-            
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Status Atual</h3>
-              <div className="mt-1">
-                {getStatusBadge(order.status)}
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <h3 className="text-sm font-medium text-gray-500 mb-2">Forma de Pagamento</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="font-medium">{paymentMethod === 'cash' ? 'À Vista' : 'A Prazo'}</p>
-                {paymentMethod === 'credit' && paymentTerms && (
-                  <p className="text-sm text-gray-600">Prazos: {paymentTerms}</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {notes && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <h3 className="text-sm font-medium text-gray-500 mb-2">Observações</h3>
-              <div className="bg-gray-50 p-3 rounded-md border border-gray-100">
-                <p>{notes}</p>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
-export default OrderDetail;
+                <h3 className="text-sm font
