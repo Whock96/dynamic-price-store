@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, Package } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -17,13 +16,17 @@ import { formatCurrency } from '@/utils/formatters';
 
 const ProductList = () => {
   const navigate = useNavigate();
-  const { products, getCategoryName, categories } = useProducts();
+  const { 
+    products, 
+    getCategoryName, 
+    getSubcategoryName, 
+    categories 
+  } = useProducts();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [subcategoryFilter, setSubcategoryFilter] = useState('all');
   const [availableSubcategories, setAvailableSubcategories] = useState<any[]>([]);
 
-  // Update available subcategories when category changes
   useEffect(() => {
     if (categoryFilter === 'all') {
       setAvailableSubcategories([]);
@@ -31,7 +34,7 @@ const ProductList = () => {
     } else {
       const selectedCategory = categories.find(cat => cat.id === categoryFilter);
       setAvailableSubcategories(selectedCategory?.subcategories || []);
-      setSubcategoryFilter('all'); // Reset subcategory filter when category changes
+      setSubcategoryFilter('all');
     }
   }, [categoryFilter, categories]);
 
@@ -64,7 +67,6 @@ const ProductList = () => {
         </div>
       </header>
 
-      {/* Filters */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg font-medium">Filtros</CardTitle>
@@ -97,7 +99,6 @@ const ProductList = () => {
               </SelectContent>
             </Select>
             
-            {/* Subcategory filter - only enabled when a category is selected */}
             <Select 
               value={subcategoryFilter} 
               onValueChange={setSubcategoryFilter}
@@ -122,7 +123,6 @@ const ProductList = () => {
         </CardContent>
       </Card>
 
-      {/* Products grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredProducts.map(product => (
           <Card 
@@ -137,7 +137,7 @@ const ProductList = () => {
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 hover:scale-110"
               />
               <div className="absolute top-2 right-2 bg-ferplas-500 text-white text-xs px-2 py-1 rounded-full">
-                {getCategoryName(product.categoryId)}
+                {getCategoryName(product.categoryId)} - {getSubcategoryName(product.categoryId, product.subcategoryId)}
               </div>
             </div>
             <CardContent className="p-4">
