@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 
 // Create a key for localStorage
 const ORDERS_STORAGE_KEY = 'ferplas-orders-data';
+const LAST_ORDER_NUMBER_KEY = 'ferplas-last-order-number';
 
 interface OrderContextType {
   orders: Order[];
@@ -24,10 +25,17 @@ const OrderContext = createContext<OrderContextType | undefined>(undefined);
 export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [lastOrderNumber, setLastOrderNumber] = useState<number>(0);
   
   // Load orders from localStorage on initial render with an empty array as default
   useEffect(() => {
     const savedOrders = localStorage.getItem(ORDERS_STORAGE_KEY);
+    const savedLastOrderNumber = localStorage.getItem(LAST_ORDER_NUMBER_KEY);
+    
+    if (savedLastOrderNumber) {
+      setLastOrderNumber(parseInt(savedLastOrderNumber, 10));
+    }
+    
     if (savedOrders) {
       try {
         // Parse dates properly when loading from localStorage
@@ -54,11 +62,16 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
   
-  // Save orders to localStorage whenever they change
+  // Save orders and last order number to localStorage whenever they change
   useEffect(() => {
     console.log(`Saving ${orders.length} orders to localStorage`);
     localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
   }, [orders]);
+
+  useEffect(() => {
+    console.log(`Saving last order number: ${lastOrderNumber} to localStorage`);
+    localStorage.setItem(LAST_ORDER_NUMBER_KEY, lastOrderNumber.toString());
+  }, [lastOrderNumber]);
 
   // Clear all orders from state and localStorage
   const clearAllOrders = () => {
@@ -75,7 +88,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const addOrder = (newOrder: Partial<Order>) => {
-    const orderId = `order-${Date.now()}`;
+    // Increment the last order number
+    const nextOrderNumber = lastOrderNumber + 1;
+    setLastOrderNumber(nextOrderNumber);
+    
+    // Create order ID with the sequential number
+    const orderId = `order-${nextOrderNumber}`;
     
     const order: Order = {
       ...newOrder as any,
@@ -96,7 +114,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     setOrders(prevOrders => [order, ...prevOrders]);
-    toast.success(`Pedido #${orderId.slice(-4)} criado com sucesso!`);
+    toast.success(`Pedido #${nextOrderNumber} criado com sucesso!`);
   };
 
   const updateOrderStatus = (orderId: string, status: Order['status']) => {
@@ -109,7 +127,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           : order
       )
     );
-    toast.success(`Status do pedido #${orderId.slice(-4)} atualizado para ${status}`);
+    
+    // Get the order number for the toast message
+    const orderNumber = orderId.split('-')[1];
+    toast.success(`Status do pedido #${orderNumber} atualizado para ${status}`);
   };
   
   const updateOrder = (orderId: string, orderData: Partial<Order>) => {
@@ -131,7 +152,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           : order
       )
     );
-    toast.success(`Pedido #${orderId.slice(-4)} atualizado com sucesso!`);
+    
+    // Get the order number for the toast message
+    const orderNumber = orderId.split('-')[1];
+    toast.success(`Pedido #${orderNumber} atualizado com sucesso!`);
   };
 
   const getOrderById = (id: string) => {

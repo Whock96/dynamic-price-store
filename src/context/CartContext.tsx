@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product } from '../types/types';
 import { toast } from 'sonner';
@@ -339,7 +340,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Handle email sending (mock)
       console.log(`Sending order email to ${customer.email} and vendas@ferplas.ind.br`);
       
-      // Adicionar o pedido ao contexto de pedidos
+      // Add the order to the orders context
       addOrder(orderData);
       
       toast.success('Pedido enviado com sucesso!');
