@@ -105,7 +105,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const getOrderById = (id: string) => {
-    return orders.find(order => order.id === id);
+    // Adding console.log for debugging
+    console.log(`Looking for order with ID: ${id}`);
+    console.log(`Available orders:`, orders.map(order => order.id));
+    
+    const order = orders.find(order => order.id === id);
+    console.log(`Found order:`, order);
+    return order;
   };
 
   return (

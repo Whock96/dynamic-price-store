@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
@@ -21,82 +20,31 @@ import { useAuth } from '../../context/AuthContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
-
-// Simulando o pedido com base no ID da URL
-const getOrderById = (id: string) => {
-  // Aqui seria uma chamada à API para buscar o pedido pelo ID
-  // Por enquanto, vamos simular um pedido
-  const today = new Date();
-  const date = new Date(today);
-  date.setDate(today.getDate() - Math.floor(Math.random() * 30));
-  
-  const orderNumber = parseInt(id.split('-')[1], 10);
-  
-  return {
-    id,
-    number: `#${10000 + orderNumber - 1}`,
-    customerId: `customer-${Math.floor(Math.random() * 10) + 1}`,
-    customerName: `Cliente ${Math.floor(Math.random() * 10) + 1} Ltda.`,
-    userId: `user-${Math.floor(Math.random() * 3) + 1}`,
-    userName: orderNumber % 3 === 0 ? 'João Silva' : orderNumber % 3 === 1 ? 'Maria Oliveira' : 'Carlos Santos',
-    items: Array.from({ length: Math.floor(Math.random() * 5) + 1 }, (_, i) => ({
-      id: `item-${i}`,
-      productId: `product-${i + 1}`,
-      productName: `Produto ${i + 1}`,
-      quantity: Math.floor(Math.random() * 10) + 1,
-      listPrice: Math.floor(Math.random() * 900) + 100,
-      discount: Math.floor(Math.random() * 10) + 5,
-      finalPrice: Math.floor(Math.random() * 800) + 90,
-      subtotal: Math.floor(Math.random() * 8000) + 900,
-    })),
-    appliedDiscounts: [
-      { name: 'Retirada', value: 1, type: 'discount' },
-      { name: 'Meia nota', value: 3, type: 'discount' },
-      { name: 'A Vista', value: 1, type: 'discount' },
-    ],
-    shipping: orderNumber % 2 === 0 ? 'delivery' : 'pickup',
-    fullInvoice: orderNumber % 2 === 0,
-    taxSubstitution: orderNumber % 3 === 0,
-    paymentMethod: orderNumber % 2 === 0 ? 'cash' : 'credit',
-    notes: 'Observações do cliente: entregar no período da tarde.',
-    subtotal: Math.floor(Math.random() * 9000) + 1000,
-    totalDiscount: Math.floor(Math.random() * 500) + 100,
-    total: Math.floor(Math.random() * 8500) + 900,
-    status: orderNumber % 4 === 0 ? 'pending' : orderNumber % 4 === 1 ? 'confirmed' : orderNumber % 4 === 2 ? 'delivered' : 'canceled',
-    createdAt: date,
-    customer: {
-      id: `customer-${Math.floor(Math.random() * 10) + 1}`,
-      companyName: `Cliente ${Math.floor(Math.random() * 10) + 1} Ltda.`,
-      document: Math.random().toString().slice(2, 13),
-      street: `Rua ${Math.floor(Math.random() * 100) + 1}`,
-      number: `${Math.floor(Math.random() * 1000) + 1}`,
-      complement: orderNumber % 2 === 0 ? `Sala ${Math.floor(Math.random() * 10) + 1}` : '',
-      city: orderNumber % 4 === 0 ? 'São Paulo' : orderNumber % 4 === 1 ? 'Rio de Janeiro' : orderNumber % 4 === 2 ? 'Belo Horizonte' : 'Curitiba',
-      state: orderNumber % 4 === 0 ? 'SP' : orderNumber % 4 === 1 ? 'RJ' : orderNumber % 4 === 2 ? 'MG' : 'PR',
-      zipCode: `${Math.floor(Math.random() * 90000) + 10000}-${Math.floor(Math.random() * 900) + 100}`,
-      phone: `(${Math.floor(Math.random() * 90) + 10}) ${Math.floor(Math.random() * 90000) + 10000}-${Math.floor(Math.random() * 9000) + 1000}`,
-      email: `cliente${Math.floor(Math.random() * 100)}@example.com`,
-    }
-  };
-};
+import { useOrders } from '@/context/OrderContext';
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { getOrderById } = useOrders();
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (id) {
-      // Simulando uma chamada à API
-      setTimeout(() => {
-        const fetchedOrder = getOrderById(id);
+      console.log(`Fetching order with ID: ${id}`);
+      const fetchedOrder = getOrderById(id);
+      console.log(`Fetched order:`, fetchedOrder);
+      
+      if (fetchedOrder) {
         setOrder(fetchedOrder);
-        setLoading(false);
-      }, 500);
+      } else {
+        console.error(`Order with ID ${id} not found`);
+      }
+      
+      setLoading(false);
     }
-  }, [id]);
+  }, [id, getOrderById]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -104,8 +52,10 @@ const OrderDetail = () => {
         return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Pendente</Badge>;
       case 'confirmed':
         return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Confirmado</Badge>;
-      case 'delivered':
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Entregue</Badge>;
+      case 'invoiced':
+        return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">Faturado</Badge>;
+      case 'completed':
+        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Concluído</Badge>;
       case 'canceled':
         return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Cancelado</Badge>;
       default:
@@ -161,7 +111,7 @@ const OrderDetail = () => {
           </Button>
           <div>
             <div className="flex items-center">
-              <h1 className="text-3xl font-bold tracking-tight">Pedido {order.number}</h1>
+              <h1 className="text-3xl font-bold tracking-tight">Pedido #{order.id.slice(-4)}</h1>
               <div className="ml-4">{getStatusBadge(order.status)}</div>
             </div>
             <p className="text-muted-foreground">
@@ -363,14 +313,14 @@ const OrderDetail = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {order.items.map((item: any) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium">{item.productName}</TableCell>
-                  <TableCell>{formatCurrency(item.listPrice)}</TableCell>
-                  <TableCell>{item.discount}%</TableCell>
-                  <TableCell>{formatCurrency(item.finalPrice)}</TableCell>
-                  <TableCell>{item.quantity}</TableCell>
-                  <TableCell>{formatCurrency(item.subtotal)}</TableCell>
+              {order.items && order.items.map((item: any, index: number) => (
+                <TableRow key={item.id || `item-${index}`}>
+                  <TableCell className="font-medium">{item.product?.name || item.productName || `Produto ${index + 1}`}</TableCell>
+                  <TableCell>{formatCurrency(item.listPrice || item.product?.listPrice || 0)}</TableCell>
+                  <TableCell>{item.discount || 0}%</TableCell>
+                  <TableCell>{formatCurrency(item.finalPrice || 0)}</TableCell>
+                  <TableCell>{item.quantity || 0}</TableCell>
+                  <TableCell>{formatCurrency(item.subtotal || 0)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -385,27 +335,27 @@ const OrderDetail = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {order.appliedDiscounts.map((discount: any, index: number) => (
-              <div key={index} className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="w-8 h-8 rounded-full bg-ferplas-100 flex items-center justify-center mr-3">
+            {order.appliedDiscounts && order.appliedDiscounts.length > 0 ? (
+              order.appliedDiscounts.map((discount: any, index: number) => (
+                <div key={index} className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 rounded-full bg-ferplas-100 flex items-center justify-center mr-3">
+                      {discount.type === 'discount' ? '-' : '+'}
+                    </div>
+                    <div>
+                      <p className="font-medium">{discount.name}</p>
+                      <p className="text-sm text-gray-500">
+                        {discount.type === 'discount' ? 'Desconto' : 'Acréscimo'} de {discount.value}%
+                      </p>
+                    </div>
+                  </div>
+                  <span className="font-medium text-ferplas-600">
                     {discount.type === 'discount' ? '-' : '+'}
-                  </div>
-                  <div>
-                    <p className="font-medium">{discount.name}</p>
-                    <p className="text-sm text-gray-500">
-                      {discount.type === 'discount' ? 'Desconto' : 'Acréscimo'} de {discount.value}%
-                    </p>
-                  </div>
+                    {discount.value}%
+                  </span>
                 </div>
-                <span className="font-medium text-ferplas-600">
-                  {discount.type === 'discount' ? '-' : '+'}
-                  {discount.value}%
-                </span>
-              </div>
-            ))}
-            
-            {order.appliedDiscounts.length === 0 && (
+              ))
+            ) : (
               <div className="text-center py-4 text-gray-500">
                 Nenhum desconto aplicado.
               </div>
