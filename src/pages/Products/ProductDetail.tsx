@@ -52,7 +52,9 @@ const ProductDetail = () => {
     { name: "Cor", value: "Branco" },
     { name: "Dimensões", value: `${product.volume} m³` },
     { name: "Peso", value: `${product.weight} kg` },
-    { name: "Código do Produto", value: product.id }
+    { name: "Código do Produto", value: product.id },
+    { name: "Categoria", value: getCategoryName(product.categoryId) },
+    { name: "Subcategoria", value: getSubcategoryName(product.categoryId, product.subcategoryId) }
   ];
   
   return (

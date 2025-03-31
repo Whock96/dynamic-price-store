@@ -23,6 +23,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogBody,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -36,47 +37,26 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from '../../context/AuthContext';
+import { useProducts } from '../../context/ProductContext';
 import { toast } from 'sonner';
 import { Category, Subcategory } from '@/types/types';
-
-// Mock data para categorias e subcategorias
-const INITIAL_CATEGORIES: Category[] = [
-  { 
-    id: '1', 
-    name: 'Tubos e Conexões', 
-    description: 'Produtos para sistemas hidráulicos e esgoto',
-    subcategories: [
-      { id: '1-1', name: 'Tubos PVC', description: 'Tubos de PVC para água e esgoto', categoryId: '1' },
-      { id: '1-2', name: 'Conexões PVC', description: 'Conexões de PVC para água e esgoto', categoryId: '1' },
-    ]
-  },
-  { 
-    id: '2', 
-    name: 'Ferramentas', 
-    description: 'Ferramentas para construção e reforma',
-    subcategories: [
-      { id: '2-1', name: 'Manuais', description: 'Ferramentas manuais diversas', categoryId: '2' },
-      { id: '2-2', name: 'Elétricas', description: 'Ferramentas elétricas para profissionais', categoryId: '2' },
-    ]
-  },
-  { 
-    id: '3', 
-    name: 'Hidráulica', 
-    description: 'Produtos para sistemas hidráulicos residenciais e industriais',
-    subcategories: [
-      { id: '3-1', name: 'Válvulas', description: 'Válvulas para controle de fluxo', categoryId: '3' },
-      { id: '3-2', name: 'Registros', description: 'Registros para controle de água', categoryId: '3' },
-    ]
-  },
-];
 
 type DialogMode = 'category-add' | 'category-edit' | 'subcategory-add' | 'subcategory-edit';
 
 const CategoryManagement = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { 
+    categories, 
+    addCategory, 
+    updateCategory, 
+    deleteCategory, 
+    addSubcategory, 
+    updateSubcategory, 
+    deleteSubcategory 
+  } = useProducts();
+  
   const [searchQuery, setSearchQuery] = useState('');
-  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<DialogMode>('category-add');
@@ -106,11 +86,11 @@ const CategoryManagement = () => {
   const filteredCategories = categories.filter(category => {
     const categoryMatches = 
       category.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      category.description.toLowerCase().includes(searchQuery.toLowerCase());
+      (category.description && category.description.toLowerCase().includes(searchQuery.toLowerCase()));
     
     const hasMatchingSubcategories = category.subcategories.some(subcategory =>
       subcategory.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      subcategory.description.toLowerCase().includes(searchQuery.toLowerCase())
+      (subcategory.description && subcategory.description.toLowerCase().includes(searchQuery.toLowerCase()))
     );
     
     // Se a categoria corresponde ou tem subcategorias correspondentes, incluir na filtragem
@@ -134,7 +114,7 @@ const CategoryManagement = () => {
       setCategoryFormData({
         id: category.id,
         name: category.name,
-        description: category.description,
+        description: category.description || '',
       });
     } else {
       setDialogMode('category-add');
@@ -157,7 +137,7 @@ const CategoryManagement = () => {
       setSubcategoryFormData({
         id: subcategory.id,
         name: subcategory.name,
-        description: subcategory.description,
+        description: subcategory.description || '',
         categoryId: subcategory.categoryId,
       });
     } else {
@@ -198,27 +178,20 @@ const CategoryManagement = () => {
     }
 
     if (dialogMode === 'category-edit') {
-      // Atualizar categoria existente
-      setCategories(prev => prev.map(cat => 
-        cat.id === categoryFormData.id 
-          ? { 
-              ...cat, 
-              name: categoryFormData.name, 
-              description: categoryFormData.description 
-            } 
-          : cat
-      ));
-      toast.success(`Categoria "${categoryFormData.name}" atualizada com sucesso`);
-    } else {
-      // Adicionar nova categoria
-      const newCategory: Category = {
+      // Update existing category using context
+      updateCategory({
         id: categoryFormData.id,
         name: categoryFormData.name,
-        description: categoryFormData.description,
-        subcategories: []
-      };
-      
-      setCategories(prev => [...prev, newCategory]);
+        description: categoryFormData.description
+      });
+      toast.success(`Categoria "${categoryFormData.name}" atualizada com sucesso`);
+    } else {
+      // Add new category using context
+      addCategory({
+        id: categoryFormData.id,
+        name: categoryFormData.name,
+        description: categoryFormData.description
+      });
       toast.success(`Categoria "${categoryFormData.name}" adicionada com sucesso`);
     }
     
@@ -238,41 +211,21 @@ const CategoryManagement = () => {
     }
 
     if (dialogMode === 'subcategory-edit') {
-      // Atualizar subcategoria existente
-      setCategories(prev => prev.map(cat => 
-        cat.id === selectedCategory.id 
-          ? { 
-              ...cat, 
-              subcategories: cat.subcategories.map(sub => 
-                sub.id === subcategoryFormData.id 
-                  ? { 
-                      ...sub, 
-                      name: subcategoryFormData.name, 
-                      description: subcategoryFormData.description 
-                    } 
-                  : sub
-              )
-            } 
-          : cat
-      ));
-      toast.success(`Subcategoria "${subcategoryFormData.name}" atualizada com sucesso`);
-    } else {
-      // Adicionar nova subcategoria
-      const newSubcategory: Subcategory = {
+      // Update existing subcategory using context
+      updateSubcategory({
         id: subcategoryFormData.id,
         name: subcategoryFormData.name,
         description: subcategoryFormData.description,
         categoryId: selectedCategory.id
-      };
-      
-      setCategories(prev => prev.map(cat => 
-        cat.id === selectedCategory.id 
-          ? { 
-              ...cat, 
-              subcategories: [...cat.subcategories, newSubcategory] 
-            } 
-          : cat
-      ));
+      });
+      toast.success(`Subcategoria "${subcategoryFormData.name}" atualizada com sucesso`);
+    } else {
+      // Add new subcategory using context
+      addSubcategory(selectedCategory.id, {
+        id: subcategoryFormData.id,
+        name: subcategoryFormData.name,
+        description: subcategoryFormData.description
+      });
       
       // Expandir a categoria automaticamente
       if (!expandedCategories.includes(selectedCategory.id)) {
@@ -286,19 +239,12 @@ const CategoryManagement = () => {
   };
 
   const handleDeleteCategory = (categoryId: string) => {
-    setCategories(prev => prev.filter(cat => cat.id !== categoryId));
+    deleteCategory(categoryId);
     toast.success('Categoria removida com sucesso');
   };
 
   const handleDeleteSubcategory = (categoryId: string, subcategoryId: string) => {
-    setCategories(prev => prev.map(cat => 
-      cat.id === categoryId 
-        ? { 
-            ...cat, 
-            subcategories: cat.subcategories.filter(sub => sub.id !== subcategoryId) 
-          } 
-        : cat
-    ));
+    deleteSubcategory(categoryId, subcategoryId);
     toast.success('Subcategoria removida com sucesso');
   };
 
@@ -519,8 +465,8 @@ const CategoryManagement = () => {
 
       {/* Dialog para adicionar/editar categoria */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
+        <DialogContent className="max-w-md flex flex-col h-[80vh]">
+          <DialogHeader className="px-6 py-4">
             <DialogTitle>
               {dialogMode === 'category-add' && 'Nova Categoria'}
               {dialogMode === 'category-edit' && 'Editar Categoria'}
@@ -534,69 +480,71 @@ const CategoryManagement = () => {
             </DialogDescription>
           </DialogHeader>
           
-          {dialogMode.includes('category') ? (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="name">Nome da Categoria*</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  value={categoryFormData.name}
-                  onChange={(e) => handleInputChange(e, setCategoryFormData)}
-                  placeholder="Ex: Ferramentas"
-                />
+          <DialogBody className="flex-1 overflow-y-auto px-6 py-2">
+            {dialogMode.includes('category') ? (
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="name">Nome da Categoria*</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    value={categoryFormData.name}
+                    onChange={(e) => handleInputChange(e, setCategoryFormData)}
+                    placeholder="Ex: Ferramentas"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="description">Descrição</Label>
+                  <Textarea
+                    id="description"
+                    name="description"
+                    value={categoryFormData.description}
+                    onChange={(e) => handleInputChange(e, setCategoryFormData)}
+                    placeholder="Descreva a categoria brevemente..."
+                    rows={3}
+                  />
+                </div>
               </div>
-              
-              <div>
-                <Label htmlFor="description">Descrição</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  value={categoryFormData.description}
-                  onChange={(e) => handleInputChange(e, setCategoryFormData)}
-                  placeholder="Descreva a categoria brevemente..."
-                  rows={3}
-                />
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="categoryName">Categoria</Label>
+                  <Input
+                    id="categoryName"
+                    value={selectedCategory?.name || ''}
+                    disabled
+                    className="bg-gray-50"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="name">Nome da Subcategoria*</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    value={subcategoryFormData.name}
+                    onChange={(e) => handleInputChange(e, setSubcategoryFormData)}
+                    placeholder="Ex: Ferramentas Manuais"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="description">Descrição</Label>
+                  <Textarea
+                    id="description"
+                    name="description"
+                    value={subcategoryFormData.description}
+                    onChange={(e) => handleInputChange(e, setSubcategoryFormData)}
+                    placeholder="Descreva a subcategoria brevemente..."
+                    rows={3}
+                  />
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="categoryName">Categoria</Label>
-                <Input
-                  id="categoryName"
-                  value={selectedCategory?.name || ''}
-                  disabled
-                  className="bg-gray-50"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="name">Nome da Subcategoria*</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  value={subcategoryFormData.name}
-                  onChange={(e) => handleInputChange(e, setSubcategoryFormData)}
-                  placeholder="Ex: Ferramentas Manuais"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="description">Descrição</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  value={subcategoryFormData.description}
-                  onChange={(e) => handleInputChange(e, setSubcategoryFormData)}
-                  placeholder="Descreva a subcategoria brevemente..."
-                  rows={3}
-                />
-              </div>
-            </div>
-          )}
+            )}
+          </DialogBody>
           
-          <DialogFooter>
+          <DialogFooter className="px-6 py-4 border-t">
             <Button variant="outline" onClick={handleCloseDialog}>
               Cancelar
             </Button>

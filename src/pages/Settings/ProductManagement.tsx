@@ -143,13 +143,15 @@ const ProductManagement = () => {
         weight: 0,
         quantity: 0,
         volume: 0,
-        categoryId: categories[0].id,
-        subcategoryId: categories[0].subcategories[0].id,
+        categoryId: categories[0]?.id || '',
+        subcategoryId: categories[0]?.subcategories[0]?.id || '',
         imageUrl: 'https://via.placeholder.com/150',
       });
       
       // Definir subcategorias iniciais
-      setAvailableSubcategories(categories[0].subcategories);
+      if (categories.length > 0) {
+        setAvailableSubcategories(categories[0].subcategories);
+      }
     }
     
     setIsDialogOpen(true);
@@ -362,8 +364,8 @@ const ProductManagement = () => {
 
       {/* Dialog para adicionar/editar produto */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl flex flex-col h-[85vh]">
+          <DialogHeader className="px-6 py-4">
             <DialogTitle>{isEditMode ? 'Editar Produto' : 'Novo Produto'}</DialogTitle>
             <DialogDescription>
               {isEditMode 
@@ -372,8 +374,8 @@ const ProductManagement = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <DialogBody>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2">
+          <DialogBody className="flex-1 overflow-y-auto px-6 py-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-4 md:col-span-2">
                 <div>
                   <Label htmlFor="name">Nome do Produto*</Label>
@@ -515,7 +517,7 @@ const ProductManagement = () => {
             </div>
           </DialogBody>
           
-          <DialogFooter>
+          <DialogFooter className="px-6 py-4 border-t">
             <Button variant="outline" onClick={handleCloseDialog}>
               Cancelar
             </Button>
