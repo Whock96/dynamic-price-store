@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Trash2, Users } from 'lucide-react';
+import { ArrowLeft, Save, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +26,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useCustomers } from '@/context/CustomerContext';
+import { Customer } from '@/types/types';
 
 // Fake data for Brazilian states
 const BRAZILIAN_STATES = [
@@ -65,7 +68,7 @@ const MOCK_SALESPEOPLE = [
 ];
 
 // Empty customer data
-const EMPTY_CUSTOMER = {
+const EMPTY_CUSTOMER: Customer = {
   id: '',
   companyName: '',
   document: '',
@@ -85,42 +88,33 @@ const EMPTY_CUSTOMER = {
   updatedAt: new Date(),
 };
 
-// Get customer by id (mocked)
-const getCustomerById = (id: string) => ({
-  id,
-  companyName: `Cliente ${id.split('-')[1]} Ltda.`,
-  document: Math.random().toString().slice(2, 13),
-  salesPersonId: '1',
-  street: `Rua ${id.split('-')[1]}`,
-  number: `${parseInt(id.split('-')[1]) * 10 + 100}`,
-  noNumber: false,
-  complement: `Sala ${id.split('-')[1]}`,
-  city: 'São Paulo',
-  state: 'SP',
-  zipCode: `${Math.floor(Math.random() * 90000) + 10000}-${Math.floor(Math.random() * 900) + 100}`,
-  phone: `(11) ${Math.floor(Math.random() * 90000) + 10000}-${Math.floor(Math.random() * 9000) + 1000}`,
-  email: `cliente${id.split('-')[1]}@example.com`,
-  defaultDiscount: Math.floor(Math.random() * 10),
-  maxDiscount: Math.floor(Math.random() * 15) + 10, // Random max discount between 10-25%
-  createdAt: new Date(),
-  updatedAt: new Date(),
-});
-
 const CustomerForm = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { getCustomerById, addCustomer, updateCustomer, deleteCustomer } = useCustomers();
   const isEditMode = id !== undefined && id !== 'new';
 
-  const [formData, setFormData] = useState(EMPTY_CUSTOMER);
+  const [formData, setFormData] = useState<Customer>(EMPTY_CUSTOMER);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (isEditMode && id) {
       const customerData = getCustomerById(id);
-      setFormData(customerData);
+      if (customerData) {
+        setFormData(customerData);
+      } else {
+        toast.error('Cliente não encontrado');
+        navigate('/customers');
+      }
+    } else {
+      // Generate a unique ID for new customer
+      setFormData({
+        ...EMPTY_CUSTOMER,
+        id: `customer-${Date.now()}`,
+      });
     }
-  }, [id, isEditMode]);
+  }, [id, isEditMode, getCustomerById, navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -209,9 +203,13 @@ const CustomerForm = () => {
     setIsSubmitting(true);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      toast.success(`Cliente ${isEditMode ? 'atualizado' : 'cadastrado'} com sucesso`);
+      if (isEditMode) {
+        updateCustomer(formData.id, formData);
+        toast.success('Cliente atualizado com sucesso');
+      } else {
+        addCustomer(formData);
+        toast.success('Cliente cadastrado com sucesso');
+      }
       navigate('/customers');
     } catch (error) {
       console.error('Error submitting form:', error);
@@ -225,8 +223,7 @@ const CustomerForm = () => {
     setIsSubmitting(true);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      deleteCustomer(formData.id);
       toast.success('Cliente removido com sucesso');
       navigate('/customers');
     } catch (error) {

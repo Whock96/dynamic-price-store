@@ -20,26 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-// Mock data for customers
-const MOCK_CUSTOMERS = Array.from({ length: 20 }, (_, i) => ({
-  id: `customer-${i + 1}`,
-  companyName: `Cliente ${i + 1} Ltda.`,
-  document: Math.random().toString().slice(2, 13),
-  salesPersonId: i % 3 === 0 ? '1' : i % 3 === 1 ? '2' : '3',
-  street: `Rua ${i + 1}`,
-  number: `${i * 10 + 100}`,
-  noNumber: false,
-  complement: i % 2 === 0 ? `Sala ${i + 1}` : '',
-  city: i % 4 === 0 ? 'São Paulo' : i % 4 === 1 ? 'Rio de Janeiro' : i % 4 === 2 ? 'Belo Horizonte' : 'Curitiba',
-  state: i % 4 === 0 ? 'SP' : i % 4 === 1 ? 'RJ' : i % 4 === 2 ? 'MG' : 'PR',
-  zipCode: `${Math.floor(Math.random() * 90000) + 10000}-${Math.floor(Math.random() * 900) + 100}`,
-  phone: `(${Math.floor(Math.random() * 90) + 10}) ${Math.floor(Math.random() * 90000) + 10000}-${Math.floor(Math.random() * 9000) + 1000}`,
-  email: `cliente${i + 1}@example.com`,
-  defaultDiscount: Math.floor(Math.random() * 10),
-  createdAt: new Date(),
-  updatedAt: new Date(),
-}));
+import { useCustomers } from '@/context/CustomerContext';
 
 // Mock data for salespeople
 const MOCK_SALESPEOPLE = [
@@ -53,7 +34,7 @@ const CustomerList = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [cityFilter, setCityFilter] = useState('all');
   const [salesPersonFilter, setSalesPersonFilter] = useState('all');
-  const [customers] = useState(MOCK_CUSTOMERS);
+  const { customers } = useCustomers(); // Use customers from context
 
   const filteredCustomers = customers.filter(customer => {
     const matchesSearch = customer.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
