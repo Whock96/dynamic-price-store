@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, Package, User, Calendar, Truck, Receipt, ShoppingCart } from 'lucide-react';
@@ -63,7 +62,7 @@ const OrderUpdate = () => {
     
     if (orderData) {
       setOrder(orderData);
-      setNotes(orderData.observations || orderData.notes || "");
+      setNotes(orderData.notes || orderData.observations || "");
       setStatus(orderData.status);
       setShipping(orderData.shipping);
       setFullInvoice(orderData.fullInvoice || false);
@@ -79,6 +78,10 @@ const OrderUpdate = () => {
       // Set selected discount options if available
       if (orderData.discountOptions && Array.isArray(orderData.discountOptions)) {
         const discountIds = orderData.discountOptions.map((discount: any) => discount.id);
+        setSelectedDiscountOptions(discountIds);
+      } else if (orderData.appliedDiscounts && Array.isArray(orderData.appliedDiscounts)) {
+        // Fallback to appliedDiscounts if discountOptions is not available
+        const discountIds = orderData.appliedDiscounts.map(discount => discount.id);
         setSelectedDiscountOptions(discountIds);
       }
     } else {
@@ -473,10 +476,10 @@ const OrderUpdate = () => {
                     <span>Descontos:</span>
                     <span>-{formatCurrency(order.totalDiscount)}</span>
                   </div>
-                  {order.deliveryFee > 0 && (
+                  {(order.deliveryFee || 0) > 0 && (
                     <div className="flex justify-between text-sm">
                       <span>Taxa de Entrega:</span>
-                      <span>{formatCurrency(order.deliveryFee)}</span>
+                      <span>{formatCurrency(order.deliveryFee || 0)}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-medium">

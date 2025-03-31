@@ -104,6 +104,12 @@ export interface Order {
   notes: string;
   createdAt: Date;
   updatedAt: Date;
+  // Add the missing properties
+  observations?: string; // Optional to maintain compatibility with existing code
+  deliveryLocation?: 'capital' | 'interior' | null;
+  halfInvoicePercentage?: number;
+  discountOptions?: DiscountOption[];
+  deliveryFee?: number;
 }
 
 export interface MenuItem {
