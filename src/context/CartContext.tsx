@@ -1,7 +1,7 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product } from '../types/types';
 import { toast } from 'sonner';
+import { useOrders } from './OrderContext';
 
 interface CartContextType {
   items: CartItem[];
@@ -69,6 +69,7 @@ const MOCK_DISCOUNT_OPTIONS: DiscountOption[] = [
 ];
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { addOrder } = useOrders();
   const [items, setItems] = useState<CartItem[]>([]);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [discountOptions] = useState<DiscountOption[]>(MOCK_DISCOUNT_OPTIONS);
@@ -315,6 +316,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const orderData = {
         customer,
+        customerId: customer.id,
         items,
         discountOptions: selectedDiscountOptions.map(id => 
           discountOptions.find(opt => opt.id === id)
@@ -336,6 +338,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Handle email sending (mock)
       console.log(`Sending order email to ${customer.email} and vendas@ferplas.ind.br`);
+      
+      // Adicionar o pedido ao contexto de pedidos
+      addOrder(orderData);
       
       toast.success('Pedido enviado com sucesso!');
       clearCart();

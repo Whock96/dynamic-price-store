@@ -24,62 +24,14 @@ import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Order } from '@/types/types';
-
-// Mock data for orders
-const MOCK_ORDERS: Partial<Order>[] = Array.from({ length: 20 }, (_, i) => {
-  const today = new Date();
-  const date = new Date(today);
-  date.setDate(today.getDate() - Math.floor(Math.random() * 30));
-  
-  const statuses: Order['status'][] = ['pending', 'confirmed', 'invoiced', 'completed', 'canceled'];
-  
-  return {
-    id: `order-${i + 1}`,
-    customerId: `customer-${Math.floor(Math.random() * 10) + 1}`,
-    customer: {
-      id: `customer-${Math.floor(Math.random() * 10) + 1}`,
-      companyName: `Cliente ${Math.floor(Math.random() * 10) + 1} Ltda.`,
-      document: `${Math.floor(Math.random() * 100000000000)}-${Math.floor(Math.random() * 100)}`,
-      salesPersonId: `user-${Math.floor(Math.random() * 3) + 1}`,
-      street: "",
-      number: "",
-      noNumber: false,
-      complement: "",
-      city: "",
-      state: "",
-      zipCode: "",
-      phone: "",
-      email: "",
-      defaultDiscount: 0,
-      maxDiscount: 0,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    userId: `user-${Math.floor(Math.random() * 3) + 1}`,
-    user: {
-      id: `user-${Math.floor(Math.random() * 3) + 1}`,
-      username: i % 3 === 0 ? 'joao' : i % 3 === 1 ? 'maria' : 'carlos',
-      name: i % 3 === 0 ? 'João Silva' : i % 3 === 1 ? 'Maria Oliveira' : 'Carlos Santos',
-      role: 'salesperson',
-      permissions: [],
-      email: "",
-      createdAt: new Date()
-    },
-    items: Array(Math.floor(Math.random() * 10) + 1).fill(null),
-    subtotal: Math.floor(Math.random() * 9000) + 1000,
-    total: Math.floor(Math.random() * 10000) + 1000,
-    status: statuses[i % 5],
-    createdAt: date,
-    updatedAt: date,
-  };
-}) as Order[];
+import { useOrders } from '@/context/OrderContext';
 
 const OrderList = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
-  const [orders] = useState<Order[]>(MOCK_ORDERS as Order[]);
+  const { orders } = useOrders();
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
