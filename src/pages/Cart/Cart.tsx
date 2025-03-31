@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
-  Trash2, ShoppingCart, Package, Search, Send, MapPin, Percent
+  Trash2, ShoppingCart, Package, Search, Send, MapPin, Percent, Tags
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,8 @@ import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
+import { Toggle } from '@/components/ui/toggle';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useCart } from '../../context/CartContext';
 import { useProducts } from '../../context/ProductContext';
 import { useCustomers } from '../../context/CustomerContext';
@@ -59,7 +61,8 @@ const Cart = () => {
     items, customer, setCustomer, addItem, removeItem, updateItemQuantity,
     updateItemDiscount, discountOptions, toggleDiscountOption, isDiscountOptionSelected,
     deliveryLocation, setDeliveryLocation, halfInvoicePercentage, setHalfInvoicePercentage,
-    observations, setObservations, totalItems, subtotal, totalDiscount, total, sendOrder, clearCart, deliveryFee
+    observations, setObservations, totalItems, subtotal, totalDiscount, total, sendOrder, clearCart, 
+    deliveryFee, applyDiscounts, toggleApplyDiscounts
   } = useCart();
   
   const [customerSearch, setCustomerSearch] = useState('');
@@ -507,7 +510,19 @@ const Cart = () => {
         
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-medium">Opções de Desconto</CardTitle>
+            <CardTitle className="text-lg font-medium flex justify-between items-center">
+              <span>Opções de Desconto</span>
+              <div className="flex items-center space-x-2">
+                <Label htmlFor="apply-discounts" className={`text-sm ${applyDiscounts ? 'text-ferplas-600' : 'text-gray-500'}`}>
+                  {applyDiscounts ? 'Descontos Ativos' : 'Descontos Inativos'}
+                </Label>
+                <Switch
+                  id="apply-discounts"
+                  checked={applyDiscounts}
+                  onCheckedChange={toggleApplyDiscounts}
+                />
+              </div>
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -518,7 +533,11 @@ const Cart = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-medium">
-                            {option.name} {option.type === 'discount' ? '(-' : '(+'}{option.value}%)
+                            {option.name} {applyDiscounts && (
+                              <span className={option.type === 'discount' ? 'text-green-600' : 'text-red-600'}>
+                                {option.type === 'discount' ? '(-' : '(+'}{option.value}%)
+                              </span>
+                            )}
                           </p>
                           <p className="text-sm text-gray-500">{option.description}</p>
                         </div>
@@ -588,6 +607,21 @@ const Cart = () => {
               ) : (
                 <div className="text-center py-4">
                   <p className="text-gray-500">Nenhuma opção de desconto cadastrada.</p>
+                </div>
+              )}
+
+              {!applyDiscounts && (
+                <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-md">
+                  <div className="flex items-start">
+                    <Tags className="h-5 w-5 text-amber-600 mr-2 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-700">Descontos desativados</p>
+                      <p className="text-sm text-amber-600">
+                        As opções selecionadas não afetarão o preço dos produtos, mas serão registradas no pedido.
+                        {deliveryLocation && <span className="block mt-1 font-medium">A taxa de entrega ainda será aplicada.</span>}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

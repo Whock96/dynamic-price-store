@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
@@ -17,6 +18,7 @@ interface CartContextType {
   totalDiscount: number;
   total: number;
   deliveryFee: number;
+  applyDiscounts: boolean;
   setCustomer: (customer: Customer | null) => void;
   addItem: (product: Product, quantity: number) => void;
   removeItem: (id: string) => void;
@@ -29,6 +31,7 @@ interface CartContextType {
   clearCart: () => void;
   sendOrder: () => Promise<void>;
   isDiscountOptionSelected: (id: string) => boolean;
+  toggleApplyDiscounts: () => void;
 }
 
 const MOCK_DISCOUNT_OPTIONS: DiscountOption[] = [
@@ -78,6 +81,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [deliveryLocation, setDeliveryLocation] = useState<'capital' | 'interior' | null>(null);
   const [halfInvoicePercentage, setHalfInvoicePercentage] = useState<number>(50);
   const [observations, setObservations] = useState<string>('');
+  const [applyDiscounts, setApplyDiscounts] = useState<boolean>(true);
 
   const totalItems = items.reduce((total, item) => total + item.quantity, 0);
   
@@ -86,6 +90,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, 0);
 
   const getGlobalDiscountPercentage = () => {
+    if (!applyDiscounts) return 0;
+    
     let totalPercentage = 0;
     
     selectedDiscountOptions.forEach(id => {
@@ -106,8 +112,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const globalDiscountPercentage = getGlobalDiscountPercentage();
     
     const updatedItems = items.map(item => {
-      const itemDiscount = item.discount || 0;
-      const effectiveDiscount = itemDiscount + globalDiscountPercentage;
+      let itemDiscount = item.discount || 0;
+      // Only apply global discounts if enabled
+      const effectiveDiscount = applyDiscounts ? itemDiscount + globalDiscountPercentage : itemDiscount;
       const finalPrice = item.product.listPrice * (1 - effectiveDiscount / 100);
       const subtotal = finalPrice * item.quantity;
       
@@ -123,7 +130,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     recalculateCart();
-  }, [selectedDiscountOptions]);
+  }, [selectedDiscountOptions, applyDiscounts]);
 
   useEffect(() => {
     if (customer) {
@@ -153,6 +160,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, 0);
 
   const total = items.reduce((total, item) => total + (item.subtotal || 0), 0) + deliveryFee;
+
+  const toggleApplyDiscounts = () => {
+    setApplyDiscounts(prev => !prev);
+  };
 
   const addItem = (product: Product, quantity: number) => {
     if (!product || !product.id) {
@@ -345,6 +356,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       totalDiscount,
       total,
       deliveryFee,
+      applyDiscounts,
       setCustomer,
       addItem,
       removeItem,
@@ -356,7 +368,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setObservations,
       clearCart,
       sendOrder,
-      isDiscountOptionSelected
+      isDiscountOptionSelected,
+      toggleApplyDiscounts
     }}>
       {children}
     </CartContext.Provider>
