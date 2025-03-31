@@ -45,12 +45,12 @@ const ORDER_STATUS_OPTIONS = [
 const OrderUpdate = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { getOrderById, updateOrderStatus, updateOrder, deleteOrder } = useOrders();
+  const { getOrderById, updateOrder, deleteOrder } = useOrders();
   
   const [isLoading, setIsLoading] = useState(true);
   const [order, setOrder] = useState<Order | null>(null);
   const [notes, setNotes] = useState("");
-  const [status, setStatus] = useState<"pending" | "confirmed" | "invoiced" | "completed" | "canceled">("pending");
+  const [status, setStatus] = useState<Order["status"]>("pending");
   const [shipping, setShipping] = useState<"delivery" | "pickup">("delivery");
   const [fullInvoice, setFullInvoice] = useState(false);
   const [taxSubstitution, setTaxSubstitution] = useState(false);
@@ -75,12 +75,20 @@ const OrderUpdate = () => {
     
     if (orderData) {
       setOrder(orderData);
+      
+      // Set all form fields from the order data
       setNotes(orderData.notes || orderData.observations || "");
       setStatus(orderData.status);
-      setShipping(orderData.shipping);
-      setFullInvoice(orderData.fullInvoice || false);
-      setTaxSubstitution(orderData.taxSubstitution || false);
-      setPaymentMethod(orderData.paymentMethod);
+      
+      // Fix for shipping field - ensure it's always one of the valid values
+      setShipping(orderData.shipping === "pickup" ? "pickup" : "delivery");
+      
+      setFullInvoice(Boolean(orderData.fullInvoice));
+      setTaxSubstitution(Boolean(orderData.taxSubstitution));
+      
+      // Fix for payment method - ensure it's always one of the valid values
+      setPaymentMethod(orderData.paymentMethod === "credit" ? "credit" : "cash");
+      
       setDeliveryLocation(orderData.deliveryLocation || null);
       
       // Set half invoice percentage if available
@@ -90,7 +98,7 @@ const OrderUpdate = () => {
       
       // Set selected discount options if available
       if (orderData.discountOptions && Array.isArray(orderData.discountOptions)) {
-        const discountIds = orderData.discountOptions.map((discount: any) => discount.id);
+        const discountIds = orderData.discountOptions.map((discount) => discount.id);
         setSelectedDiscountOptions(discountIds);
       } else if (orderData.appliedDiscounts && Array.isArray(orderData.appliedDiscounts)) {
         // Fallback to appliedDiscounts if discountOptions is not available
@@ -113,7 +121,7 @@ const OrderUpdate = () => {
       value === "completed" || 
       value === "canceled"
     ) {
-      setStatus(value as "pending" | "confirmed" | "invoiced" | "completed" | "canceled");
+      setStatus(value as Order["status"]);
     }
   };
   
@@ -159,14 +167,15 @@ const OrderUpdate = () => {
         taxSubstitution,
         paymentMethod,
         deliveryLocation,
+        // Only include halfInvoicePercentage if not using full invoice
         halfInvoicePercentage: !fullInvoice ? halfInvoicePercentage : undefined,
         // Include other fields that might have changed
-        observations: notes,
+        observations: notes, // For backward compatibility
       };
       
       console.log("Saving order with data:", updatedOrderData);
       
-      // Use the new updateOrder function to save all changes at once
+      // Use the updateOrder function to save all changes at once
       updateOrder(id, updatedOrderData);
       
       toast.success(`Pedido #${id.slice(-4)} foi atualizado com sucesso.`);
@@ -453,14 +462,14 @@ const OrderUpdate = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {order.items.map((item: CartItem) => (
+                {order.items && order.items.map((item: CartItem) => (
                   <div key={item.id} className="flex justify-between items-start p-3 border rounded-lg hover:bg-gray-50">
                     <div className="flex items-center space-x-4">
                       <div className="h-10 w-10 rounded bg-gray-100 flex items-center justify-center">
                         <Package className="h-5 w-5 text-gray-400" />
                       </div>
                       <div>
-                        <p className="font-medium">{item.product.name}</p>
+                        <p className="font-medium">{item.product?.name}</p>
                         <div className="flex items-center space-x-4 text-sm text-gray-500">
                           <span>Quantidade: {item.quantity}</span>
                           <span>Desconto: {item.discount}%</span>
@@ -476,7 +485,7 @@ const OrderUpdate = () => {
                   </div>
                 ))}
                 
-                {order.items.length === 0 && (
+                {!order.items || order.items.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <Package className="h-12 w-12 text-gray-300 mb-4" />
                     <h2 className="text-xl font-medium text-gray-600">Nenhum item no pedido</h2>
@@ -500,12 +509,12 @@ const OrderUpdate = () => {
               
               <div>
                 <h3 className="text-sm font-medium text-gray-500">Data de Criação</h3>
-                <p>{formatDate(order.createdAt)}</p>
+                <p>{formatDate(new Date(order.createdAt))}</p>
               </div>
               
               <div>
                 <h3 className="text-sm font-medium text-gray-500">Última Atualização</h3>
-                <p>{formatDate(order.updatedAt)}</p>
+                <p>{formatDate(new Date(order.updatedAt))}</p>
               </div>
               
               <div>
@@ -523,7 +532,7 @@ const OrderUpdate = () => {
                   <div className="h-6 w-6 rounded-full bg-ferplas-100 flex items-center justify-center mr-2">
                     <User className="h-3 w-3 text-ferplas-600" />
                   </div>
-                  <span>{order.user.name}</span>
+                  <span>{order.user?.name || 'Usuário'}</span>
                 </div>
               </div>
               
@@ -531,9 +540,9 @@ const OrderUpdate = () => {
               
               <div>
                 <h3 className="text-sm font-medium text-gray-500">Cliente</h3>
-                <p className="font-medium">{order.customer.companyName}</p>
-                <p className="text-sm">{order.customer.document}</p>
-                <p className="text-sm">{order.customer.city}/{order.customer.state}</p>
+                <p className="font-medium">{order.customer?.companyName}</p>
+                <p className="text-sm">{order.customer?.document}</p>
+                <p className="text-sm">{order.customer?.city}/{order.customer?.state}</p>
               </div>
               
               <Separator />
@@ -547,7 +556,7 @@ const OrderUpdate = () => {
                   </div>
                   <div className="flex justify-between text-sm text-red-600">
                     <span>Descontos:</span>
-                    <span>-{formatCurrency(order.totalDiscount)}</span>
+                    <span>-{formatCurrency(order.totalDiscount || 0)}</span>
                   </div>
                   {(order.deliveryFee || 0) > 0 && (
                     <div className="flex justify-between text-sm">

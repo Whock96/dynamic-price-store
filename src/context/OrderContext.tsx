@@ -121,7 +121,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           ? { 
               ...order, 
               ...orderData, 
-              updatedAt: new Date() 
+              updatedAt: new Date(),
+              // Ensure required fields are always set correctly
+              shipping: orderData.shipping || order.shipping,
+              paymentMethod: orderData.paymentMethod || order.paymentMethod,
+              // Update observations for backward compatibility
+              observations: orderData.notes || orderData.observations || order.observations || order.notes,
             }
           : order
       )
