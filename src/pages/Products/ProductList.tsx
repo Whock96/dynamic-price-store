@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Filter, Package } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -20,13 +20,28 @@ const ProductList = () => {
   const { products, getCategoryName, categories } = useProducts();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [subcategoryFilter, setSubcategoryFilter] = useState('all');
+  const [availableSubcategories, setAvailableSubcategories] = useState<any[]>([]);
+
+  // Update available subcategories when category changes
+  useEffect(() => {
+    if (categoryFilter === 'all') {
+      setAvailableSubcategories([]);
+      setSubcategoryFilter('all');
+    } else {
+      const selectedCategory = categories.find(cat => cat.id === categoryFilter);
+      setAvailableSubcategories(selectedCategory?.subcategories || []);
+      setSubcategoryFilter('all'); // Reset subcategory filter when category changes
+    }
+  }, [categoryFilter, categories]);
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          product.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || product.categoryId === categoryFilter;
+    const matchesSubcategory = subcategoryFilter === 'all' || product.subcategoryId === subcategoryFilter;
     
-    return matchesSearch && matchesCategory;
+    return matchesSearch && matchesCategory && matchesSubcategory;
   });
 
   return (
@@ -77,6 +92,28 @@ const ProductList = () => {
                 {categories.map(category => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            {/* Subcategory filter - only enabled when a category is selected */}
+            <Select 
+              value={subcategoryFilter} 
+              onValueChange={setSubcategoryFilter}
+              disabled={categoryFilter === 'all'}
+            >
+              <SelectTrigger>
+                <div className="flex items-center">
+                  <Filter className="mr-2 h-4 w-4 text-gray-400" />
+                  <SelectValue placeholder="Subcategoria" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as subcategorias</SelectItem>
+                {availableSubcategories.map(subcategory => (
+                  <SelectItem key={subcategory.id} value={subcategory.id}>
+                    {subcategory.name}
                   </SelectItem>
                 ))}
               </SelectContent>
