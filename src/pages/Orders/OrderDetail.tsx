@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
@@ -87,7 +86,6 @@ const OrderDetail = () => {
     );
   }
 
-  // Ensure these properties exist with default values
   const totalDiscount = order.totalDiscount || 0;
   const appliedDiscounts = order.discountOptions || [];
   const items = order.items || [];
@@ -96,6 +94,7 @@ const OrderDetail = () => {
   const fullInvoice = order.fullInvoice || false;
   const taxSubstitution = order.taxSubstitution || false;
   const paymentMethod = order.paymentMethod || 'cash';
+  const paymentTerms = order.paymentTerms || '';
   const deliveryLocation = order.deliveryLocation || null;
   const deliveryFee = order.deliveryFee || 0;
   const halfInvoicePercentage = order.halfInvoicePercentage || 50;
@@ -142,7 +141,6 @@ const OrderDetail = () => {
         </div>
       </header>
 
-      {/* Cliente */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg font-medium">Cliente</CardTitle>
@@ -203,9 +201,7 @@ const OrderDetail = () => {
         </CardContent>
       </Card>
 
-      {/* Histórico do Pedido + Resumo Financeiro (lado a lado) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Histórico do Pedido */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg font-medium">Histórico do Pedido</CardTitle>
@@ -273,7 +269,6 @@ const OrderDetail = () => {
           </CardContent>
         </Card>
 
-        {/* Resumo Financeiro */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg font-medium">Resumo Financeiro</CardTitle>
@@ -301,7 +296,6 @@ const OrderDetail = () => {
               </div>
             </div>
 
-            {/* Condições de pagamento */}
             <div className="mt-4 pt-4 border-t border-gray-200">
               <h3 className="text-sm font-medium text-gray-500 mb-2">Condições de Pagamento</h3>
               <div className="space-y-1">
@@ -309,6 +303,12 @@ const OrderDetail = () => {
                   <span>Forma de Pagamento:</span>
                   <span>{paymentMethod === 'cash' ? 'À Vista' : 'A Prazo'}</span>
                 </div>
+                {paymentMethod === 'credit' && paymentTerms && (
+                  <div className="flex justify-between text-sm">
+                    <span>Prazos de Pagamento:</span>
+                    <span>{paymentTerms}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span>Tipo de Nota:</span>
                   <span>{fullInvoice ? 'Nota Cheia' : 'Meia Nota'}</span>
@@ -329,7 +329,6 @@ const OrderDetail = () => {
         </Card>
       </div>
 
-      {/* Itens do Pedido */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg font-medium flex items-center">
@@ -374,7 +373,6 @@ const OrderDetail = () => {
         </CardContent>
       </Card>
 
-      {/* Descontos e Acréscimos Aplicados */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg font-medium flex items-center">
@@ -415,7 +413,6 @@ const OrderDetail = () => {
         </CardContent>
       </Card>
 
-      {/* Entrega */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg font-medium flex items-center">
@@ -459,7 +456,6 @@ const OrderDetail = () => {
         </CardContent>
       </Card>
 
-      {/* Informações Adicionais */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg font-medium">Informações Adicionais</CardTitle>
@@ -482,6 +478,18 @@ const OrderDetail = () => {
               <h3 className="text-sm font-medium text-gray-500">Status Atual</h3>
               <div className="mt-1">
                 {getStatusBadge(order.status)}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <h3 className="text-sm font-medium text-gray-500 mb-2">Forma de Pagamento</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="font-medium">{paymentMethod === 'cash' ? 'À Vista' : 'A Prazo'}</p>
+                {paymentMethod === 'credit' && paymentTerms && (
+                  <p className="text-sm text-gray-600">Prazos: {paymentTerms}</p>
+                )}
               </div>
             </div>
           </div>

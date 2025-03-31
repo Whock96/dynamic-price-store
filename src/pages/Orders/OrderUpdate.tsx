@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, Package, User, Calendar, Truck, Receipt, ShoppingCart, Trash } from 'lucide-react';
@@ -7,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input'; // Added missing Input import
+import { Input } from '@/components/ui/input';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -85,7 +84,6 @@ const OrderUpdate = () => {
       setTaxSubstitution(Boolean(orderData.taxSubstitution));
       
       setPaymentMethod(orderData.paymentMethod === "credit" ? "credit" : "cash");
-      
       setPaymentTerms(orderData.paymentTerms || "");
       
       setDeliveryLocation(orderData.deliveryLocation || null);
