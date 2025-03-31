@@ -48,6 +48,8 @@ import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
 import { Product } from '@/types/types';
 import { useProducts } from '@/context/ProductContext';
+import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
 
 const ProductManagement = () => {
   const navigate = useNavigate();
@@ -63,10 +65,15 @@ const ProductManagement = () => {
     name: '',
     description: '',
     listPrice: 0,
-    minPrice: 0,
     weight: 0,
     quantity: 0,
-    volume: 0,
+    quantityPerVolume: 0,
+    dimensions: {
+      width: 0,
+      height: 0,
+      length: 0
+    },
+    cubicVolume: 0,
     categoryId: '',
     subcategoryId: '',
     imageUrl: 'https://via.placeholder.com/150',
@@ -120,10 +127,11 @@ const ProductManagement = () => {
         name: product.name,
         description: product.description,
         listPrice: product.listPrice,
-        minPrice: product.minPrice,
         weight: product.weight,
         quantity: product.quantity,
-        volume: product.volume,
+        quantityPerVolume: product.quantityPerVolume || 0,
+        dimensions: product.dimensions || { width: 0, height: 0, length: 0 },
+        cubicVolume: product.cubicVolume || 0,
         categoryId: product.categoryId,
         subcategoryId: product.subcategoryId,
         imageUrl: product.imageUrl,
@@ -142,10 +150,15 @@ const ProductManagement = () => {
         name: '',
         description: '',
         listPrice: 0,
-        minPrice: 0,
         weight: 0,
         quantity: 0,
-        volume: 0,
+        quantityPerVolume: 0,
+        dimensions: {
+          width: 0,
+          height: 0,
+          length: 0
+        },
+        cubicVolume: 0,
         categoryId: categories[0]?.id || '',
         subcategoryId: categories[0]?.subcategories[0]?.id || '',
         imageUrl: 'https://via.placeholder.com/150',
@@ -166,12 +179,34 @@ const ProductManagement = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'listPrice' || name === 'minPrice' || name === 'weight' || name === 'quantity' || name === 'volume' 
-        ? parseFloat(value) || 0 
-        : value
-    }));
+    
+    // Handle dimension fields
+    if (name.startsWith('dimension.')) {
+      const dimensionKey = name.split('.')[1] as 'width' | 'height' | 'length';
+      const dimensionValue = parseFloat(value) || 0;
+      
+      const updatedDimensions = {
+        ...formData.dimensions,
+        [dimensionKey]: dimensionValue
+      };
+      
+      // Calculate cubic volume (width * height * length) in cubic meters
+      const cubicVolume = (updatedDimensions.width * updatedDimensions.height * updatedDimensions.length) / 1000000;
+      
+      setFormData(prev => ({
+        ...prev,
+        dimensions: updatedDimensions,
+        cubicVolume: parseFloat(cubicVolume.toFixed(4))
+      }));
+    } else {
+      // Handle other fields
+      setFormData(prev => ({
+        ...prev,
+        [name]: name === 'listPrice' || name === 'weight' || name === 'quantity' || name === 'quantityPerVolume'
+          ? parseFloat(value) || 0 
+          : value
+      }));
+    }
   };
 
   const handleSelectChange = (name: string, value: string) => {
@@ -192,10 +227,15 @@ const ProductManagement = () => {
     const processedData = {
       ...formData,
       listPrice: Number(formData.listPrice),
-      minPrice: Number(formData.minPrice),
       weight: Number(formData.weight),
       quantity: Number(formData.quantity),
-      volume: Number(formData.volume)
+      quantityPerVolume: Number(formData.quantityPerVolume),
+      dimensions: {
+        width: Number(formData.dimensions.width),
+        height: Number(formData.dimensions.height),
+        length: Number(formData.dimensions.length)
+      },
+      cubicVolume: Number(formData.cubicVolume)
     };
 
     if (isEditMode) {
@@ -302,7 +342,6 @@ const ProductManagement = () => {
                 <TableHead>Nome</TableHead>
                 <TableHead>Categoria</TableHead>
                 <TableHead>Preço</TableHead>
-                <TableHead>Preço Mínimo</TableHead>
                 <TableHead>Estoque</TableHead>
                 <TableHead>Peso</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
@@ -316,7 +355,6 @@ const ProductManagement = () => {
                     {getCategoryName(product.categoryId)} / {getSubcategoryName(product.categoryId, product.subcategoryId)}
                   </TableCell>
                   <TableCell>{formatCurrency(product.listPrice)}</TableCell>
-                  <TableCell>{formatCurrency(product.minPrice)}</TableCell>
                   <TableCell>{product.quantity} un.</TableCell>
                   <TableCell>{product.weight} kg</TableCell>
                   <TableCell className="text-right space-x-2">
@@ -467,19 +505,6 @@ const ProductManagement = () => {
               </div>
               
               <div>
-                <Label htmlFor="minPrice">Preço Mínimo (R$)*</Label>
-                <Input
-                  id="minPrice"
-                  name="minPrice"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.minPrice}
-                  onChange={handleInputChange}
-                />
-              </div>
-              
-              <div>
                 <Label htmlFor="weight">Peso (kg)</Label>
                 <Input
                   id="weight"
@@ -503,18 +528,63 @@ const ProductManagement = () => {
                   onChange={handleInputChange}
                 />
               </div>
-              
+
               <div>
-                <Label htmlFor="volume">Volume</Label>
+                <Label htmlFor="quantityPerVolume">Quantidade por Volume</Label>
                 <Input
-                  id="volume"
-                  name="volume"
+                  id="quantityPerVolume"
+                  name="quantityPerVolume"
                   type="number"
                   min="0"
-                  step="0.01"
-                  value={formData.volume}
+                  step="1"
+                  value={formData.quantityPerVolume}
                   onChange={handleInputChange}
                 />
+              </div>
+              
+              <div className="md:col-span-2">
+                <Label>Dimensões (mm)</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <Label htmlFor="dimension.width" className="text-xs text-gray-500">Largura</Label>
+                    <Input
+                      id="dimension.width"
+                      name="dimension.width"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={formData.dimensions.width}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="dimension.height" className="text-xs text-gray-500">Altura</Label>
+                    <Input
+                      id="dimension.height"
+                      name="dimension.height"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={formData.dimensions.height}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="dimension.length" className="text-xs text-gray-500">Comprimento</Label>
+                    <Input
+                      id="dimension.length"
+                      name="dimension.length"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={formData.dimensions.length}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Volume calculado: {formData.cubicVolume} m³
+                </p>
               </div>
               
               <div>

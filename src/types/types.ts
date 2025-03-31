@@ -21,10 +21,15 @@ export interface Product {
   name: string;
   description: string;
   listPrice: number;
-  minPrice: number;
   weight: number;
   quantity: number;
-  volume: number;
+  quantityPerVolume: number;
+  dimensions: {
+    width: number;
+    height: number;
+    length: number;
+  };
+  cubicVolume: number;
   categoryId: string;
   subcategoryId: string;
   imageUrl: string;

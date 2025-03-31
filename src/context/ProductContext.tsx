@@ -1,23 +1,34 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product, Category, Subcategory } from '@/types/types';
 
 // Initial mock data for products
-const INITIAL_PRODUCTS = Array.from({ length: 20 }, (_, i) => ({
-  id: `product-${i + 1}`,
-  name: `Produto ${i + 1}`,
-  description: `Descrição do produto ${i + 1}. Este é um produto de alta qualidade.`,
-  listPrice: Math.floor(Math.random() * 900) + 100,
-  minPrice: Math.floor(Math.random() * 80) + 50,
-  weight: Math.floor(Math.random() * 5) + 0.5,
-  quantity: Math.floor(Math.random() * 100) + 10,
-  volume: Math.floor(Math.random() * 3) + 1,
-  categoryId: i % 3 === 0 ? '1' : i % 3 === 1 ? '2' : '3',
-  subcategoryId: i % 3 === 0 ? '1-1' : i % 3 === 1 ? '2-1' : '3-1',
-  imageUrl: 'https://via.placeholder.com/150',
-  createdAt: new Date(),
-  updatedAt: new Date(),
-}));
+const INITIAL_PRODUCTS = Array.from({ length: 20 }, (_, i) => {
+  const width = Math.floor(Math.random() * 50) + 10;
+  const height = Math.floor(Math.random() * 50) + 10;
+  const length = Math.floor(Math.random() * 50) + 10;
+  const cubicVolume = (width * height * length) / 1000000; // Convert to cubic meters
+  
+  return {
+    id: `product-${i + 1}`,
+    name: `Produto ${i + 1}`,
+    description: `Descrição do produto ${i + 1}. Este é um produto de alta qualidade.`,
+    listPrice: Math.floor(Math.random() * 900) + 100,
+    weight: Math.floor(Math.random() * 5) + 0.5,
+    quantity: Math.floor(Math.random() * 100) + 10,
+    quantityPerVolume: Math.floor(Math.random() * 10) + 1,
+    dimensions: {
+      width,
+      height,
+      length
+    },
+    cubicVolume: parseFloat(cubicVolume.toFixed(4)),
+    categoryId: i % 3 === 0 ? '1' : i % 3 === 1 ? '2' : '3',
+    subcategoryId: i % 3 === 0 ? '1-1' : i % 3 === 1 ? '2-1' : '3-1',
+    imageUrl: 'https://via.placeholder.com/150',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }
+});
 
 // Mock data for categories
 export const MOCK_CATEGORIES = [

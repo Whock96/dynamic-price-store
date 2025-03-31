@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
-  ShoppingCart, ArrowLeft, Package, Truck, Weight, Box
+  ShoppingCart, ArrowLeft, Package, Truck, Weight, Box, Ruler
 } from 'lucide-react';
 import { useProducts } from '@/context/ProductContext';
 import { useCart } from '../../context/CartContext';
@@ -46,11 +46,13 @@ const ProductDetail = () => {
     addItem(product, quantity);
   };
 
-  // Mock product specifications since they don't exist in the Product type
-  const mockSpecifications = [
+  // Product specifications
+  const specifications = [
     { name: "Material", value: "PVC" },
     { name: "Cor", value: "Branco" },
-    { name: "Dimensões", value: `${product.volume} m³` },
+    { name: "Dimensões", value: `${product.dimensions?.width || 0} × ${product.dimensions?.height || 0} × ${product.dimensions?.length || 0} mm` },
+    { name: "Volume", value: `${product.cubicVolume} m³` },
+    { name: "Quantidade por volume", value: `${product.quantityPerVolume || 1} un.` },
     { name: "Peso", value: `${product.weight} kg` },
     { name: "Código do Produto", value: product.id },
     { name: "Categoria", value: getCategoryName(product.categoryId) },
@@ -81,8 +83,13 @@ const ProductDetail = () => {
               alt={product.name}
               className="absolute inset-0 w-full h-full object-cover transition-all duration-500 ease-in-out"
             />
-            <div className="absolute top-2 right-2 bg-ferplas-500 text-white text-xs px-2 py-1 rounded-full">
-              {getCategoryName(product.categoryId)}
+            <div className="absolute top-2 right-2 flex flex-col items-end">
+              <div className="bg-ferplas-500 text-white text-xs px-2 py-1 rounded-full inline-block min-w-[20px] text-center">
+                {getCategoryName(product.categoryId)}
+              </div>
+              <div className="bg-ferplas-600 text-white text-xs px-2 py-1 rounded-full inline-block min-w-[20px] text-center mt-1">
+                {getSubcategoryName(product.categoryId, product.subcategoryId)}
+              </div>
             </div>
           </div>
           
@@ -146,19 +153,19 @@ const ProductDetail = () => {
             </Card>
             <Card>
               <CardContent className="p-3 flex items-center">
-                <Box className="h-5 w-5 text-ferplas-500 mr-2" />
+                <Ruler className="h-5 w-5 text-ferplas-500 mr-2" />
                 <div>
-                  <p className="text-xs text-gray-500">Volume</p>
-                  <p className="font-medium">{product.volume} m³</p>
+                  <p className="text-xs text-gray-500">Dimensões</p>
+                  <p className="font-medium">{product.dimensions?.width || 0} × {product.dimensions?.height || 0} × {product.dimensions?.length || 0} mm</p>
                 </div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-3 flex items-center">
-                <Truck className="h-5 w-5 text-ferplas-500 mr-2" />
+                <Box className="h-5 w-5 text-ferplas-500 mr-2" />
                 <div>
-                  <p className="text-xs text-gray-500">Entrega</p>
-                  <p className="font-medium">1-3 dias úteis</p>
+                  <p className="text-xs text-gray-500">Volume</p>
+                  <p className="font-medium">{product.cubicVolume} m³</p>
                 </div>
               </CardContent>
             </Card>
@@ -169,7 +176,6 @@ const ProductDetail = () => {
               <div>
                 <p className="text-sm text-gray-500">Preço de tabela</p>
                 <p className="text-3xl font-bold text-ferplas-600">{formatCurrency(product.listPrice)}</p>
-                <p className="text-xs text-gray-500">Preço mínimo: {formatCurrency(product.minPrice)}</p>
               </div>
               <div className="mt-4 sm:mt-0">
                 <p className="text-sm text-gray-500 mb-1">Quantidade</p>
@@ -230,7 +236,7 @@ const ProductDetail = () => {
         <Card>
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {mockSpecifications.map((spec, index) => (
+              {specifications.map((spec, index) => (
                 <div key={index} className="flex justify-between border-b pb-2">
                   <span className="font-medium">{spec.name}</span>
                   <span className="text-gray-600">{spec.value}</span>
