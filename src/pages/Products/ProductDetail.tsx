@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -46,13 +45,13 @@ const ProductDetail = () => {
     addItem(product, quantity);
   };
 
-  // Product specifications
+  // Updated product specifications with the correct labels and values
   const specifications = [
     { name: "Material", value: "PVC" },
     { name: "Cor", value: "Branco" },
     { name: "Dimensões", value: `${product.dimensions?.width || 0} × ${product.dimensions?.height || 0} × ${product.dimensions?.length || 0} mm` },
-    { name: "Volume", value: `${product.cubicVolume} m³` },
-    { name: "Quantidade por volume", value: `${product.quantityPerVolume || 1} un.` },
+    { name: "Volume Cúbico", value: `${product.cubicVolume} m³` },
+    { name: "Quantidade por Volume", value: `${product.quantityPerVolume || 1} un.` },
     { name: "Peso", value: `${product.weight} kg` },
     { name: "Código do Produto", value: product.id },
     { name: "Categoria", value: getCategoryName(product.categoryId) },
