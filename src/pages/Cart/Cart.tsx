@@ -44,6 +44,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const Cart = () => {
   const navigate = useNavigate();
@@ -209,7 +210,7 @@ const Cart = () => {
                     {customer ? 'Trocar' : 'Selecionar'}
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-3xl max-h-[80vh]">
+                <DialogContent className="sm:max-w-[800px]">
                   <DialogHeader>
                     <DialogTitle>Selecionar Cliente</DialogTitle>
                     <DialogDescription>
@@ -241,7 +242,7 @@ const Cart = () => {
                   </div>
                   
                   {filteredCustomers.length > 0 ? (
-                    <div className="overflow-y-auto" style={{ maxHeight: "calc(80vh - 200px)" }}>
+                    <ScrollArea className="h-[400px]">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -270,7 +271,7 @@ const Cart = () => {
                           ))}
                         </TableBody>
                       </Table>
-                    </div>
+                    </ScrollArea>
                   ) : (
                     <div className="text-center py-12">
                       <p className="text-gray-500">Nenhum cliente encontrado. Altere sua busca ou adicione um novo cliente.</p>
