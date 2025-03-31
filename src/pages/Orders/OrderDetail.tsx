@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
@@ -21,6 +22,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useOrders } from '@/context/OrderContext';
+import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -47,20 +49,7 @@ const OrderDetail = () => {
   }, [id, getOrderById]);
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Pendente</Badge>;
-      case 'confirmed':
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Confirmado</Badge>;
-      case 'invoiced':
-        return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">Faturado</Badge>;
-      case 'completed':
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Concluído</Badge>;
-      case 'canceled':
-        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Cancelado</Badge>;
-      default:
-        return <Badge variant="outline">Desconhecido</Badge>;
-    }
+    return <OrderStatusBadge status={status as any} />;
   };
 
   const formatCurrency = (value: number) => {
@@ -97,6 +86,16 @@ const OrderDetail = () => {
     );
   }
 
+  // Ensure these properties exist with default values
+  const totalDiscount = order.totalDiscount || 0;
+  const appliedDiscounts = order.appliedDiscounts || [];
+  const items = order.items || [];
+  const shipping = order.shipping || 'delivery';
+  const notes = order.notes || '';
+  const fullInvoice = order.fullInvoice || false;
+  const taxSubstitution = order.taxSubstitution || false;
+  const paymentMethod = order.paymentMethod || 'cash';
+
   return (
     <div className="space-y-6 animate-fade-in">
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -115,7 +114,7 @@ const OrderDetail = () => {
               <div className="ml-4">{getStatusBadge(order.status)}</div>
             </div>
             <p className="text-muted-foreground">
-              Criado em {format(order.createdAt, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+              Criado em {format(new Date(order.createdAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
             </p>
           </div>
         </div>
@@ -216,9 +215,9 @@ const OrderDetail = () => {
                 <div>
                   <p className="font-medium">Pedido Criado</p>
                   <p className="text-sm text-gray-500">
-                    {format(order.createdAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    {format(new Date(order.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                   </p>
-                  <p className="text-sm text-gray-500">Por {order.userName}</p>
+                  <p className="text-sm text-gray-500">Por {order.user?.name || 'Usuário'}</p>
                 </div>
               </div>
               
@@ -230,7 +229,7 @@ const OrderDetail = () => {
                   <div>
                     <p className="font-medium">Pedido Confirmado</p>
                     <p className="text-sm text-gray-500">
-                      {format(new Date(order.createdAt.getTime() + 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      {format(new Date(new Date(order.createdAt).getTime() + 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                     </p>
                     <p className="text-sm text-gray-500">Por Administrador</p>
                   </div>
@@ -245,7 +244,7 @@ const OrderDetail = () => {
                   <div>
                     <p className="font-medium">Pedido Entregue</p>
                     <p className="text-sm text-gray-500">
-                      {format(new Date(order.createdAt.getTime() + 3 * 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      {format(new Date(new Date(order.createdAt).getTime() + 3 * 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                     </p>
                     <p className="text-sm text-gray-500">Entregue por Transporte Ferplas</p>
                   </div>
@@ -260,7 +259,7 @@ const OrderDetail = () => {
                   <div>
                     <p className="font-medium">Pedido Cancelado</p>
                     <p className="text-sm text-gray-500">
-                      {format(new Date(order.createdAt.getTime() + 2 * 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      {format(new Date(new Date(order.createdAt).getTime() + 2 * 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                     </p>
                     <p className="text-sm text-gray-500">Por Cliente</p>
                   </div>
@@ -283,7 +282,7 @@ const OrderDetail = () => {
               </div>
               <div className="flex justify-between text-sm text-red-600">
                 <span>Descontos:</span>
-                <span>-{formatCurrency(order.totalDiscount)}</span>
+                <span>-{formatCurrency(totalDiscount)}</span>
               </div>
               <Separator className="my-2" />
               <div className="flex justify-between font-medium text-lg">
@@ -313,14 +312,17 @@ const OrderDetail = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {order.items && order.items.map((item: any, index: number) => (
-                <TableRow key={item.id || `item-${index}`}>
-                  <TableCell className="font-medium">{item.product?.name || item.productName || `Produto ${index + 1}`}</TableCell>
-                  <TableCell>{formatCurrency(item.listPrice || item.product?.listPrice || 0)}</TableCell>
-                  <TableCell>{item.discount || 0}%</TableCell>
-                  <TableCell>{formatCurrency(item.finalPrice || 0)}</TableCell>
-                  <TableCell>{item.quantity || 0}</TableCell>
-                  <TableCell>{formatCurrency(item.subtotal || 0)}</TableCell>
+              {items.map((item: any, index: number) => (
+                <TableRow key={item?.id || `item-${index}`}>
+                  <TableCell className="font-medium">
+                    {/* Fix the null check for item and item.product */}
+                    {item?.product?.name || item?.productName || `Produto ${index + 1}`}
+                  </TableCell>
+                  <TableCell>{formatCurrency(item?.listPrice || item?.product?.listPrice || 0)}</TableCell>
+                  <TableCell>{item?.discount || 0}%</TableCell>
+                  <TableCell>{formatCurrency(item?.finalPrice || 0)}</TableCell>
+                  <TableCell>{item?.quantity || 0}</TableCell>
+                  <TableCell>{formatCurrency(item?.subtotal || 0)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -335,8 +337,8 @@ const OrderDetail = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {order.appliedDiscounts && order.appliedDiscounts.length > 0 ? (
-              order.appliedDiscounts.map((discount: any, index: number) => (
+            {appliedDiscounts.length > 0 ? (
+              appliedDiscounts.map((discount: any, index: number) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex items-center">
                     <div className="w-8 h-8 rounded-full bg-ferplas-100 flex items-center justify-center mr-3">
@@ -373,12 +375,12 @@ const OrderDetail = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <h3 className="text-sm font-medium text-gray-500">Vendedor</h3>
-              <p className="text-lg">{order.userName}</p>
+              <p className="text-lg">{order.user?.name || 'Vendedor não identificado'}</p>
             </div>
             <div>
               <h3 className="text-sm font-medium text-gray-500">Tipo de Entrega</h3>
               <p className="text-lg flex items-center">
-                {order.shipping === 'delivery' ? (
+                {shipping === 'delivery' ? (
                   <>
                     <Truck className="h-4 w-4 mr-2 text-ferplas-500" />
                     Entrega
@@ -393,28 +395,28 @@ const OrderDetail = () => {
             </div>
             <div>
               <h3 className="text-sm font-medium text-gray-500">Nota Fiscal</h3>
-              <p className="text-lg">{order.fullInvoice ? 'Nota Cheia' : 'Meia Nota'}</p>
+              <p className="text-lg">{fullInvoice ? 'Nota Cheia' : 'Meia Nota'}</p>
             </div>
             <div>
               <h3 className="text-sm font-medium text-gray-500">Substituição Tributária</h3>
-              <p className="text-lg">{order.taxSubstitution ? 'Sim' : 'Não'}</p>
+              <p className="text-lg">{taxSubstitution ? 'Sim' : 'Não'}</p>
             </div>
             <div>
               <h3 className="text-sm font-medium text-gray-500">Forma de Pagamento</h3>
-              <p className="text-lg">{order.paymentMethod === 'cash' ? 'À Vista' : 'A Prazo'}</p>
+              <p className="text-lg">{paymentMethod === 'cash' ? 'À Vista' : 'A Prazo'}</p>
             </div>
             <div>
               <h3 className="text-sm font-medium text-gray-500">Data do Pedido</h3>
               <p className="text-lg">
-                {format(order.createdAt, "dd/MM/yyyy", { locale: ptBR })}
+                {format(new Date(order.createdAt), "dd/MM/yyyy", { locale: ptBR })}
               </p>
             </div>
           </div>
 
-          {order.notes && (
+          {notes && (
             <div className="mt-4 pt-4 border-t border-gray-200">
               <h3 className="text-sm font-medium text-gray-500">Observações</h3>
-              <p className="mt-1">{order.notes}</p>
+              <p className="mt-1">{notes}</p>
             </div>
           )}
         </CardContent>
