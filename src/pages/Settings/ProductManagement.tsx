@@ -92,16 +92,19 @@ const ProductManagement = () => {
     return matchesSearch && matchesCategory;
   });
 
-  // Atualizar subcategorias disponíveis quando a categoria mudar
+  // Make sure we're using updated subcategories when category changes
   useEffect(() => {
     if (formData.categoryId) {
       const category = categories.find(cat => cat.id === formData.categoryId);
       if (category) {
         setAvailableSubcategories(category.subcategories);
-        setFormData(prev => ({
-          ...prev,
-          subcategoryId: category.subcategories[0]?.id || ''
-        }));
+        if (!category.subcategories.some(sub => sub.id === formData.subcategoryId)) {
+          // Reset subcategory if current selection is not valid for the new category
+          setFormData(prev => ({
+            ...prev,
+            subcategoryId: category.subcategories[0]?.id || ''
+          }));
+        }
       }
     } else {
       setAvailableSubcategories([]);
@@ -185,24 +188,34 @@ const ProductManagement = () => {
       return;
     }
 
+    // Ensure proper number values
+    const processedData = {
+      ...formData,
+      listPrice: Number(formData.listPrice),
+      minPrice: Number(formData.minPrice),
+      weight: Number(formData.weight),
+      quantity: Number(formData.quantity),
+      volume: Number(formData.volume)
+    };
+
     if (isEditMode) {
       // Atualizar produto existente
-      setProducts(prev => prev.map(p => p.id === formData.id ? {
+      setProducts(prev => prev.map(p => p.id === processedData.id ? {
         ...p,
-        ...formData,
+        ...processedData,
         updatedAt: new Date()
       } as Product : p));
-      toast.success(`Produto "${formData.name}" atualizado com sucesso`);
+      toast.success(`Produto "${processedData.name}" atualizado com sucesso`);
     } else {
       // Adicionar novo produto
       const newProduct: Product = {
-        ...formData,
+        ...processedData,
         createdAt: new Date(),
         updatedAt: new Date()
       } as Product;
       
       setProducts(prev => [...prev, newProduct]);
-      toast.success(`Produto "${formData.name}" adicionado com sucesso`);
+      toast.success(`Produto "${processedData.name}" adicionado com sucesso`);
     }
     
     handleCloseDialog();

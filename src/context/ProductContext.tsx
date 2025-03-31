@@ -68,9 +68,58 @@ interface ProductContextType {
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
+// Helper functions for localStorage
+const loadProductsFromStorage = (): Product[] => {
+  try {
+    const savedProducts = localStorage.getItem('ferplas_products');
+    if (savedProducts) {
+      // Parse the JSON string and convert date strings back to Date objects
+      const parsedProducts = JSON.parse(savedProducts);
+      return parsedProducts.map((product: any) => ({
+        ...product,
+        createdAt: new Date(product.createdAt),
+        updatedAt: new Date(product.updatedAt)
+      }));
+    }
+  } catch (error) {
+    console.error('Error loading products from localStorage:', error);
+  }
+  return INITIAL_PRODUCTS;
+};
+
+const loadCategoriesFromStorage = (): Category[] => {
+  try {
+    const savedCategories = localStorage.getItem('ferplas_categories');
+    if (savedCategories) {
+      return JSON.parse(savedCategories);
+    }
+  } catch (error) {
+    console.error('Error loading categories from localStorage:', error);
+  }
+  return MOCK_CATEGORIES;
+};
+
 export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [categories, setCategories] = useState<Category[]>(MOCK_CATEGORIES);
+  const [products, setProducts] = useState<Product[]>(loadProductsFromStorage);
+  const [categories, setCategories] = useState<Category[]>(loadCategoriesFromStorage);
+
+  // Save products to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('ferplas_products', JSON.stringify(products));
+    } catch (error) {
+      console.error('Error saving products to localStorage:', error);
+    }
+  }, [products]);
+
+  // Save categories to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('ferplas_categories', JSON.stringify(categories));
+    } catch (error) {
+      console.error('Error saving categories to localStorage:', error);
+    }
+  }, [categories]);
 
   const getProductById = (id: string) => {
     return products.find(product => product.id === id);
