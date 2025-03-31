@@ -31,6 +31,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogBody,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -46,46 +47,14 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
 import { Product } from '@/types/types';
-
-// Mock data para categorias e subcategorias
-const MOCK_CATEGORIES = [
-  { id: '1', name: 'Tubos e Conexões', subcategories: [
-    { id: '1-1', name: 'Tubos PVC' },
-    { id: '1-2', name: 'Conexões PVC' },
-  ]},
-  { id: '2', name: 'Ferramentas', subcategories: [
-    { id: '2-1', name: 'Manuais' },
-    { id: '2-2', name: 'Elétricas' },
-  ]},
-  { id: '3', name: 'Hidráulica', subcategories: [
-    { id: '3-1', name: 'Válvulas' },
-    { id: '3-2', name: 'Registros' },
-  ]},
-];
-
-// Mock data para produtos
-const MOCK_PRODUCTS = Array.from({ length: 20 }, (_, i) => ({
-  id: `product-${i + 1}`,
-  name: `Produto ${i + 1}`,
-  description: `Descrição do produto ${i + 1}. Este é um produto de alta qualidade.`,
-  listPrice: Math.floor(Math.random() * 900) + 100,
-  minPrice: Math.floor(Math.random() * 80) + 50,
-  weight: Math.floor(Math.random() * 5) + 0.5,
-  quantity: Math.floor(Math.random() * 100) + 10,
-  volume: Math.floor(Math.random() * 3) + 1,
-  categoryId: i % 3 === 0 ? '1' : i % 3 === 1 ? '2' : '3',
-  subcategoryId: i % 6 === 0 ? '1-1' : i % 6 === 1 ? '1-2' : i % 6 === 2 ? '2-1' : i % 6 === 3 ? '2-2' : i % 6 === 4 ? '3-1' : '3-2',
-  imageUrl: 'https://via.placeholder.com/150',
-  createdAt: new Date(),
-  updatedAt: new Date(),
-}));
+import { useProducts } from '@/context/ProductContext';
 
 const ProductManagement = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
+  const { products, setProducts, categories, getCategoryName, getSubcategoryName } = useProducts();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -126,7 +95,7 @@ const ProductManagement = () => {
   // Atualizar subcategorias disponíveis quando a categoria mudar
   useEffect(() => {
     if (formData.categoryId) {
-      const category = MOCK_CATEGORIES.find(cat => cat.id === formData.categoryId);
+      const category = categories.find(cat => cat.id === formData.categoryId);
       if (category) {
         setAvailableSubcategories(category.subcategories);
         setFormData(prev => ({
@@ -137,7 +106,7 @@ const ProductManagement = () => {
     } else {
       setAvailableSubcategories([]);
     }
-  }, [formData.categoryId]);
+  }, [formData.categoryId, categories]);
 
   const handleOpenDialog = (product?: Product) => {
     if (product) {
@@ -158,7 +127,7 @@ const ProductManagement = () => {
       });
       
       // Atualizar subcategorias disponíveis
-      const category = MOCK_CATEGORIES.find(cat => cat.id === product.categoryId);
+      const category = categories.find(cat => cat.id === product.categoryId);
       if (category) {
         setAvailableSubcategories(category.subcategories);
       }
@@ -174,13 +143,13 @@ const ProductManagement = () => {
         weight: 0,
         quantity: 0,
         volume: 0,
-        categoryId: MOCK_CATEGORIES[0].id,
-        subcategoryId: MOCK_CATEGORIES[0].subcategories[0].id,
+        categoryId: categories[0].id,
+        subcategoryId: categories[0].subcategories[0].id,
         imageUrl: 'https://via.placeholder.com/150',
       });
       
       // Definir subcategorias iniciais
-      setAvailableSubcategories(MOCK_CATEGORIES[0].subcategories);
+      setAvailableSubcategories(categories[0].subcategories);
     }
     
     setIsDialogOpen(true);
@@ -250,18 +219,6 @@ const ProductManagement = () => {
     }).format(value);
   };
 
-  const getCategoryName = (categoryId: string) => {
-    return MOCK_CATEGORIES.find(cat => cat.id === categoryId)?.name || 'Desconhecida';
-  };
-
-  const getSubcategoryName = (categoryId: string, subcategoryId: string) => {
-    const category = MOCK_CATEGORIES.find(cat => cat.id === categoryId);
-    if (!category) return 'Desconhecida';
-    
-    const subcategory = category.subcategories.find(sub => sub.id === subcategoryId);
-    return subcategory?.name || 'Desconhecida';
-  };
-
   return (
     <div className="space-y-6 animate-fade-in">
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -311,7 +268,7 @@ const ProductManagement = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as categorias</SelectItem>
-                {MOCK_CATEGORIES.map(category => (
+                {categories.map(category => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}
                   </SelectItem>
@@ -415,146 +372,148 @@ const ProductManagement = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-4 md:col-span-2">
+          <DialogBody>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2">
+              <div className="space-y-4 md:col-span-2">
+                <div>
+                  <Label htmlFor="name">Nome do Produto*</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    placeholder="Ex: Tubo PVC 100mm"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="description">Descrição*</Label>
+                  <Textarea
+                    id="description"
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    placeholder="Descreva o produto em detalhes..."
+                    rows={3}
+                  />
+                </div>
+              </div>
+              
               <div>
-                <Label htmlFor="name">Nome do Produto*</Label>
+                <Label htmlFor="categoryId">Categoria*</Label>
+                <Select 
+                  value={formData.categoryId} 
+                  onValueChange={(value) => handleSelectChange('categoryId', value)}
+                >
+                  <SelectTrigger id="categoryId">
+                    <SelectValue placeholder="Selecione uma categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map(category => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="subcategoryId">Subcategoria*</Label>
+                <Select 
+                  value={formData.subcategoryId} 
+                  onValueChange={(value) => handleSelectChange('subcategoryId', value)}
+                  disabled={availableSubcategories.length === 0}
+                >
+                  <SelectTrigger id="subcategoryId">
+                    <SelectValue placeholder="Selecione uma subcategoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableSubcategories.map(subcategory => (
+                      <SelectItem key={subcategory.id} value={subcategory.id}>
+                        {subcategory.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="listPrice">Preço de Tabela (R$)*</Label>
                 <Input
-                  id="name"
-                  name="name"
-                  value={formData.name}
+                  id="listPrice"
+                  name="listPrice"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.listPrice}
                   onChange={handleInputChange}
-                  placeholder="Ex: Tubo PVC 100mm"
                 />
               </div>
               
               <div>
-                <Label htmlFor="description">Descrição*</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  value={formData.description}
+                <Label htmlFor="minPrice">Preço Mínimo (R$)*</Label>
+                <Input
+                  id="minPrice"
+                  name="minPrice"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.minPrice}
                   onChange={handleInputChange}
-                  placeholder="Descreva o produto em detalhes..."
-                  rows={3}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="weight">Peso (kg)</Label>
+                <Input
+                  id="weight"
+                  name="weight"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={formData.weight}
+                  onChange={handleInputChange}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="quantity">Quantidade em Estoque</Label>
+                <Input
+                  id="quantity"
+                  name="quantity"
+                  type="number"
+                  min="0"
+                  value={formData.quantity}
+                  onChange={handleInputChange}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="volume">Volume</Label>
+                <Input
+                  id="volume"
+                  name="volume"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.volume}
+                  onChange={handleInputChange}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="imageUrl">URL da Imagem</Label>
+                <Input
+                  id="imageUrl"
+                  name="imageUrl"
+                  value={formData.imageUrl}
+                  onChange={handleInputChange}
+                  placeholder="https://exemplo.com/imagem.jpg"
                 />
               </div>
             </div>
-            
-            <div>
-              <Label htmlFor="categoryId">Categoria*</Label>
-              <Select 
-                value={formData.categoryId} 
-                onValueChange={(value) => handleSelectChange('categoryId', value)}
-              >
-                <SelectTrigger id="categoryId">
-                  <SelectValue placeholder="Selecione uma categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  {MOCK_CATEGORIES.map(category => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label htmlFor="subcategoryId">Subcategoria*</Label>
-              <Select 
-                value={formData.subcategoryId} 
-                onValueChange={(value) => handleSelectChange('subcategoryId', value)}
-                disabled={availableSubcategories.length === 0}
-              >
-                <SelectTrigger id="subcategoryId">
-                  <SelectValue placeholder="Selecione uma subcategoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableSubcategories.map(subcategory => (
-                    <SelectItem key={subcategory.id} value={subcategory.id}>
-                      {subcategory.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label htmlFor="listPrice">Preço de Tabela (R$)*</Label>
-              <Input
-                id="listPrice"
-                name="listPrice"
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.listPrice}
-                onChange={handleInputChange}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="minPrice">Preço Mínimo (R$)*</Label>
-              <Input
-                id="minPrice"
-                name="minPrice"
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.minPrice}
-                onChange={handleInputChange}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="weight">Peso (kg)</Label>
-              <Input
-                id="weight"
-                name="weight"
-                type="number"
-                min="0"
-                step="0.1"
-                value={formData.weight}
-                onChange={handleInputChange}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="quantity">Quantidade em Estoque</Label>
-              <Input
-                id="quantity"
-                name="quantity"
-                type="number"
-                min="0"
-                value={formData.quantity}
-                onChange={handleInputChange}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="volume">Volume</Label>
-              <Input
-                id="volume"
-                name="volume"
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.volume}
-                onChange={handleInputChange}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="imageUrl">URL da Imagem</Label>
-              <Input
-                id="imageUrl"
-                name="imageUrl"
-                value={formData.imageUrl}
-                onChange={handleInputChange}
-                placeholder="https://exemplo.com/imagem.jpg"
-              />
-            </div>
-          </div>
+          </DialogBody>
           
           <DialogFooter>
             <Button variant="outline" onClick={handleCloseDialog}>

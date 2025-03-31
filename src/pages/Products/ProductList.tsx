@@ -17,7 +17,7 @@ import { formatCurrency } from '@/utils/formatters';
 
 const ProductList = () => {
   const navigate = useNavigate();
-  const { products, getCategoryName } = useProducts();
+  const { products, getCategoryName, categories } = useProducts();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
 
@@ -74,7 +74,7 @@ const ProductList = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as categorias</SelectItem>
-                {useProducts().categories.map(category => (
+                {categories.map(category => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}
                   </SelectItem>

@@ -13,7 +13,7 @@ const INITIAL_PRODUCTS = Array.from({ length: 20 }, (_, i) => ({
   quantity: Math.floor(Math.random() * 100) + 10,
   volume: Math.floor(Math.random() * 3) + 1,
   categoryId: i % 3 === 0 ? '1' : i % 3 === 1 ? '2' : '3',
-  subcategoryId: i % 5 === 0 ? '1' : i % 5 === 1 ? '2' : i % 5 === 2 ? '3' : i % 5 === 3 ? '4' : '5',
+  subcategoryId: i % 3 === 0 ? '1-1' : i % 3 === 1 ? '2-1' : '3-1',
   imageUrl: 'https://via.placeholder.com/150',
   createdAt: new Date(),
   updatedAt: new Date(),
