@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -68,7 +67,6 @@ const Cart = () => {
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   
-  // Display all customers that match the search, not just the first 10
   const filteredCustomers = customers.filter(c => 
     c.companyName.toLowerCase().includes(customerSearch.toLowerCase()) ||
     c.document.includes(customerSearch)
@@ -211,7 +209,7 @@ const Cart = () => {
                     {customer ? 'Trocar' : 'Selecionar'}
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-3xl max-h-[80vh]">
                   <DialogHeader>
                     <DialogTitle>Selecionar Cliente</DialogTitle>
                     <DialogDescription>
@@ -243,7 +241,7 @@ const Cart = () => {
                   </div>
                   
                   {filteredCustomers.length > 0 ? (
-                    <div className="max-h-96 overflow-y-auto">
+                    <div className="overflow-y-auto" style={{ maxHeight: "calc(80vh - 200px)" }}>
                       <Table>
                         <TableHeader>
                           <TableRow>
