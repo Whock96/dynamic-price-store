@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -33,7 +32,7 @@ const LoginForm = () => {
     <Card className="w-full max-w-md glass-card overflow-hidden animate-fade-in">
       <CardHeader className="space-y-2 text-center pb-6">
         <div className="flex justify-center mb-4 transform transition-transform hover:scale-105 duration-300">
-          <Logo size="md" />
+          <Logo size="lg" />
         </div>
         <CardTitle className="text-2xl font-bold text-ferplas-600">Bem-vindo(a)</CardTitle>
         <CardDescription className="text-gray-500">

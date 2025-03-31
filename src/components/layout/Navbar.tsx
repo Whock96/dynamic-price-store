@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { User, LogOut, Menu } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -23,11 +22,6 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar }) => {
   const { user, logout } = useAuth();
   const { totalItems } = useCart();
   const navigate = useNavigate();
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
 
   return (
     <header className="sticky top-0 bg-white/80 backdrop-blur-md border-b border-gray-200 z-50 transition-all duration-300 ease-in-out">
