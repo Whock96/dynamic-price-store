@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, Calendar, FileText, ShoppingCart, Plus } from 'lucide-react';
+import { Search, Filter, Calendar, ShoppingCart, ArrowDown, ArrowUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,12 +26,28 @@ import { ptBR } from 'date-fns/locale';
 import { Order } from '@/types/types';
 import { useOrders } from '@/context/OrderContext';
 
+type SortField = 'id' | 'customer' | 'createdAt' | 'user' | 'items' | 'total' | 'status';
+type SortDirection = 'asc' | 'desc';
+
 const OrderList = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
+  const [sortField, setSortField] = useState<SortField>('createdAt');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const { orders } = useOrders();
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction if clicking the same field
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new field and default to ascending
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
@@ -57,6 +73,28 @@ const OrderList = () => {
     }
     
     return matchesSearch && matchesStatus && matchesDate;
+  }).sort((a, b) => {
+    // Sort logic based on the current sort field and direction
+    const modifier = sortDirection === 'asc' ? 1 : -1;
+    
+    switch (sortField) {
+      case 'id':
+        return modifier * a.id.localeCompare(b.id);
+      case 'customer':
+        return modifier * a.customer.companyName.localeCompare(b.customer.companyName);
+      case 'createdAt':
+        return modifier * (a.createdAt.getTime() - b.createdAt.getTime());
+      case 'user':
+        return modifier * a.user.name.localeCompare(b.user.name);
+      case 'items':
+        return modifier * (a.items.length - b.items.length);
+      case 'total':
+        return modifier * (a.total - b.total);
+      case 'status':
+        return modifier * a.status.localeCompare(b.status);
+      default:
+        return 0;
+    }
   });
 
   const formatCurrency = (value: number) => {
@@ -65,6 +103,27 @@ const OrderList = () => {
       currency: 'BRL',
     }).format(value);
   };
+
+  // Function to render sort indicator
+  const renderSortIndicator = (field: SortField) => {
+    if (sortField === field) {
+      return sortDirection === 'asc' ? <ArrowUp className="ml-1 h-4 w-4" /> : <ArrowDown className="ml-1 h-4 w-4" />;
+    }
+    return null;
+  };
+
+  // Function to create sortable column header
+  const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
+    <TableHead 
+      className="cursor-pointer hover:bg-gray-50"
+      onClick={() => handleSort(field)}
+    >
+      <div className="flex items-center">
+        {children}
+        {renderSortIndicator(field)}
+      </div>
+    </TableHead>
+  );
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -142,13 +201,13 @@ const OrderList = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Pedido</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead>Vendedor</TableHead>
-                <TableHead>Itens</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Status</TableHead>
+                <SortableHeader field="id">Pedido</SortableHeader>
+                <SortableHeader field="customer">Cliente</SortableHeader>
+                <SortableHeader field="createdAt">Data</SortableHeader>
+                <SortableHeader field="user">Vendedor</SortableHeader>
+                <SortableHeader field="items">Itens</SortableHeader>
+                <SortableHeader field="total">Valor</SortableHeader>
+                <SortableHeader field="status">Status</SortableHeader>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
