@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { CartItem, Customer, DiscountOption, Product } from '../types/types';
+import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
 import { useOrders } from './OrderContext';
 import { useCustomers } from './CustomerContext';
@@ -286,25 +286,30 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     try {
-      const orderData = {
+      const shippingValue: 'pickup' | 'delivery' = isDiscountOptionSelected('1') ? 'pickup' : 'delivery';
+      
+      const paymentMethodValue: 'cash' | 'credit' = isDiscountOptionSelected('4') ? 'cash' : 'credit';
+      
+      const orderData: Partial<Order> = {
         customer,
         customerId: customer.id,
         items,
-        discountOptions: selectedDiscountOptions.map(id => 
+        appliedDiscounts: selectedDiscountOptions.map(id => 
           discountOptions.find(opt => opt.id === id)
-        ),
+        ) as DiscountOption[],
         deliveryLocation,
         deliveryFee,
-        halfInvoicePercentage: isDiscountOptionSelected('2') ? halfInvoicePercentage : null,
+        halfInvoicePercentage: isDiscountOptionSelected('2') ? halfInvoicePercentage : undefined,
         observations,
         subtotal,
         totalDiscount,
         total,
-        shipping: isDiscountOptionSelected('1') ? 'pickup' : 'delivery',
-        paymentMethod: isDiscountOptionSelected('4') ? 'cash' : 'credit',
+        shipping: shippingValue,
+        paymentMethod: paymentMethodValue,
         fullInvoice: !isDiscountOptionSelected('2'),
         taxSubstitution: isDiscountOptionSelected('3'),
-        date: new Date().toISOString()
+        status: 'pending',
+        notes: observations
       };
       
       console.log('Sending order:', orderData);
