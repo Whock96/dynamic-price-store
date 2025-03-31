@@ -16,6 +16,7 @@ interface OrderContextType {
   updateOrder: (orderId: string, orderData: Partial<Order>) => void;
   getOrderById: (id: string) => Order | undefined;
   clearAllOrders: () => void;
+  deleteOrder: (orderId: string) => void;
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
@@ -64,6 +65,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setOrders([]);
     localStorage.removeItem(ORDERS_STORAGE_KEY);
     toast.success('Todos os pedidos foram excluídos com sucesso!');
+  };
+
+  // Delete a specific order by ID
+  const deleteOrder = (orderId: string) => {
+    console.log(`Deleting order: ${orderId}`);
+    setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
+    toast.success(`Pedido #${orderId.slice(-4)} excluído com sucesso!`);
   };
 
   const addOrder = (newOrder: Partial<Order>) => {
@@ -132,7 +140,15 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   return (
-    <OrderContext.Provider value={{ orders, addOrder, updateOrderStatus, updateOrder, getOrderById, clearAllOrders }}>
+    <OrderContext.Provider value={{ 
+      orders, 
+      addOrder, 
+      updateOrderStatus, 
+      updateOrder, 
+      getOrderById, 
+      clearAllOrders,
+      deleteOrder
+    }}>
       {children}
     </OrderContext.Provider>
   );

@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Save, Package, User, Calendar, Truck, Receipt, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Save, Package, User, Calendar, Truck, Receipt, ShoppingCart, Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,6 +22,17 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useOrders } from '@/context/OrderContext';
 import { Slider } from '@/components/ui/slider';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const ORDER_STATUS_OPTIONS = [
   { value: "pending", label: "Pendente" },
@@ -33,7 +45,7 @@ const ORDER_STATUS_OPTIONS = [
 const OrderUpdate = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { getOrderById, updateOrderStatus, updateOrder } = useOrders();
+  const { getOrderById, updateOrderStatus, updateOrder, deleteOrder } = useOrders();
   
   const [isLoading, setIsLoading] = useState(true);
   const [order, setOrder] = useState<Order | null>(null);
@@ -46,6 +58,7 @@ const OrderUpdate = () => {
   const [deliveryLocation, setDeliveryLocation] = useState<'capital' | 'interior' | null>(null);
   const [halfInvoicePercentage, setHalfInvoicePercentage] = useState(50);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Discount options match the cart
   const [selectedDiscountOptions, setSelectedDiscountOptions] = useState<string[]>([]);
@@ -166,6 +179,22 @@ const OrderUpdate = () => {
       setIsSaving(false);
     }
   };
+
+  const handleDelete = () => {
+    if (!id) return;
+    
+    setIsDeleting(true);
+    
+    try {
+      deleteOrder(id);
+      navigate('/orders');
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      toast.error("Ocorreu um erro ao excluir o pedido. Tente novamente.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
   
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -205,23 +234,52 @@ const OrderUpdate = () => {
             </p>
           </div>
         </div>
-        <Button 
-          className="bg-ferplas-500 hover:bg-ferplas-600"
-          onClick={handleSubmit}
-          disabled={isSaving}
-        >
-          {isSaving ? (
-            <>
-              <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-              Salvando...
-            </>
-          ) : (
-            <>
-              <Save className="mr-2 h-4 w-4" />
-              Salvar Alterações
-            </>
-          )}
-        </Button>
+        <div className="flex gap-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive">
+                <Trash className="mr-2 h-4 w-4" />
+                Excluir Pedido
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir Pedido</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir este pedido? Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction 
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? 'Excluindo...' : 'Sim, excluir'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          
+          <Button 
+            className="bg-ferplas-500 hover:bg-ferplas-600"
+            onClick={handleSubmit}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <>
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                Salvando...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Salvar Alterações
+              </>
+            )}
+          </Button>
+        </div>
       </header>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
