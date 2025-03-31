@@ -34,8 +34,8 @@ const App = () => (
     <TooltipProvider>
       <AuthProvider>
         <ProductProvider>
-          <OrderProvider>
-            <CustomerProvider>
+          <CustomerProvider>
+            <OrderProvider>
               <CartProvider>
                 <BrowserRouter>
                   <Toaster />
@@ -75,8 +75,8 @@ const App = () => (
                   </Routes>
                 </BrowserRouter>
               </CartProvider>
-            </CustomerProvider>
-          </OrderProvider>
+            </OrderProvider>
+          </CustomerProvider>
         </ProductProvider>
       </AuthProvider>
     </TooltipProvider>
