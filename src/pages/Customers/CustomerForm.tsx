@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Trash2 } from 'lucide-react';
@@ -114,12 +115,13 @@ const CustomerForm = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
     
-    let parsedValue = value;
-    if (type === 'number') {
-      parsedValue = value === '' ? 0 : Number(value);
+    // Fix: Only convert to number if the field is a discount field
+    if (name === 'defaultDiscount' || name === 'maxDiscount') {
+      const numValue = value === '' ? 0 : Number(value);
+      setFormData(prev => ({ ...prev, [name]: numValue }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
     }
-    
-    setFormData(prev => ({ ...prev, [name]: parsedValue }));
     
     if (validationErrors[name]) {
       setValidationErrors(prev => {

@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   username: string;
@@ -65,8 +64,8 @@ export interface Customer {
   zipCode: string;
   phone: string;
   email: string;
-  defaultDiscount: number;
-  maxDiscount: number; // Maximum allowed discount percentage
+  defaultDiscount: number; // Ensuring this is a number
+  maxDiscount: number; // Ensuring this is a number
   createdAt: Date;
   updatedAt: Date;
 }
@@ -110,7 +109,6 @@ export interface Order {
   notes: string;
   createdAt: Date;
   updatedAt: Date;
-  // Add the missing properties
   observations?: string; // Optional to maintain compatibility with existing code
   deliveryLocation?: 'capital' | 'interior' | null;
   halfInvoicePercentage?: number;
