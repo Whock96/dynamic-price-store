@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
@@ -85,6 +86,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [observations, setObservations] = useState<string>('');
   const [paymentTerms, setPaymentTerms] = useState<string>('');
   const [applyDiscounts, setApplyDiscounts] = useState<boolean>(true);
+
+  // Move this function earlier so it can be used by calculateTaxSubstitutionValue
+  const isDiscountOptionSelected = (id: string) => {
+    return selectedDiscountOptions.includes(id);
+  };
 
   const totalItems = items.reduce((total, item) => total + item.quantity, 0);
   
@@ -302,10 +308,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return [...prev, id];
       }
     });
-  };
-
-  const isDiscountOptionSelected = (id: string) => {
-    return selectedDiscountOptions.includes(id);
   };
 
   const clearCart = () => {
