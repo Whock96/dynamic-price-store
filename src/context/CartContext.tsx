@@ -235,21 +235,27 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateItemDiscount = (id: string, discount: number) => {
     if (discount < 0) return;
     
+    // Armazenamos o desconto original para cálculo
+    let appliedDiscount = discount;
+    
+    // Verificamos se o desconto excede o máximo permitido para o cliente
     if (customer && discount > customer.maxDiscount) {
       toast.warning(`Desconto limitado a ${customer.maxDiscount}% para o cliente ${customer.companyName}`);
-      discount = customer.maxDiscount;
+      // Atualizamos o valor do desconto a ser aplicado para o máximo permitido
+      appliedDiscount = customer.maxDiscount;
     }
     
     const globalDiscountPercentage = getGlobalDiscountPercentage();
     
     setItems(prevItems => prevItems.map(item => {
       if (item.id === id) {
-        const combinedDiscount = discount + globalDiscountPercentage;
+        // Usamos o desconto limitado para calcular o preço final
+        const combinedDiscount = appliedDiscount + globalDiscountPercentage;
         const finalPrice = item.product.listPrice * (1 - combinedDiscount / 100);
         
         return {
           ...item,
-          discount,
+          discount: appliedDiscount, // Salvamos o desconto limitado, não o original
           finalPrice,
           subtotal: finalPrice * item.quantity
         };
