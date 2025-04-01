@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Trash2 } from 'lucide-react';
@@ -29,7 +28,6 @@ import {
 import { useCustomers } from '@/context/CustomerContext';
 import { Customer } from '@/types/types';
 
-// Fake data for Brazilian states
 const BRAZILIAN_STATES = [
   { code: 'AC', name: 'Acre' },
   { code: 'AL', name: 'Alagoas' },
@@ -60,14 +58,12 @@ const BRAZILIAN_STATES = [
   { code: 'TO', name: 'Tocantins' },
 ];
 
-// Mock data for salespeople
 const MOCK_SALESPEOPLE = [
   { id: '1', name: 'João Silva' },
   { id: '2', name: 'Maria Oliveira' },
   { id: '3', name: 'Carlos Santos' },
 ];
 
-// Empty customer data
 const EMPTY_CUSTOMER: Customer = {
   id: '',
   companyName: '',
@@ -83,7 +79,7 @@ const EMPTY_CUSTOMER: Customer = {
   phone: '',
   email: '',
   defaultDiscount: 0,
-  maxDiscount: 15, // Default maximum discount of 15%
+  maxDiscount: 15,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -108,7 +104,6 @@ const CustomerForm = () => {
         navigate('/customers');
       }
     } else {
-      // Generate a unique ID for new customer
       setFormData({
         ...EMPTY_CUSTOMER,
         id: `customer-${Date.now()}`,
@@ -117,8 +112,14 @@ const CustomerForm = () => {
   }, [id, isEditMode, getCustomerById, navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const { name, value, type } = e.target;
+    
+    let parsedValue = value;
+    if (type === 'number') {
+      parsedValue = value === '' ? 0 : Number(value);
+    }
+    
+    setFormData(prev => ({ ...prev, [name]: parsedValue }));
     
     if (validationErrors[name]) {
       setValidationErrors(prev => {
@@ -184,7 +185,10 @@ const CustomerForm = () => {
       errors.email = 'Email inválido';
     }
 
-    if (formData.maxDiscount < formData.defaultDiscount) {
+    const defaultDiscount = Number(formData.defaultDiscount);
+    const maxDiscount = Number(formData.maxDiscount);
+
+    if (maxDiscount < defaultDiscount) {
       errors.maxDiscount = 'Desconto máximo deve ser maior ou igual ao desconto padrão';
     }
 
