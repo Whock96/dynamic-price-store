@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
@@ -249,8 +248,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast.success(`Quantidade de ${product.name} atualizada no carrinho`);
     } else {
       const initialDiscount = customer ? customer.defaultDiscount : 0;
-      const globalDiscountPercentage = getGlobalDiscountPercentage();
-      const combinedDiscount = initialDiscount + globalDiscountPercentage;
+      const netAdjustmentPercentage = getNetAdjustmentPercentage();
+      const combinedDiscount = initialDiscount + netAdjustmentPercentage;
       const finalPrice = product.listPrice * (1 - combinedDiscount / 100);
       
       const newItem: CartItem = {
@@ -300,11 +299,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       appliedDiscount = customer.maxDiscount;
     }
     
-    const globalDiscountPercentage = getGlobalDiscountPercentage();
+    const netAdjustmentPercentage = getNetAdjustmentPercentage();
     
     setItems(prevItems => prevItems.map(item => {
       if (item.id === id) {
-        const combinedDiscount = appliedDiscount + globalDiscountPercentage;
+        const combinedDiscount = appliedDiscount + netAdjustmentPercentage;
         const finalPrice = item.product.listPrice * (1 - combinedDiscount / 100);
         
         return {
