@@ -18,7 +18,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
-    }).format(value);
+    }).format(Math.max(value, 0));
   };
 
   useEffect(() => {
@@ -38,7 +38,21 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
     `(${order.halfInvoicePercentage}%)` : '';
     
   // Calculate tax substitution value if applicable
-  const taxSubstitutionValue = order.taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
+  const getTaxSubstitutionRate = () => {
+    const standardRate = 7.8;
+    
+    if (!order.taxSubstitution) return 0;
+    
+    if (!order.fullInvoice && order.halfInvoicePercentage) {
+      // Adjust rate based on invoice percentage
+      return standardRate * (order.halfInvoicePercentage / 100);
+    }
+    
+    return standardRate;
+  };
+  
+  const effectiveTaxRate = getTaxSubstitutionRate();
+  const taxSubstitutionValue = order.taxSubstitution ? (effectiveTaxRate / 100) * order.subtotal : 0;
 
   return (
     <div className="bg-white p-4 max-w-4xl mx-auto print:p-2">
@@ -92,7 +106,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
             <p><span className="font-semibold">Prazos:</span> {order.paymentTerms}</p>
           )}
           <p><span className="font-semibold">Tipo de Nota:</span> {invoiceTypeText} {halfInvoiceText}</p>
-          <p><span className="font-semibold">Substituição Tributária:</span> {order.taxSubstitution ? 'Sim' : 'Não'}</p>
+          <p><span className="font-semibold">Substituição Tributária:</span> {order.taxSubstitution ? `Sim (${effectiveTaxRate.toFixed(2)}%)` : 'Não'}</p>
         </div>
       </div>
 
@@ -181,7 +195,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
               </tr>
               {order.taxSubstitution && taxSubstitutionValue > 0 && (
                 <tr>
-                  <td className="py-0.5">Substituição Tributária (7.8%):</td>
+                  <td className="py-0.5">Substituição Tributária ({effectiveTaxRate.toFixed(2)}%):</td>
                   <td className="py-0.5 text-right text-orange-600 font-medium">+{formatCurrency(taxSubstitutionValue)}</td>
                 </tr>
               )}

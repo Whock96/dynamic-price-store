@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
@@ -34,6 +33,7 @@ interface CartContextType {
   sendOrder: () => Promise<void>;
   isDiscountOptionSelected: (id: string) => boolean;
   toggleApplyDiscounts: () => void;
+  calculateTaxSubstitutionValue: () => number;
 }
 
 const MOCK_DISCOUNT_OPTIONS: DiscountOption[] = [
@@ -162,7 +162,27 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return total + (fullPrice - (item.subtotal || 0));
   }, 0);
 
-  const total = items.reduce((total, item) => total + (item.subtotal || 0), 0) + deliveryFee;
+  const calculateTaxSubstitutionValue = () => {
+    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
+    
+    const taxOption = discountOptions.find(opt => opt.id === '3');
+    if (!taxOption) return 0;
+    
+    const standardRate = taxOption.value / 100;
+    
+    // If half invoice is selected, adjust the tax rate based on the invoice percentage
+    if (isDiscountOptionSelected('2')) {
+      const adjustedRate = standardRate * (halfInvoicePercentage / 100);
+      return adjustedRate * subtotal;
+    }
+    
+    // Otherwise use the standard rate
+    return standardRate * subtotal;
+  };
+
+  const taxSubstitutionValue = calculateTaxSubstitutionValue();
+  
+  const total = items.reduce((total, item) => total + (item.subtotal || 0), 0) + deliveryFee + taxSubstitutionValue;
 
   const toggleApplyDiscounts = () => {
     setApplyDiscounts(prev => !prev);
@@ -386,7 +406,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       clearCart,
       sendOrder,
       isDiscountOptionSelected,
-      toggleApplyDiscounts
+      toggleApplyDiscounts,
+      calculateTaxSubstitutionValue
     }}>
       {children}
     </CartContext.Provider>

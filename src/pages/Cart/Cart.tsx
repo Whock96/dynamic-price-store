@@ -62,7 +62,8 @@ const Cart = () => {
     updateItemDiscount, discountOptions, toggleDiscountOption, isDiscountOptionSelected,
     deliveryLocation, setDeliveryLocation, halfInvoicePercentage, setHalfInvoicePercentage,
     observations, setObservations, totalItems, subtotal, totalDiscount, total, sendOrder, clearCart, 
-    deliveryFee, applyDiscounts, toggleApplyDiscounts, paymentTerms, setPaymentTerms
+    deliveryFee, applyDiscounts, toggleApplyDiscounts, paymentTerms, setPaymentTerms,
+    calculateTaxSubstitutionValue
   } = useCart();
   
   const [customerSearch, setCustomerSearch] = useState('');
@@ -129,16 +130,19 @@ const Cart = () => {
     }
   };
   
-  const calculateTaxSubstitutionValue = () => {
-    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
+  const taxSubstitutionValue = calculateTaxSubstitutionValue();
+  
+  const getTaxSubstitutionRate = () => {
+    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 7.8;
     
-    const taxOption = discountOptions.find(opt => opt.id === '3');
-    if (!taxOption) return 0;
+    if (isDiscountOptionSelected('2')) {
+      return 7.8 * halfInvoicePercentage / 100;
+    }
     
-    return (taxOption.value / 100) * subtotal;
+    return 7.8;
   };
   
-  const taxSubstitutionValue = calculateTaxSubstitutionValue();
+  const effectiveTaxRate = getTaxSubstitutionRate();
   
   return (
     <div className="space-y-6 animate-fade-in">
@@ -549,6 +553,11 @@ const Cart = () => {
                                 {option.type === 'discount' ? '(-' : '(+'}{option.value}%)
                               </span>
                             )}
+                            {option.id === '3' && isDiscountOptionSelected('2') && applyDiscounts && (
+                              <span className="text-red-600 ml-1">
+                                (Ajustado: +{(option.value * halfInvoicePercentage / 100).toFixed(2)}%)
+                              </span>
+                            )}
                           </p>
                           <p className="text-sm text-gray-500">{option.description}</p>
                         </div>
@@ -686,7 +695,7 @@ const Cart = () => {
               </div>
               {isDiscountOptionSelected('3') && applyDiscounts && taxSubstitutionValue > 0 && (
                 <div className="flex justify-between text-sm text-orange-600">
-                  <span>Substituição Tributária (7.8%):</span>
+                  <span>Substituição Tributária ({effectiveTaxRate.toFixed(2)}%):</span>
                   <span>+{formatCurrency(taxSubstitutionValue)}</span>
                 </div>
               )}
