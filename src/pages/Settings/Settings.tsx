@@ -20,6 +20,15 @@ const Settings = () => {
 
   const settingsModules = [
     {
+      title: 'Dados da Empresa',
+      description: 'Informações corporativas',
+      icon: <Building2 className="h-8 w-8 text-ferplas-500" />,
+      path: '/settings/company',
+      color: 'bg-ferplas-50 border-ferplas-100',
+      highlight: true,
+      priority: true,  // New priority property
+    },
+    {
       title: 'Gerenciar Produtos',
       description: 'Adicionar, editar e gerenciar produtos',
       icon: <Package className="h-8 w-8 text-ferplas-500" />,
@@ -46,14 +55,6 @@ const Settings = () => {
       icon: <Percent className="h-8 w-8 text-orange-500" />,
       path: '/settings/discounts',
       color: 'bg-orange-50 border-orange-100',
-    },
-    {
-      title: 'Dados da Empresa',
-      description: 'Informações corporativas',
-      icon: <Building2 className="h-8 w-8 text-ferplas-500" />,
-      path: '/settings/company',
-      color: 'bg-ferplas-50 border-ferplas-100',
-      highlight: true,
     },
     {
       title: 'Configurações Gerais',
@@ -92,6 +93,13 @@ const Settings = () => {
     },
   ];
 
+  // Sort modules to put priority ones at the top
+  const sortedModules = [...settingsModules].sort((a, b) => {
+    if (a.priority && !b.priority) return -1;
+    if (!a.priority && b.priority) return 1;
+    return 0;
+  });
+
   return (
     <div className="space-y-6 animate-fade-in">
       <header>
@@ -102,10 +110,10 @@ const Settings = () => {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {settingsModules.map((module, index) => (
+        {sortedModules.map((module, index) => (
           <Card 
             key={index} 
-            className={`cursor-pointer hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 overflow-hidden border ${module.color} ${module.highlight ? 'ring-2 ring-ferplas-300' : ''}`}
+            className={`cursor-pointer hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 overflow-hidden border ${module.color} ${module.highlight ? 'ring-2 ring-ferplas-300' : ''} ${module.priority ? 'border-2 border-ferplas-400' : ''}`}
             onClick={() => navigate(module.path)}
           >
             <CardHeader className="pb-2">
