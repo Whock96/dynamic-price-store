@@ -124,7 +124,8 @@ const ProductList = () => {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Modificando de grid-cols-3 para grid-cols-4 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {filteredProducts.map(product => (
           <Card 
             key={product.id} 
@@ -146,18 +147,18 @@ const ProductList = () => {
                 </div>
               </div>
             </div>
-            <CardContent className="p-4">
-              <h3 className="text-lg font-medium truncate">{product.name}</h3>
-              <p className="text-sm text-gray-500 line-clamp-2 h-10 mb-2">{product.description}</p>
-              <div className="flex justify-between items-end mt-2">
+            <CardContent className="p-3">
+              <h3 className="text-base font-medium truncate">{product.name}</h3>
+              <p className="text-xs text-gray-500 line-clamp-2 h-8 mb-1">{product.description}</p>
+              <div className="flex justify-between items-end mt-1">
                 <div>
                   <p className="text-xs text-gray-500">Preço de tabela</p>
-                  <p className="text-lg font-bold text-ferplas-600">{formatCurrency(product.listPrice)}</p>
+                  <p className="text-base font-bold text-ferplas-600">{formatCurrency(product.listPrice)}</p>
                 </div>
                 <Button 
                   variant="outline" 
                   size="sm"
-                  className="text-ferplas-500 border-ferplas-500 hover:bg-ferplas-50"
+                  className="text-xs text-ferplas-500 border-ferplas-500 hover:bg-ferplas-50"
                   onClick={(e) => {
                     e.stopPropagation();
                     navigate(`/products/${product.id}`);
