@@ -103,7 +103,7 @@ const Cart = () => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
-    }).format(value);
+    }).format(Math.max(value, 0));
   };
   
   const handleSubmitOrder = async () => {
