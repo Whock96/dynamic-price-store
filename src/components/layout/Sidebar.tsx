@@ -1,9 +1,8 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home, ShoppingCart, Users, Package, Clipboard, Settings, 
-  ChevronRight, List, UserPlus, Search, Edit, Menu, Home as HomeIcon
+  ChevronRight, List, UserPlus, Search, Edit, Menu, Building2
 } from 'lucide-react';
 import { useAuth, MENU_ITEMS } from '../../context/AuthContext';
 import { cn } from '@/lib/utils';
@@ -23,12 +22,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
 
   useEffect(() => {
-    // Close expanded menu when sidebar is collapsed
     if (!isExpanded) {
       setExpandedMenu(null);
     }
     
-    // Click outside listener to collapse sidebar on mobile
     const handleClickOutside = (event: MouseEvent) => {
       if (sidebarRef.current && !sidebarRef.current.contains(event.target as Node) && window.innerWidth < 1024) {
         setIsExpanded(false);
@@ -68,6 +65,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
       case 'user-plus': return <UserPlus size={20} />;
       case 'search': return <Search size={20} />;
       case 'edit': return <Edit size={20} />;
+      case 'building-2': return <Building2 size={20} />;
       default: return <Home size={20} />;
     }
   };
@@ -116,7 +114,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
             )}
           </button>
 
-          {/* Tooltip for inicio button when collapsed */}
           {!isExpanded && (
             <div className="sidebar-tooltip group-hover:scale-100">
               Início
@@ -156,14 +153,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
                 )}
               </button>
               
-              {/* Tooltip for collapsed sidebar */}
               {!isExpanded && (
                 <div className="sidebar-tooltip group-hover:scale-100">
                   {item.name}
                 </div>
               )}
               
-              {/* Submenu */}
               {isExpanded && item.submenus && expandedMenu === item.id && (
                 <div className="pl-10 mt-1 space-y-1 animate-accordion-down">
                   {item.submenus.filter(submenu => hasPermission(submenu.path)).map((submenu) => (

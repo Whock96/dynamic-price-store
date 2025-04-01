@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, MenuItem } from '../types/types';
 
@@ -109,6 +108,13 @@ export const MENU_ITEMS: MenuItem[] = [
     icon: 'settings',
     requiredRoles: ['administrator'],
     submenus: [
+      {
+        id: 'company-settings',
+        name: 'Dados da Empresa',
+        path: '/settings/company',
+        icon: 'building-2',
+        requiredRoles: ['administrator'],
+      },
       {
         id: 'product-management',
         name: 'Gerenciar Produtos',
