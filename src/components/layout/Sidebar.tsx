@@ -107,7 +107,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
             )}
           >
             <div className="flex items-center justify-center w-8 h-8">
-              <HomeIcon size={20} />
+              <Home size={20} />
             </div>
             {isExpanded && (
               <span className="ml-3">Início</span>
