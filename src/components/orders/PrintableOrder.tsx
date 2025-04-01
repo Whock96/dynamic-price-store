@@ -30,6 +30,13 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
     return () => clearTimeout(printTimeout);
   }, [onPrint]);
 
+  // Determine invoice type text based on fullInvoice flag
+  const invoiceTypeText = order.fullInvoice ? 'Nota Cheia' : 'Meia Nota';
+  
+  // Show percentage only if it's a half invoice
+  const halfInvoiceText = !order.fullInvoice && order.halfInvoicePercentage ? 
+    `(${order.halfInvoicePercentage}%)` : '';
+
   return (
     <div className="bg-white p-4 max-w-4xl mx-auto print:p-2">
       {/* Header - More compact */}
@@ -81,6 +88,8 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
           {order.paymentMethod === 'credit' && order.paymentTerms && (
             <p><span className="font-semibold">Prazos:</span> {order.paymentTerms}</p>
           )}
+          <p><span className="font-semibold">Tipo de Nota:</span> {invoiceTypeText} {halfInvoiceText}</p>
+          <p><span className="font-semibold">Substituição Tributária:</span> {order.taxSubstitution ? 'Sim' : 'Não'}</p>
         </div>
       </div>
 

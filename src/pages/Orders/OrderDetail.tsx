@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
@@ -124,7 +123,13 @@ const OrderDetail = () => {
   
   // Simple HTML template for the fallback rendering
   const renderPrintableOrderHTML = (order: any, companyInfo: any) => {
-    // Generate HTML for the printable order - more compact version
+    // Determine invoice type text based on fullInvoice flag
+    const invoiceTypeText = order.fullInvoice ? 'Nota Cheia' : 'Meia Nota';
+    
+    // Show percentage only if it's a half invoice
+    const halfInvoiceText = !order.fullInvoice && order.halfInvoicePercentage ? 
+      `(${order.halfInvoicePercentage}%)` : '';
+      
     return `
       <div style="max-width: 800px; margin: 0 auto; padding: 12px; font-family: Arial, sans-serif; font-size: 11px;">
         <!-- Company header - more compact -->
@@ -175,6 +180,8 @@ const OrderDetail = () => {
             <p style="margin: 2px 0;"><span style="font-weight: 600;">Pagamento:</span> ${order.paymentMethod === 'cash' ? 'À Vista' : 'A Prazo'}</p>
             ${order.paymentMethod === 'credit' && order.paymentTerms ? 
               `<p style="margin: 2px 0;"><span style="font-weight: 600;">Prazos:</span> ${order.paymentTerms}</p>` : ''}
+            <p style="margin: 2px 0;"><span style="font-weight: 600;">Tipo de Nota:</span> ${invoiceTypeText} ${halfInvoiceText}</p>
+            <p style="margin: 2px 0;"><span style="font-weight: 600;">Substituição Tributária:</span> ${order.taxSubstitution ? 'Sim' : 'Não'}</p>
           </div>
         </div>
         
