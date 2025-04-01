@@ -36,6 +36,9 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
   // Show percentage only if it's a half invoice
   const halfInvoiceText = !order.fullInvoice && order.halfInvoicePercentage ? 
     `(${order.halfInvoicePercentage}%)` : '';
+    
+  // Calculate tax substitution value if applicable
+  const taxSubstitutionValue = order.taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
 
   return (
     <div className="bg-white p-4 max-w-4xl mx-auto print:p-2">
@@ -176,6 +179,12 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
                 <td className="py-0.5">Descontos:</td>
                 <td className="py-0.5 text-right text-red-600 font-medium">-{formatCurrency(order.totalDiscount || 0)}</td>
               </tr>
+              {order.taxSubstitution && taxSubstitutionValue > 0 && (
+                <tr>
+                  <td className="py-0.5">Substituição Tributária (7.8%):</td>
+                  <td className="py-0.5 text-right text-orange-600 font-medium">+{formatCurrency(taxSubstitutionValue)}</td>
+                </tr>
+              )}
               {order.deliveryFee && order.deliveryFee > 0 && (
                 <tr>
                   <td className="py-0.5">Taxa de Entrega:</td>

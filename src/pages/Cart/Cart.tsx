@@ -129,6 +129,17 @@ const Cart = () => {
     }
   };
   
+  const calculateTaxSubstitutionValue = () => {
+    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
+    
+    const taxOption = discountOptions.find(opt => opt.id === '3');
+    if (!taxOption) return 0;
+    
+    return (taxOption.value / 100) * subtotal;
+  };
+  
+  const taxSubstitutionValue = calculateTaxSubstitutionValue();
+  
   return (
     <div className="space-y-6 animate-fade-in">
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -673,6 +684,12 @@ const Cart = () => {
                 <span>Descontos:</span>
                 <span>-{formatCurrency(totalDiscount)}</span>
               </div>
+              {isDiscountOptionSelected('3') && applyDiscounts && taxSubstitutionValue > 0 && (
+                <div className="flex justify-between text-sm text-orange-600">
+                  <span>Substituição Tributária (7.8%):</span>
+                  <span>+{formatCurrency(taxSubstitutionValue)}</span>
+                </div>
+              )}
               {deliveryLocation && (
                 <div className="flex justify-between text-sm text-amber-600">
                   <span>Taxa de entrega ({deliveryLocation === 'capital' ? 'Capital' : 'Interior'}):</span>

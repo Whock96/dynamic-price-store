@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
@@ -130,6 +131,13 @@ const OrderDetail = () => {
     const halfInvoiceText = !order.fullInvoice && order.halfInvoicePercentage ? 
       `(${order.halfInvoicePercentage}%)` : '';
       
+    // Calculate tax substitution value if applicable
+    let taxSubstitutionValue = 0;
+    if (order.taxSubstitution) {
+      // Using 7.8% which is the standard tax substitution rate in the system
+      taxSubstitutionValue = (7.8 / 100) * order.subtotal;
+    }
+    
     return `
       <div style="max-width: 800px; margin: 0 auto; padding: 12px; font-family: Arial, sans-serif; font-size: 11px;">
         <!-- Company header - more compact -->
@@ -242,6 +250,14 @@ const OrderDetail = () => {
                   -${formatCurrency(order.totalDiscount || 0)}
                 </td>
               </tr>
+              ${order.taxSubstitution ? `
+                <tr>
+                  <td style="padding: 2px 0;">Substituição Tributária (7.8%):</td>
+                  <td style="padding: 2px 0; text-align: right; color: #ea580c; font-weight: 500;">
+                    +${formatCurrency(taxSubstitutionValue)}
+                  </td>
+                </tr>
+              ` : ''}
               ${order.deliveryFee && order.deliveryFee > 0 ? `
                 <tr>
                   <td style="padding: 2px 0;">Taxa de Entrega:</td>
@@ -309,6 +325,9 @@ const OrderDetail = () => {
   const deliveryLocation = order.deliveryLocation || null;
   const deliveryFee = order.deliveryFee || 0;
   const halfInvoicePercentage = order.halfInvoicePercentage || 50;
+  
+  // Calculate tax substitution value
+  const taxSubstitutionValue = taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -494,6 +513,12 @@ const OrderDetail = () => {
                 <span>Descontos:</span>
                 <span>-{formatCurrency(totalDiscount)}</span>
               </div>
+              {taxSubstitution && taxSubstitutionValue > 0 && (
+                <div className="flex justify-between text-sm text-orange-600">
+                  <span>Substituição Tributária (7.8%):</span>
+                  <span>+{formatCurrency(taxSubstitutionValue)}</span>
+                </div>
+              )}
               {deliveryFee > 0 && (
                 <div className="flex justify-between text-sm">
                   <span>Taxa de Entrega:</span>
