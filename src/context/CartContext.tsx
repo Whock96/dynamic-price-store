@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
@@ -96,21 +97,28 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return total + (item.product.listPrice * item.quantity);
   }, 0);
 
-  const getGlobalDiscountPercentage = () => {
+  // Calculate the net percentage adjustment (discounts minus surcharges)
+  const getNetAdjustmentPercentage = () => {
     if (!applyDiscounts) return 0;
     
-    let totalPercentage = 0;
+    let discountPercentage = 0;
+    let surchargePercentage = 0;
     
     selectedDiscountOptions.forEach(id => {
       const option = discountOptions.find(opt => opt.id === id);
-      if (option && option.id !== '3') {
-        totalPercentage = option.type === 'discount' 
-          ? totalPercentage + option.value 
-          : totalPercentage - option.value;
+      if (!option) return;
+
+      // Handle tax substitution separately
+      if (option.id === '3') return;
+      
+      if (option.type === 'discount') {
+        discountPercentage += option.value;
+      } else {
+        surchargePercentage += option.value;
       }
     });
     
-    return totalPercentage;
+    return discountPercentage - surchargePercentage;
   };
 
   const getTaxSubstitutionRate = () => {
@@ -128,20 +136,41 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deliveryFee = deliveryLocation === 'capital' ? 25 : deliveryLocation === 'interior' ? 50 : 0;
 
+  const calculateTaxSubstitutionValue = () => {
+    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
+    
+    const taxOption = discountOptions.find(opt => opt.id === '3');
+    if (!taxOption) return 0;
+    
+    const standardRate = taxOption.value / 100;
+    
+    if (isDiscountOptionSelected('2')) {
+      const adjustedRate = standardRate * (halfInvoicePercentage / 100);
+      return adjustedRate * subtotal;
+    }
+    
+    return standardRate * subtotal;
+  };
+
   const recalculateCart = () => {
-    const globalDiscountPercentage = getGlobalDiscountPercentage();
+    const netAdjustmentPercentage = getNetAdjustmentPercentage();
     const taxSubstitutionRate = getTaxSubstitutionRate();
     
     const updatedItems = items.map(item => {
       let itemDiscount = item.discount || 0;
       
-      const effectiveDiscount = applyDiscounts ? itemDiscount + globalDiscountPercentage : itemDiscount;
+      // Apply all percentage adjustments at once (including item discount)
+      // This is the key fix - combining all percentages first, then applying once
+      let netPercentage = applyDiscounts ? itemDiscount + netAdjustmentPercentage : itemDiscount;
       
-      let finalPrice = item.product.listPrice * (1 - effectiveDiscount / 100);
+      // Calculate the adjustment factor (including both discounts and surcharges)
+      let adjustmentFactor = 1 - (netPercentage / 100);
       
-      if (applyDiscounts && taxSubstitutionRate > 0) {
-        finalPrice *= (1 + taxSubstitutionRate / 100);
-      }
+      // Apply the tax substitution separately after other adjustments
+      let taxFactor = applyDiscounts && taxSubstitutionRate > 0 ? (1 + taxSubstitutionRate / 100) : 1;
+      
+      // Apply all adjustments in one step
+      let finalPrice = item.product.listPrice * adjustmentFactor * taxFactor;
       
       const subtotal = finalPrice * item.quantity;
       
@@ -188,22 +217,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const fullPrice = item.product.listPrice * item.quantity;
     return total + (fullPrice - (item.subtotal || 0));
   }, 0);
-
-  const calculateTaxSubstitutionValue = () => {
-    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
-    
-    const taxOption = discountOptions.find(opt => opt.id === '3');
-    if (!taxOption) return 0;
-    
-    const standardRate = taxOption.value / 100;
-    
-    if (isDiscountOptionSelected('2')) {
-      const adjustedRate = standardRate * (halfInvoicePercentage / 100);
-      return adjustedRate * subtotal;
-    }
-    
-    return standardRate * subtotal;
-  };
 
   const taxSubstitutionValue = calculateTaxSubstitutionValue();
   
