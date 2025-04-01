@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { User, LogOut, Menu } from 'lucide-react';
+import { User, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
@@ -15,11 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-interface NavbarProps {
-  toggleSidebar: () => void;
-}
-
-const Navbar: React.FC<NavbarProps> = ({ toggleSidebar }) => {
+const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const { totalItems } = useCart();
   const navigate = useNavigate();
@@ -34,14 +30,6 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar }) => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={toggleSidebar}
-              className="mr-2 text-ferplas-500 hover:text-ferplas-600 hover:bg-ferplas-50"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
             <div 
               className="flex-shrink-0 cursor-pointer transition-transform hover:scale-105 duration-300"
               onClick={() => navigate('/dashboard')}

@@ -3,10 +3,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home, ShoppingCart, Users, Package, Clipboard, Settings, 
-  ChevronRight, List, UserPlus, Search, Edit 
+  ChevronRight, List, UserPlus, Search, Edit, Menu, Home as HomeIcon
 } from 'lucide-react';
 import { useAuth, MENU_ITEMS } from '../../context/AuthContext';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 interface SidebarProps {
   isExpanded: boolean;
@@ -86,6 +87,43 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
       )}
     >
       <div className="flex flex-col h-full py-4">
+        <div className="px-2 mb-4">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="w-full text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent"
+          >
+            <Menu className="h-5 w-5" />
+            {isExpanded && <span className="ml-2">Fechar menu</span>}
+          </Button>
+
+          <button
+            onClick={() => handleNavigate('/dashboard')}
+            className={cn(
+              "group w-full flex items-center py-2 px-2 rounded-md transition-all duration-200 mt-2",
+              isActive('/dashboard') 
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+              !isExpanded && "justify-center"
+            )}
+          >
+            <div className="flex items-center justify-center w-8 h-8">
+              <HomeIcon size={20} />
+            </div>
+            {isExpanded && (
+              <span className="ml-3">Início</span>
+            )}
+          </button>
+
+          {/* Tooltip for inicio button when collapsed */}
+          {!isExpanded && (
+            <div className="sidebar-tooltip group-hover:scale-100">
+              Início
+            </div>
+          )}
+        </div>
+
         <nav className="flex-1 space-y-1 px-2">
           {MENU_ITEMS.filter(item => hasPermission(item.path)).map((item) => (
             <div key={item.id} className="relative">

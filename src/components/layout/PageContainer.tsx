@@ -42,10 +42,6 @@ const PageContainer: React.FC<PageContainerProps> = ({
     }
   }, [user, loading, navigate, requireAuth]);
 
-  const toggleSidebar = () => {
-    setIsExpanded(prev => !prev);
-  };
-
   if (loading || !mounted) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-white to-gray-100">
@@ -63,7 +59,7 @@ const PageContainer: React.FC<PageContainerProps> = ({
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
-      {user && <Navbar toggleSidebar={toggleSidebar} />}
+      {user && <Navbar />}
       
       <div className="flex flex-1">
         {user && <Sidebar isExpanded={isExpanded} setIsExpanded={setIsExpanded} />}
