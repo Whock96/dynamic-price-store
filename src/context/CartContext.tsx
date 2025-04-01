@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
@@ -87,7 +86,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [paymentTerms, setPaymentTerms] = useState<string>('');
   const [applyDiscounts, setApplyDiscounts] = useState<boolean>(true);
 
-  // Move this function earlier so it can be used by calculateTaxSubstitutionValue
   const isDiscountOptionSelected = (id: string) => {
     return selectedDiscountOptions.includes(id);
   };
@@ -105,7 +103,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     selectedDiscountOptions.forEach(id => {
       const option = discountOptions.find(opt => opt.id === id);
-      if (option) {
+      if (option && option.id !== '3') {
         totalPercentage = option.type === 'discount' 
           ? totalPercentage + option.value 
           : totalPercentage - option.value;
@@ -115,16 +113,36 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return totalPercentage;
   };
 
+  const getTaxSubstitutionRate = () => {
+    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
+    
+    const taxOption = discountOptions.find(opt => opt.id === '3');
+    if (!taxOption) return 0;
+    
+    if (isDiscountOptionSelected('2')) {
+      return taxOption.value * (halfInvoicePercentage / 100);
+    }
+    
+    return taxOption.value;
+  };
+
   const deliveryFee = deliveryLocation === 'capital' ? 25 : deliveryLocation === 'interior' ? 50 : 0;
 
   const recalculateCart = () => {
     const globalDiscountPercentage = getGlobalDiscountPercentage();
+    const taxSubstitutionRate = getTaxSubstitutionRate();
     
     const updatedItems = items.map(item => {
       let itemDiscount = item.discount || 0;
-      // Only apply global discounts if enabled
+      
       const effectiveDiscount = applyDiscounts ? itemDiscount + globalDiscountPercentage : itemDiscount;
-      const finalPrice = item.product.listPrice * (1 - effectiveDiscount / 100);
+      
+      let finalPrice = item.product.listPrice * (1 - effectiveDiscount / 100);
+      
+      if (applyDiscounts && taxSubstitutionRate > 0) {
+        finalPrice *= (1 + taxSubstitutionRate / 100);
+      }
+      
       const subtotal = finalPrice * item.quantity;
       
       return {
@@ -139,17 +157,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     recalculateCart();
-  }, [selectedDiscountOptions, applyDiscounts]);
+  }, [selectedDiscountOptions, applyDiscounts, halfInvoicePercentage]);
 
   useEffect(() => {
     if (customer) {
       setItems(prevItems => 
-        prevItems.map(item => ({
-          ...item,
-          discount: customer.defaultDiscount,
-          finalPrice: item.product.listPrice * (1 - customer.defaultDiscount / 100),
-          subtotal: item.product.listPrice * (1 - customer.defaultDiscount / 100) * item.quantity
-        }))
+        prevItems.map(item => {
+          const finalPrice = item.product.listPrice * (1 - customer.defaultDiscount / 100);
+          return {
+            ...item,
+            discount: customer.defaultDiscount,
+            finalPrice,
+            subtotal: finalPrice * item.quantity
+          };
+        })
       );
     } else {
       setItems(prevItems => 
@@ -176,19 +197,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const standardRate = taxOption.value / 100;
     
-    // If half invoice is selected, adjust the tax rate based on the invoice percentage
     if (isDiscountOptionSelected('2')) {
       const adjustedRate = standardRate * (halfInvoicePercentage / 100);
       return adjustedRate * subtotal;
     }
     
-    // Otherwise use the standard rate
     return standardRate * subtotal;
   };
 
   const taxSubstitutionValue = calculateTaxSubstitutionValue();
   
-  const total = items.reduce((total, item) => total + (item.subtotal || 0), 0) + deliveryFee + taxSubstitutionValue;
+  const total = items.reduce((total, item) => total + (item.subtotal || 0), 0) + deliveryFee;
 
   const toggleApplyDiscounts = () => {
     setApplyDiscounts(prev => !prev);
@@ -261,13 +280,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateItemDiscount = (id: string, discount: number) => {
     if (discount < 0) return;
     
-    // Armazenamos o desconto original para cálculo
     let appliedDiscount = discount;
     
-    // Verificamos se o desconto excede o máximo permitido para o cliente
     if (customer && discount > customer.maxDiscount) {
       toast.warning(`Desconto limitado a ${customer.maxDiscount}% para o cliente ${customer.companyName}`);
-      // Atualizamos o valor do desconto a ser aplicado para o máximo permitido
       appliedDiscount = customer.maxDiscount;
     }
     
@@ -275,13 +291,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     setItems(prevItems => prevItems.map(item => {
       if (item.id === id) {
-        // Usamos o desconto limitado para calcular o preço final
         const combinedDiscount = appliedDiscount + globalDiscountPercentage;
         const finalPrice = item.product.listPrice * (1 - combinedDiscount / 100);
         
         return {
           ...item,
-          discount: appliedDiscount, // Salvamos o desconto limitado, não o original
+          discount: appliedDiscount,
           finalPrice,
           subtotal: finalPrice * item.quantity
         };
@@ -300,7 +315,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setHalfInvoicePercentage(50);
         }
         if (id === '4') {
-          // Clear payment terms when switching to "A Vista" (cash)
           setPaymentTerms('');
         }
         return prev.filter(optId => optId !== id);
