@@ -99,31 +99,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
         </div>
 
         <nav className="flex-1 space-y-1 px-2">
-          <div className="relative">
-            <button
-              onClick={() => handleNavigate('/dashboard')}
-              className={cn(
-                "group w-full flex items-center py-2 px-2 rounded-md transition-all duration-200",
-                isActive('/dashboard') 
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                !isExpanded && "justify-center"
-              )}
-            >
-              <div className="flex items-center justify-center w-8 h-8">
-                <Home size={20} />
-              </div>
-              {isExpanded && (
-                <span className="ml-3">Início</span>
-              )}
-            </button>
-            
-            {!isExpanded && (
-              <div className="sidebar-tooltip group-hover:scale-100">
-                Início
-              </div>
-            )}
-          </div>
+          {/* Removed the standalone Home/Início button that was here */}
           
           {MENU_ITEMS.filter(item => hasPermission(item.path)).map((item) => (
             <div key={item.id} className="relative">
