@@ -1,5 +1,4 @@
-
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Customer } from '@/types/types';
 
 // Initial mock data for customers - with fixed data instead of random
@@ -207,8 +206,36 @@ interface CustomerContextType {
 
 const CustomerContext = createContext<CustomerContextType | undefined>(undefined);
 
+const LOCAL_STORAGE_KEY = 'ferplas_customers';
+
 export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
+  const [customers, setCustomers] = useState<Customer[]>(() => {
+    try {
+      const storedCustomers = localStorage.getItem(LOCAL_STORAGE_KEY);
+      
+      if (storedCustomers) {
+        const parsedData = JSON.parse(storedCustomers) as Customer[];
+        return parsedData.map(customer => ({
+          ...customer,
+          createdAt: new Date(customer.createdAt),
+          updatedAt: new Date(customer.updatedAt)
+        }));
+      }
+
+      return INITIAL_CUSTOMERS;
+    } catch (error) {
+      console.error("Error loading customers from localStorage:", error);
+      return INITIAL_CUSTOMERS;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(customers));
+    } catch (error) {
+      console.error("Error saving customers to localStorage:", error);
+    }
+  }, [customers]);
 
   const getCustomerById = (id: string) => {
     return customers.find(customer => customer.id === id);
