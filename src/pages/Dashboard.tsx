@@ -1,21 +1,116 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { PieChart, BarChart, Users, ShoppingCart, DollarSign, Package } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState({
+    totalSales: 0,
+    customerCount: 0,
+    orderCount: 0,
+    productCount: 0,
+    recentOrders: [] as any[]
+  });
 
-  // Mock data for dashboard
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      setIsLoading(true);
+      try {
+        // Get customer count
+        const { count: customerCount } = await supabase
+          .from('customers')
+          .select('*', { count: 'exact', head: true });
+
+        // Get order count and total sales
+        const { data: orders, error: ordersError } = await supabase
+          .from('orders')
+          .select('*');
+        
+        if (ordersError) throw ordersError;
+        
+        const totalSales = orders?.reduce((sum, order) => sum + (order.total || 0), 0) || 0;
+        
+        // Get product count
+        const { count: productCount } = await supabase
+          .from('products')
+          .select('*', { count: 'exact', head: true });
+
+        // Get recent orders with customer info
+        const { data: recentOrders } = await supabase
+          .from('orders')
+          .select(`
+            id, 
+            order_number,
+            total,
+            created_at,
+            status,
+            customers:customer_id (company_name)
+          `)
+          .order('created_at', { ascending: false })
+          .limit(3);
+
+        setDashboardData({
+          totalSales,
+          customerCount: customerCount || 0,
+          orderCount: orders?.length || 0,
+          productCount: productCount || 0,
+          recentOrders: recentOrders || []
+        });
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  // Format currency to BRL
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
   const stats = [
-    { title: 'Total de Vendas', value: 'R$ 45.231,00', icon: <DollarSign className="h-5 w-5 text-ferplas-500" />, change: '+12.5%', timeframe: 'desde mês passado' },
-    { title: 'Clientes', value: '302', icon: <Users className="h-5 w-5 text-ferplas-500" />, change: '+5.2%', timeframe: 'desde mês passado' },
-    { title: 'Pedidos', value: '124', icon: <ShoppingCart className="h-5 w-5 text-ferplas-500" />, change: '+8.1%', timeframe: 'desde mês passado' },
-    { title: 'Produtos', value: '198', icon: <Package className="h-5 w-5 text-ferplas-500" />, change: '+3.2%', timeframe: 'desde mês passado' },
+    { 
+      title: 'Total de Vendas', 
+      value: isLoading ? <Skeleton className="h-8 w-28" /> : formatCurrency(dashboardData.totalSales), 
+      icon: <DollarSign className="h-5 w-5 text-ferplas-500" />, 
+      change: '+12.5%', 
+      timeframe: 'desde mês passado' 
+    },
+    { 
+      title: 'Clientes', 
+      value: isLoading ? <Skeleton className="h-8 w-16" /> : dashboardData.customerCount, 
+      icon: <Users className="h-5 w-5 text-ferplas-500" />, 
+      change: '+5.2%', 
+      timeframe: 'desde mês passado' 
+    },
+    { 
+      title: 'Pedidos', 
+      value: isLoading ? <Skeleton className="h-8 w-16" /> : dashboardData.orderCount, 
+      icon: <ShoppingCart className="h-5 w-5 text-ferplas-500" />, 
+      change: '+8.1%', 
+      timeframe: 'desde mês passado' 
+    },
+    { 
+      title: 'Produtos', 
+      value: isLoading ? <Skeleton className="h-8 w-16" /> : dashboardData.productCount, 
+      icon: <Package className="h-5 w-5 text-ferplas-500" />, 
+      change: '+3.2%', 
+      timeframe: 'desde mês passado' 
+    },
   ];
 
   const quickActions = [
@@ -112,26 +207,51 @@ const Dashboard = () => {
           <CardDescription>Últimas ações realizadas na plataforma</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {[1, 2, 3].map((_, i) => (
-              <div key={i} className="flex items-start space-x-4 border-b pb-4 last:border-0">
-                <div className="rounded-full bg-ferplas-100 p-2">
-                  <ShoppingCart className="h-4 w-4 text-ferplas-500" />
+          {isLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((_, i) => (
+                <div key={i} className="flex items-start space-x-4 border-b pb-4 last:border-0">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-3 w-1/3" />
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">Novo pedido #{10025 + i}</p>
-                  <p className="text-sm text-muted-foreground">Cliente: Empresa ABC Ltda</p>
-                  <p className="text-xs text-muted-foreground">
-                    {i === 0
-                      ? 'Há 5 minutos'
-                      : i === 1
-                      ? 'Há 2 horas'
-                      : 'Ontem às 15:30'}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {dashboardData.recentOrders.length > 0 ? (
+                dashboardData.recentOrders.map((order, i) => (
+                  <div key={order.id} className="flex items-start space-x-4 border-b pb-4 last:border-0">
+                    <div className="rounded-full bg-ferplas-100 p-2">
+                      <ShoppingCart className="h-4 w-4 text-ferplas-500" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">
+                        Pedido #{order.order_number}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Cliente: {order.customers?.company_name || 'Cliente não encontrado'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(order.created_at).toLocaleString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-center text-muted-foreground py-4">Nenhum pedido recente encontrado</p>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

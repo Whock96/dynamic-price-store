@@ -1,761 +1,307 @@
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Save, Package, User, Calendar, Truck, Receipt, ShoppingCart, Trash } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
-import { Switch } from '@/components/ui/switch';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ArrowLeft, Save } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { OrderStatusBadge } from '@/components/orders/OrderStatusBadge';
+import { formatCurrency } from '@/utils/formatters';
 import { toast } from 'sonner';
-import { Order, Customer, CartItem, DiscountOption } from '@/types/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useOrders } from '@/context/OrderContext';
-import { Slider } from '@/components/ui/slider';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, Tables } from '@/integrations/supabase/client';
+import { Skeleton } from '@/components/ui/skeleton';
 
-const ORDER_STATUS_OPTIONS = [
-  { value: "pending", label: "Pendente" },
-  { value: "confirmed", label: "Confirmado" },
-  { value: "invoiced", label: "Faturado" },
-  { value: "completed", label: "Concluído" },
-  { value: "canceled", label: "Cancelado" },
-];
+// Define custom types that include joined tables
+interface OrderWithDetails extends Tables<'orders'> {
+  customers: Tables<'customers'>;
+  items: OrderItemWithProduct[];
+  discounts: DiscountOption[];
+}
+
+interface OrderItemWithProduct extends Tables<'order_items'> {
+  products: Tables<'products'>;
+}
+
+interface DiscountOption extends Tables<'discount_options'> {}
 
 const OrderUpdate = () => {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { id } = useParams();
-  const { getOrderById, updateOrder, deleteOrder } = useOrders();
-  
+
   const [isLoading, setIsLoading] = useState(true);
-  const [order, setOrder] = useState<Order | null>(null);
-  const [notes, setNotes] = useState("");
-  const [status, setStatus] = useState<Order["status"]>("pending");
-  const [shipping, setShipping] = useState<"delivery" | "pickup">("delivery");
-  const [fullInvoice, setFullInvoice] = useState(false);
-  const [taxSubstitution, setTaxSubstitution] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "credit">("cash");
-  const [paymentTerms, setPaymentTerms] = useState("");
-  const [deliveryLocation, setDeliveryLocation] = useState<'capital' | 'interior' | null>(null);
-  const [halfInvoicePercentage, setHalfInvoicePercentage] = useState(50);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [order, setOrder] = useState<OrderWithDetails | null>(null);
+  const [statusOptions] = useState(['pending', 'confirmed', 'invoiced', 'completed', 'canceled']);
   
-  const [selectedDiscountOptions, setSelectedDiscountOptions] = useState<string[]>([]);
-  const [discountOptions, setDiscountOptions] = useState<DiscountOption[]>([]);
-  
-  // Fetch discount options from Supabase
+  const [status, setStatus] = useState('');
+  const [notes, setNotes] = useState('');
+  const [observations, setObservations] = useState('');
+
   useEffect(() => {
-    const fetchDiscountOptions = async () => {
-      try {
-        const { data, error } = await supabase
+    if (id) {
+      fetchOrderDetails();
+    }
+  }, [id]);
+
+  const fetchOrderDetails = async () => {
+    if (!id) return;
+
+    setIsLoading(true);
+    try {
+      // Fetch order with customer details
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          customers(*)
+        `)
+        .eq('id', id)
+        .single();
+
+      if (orderError) throw orderError;
+      if (!orderData) throw new Error("Order not found");
+
+      // Fetch order items with product details
+      const { data: itemsData, error: itemsError } = await supabase
+        .from('order_items')
+        .select(`
+          *,
+          products(*)
+        `)
+        .eq('order_id', id);
+
+      if (itemsError) throw itemsError;
+
+      // Fetch discount options applied to this order
+      const { data: discountData, error: discountError } = await supabase
+        .from('order_discounts')
+        .select(`
+          discount_id
+        `)
+        .eq('order_id', id);
+
+      if (discountError) throw discountError;
+
+      // Fetch full discount details
+      let discounts: DiscountOption[] = [];
+      if (discountData && discountData.length > 0) {
+        const discountIds = discountData.map(d => d.discount_id);
+        const { data: discountDetails, error: discountDetailsError } = await supabase
           .from('discount_options')
           .select('*')
-          .order('name');
+          .in('id', discountIds);
 
-        if (error) {
-          throw error;
-        }
+        if (discountDetailsError) throw discountDetailsError;
+        discounts = discountDetails as DiscountOption[];
+      }
 
-        if (data) {
-          setDiscountOptions(data.map(discount => ({
-            id: discount.id,
-            name: discount.name,
-            description: discount.description || '',
-            value: discount.value,
-            type: discount.type as 'discount' | 'surcharge',
-            isActive: discount.is_active,
-          })));
-        }
-      } catch (error) {
-        console.error('Error fetching discount options:', error);
-        toast.error('Erro ao carregar opções de desconto');
-      }
-    };
+      // Combine all data
+      const fullOrder = {
+        ...orderData,
+        items: itemsData || [],
+        discounts: discounts || []
+      } as OrderWithDetails;
 
-    fetchDiscountOptions();
-  }, []);
-  
-  useEffect(() => {
-    if (!id) return;
-    
-    setIsLoading(true);
-    
-    const fetchOrder = async () => {
-      try {
-        // First get the order
-        const { data: orderData, error: orderError } = await supabase
-          .from('orders')
-          .select(`
-            *,
-            customer:customers(*)
-          `)
-          .eq('id', id)
-          .single();
-          
-        if (orderError) {
-          throw orderError;
-        }
-        
-        if (!orderData) {
-          throw new Error(`Order with ID ${id} not found`);
-        }
-        
-        // Get order items
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('order_items')
-          .select(`
-            *,
-            product:products(*)
-          `)
-          .eq('order_id', id);
-          
-        if (itemsError) {
-          throw itemsError;
-        }
-        
-        // Get applied discounts
-        const { data: discountsData, error: discountsError } = await supabase
-          .from('order_discounts')
-          .select(`
-            discount:discount_options(*)
-          `)
-          .eq('order_id', id);
-          
-        if (discountsError) {
-          throw discountsError;
-        }
-        
-        // Transform data to match our types
-        const appliedDiscounts = discountsData.map(d => ({
-          id: d.discount.id,
-          name: d.discount.name,
-          description: d.discount.description || '',
-          value: d.discount.value,
-          type: d.discount.type as 'discount' | 'surcharge',
-          isActive: d.discount.is_active,
-        }));
-        
-        const items = itemsData.map(item => ({
-          id: item.id,
-          productId: item.product_id,
-          product: {
-            id: item.product.id,
-            name: item.product.name,
-            description: item.product.description || '',
-            listPrice: item.product.list_price,
-            weight: item.product.weight,
-            quantity: item.product.quantity,
-            quantityPerVolume: item.product.quantity_per_volume,
-            dimensions: {
-              width: item.product.width,
-              height: item.product.height,
-              length: item.product.length,
-            },
-            cubicVolume: item.product.cubic_volume,
-            categoryId: item.product.category_id,
-            subcategoryId: item.product.subcategory_id,
-            imageUrl: item.product.image_url,
-            createdAt: new Date(item.product.created_at),
-            updatedAt: new Date(item.product.updated_at),
-          },
-          quantity: item.quantity,
-          discount: item.discount,
-          finalPrice: item.final_price,
-          subtotal: item.subtotal,
-        }));
-        
-        const orderObj: Order = {
-          id: orderData.id,
-          customerId: orderData.customer_id,
-          customer: {
-            id: orderData.customer.id,
-            companyName: orderData.customer.company_name,
-            document: orderData.customer.document,
-            salesPersonId: orderData.customer.sales_person_id,
-            street: orderData.customer.street,
-            number: orderData.customer.number || '',
-            noNumber: orderData.customer.no_number,
-            complement: orderData.customer.complement || '',
-            city: orderData.customer.city,
-            state: orderData.customer.state,
-            zipCode: orderData.customer.zip_code,
-            phone: orderData.customer.phone || '',
-            email: orderData.customer.email || '',
-            defaultDiscount: orderData.customer.default_discount,
-            maxDiscount: orderData.customer.max_discount,
-            createdAt: new Date(orderData.customer.created_at),
-            updatedAt: new Date(orderData.customer.updated_at),
-          },
-          userId: orderData.user_id,
-          user: {
-            id: orderData.user_id,
-            username: 'user', // We don't have this in DB yet
-            name: 'User', // We don't have this in DB yet
-            role: 'salesperson' as const,
-            permissions: [],
-            email: '',
-            createdAt: new Date(),
-          },
-          items: items,
-          appliedDiscounts: appliedDiscounts,
-          totalDiscount: orderData.total_discount,
-          subtotal: orderData.subtotal,
-          total: orderData.total,
-          status: orderData.status as Order['status'],
-          shipping: orderData.shipping as 'delivery' | 'pickup',
-          fullInvoice: orderData.full_invoice,
-          taxSubstitution: orderData.tax_substitution,
-          paymentMethod: orderData.payment_method as 'cash' | 'credit',
-          paymentTerms: orderData.payment_terms || undefined,
-          notes: orderData.notes || '',
-          observations: orderData.observations || '',
-          createdAt: new Date(orderData.created_at),
-          updatedAt: new Date(orderData.updated_at),
-          deliveryLocation: orderData.delivery_location as 'capital' | 'interior' | null || null,
-          halfInvoicePercentage: orderData.half_invoice_percentage || undefined,
-          deliveryFee: orderData.delivery_fee || 0,
-          discountOptions: appliedDiscounts,
-        };
-        
-        setOrder(orderObj);
-        setNotes(orderObj.notes || orderObj.observations || "");
-        setStatus(orderObj.status);
-        setShipping(orderObj.shipping === "pickup" ? "pickup" : "delivery");
-        setFullInvoice(Boolean(orderObj.fullInvoice));
-        setTaxSubstitution(Boolean(orderObj.taxSubstitution));
-        setPaymentMethod(orderObj.paymentMethod === "credit" ? "credit" : "cash");
-        setPaymentTerms(orderObj.paymentTerms || "");
-        setDeliveryLocation(orderObj.deliveryLocation || null);
-        
-        if (orderObj.halfInvoicePercentage) {
-          setHalfInvoicePercentage(orderObj.halfInvoicePercentage);
-        }
-
-        if (appliedDiscounts.length > 0) {
-          const discountIds = appliedDiscounts.map(discount => discount.id);
-          setSelectedDiscountOptions(discountIds);
-        }
-        
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Error fetching order:', error);
-        toast.error(`Não foi possível encontrar o pedido com ID: ${id}`);
-        navigate('/orders');
-        setIsLoading(false);
-      }
-    };
-    
-    fetchOrder();
-  }, [id, navigate]);
-  
-  const handleStatusChange = (value: string) => {
-    if (
-      value === "pending" || 
-      value === "confirmed" || 
-      value === "invoiced" || 
-      value === "completed" || 
-      value === "canceled"
-    ) {
-      setStatus(value as Order["status"]);
-    }
-  };
-  
-  const handleShippingChange = (value: string) => {
-    if (value === "delivery" || value === "pickup") {
-      setShipping(value as "delivery" | "pickup");
-      
-      if (value === "pickup") {
-        setDeliveryLocation(null);
-      }
-    }
-  };
-  
-  const handlePaymentMethodChange = (value: string) => {
-    if (value === "cash" || value === "credit") {
-      setPaymentMethod(value as "cash" | "credit");
-      
-      if (value === "cash") {
-        setPaymentTerms("");
-      }
+      setOrder(fullOrder);
+      setStatus(fullOrder.status);
+      setNotes(fullOrder.notes || '');
+      setObservations(fullOrder.observations || '');
+    } catch (error) {
+      console.error('Error fetching order:', error);
+      toast.error('Erro ao carregar dados do pedido');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleDeliveryLocationChange = (value: string) => {
-    if (value === 'capital' || value === 'interior') {
-      setDeliveryLocation(value as 'capital' | 'interior');
-    } else {
-      setDeliveryLocation(null);
-    }
-  };
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleSave = async () => {
     if (!order || !id) return;
-    
-    setIsSaving(true);
-    
+
     try {
-      const updatedOrderData = {
-        status,
-        shipping,
-        full_invoice: fullInvoice,
-        tax_substitution: taxSubstitution,
-        payment_method: paymentMethod,
-        payment_terms: paymentMethod === "credit" ? paymentTerms : null,
-        delivery_location: deliveryLocation,
-        half_invoice_percentage: !fullInvoice ? halfInvoicePercentage : null,
-        notes,
-        observations: notes,
-        updated_at: new Date().toISOString(),
-      };
-      
-      // Update order in Supabase
       const { error } = await supabase
         .from('orders')
-        .update(updatedOrderData)
+        .update({
+          status: status as 'pending' | 'confirmed' | 'invoiced' | 'completed' | 'canceled',
+          notes,
+          observations,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', id);
-        
+
       if (error) throw error;
-      
-      toast.success(`Pedido #${id.slice(-4)} foi atualizado com sucesso.`);
+
+      toast.success('Pedido atualizado com sucesso');
       navigate(`/orders/${id}`);
     } catch (error) {
-      console.error("Error saving order:", error);
-      toast.error("Ocorreu um erro ao salvar as alterações. Tente novamente.");
-    } finally {
-      setIsSaving(false);
+      console.error('Error updating order:', error);
+      toast.error('Erro ao atualizar pedido');
     }
   };
 
-  const handleDelete = async () => {
-    if (!id) return;
-    
-    setIsDeleting(true);
-    
-    try {
-      // Delete order from Supabase
-      const { error } = await supabase
-        .from('orders')
-        .delete()
-        .eq('id', id);
-        
-      if (error) throw error;
-      
-      toast.success(`Pedido #${id.slice(-4)} excluído com sucesso!`);
-      navigate('/orders');
-    } catch (error) {
-      console.error("Error deleting order:", error);
-      toast.error("Ocorreu um erro ao excluir o pedido. Tente novamente.");
-    } finally {
-      setIsDeleting(false);
-    }
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return '';
+    return format(new Date(dateString), 'dd/MM/yyyy HH:mm', {locale: ptBR});
   };
-  
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
-  };
-  
-  const formatDate = (date: Date) => {
-    return format(date, "d 'de' MMMM 'de' yyyy", { locale: ptBR });
-  };
-  
-  if (isLoading || !order) {
+
+  if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-ferplas-500"></div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/orders')}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <Skeleton className="h-8 w-48" />
+          </div>
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-40" />
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {[1, 2, 3, 4].map((item) => (
+              <div key={item} className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       </div>
     );
   }
-  
+
+  if (!order) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8">
+        <h2 className="text-xl font-semibold">Pedido não encontrado</h2>
+        <p className="text-muted-foreground mb-4">O pedido solicitado não foi encontrado ou foi removido.</p>
+        <Button onClick={() => navigate('/orders')}>Voltar para Pedidos</Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="mr-4 text-gray-500"
-            onClick={() => navigate(`/orders/${id}`)}
-          >
-            <ArrowLeft className="h-4 w-4" />
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/orders')}>
+            <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Editar Pedido #{order.id.slice(-4)}</h1>
-            <p className="text-muted-foreground">
-              Atualize as informações do pedido
-            </p>
-          </div>
+          <h1 className="text-3xl font-bold">Atualizar Pedido #{order.order_number}</h1>
         </div>
-        <div className="flex gap-2">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive">
-                <Trash className="mr-2 h-4 w-4" />
-                Excluir Pedido
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Excluir Pedido</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Tem certeza que deseja excluir este pedido? Esta ação não pode ser desfeita.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction 
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                >
-                  {isDeleting ? 'Excluindo...' : 'Sim, excluir'}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-          
-          <Button 
-            className="bg-ferplas-500 hover:bg-ferplas-600"
-            onClick={handleSubmit}
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <>
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                Salvando...
-              </>
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                Salvar Alterações
-              </>
-            )}
-          </Button>
-        </div>
-      </header>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-medium flex items-center">
-                <Receipt className="mr-2 h-5 w-5" />
-                Status do Pedido
-              </CardTitle>
-              <CardDescription>Atualize o status atual do pedido</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Select value={status} onValueChange={handleStatusChange}>
-                <SelectTrigger className="w-full md:w-72">
-                  <SelectValue placeholder="Selecione um status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ORDER_STATUS_OPTIONS.map(option => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
+        <Button onClick={handleSave} className="bg-ferplas-500 hover:bg-ferplas-600">
+          <Save className="mr-2 h-4 w-4" /> Salvar Alterações
+        </Button>
+      </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="md:col-span-2">
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-medium flex items-center">
-                <Truck className="mr-2 h-5 w-5" />
-                Entrega e Faturamento
-              </CardTitle>
-              <CardDescription>Configure as opções de entrega e faturamento</CardDescription>
+            <CardHeader>
+              <CardTitle>Detalhes do Pedido</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-base">Tipo de Entrega</Label>
-                    <p className="text-sm text-muted-foreground">Como o pedido será entregue ao cliente</p>
-                  </div>
-                  <Select value={shipping} onValueChange={handleShippingChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o tipo de entrega" />
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="status">Status do Pedido</Label>
+                  <Select 
+                    value={status} 
+                    onValueChange={(value) => setStatus(value)}
+                  >
+                    <SelectTrigger className="w-full" id="status">
+                      <SelectValue placeholder="Selecione um status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pickup">Retirada</SelectItem>
-                      <SelectItem value="delivery">Entrega</SelectItem>
+                      {statusOptions.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          <div className="flex items-center">
+                            <OrderStatusBadge status={option as any} />
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
-
-                {shipping === "delivery" && (
-                  <div className="space-y-4 pt-4 border-t">
-                    <div>
-                      <Label className="text-base">Local de Entrega</Label>
-                      <p className="text-sm text-muted-foreground">Região onde será entregue</p>
-                    </div>
-                    <Select 
-                      value={deliveryLocation || ''} 
-                      onValueChange={handleDeliveryLocationChange}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o local de entrega" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="capital">Capital</SelectItem>
-                        <SelectItem value="interior">Interior</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                <Separator />
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label className="text-base">Nota Fiscal Cheia</Label>
-                      <p className="text-sm text-muted-foreground">Emitir nota fiscal com valor total</p>
-                    </div>
-                    <Switch checked={fullInvoice} onCheckedChange={setFullInvoice} />
-                  </div>
-                </div>
-
-                {!fullInvoice && (
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="text-base">Percentual da Nota ({halfInvoicePercentage}%)</Label>
-                      <p className="text-sm text-muted-foreground">Defina o percentual para meia nota</p>
-                    </div>
-                    <Slider
-                      value={[halfInvoicePercentage]}
-                      min={10}
-                      max={90}
-                      step={5}
-                      onValueChange={(values) => setHalfInvoicePercentage(values[0])}
-                      className="w-full"
-                    />
-                    <div className="flex justify-between text-xs text-gray-500">
-                      <span>10%</span>
-                      <span>50%</span>
-                      <span>90%</span>
-                    </div>
-                  </div>
-                )}
-
-                <Separator />
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-base">Substituição Tributária</Label>
-                    <p className="text-sm text-muted-foreground">Aplicar acréscimo por substituição tributária</p>
-                  </div>
-                  <Switch checked={taxSubstitution} onCheckedChange={setTaxSubstitution} />
-                </div>
-
-                <Separator />
-
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-base">Forma de Pagamento</Label>
-                    <p className="text-sm text-muted-foreground">Como o cliente irá pagar</p>
-                  </div>
-                  <Select value={paymentMethod} onValueChange={handlePaymentMethodChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a forma de pagamento" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">À Vista</SelectItem>
-                      <SelectItem value="credit">A Prazo</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  
-                  {paymentMethod === "credit" && (
-                    <div className="space-y-2 pt-2">
-                      <Label htmlFor="paymentTerms" className="text-sm">Prazo de Pagamento</Label>
-                      <Input
-                        id="paymentTerms"
-                        placeholder="Ex: 30/60/90 ou 28 DDL"
-                        value={paymentTerms}
-                        onChange={(e) => setPaymentTerms(e.target.value)}
-                      />
-                      <p className="text-xs text-gray-500">Informe o prazo de pagamento combinado com o cliente</p>
-                    </div>
-                  )}
+                <div>
+                  <Label>Data de Criação</Label>
+                  <Input 
+                    value={formatDate(order.created_at)} 
+                    disabled 
+                    className="bg-muted"
+                  />
                 </div>
               </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-medium">Observações</CardTitle>
-              <CardDescription>Adicione notas ou instruções especiais para o pedido</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Textarea 
-                placeholder="Adicione informações importantes sobre o pedido, como instruções de entrega, preferências do cliente, etc."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={5}
-              />
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-medium flex items-center">
-                <ShoppingCart className="mr-2 h-5 w-5" />
-                Itens do Pedido
-              </CardTitle>
-              <CardDescription>
-                Produtos incluídos neste pedido (não podem ser editados aqui)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {order.items && order.items.map((item: CartItem) => (
-                  <div key={item.id} className="flex justify-between items-start p-3 border rounded-lg hover:bg-gray-50">
-                    <div className="flex items-center space-x-4">
-                      <div className="h-10 w-10 rounded bg-gray-100 flex items-center justify-center">
-                        <Package className="h-5 w-5 text-gray-400" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{item.product?.name}</p>
-                        <div className="flex items-center space-x-4 text-sm text-gray-500">
-                          <span>Quantidade: {item.quantity}</span>
-                          <span>Desconto: {item.discount}%</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium">{formatCurrency(item.subtotal)}</p>
-                      <p className="text-sm text-gray-500">
-                        {formatCurrency(item.finalPrice)} un.
-                      </p>
-                    </div>
-                  </div>
-                ))}
-                
-                {!order.items || order.items.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <Package className="h-12 w-12 text-gray-300 mb-4" />
-                    <h2 className="text-xl font-medium text-gray-600">Nenhum item no pedido</h2>
-                  </div>
-                )}
+
+              <div>
+                <Label htmlFor="notes">Notas</Label>
+                <Textarea 
+                  id="notes" 
+                  value={notes} 
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Adicione notas sobre este pedido"
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="observations">Observações</Label>
+                <Textarea 
+                  id="observations" 
+                  value={observations} 
+                  onChange={(e) => setObservations(e.target.value)}
+                  placeholder="Observações adicionais"
+                  rows={3}
+                />
               </div>
             </CardContent>
           </Card>
         </div>
-        
-        <div className="lg:col-span-1 space-y-6">
+
+        <div>
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-medium">Informações do Pedido</CardTitle>
+            <CardHeader>
+              <CardTitle>Resumo do Pedido</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <h3 className="text-sm font-medium text-gray-500">Número do Pedido</h3>
-                <p>{order.id}</p>
+                <h4 className="text-sm font-medium mb-1">Cliente</h4>
+                <p className="text-base">{order.customers?.company_name}</p>
+                <p className="text-sm text-muted-foreground">{order.customers?.document}</p>
               </div>
-              
+
               <div>
-                <h3 className="text-sm font-medium text-gray-500">Data de Criação</h3>
-                <p>{formatDate(new Date(order.createdAt))}</p>
-              </div>
-              
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Última Atualização</h3>
-                <p>{formatDate(new Date(order.updatedAt))}</p>
-              </div>
-              
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Status Atual</h3>
-                <div className="mt-1">
-                  <OrderStatusBadge status={status} />
+                <h4 className="text-sm font-medium mb-1">Valores</h4>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">Subtotal:</span>
+                  <span className="font-medium">{formatCurrency(order.subtotal)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">Descontos:</span>
+                  <span className="font-medium">{formatCurrency(order.total_discount)}</span>
+                </div>
+                <div className="flex justify-between items-center border-t mt-1 pt-1">
+                  <span className="text-base font-medium">Total:</span>
+                  <span className="text-base font-bold">{formatCurrency(order.total)}</span>
                 </div>
               </div>
-              
-              <Separator />
-              
+
               <div>
-                <h3 className="text-sm font-medium text-gray-500">Vendedor</h3>
-                <div className="flex items-center mt-1">
-                  <div className="h-6 w-6 rounded-full bg-ferplas-100 flex items-center justify-center mr-2">
-                    <User className="h-3 w-3 text-ferplas-600" />
-                  </div>
-                  <span>{order.user?.name || 'Usuário'}</span>
-                </div>
-              </div>
-              
-              <Separator />
-              
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Cliente</h3>
-                <p className="font-medium">{order.customer?.companyName}</p>
-                <p className="text-sm">{order.customer?.document}</p>
-                <p className="text-sm">{order.customer?.city}/{order.customer?.state}</p>
-              </div>
-              
-              <Separator />
-              
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Resumo Financeiro</h3>
-                <div className="space-y-1 mt-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Subtotal:</span>
-                    <span>{formatCurrency(order.subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm text-red-600">
-                    <span>Descontos:</span>
-                    <span>-{formatCurrency(order.totalDiscount || 0)}</span>
-                  </div>
-                  {(order.deliveryFee || 0) > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span>Taxa de Entrega:</span>
-                      <span>{formatCurrency(order.deliveryFee || 0)}</span>
-                    </div>
+                <h4 className="text-sm font-medium mb-1">Detalhes</h4>
+                <div className="text-sm space-y-1">
+                  <p>Forma de envio: {order.shipping === 'delivery' ? 'Entrega' : 'Retirada'}</p>
+                  <p>Forma de pagamento: {order.payment_method === 'cash' ? 'À Vista' : 'A Prazo'}</p>
+                  {order.payment_method === 'credit' && order.payment_terms && (
+                    <p>Condições de pagamento: {order.payment_terms}</p>
                   )}
-                  <div className="flex justify-between font-medium">
-                    <span>Total:</span>
-                    <span>{formatCurrency(order.total)}</span>
-                  </div>
+                  {order.shipping === 'delivery' && order.delivery_location && (
+                    <p>Local de entrega: {order.delivery_location === 'capital' ? 'Capital' : 'Interior'}</p>
+                  )}
                 </div>
-              </div>
-              
-              <Separator />
-              
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Pagamento</h3>
-                <p>{paymentMethod === "cash" ? "À Vista" : "A Prazo"}</p>
-                {paymentMethod === "credit" && paymentTerms && (
-                  <p className="text-sm text-gray-600">Prazo: {paymentTerms}</p>
-                )}
               </div>
             </CardContent>
           </Card>
