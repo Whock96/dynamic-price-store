@@ -193,7 +193,7 @@ const ProductManagement = () => {
         category_id: product.category_id,
         subcategory_id: product.subcategory_id,
         image_url: product.image_url,
-        mva: product.mva || 39,
+        mva: product.mva !== undefined ? product.mva : 39,
       });
       setImageFile(null);
     } else {
