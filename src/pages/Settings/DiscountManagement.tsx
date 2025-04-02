@@ -60,13 +60,15 @@ const DiscountManagement = () => {
     // Handle nested properties for delivery fees
     if (name.includes('.')) {
       const [parent, child] = name.split('.');
-      setFormData(prev => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent as keyof typeof prev],
-          [child]: parseFloat(value) || 0
-        }
-      }));
+      if (parent === 'deliveryFees') {
+        setFormData(prev => ({
+          ...prev,
+          deliveryFees: {
+            ...prev.deliveryFees,
+            [child]: parseFloat(value) || 0
+          }
+        }));
+      }
     } else {
       setFormData(prev => ({
         ...prev,
