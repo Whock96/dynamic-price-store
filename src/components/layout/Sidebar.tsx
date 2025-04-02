@@ -103,7 +103,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
           </Button>
         </div>
 
-        <nav className="flex-1 space-y-1 px-2">
+        <nav className="flex-1 space-y-1 px-2 overflow-y-auto">
           {MENU_ITEMS
             .filter(item => 
               hasPermission(item.path) && 
@@ -169,31 +169,31 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
                 )}
               </div>
             ))}
+
+          {/* Botão de Sair - Movido para dentro da navegação principal */}
+          <div className="relative mt-2">
+            <button
+              onClick={handleLogout}
+              className={cn(
+                "group w-full flex items-center py-2 px-2 rounded-md transition-all duration-200 text-red-500 hover:bg-red-50 hover:text-red-600",
+                !isExpanded && "justify-center"
+              )}
+            >
+              <div className="flex items-center justify-center w-8 h-8">
+                <LogOut size={20} />
+              </div>
+              {isExpanded && <span className="ml-3">Sair</span>}
+            </button>
+            
+            {!isExpanded && (
+              <div className="sidebar-tooltip group-hover:scale-100">
+                Sair
+              </div>
+            )}
+          </div>
         </nav>
         
-        {/* Botão de Sair */}
-        <div className="px-2 mt-2 mb-2">
-          <button
-            onClick={handleLogout}
-            className={cn(
-              "group w-full flex items-center py-2 px-2 rounded-md transition-all duration-200 text-red-500 hover:bg-red-50 hover:text-red-600",
-              !isExpanded && "justify-center"
-            )}
-          >
-            <div className="flex items-center justify-center w-8 h-8">
-              <LogOut size={20} />
-            </div>
-            {isExpanded && <span className="ml-3">Sair</span>}
-          </button>
-          
-          {!isExpanded && (
-            <div className="sidebar-tooltip group-hover:scale-100">
-              Sair
-            </div>
-          )}
-        </div>
-        
-        <div className="px-2 mt-auto">
+        <div className="px-2 mt-4">
           {isExpanded ? (
             <div className="border-t border-sidebar-border pt-2 text-xs text-sidebar-foreground/70 text-center">
               Ferplas © {new Date().getFullYear()}
