@@ -171,7 +171,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
             ))}
         </nav>
         
-        {/* Botão de Sair */}
+        {/* Logout button added at the end of the menu */}
         <div className="px-2 mt-2 mb-2">
           <button
             onClick={handleLogout}
