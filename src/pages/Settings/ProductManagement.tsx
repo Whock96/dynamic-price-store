@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -71,6 +70,7 @@ type ProductFormData = {
   category_id: string | null;
   subcategory_id: string | null;
   image_url: string | null;
+  mva: number;
 };
 
 const ProductManagement = () => {
@@ -98,6 +98,7 @@ const ProductManagement = () => {
     category_id: null,
     subcategory_id: null,
     image_url: 'https://via.placeholder.com/150',
+    mva: 39,
   });
 
   const { 
@@ -192,6 +193,7 @@ const ProductManagement = () => {
         category_id: product.category_id,
         subcategory_id: product.subcategory_id,
         image_url: product.image_url,
+        mva: product.mva || 39,
       });
       setImageFile(null);
     } else {
@@ -210,6 +212,7 @@ const ProductManagement = () => {
         category_id: categories.length > 0 ? categories[0].id : null,
         subcategory_id: null,
         image_url: 'https://via.placeholder.com/150',
+        mva: 39,
       });
       setImageFile(null);
     }
@@ -272,9 +275,7 @@ const ProductManagement = () => {
     try {
       let imageUrl = formData.image_url;
       
-      // If there's a new image file, upload it
       if (imageFile) {
-        // For new products, we need a temporary ID to organize storage
         const tempId = formData.id || Math.random().toString(36).substring(2, 15);
         imageUrl = await uploadProductImage(imageFile, tempId);
         
@@ -519,7 +520,7 @@ const ProductManagement = () => {
                     value={imageFile ? URL.createObjectURL(imageFile) : formData.image_url || undefined}
                     onChange={handleImageChange}
                     accept="image/*"
-                    maxSize={2} // 2MB max
+                    maxSize={2}
                   />
                 </div>
               </div>
@@ -658,6 +659,23 @@ const ProductManagement = () => {
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   Volume calculado: {formData.cubic_volume} m³
+                </p>
+              </div>
+              
+              <div>
+                <Label htmlFor="mva">MVA (%)</Label>
+                <Input
+                  id="mva"
+                  name="mva"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={formData.mva}
+                  onChange={handleInputChange}
+                  title="Margem de Valor Agregado para cálculo de substituição tributária"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Margem de Valor Agregado usada no cálculo de substituição tributária
                 </p>
               </div>
             </div>

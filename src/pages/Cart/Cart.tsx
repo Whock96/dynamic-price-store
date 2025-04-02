@@ -832,7 +832,7 @@ const Cart = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium">
-                        {option.name} {applyDiscounts && (
+                        ICMS Substituição tributária {applyDiscounts && (
                           <span className="text-red-600">(+{option.value}%)</span>
                         )}
                         {option.id === '3' && isDiscountOptionSelected('2') && applyDiscounts && (
@@ -841,7 +841,9 @@ const Cart = () => {
                           </span>
                         )}
                       </p>
-                      <p className="text-sm text-gray-500">{option.description}</p>
+                      <p className="text-sm text-gray-500">
+                        Acréscimo do ICMS por substituição tributária (calculado com MVA de cada produto)
+                      </p>
                     </div>
                     <Switch
                       checked={isDiscountOptionSelected(option.id)}
@@ -907,7 +909,7 @@ const Cart = () => {
               </div>
               {isDiscountOptionSelected('3') && applyDiscounts && taxSubstitutionValue > 0 && (
                 <div className="flex justify-between text-sm text-orange-600">
-                  <span>Substituição Tributária ({effectiveTaxRate.toFixed(2)}%):</span>
+                  <span>ICMS Substituição Tributária ({effectiveTaxRate.toFixed(2)}% ICMS-ST):</span>
                   <span>+{formatCurrency(taxSubstitutionValue)}</span>
                 </div>
               )}

@@ -6,7 +6,7 @@ export interface DiscountSettings {
   pickup: number;
   cashPayment: number;
   halfInvoice: number;
-  taxSubstitution: number;
+  taxSubstitution: number; // This represents ICMS ST rate (not changing the field name to maintain compatibility)
   deliveryFees: {
     capital: number;
     interior: number;
@@ -19,7 +19,7 @@ const DEFAULT_SETTINGS: DiscountSettings = {
   pickup: 1,
   cashPayment: 1,
   halfInvoice: 3,
-  taxSubstitution: 7.8,
+  taxSubstitution: 20, // Changed from 7.8 to 20 (representing 20% ICMS ST)
   deliveryFees: {
     capital: 25,
     interior: 50

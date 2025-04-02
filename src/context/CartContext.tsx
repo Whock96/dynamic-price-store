@@ -165,14 +165,25 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const taxOption = discountOptions.find(opt => opt.id === '3');
     if (!taxOption) return 0;
     
-    const standardRate = taxOption.value / 100;
-    let taxRate = standardRate;
+    // Get the ICMS ST rate from settings (in percentage, so divide by 100 to get the decimal value)
+    const icmsStRate = taxOption.value / 100;
     
+    // Get the MVA from product (default to 39% if not defined)
+    const mva = (item.product.mva ?? 39) / 100;
+    
+    // New formula: item price * mva * icmsStRate
+    const basePrice = item.finalPrice;
+    
+    // Calculate ST value for one unit: price * (1 + mva * icmsST) - price
+    // Simplified to: price * mva * icmsST
+    let taxValue = basePrice * mva * icmsStRate;
+    
+    // If half invoice is selected, adjust the tax rate
     if (isDiscountOptionSelected('2')) {
-      taxRate = standardRate * (halfInvoicePercentage / 100);
+      taxValue = taxValue * (halfInvoicePercentage / 100);
     }
     
-    return item.finalPrice * taxRate * item.quantity;
+    return taxValue * item.quantity;
   };
 
   const calculateIPIValue = () => {

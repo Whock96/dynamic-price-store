@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   username: string;
@@ -33,6 +32,7 @@ export interface Product {
   categoryId: string;
   subcategoryId: string;
   imageUrl: string;
+  mva: number;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -1,96 +1,112 @@
-
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, Save,
-  DollarSign, Truck, ShoppingBasket, CreditCard,
-  PercentIcon
-} from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { useAuth } from '@/context/AuthContext';
-import { toast } from 'sonner';
 import { useDiscountSettings } from '@/hooks/use-discount-settings';
+import { ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
+interface FormState {
+  pickup: number;
+  cashPayment: number;
+  halfInvoice: number;
+  taxSubstitution: number;
+  capitalDeliveryFee: number;
+  interiorDeliveryFee: number;
+  ipiRate: number;
+}
 
 const DiscountManagement = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { settings, isLoading, saveSettings } = useDiscountSettings();
-  // Initialize with default empty structure matching the settings shape
-  const [formData, setFormData] = useState({
+  const { settings, updateSetting, updateDeliveryFee, resetSettings, isLoading, saveSettings } = useDiscountSettings();
+  const [formData, setFormData] = useState<FormState>({
     pickup: 0,
     cashPayment: 0,
     halfInvoice: 0,
     taxSubstitution: 0,
+    capitalDeliveryFee: 0,
+    interiorDeliveryFee: 0,
     ipiRate: 0,
-    deliveryFees: {
-      capital: 0,
-      interior: 0
-    }
   });
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Verify if user is administrator
   useEffect(() => {
-    if (user?.role !== 'administrator') {
-      toast.error('Você não tem permissão para acessar esta página');
-      navigate('/dashboard');
+    if (settings) {
+      setFormData({
+        pickup: settings.pickup,
+        cashPayment: settings.cashPayment,
+        halfInvoice: settings.halfInvoice,
+        taxSubstitution: settings.taxSubstitution,
+        capitalDeliveryFee: settings.deliveryFees.capital,
+        interiorDeliveryFee: settings.deliveryFees.interior,
+        ipiRate: settings.ipiRate,
+      });
     }
-  }, [user, navigate]);
-
-  // Update formData when settings are loaded
-  useEffect(() => {
-    if (!isLoading && settings) {
-      setFormData(settings);
-    }
-  }, [settings, isLoading]);
+  }, [settings]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    
-    // Handle nested properties for delivery fees
-    if (name.includes('.')) {
-      const [parent, child] = name.split('.');
-      if (parent === 'deliveryFees') {
-        setFormData(prev => ({
-          ...prev,
-          deliveryFees: {
-            ...prev.deliveryFees,
-            [child]: parseFloat(value) || 0
-          }
-        }));
+    setFormData(prev => ({
+      ...prev,
+      [name]: parseFloat(value),
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      const success1 = await updateSetting('pickup', formData.pickup);
+      const success2 = await updateSetting('cashPayment', formData.cashPayment);
+      const success3 = await updateSetting('halfInvoice', formData.halfInvoice);
+      const success4 = await updateSetting('taxSubstitution', formData.taxSubstitution);
+      const success5 = await updateDeliveryFee('capital', formData.capitalDeliveryFee);
+      const success6 = await updateDeliveryFee('interior', formData.interiorDeliveryFee);
+      const success7 = await updateSetting('ipiRate', formData.ipiRate);
+
+      if (success1 && success2 && success3 && success4 && success5 && success6 && success7) {
+        toast.success('Configurações salvas com sucesso!');
+      } else {
+        toast.error('Erro ao salvar as configurações.');
       }
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: parseFloat(value) || 0
-      }));
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      toast.error('Erro ao salvar as configurações.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleSaveSettings = () => {
-    const success = saveSettings(formData);
-    if (success) {
-      toast.success('Configurações de descontos salvas com sucesso');
+  const handleReset = async () => {
+    setIsSaving(true);
+    try {
+      const success = await resetSettings();
+      if (success) {
+        toast.success('Configurações restauradas para os padrões!');
+      } else {
+        toast.error('Erro ao restaurar as configurações.');
+      }
+    } catch (error) {
+      console.error('Error resetting settings:', error);
+      toast.error('Erro ao restaurar as configurações.');
+    } finally {
+      setIsSaving(false);
     }
   };
+
+  if (isLoading) {
+    return <div>Carregando configurações...</div>;
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center">
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             className="mr-4 text-gray-500"
             onClick={() => navigate('/settings')}
           >
@@ -99,251 +115,170 @@ const DiscountManagement = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Gerenciar Descontos</h1>
             <p className="text-muted-foreground">
-              Configure os valores de descontos e taxas aplicados no carrinho
+              Configure os valores padrão para descontos, acréscimos e taxas usados no sistema
             </p>
           </div>
         </div>
-        <div className="flex space-x-2">
-          <Button 
-            className="bg-ferplas-500 hover:bg-ferplas-600 button-transition"
-            onClick={handleSaveSettings}
-          >
-            <Save className="mr-2 h-4 w-4" />
-            Salvar Alterações
-          </Button>
-        </div>
       </header>
 
-      {isLoading ? (
-        <div className="flex justify-center items-center p-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-ferplas-500"></div>
-        </div>
-      ) : (
-        <>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-medium">Opções de Desconto</CardTitle>
-              <CardDescription>
-                Configure os percentuais aplicados para cada tipo de desconto
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[300px]">Opção</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead className="text-right w-[200px]">Valor (%)</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center">
-                        <ShoppingBasket className="mr-2 h-4 w-4 text-amber-500" />
-                        Retirada
-                      </div>
-                    </TableCell>
-                    <TableCell>Desconto para retirada na loja</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end space-x-2">
-                        <Input
-                          type="number"
-                          name="pickup"
-                          className="w-24 text-right"
-                          value={formData.pickup}
-                          onChange={handleInputChange}
-                          min="0"
-                          step="0.1"
-                        />
-                        <span className="font-medium">%</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                  
-                  <TableRow>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center">
-                        <CreditCard className="mr-2 h-4 w-4 text-green-500" />
-                        À Vista
-                      </div>
-                    </TableCell>
-                    <TableCell>Desconto para pagamento à vista</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end space-x-2">
-                        <Input
-                          type="number"
-                          name="cashPayment"
-                          className="w-24 text-right"
-                          value={formData.cashPayment}
-                          onChange={handleInputChange}
-                          min="0"
-                          step="0.1"
-                        />
-                        <span className="font-medium">%</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                  
-                  <TableRow>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center">
-                        <PercentIcon className="mr-2 h-4 w-4 text-blue-500" />
-                        Meia Nota
-                      </div>
-                    </TableCell>
-                    <TableCell>Desconto para meia nota fiscal</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end space-x-2">
-                        <Input
-                          type="number"
-                          name="halfInvoice"
-                          className="w-24 text-right"
-                          value={formData.halfInvoice}
-                          onChange={handleInputChange}
-                          min="0"
-                          step="0.1"
-                        />
-                        <span className="font-medium">%</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                  
-                  <TableRow>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center">
-                        <DollarSign className="mr-2 h-4 w-4 text-red-500" />
-                        Substituição Tributária
-                      </div>
-                    </TableCell>
-                    <TableCell>Acréscimo para substituição tributária</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end space-x-2">
-                        <Input
-                          type="number"
-                          name="taxSubstitution"
-                          className="w-24 text-right"
-                          value={formData.taxSubstitution}
-                          onChange={handleInputChange}
-                          min="0"
-                          step="0.1"
-                        />
-                        <span className="font-medium">%</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle>Configurações de Descontos e Acréscimos</CardTitle>
+          <CardDescription>
+            Configure os valores padrão para descontos, acréscimos e taxas usados no sistema
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid gap-4">
+              <h3 className="text-lg font-medium">Descontos</h3>
 
-                  <TableRow>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center">
-                        <PercentIcon className="mr-2 h-4 w-4 text-purple-500" />
-                        IPI
-                      </div>
-                    </TableCell>
-                    <TableCell>Taxa de IPI aplicada quando selecionado</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end space-x-2">
-                        <Input
-                          type="number"
-                          name="ipiRate"
-                          className="w-24 text-right"
-                          value={formData.ipiRate}
-                          onChange={handleInputChange}
-                          min="0"
-                          step="0.1"
-                        />
-                        <span className="font-medium">%</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-medium">Taxas de Entrega</CardTitle>
-              <CardDescription>
-                Configure os valores das taxas de entrega para cada região
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Truck className="h-5 w-5 text-blue-500" />
-                    <h3 className="font-medium text-lg">Capital</h3>
-                  </div>
-                  <div>
-                    <Label htmlFor="capitalFee">Valor da entrega na capital</Label>
-                    <div className="flex items-center mt-2">
-                      <span className="bg-gray-100 p-2 border border-r-0 rounded-l-md">R$</span>
-                      <Input
-                        id="capitalFee"
-                        type="number"
-                        name="deliveryFees.capital"
-                        value={formData.deliveryFees.capital}
-                        onChange={handleInputChange}
-                        className="rounded-l-none"
-                        min="0"
-                        step="0.01"
-                      />
-                    </div>
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="pickup">Retirada (%)</Label>
+                  <Input
+                    id="pickup"
+                    name="pickup"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={formData.pickup}
+                    onChange={handleInputChange}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Desconto aplicado para clientes que retiram o produto no local
+                  </p>
                 </div>
-                
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Truck className="h-5 w-5 text-green-500" />
-                    <h3 className="font-medium text-lg">Interior</h3>
-                  </div>
-                  <div>
-                    <Label htmlFor="interiorFee">Valor da entrega para o interior</Label>
-                    <div className="flex items-center mt-2">
-                      <span className="bg-gray-100 p-2 border border-r-0 rounded-l-md">R$</span>
-                      <Input
-                        id="interiorFee"
-                        type="number"
-                        name="deliveryFees.interior"
-                        value={formData.deliveryFees.interior}
-                        onChange={handleInputChange}
-                        className="rounded-l-none"
-                        min="0"
-                        step="0.01"
-                      />
-                    </div>
-                  </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cashPayment">A Vista (%)</Label>
+                  <Input
+                    id="cashPayment"
+                    name="cashPayment"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={formData.cashPayment}
+                    onChange={handleInputChange}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Desconto aplicado para pagamentos à vista
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="halfInvoice">Meia Nota (%)</Label>
+                  <Input
+                    id="halfInvoice"
+                    name="halfInvoice"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={formData.halfInvoice}
+                    onChange={handleInputChange}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Desconto aplicado para emissão de meia nota fiscal
+                  </p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-medium">Instruções</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p>
-                As configurações desta página afetam diretamente os cálculos de preço no carrinho de compras. 
-                Após alterar qualquer valor, certifique-se de clicar em "Salvar Alterações".
-              </p>
-              
-              <div className="bg-blue-50 p-4 rounded-md border border-blue-100">
-                <div className="flex items-center mb-2">
-                  <DollarSign className="h-5 w-5 text-blue-600 mr-2" />
-                  <h3 className="font-medium text-blue-800">Cálculos aplicados</h3>
+            <div className="grid gap-4">
+              <h3 className="text-lg font-medium">Acréscimos</h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="taxSubstitution">ICMS Substituição tributária (%)</Label>
+                  <Input
+                    id="taxSubstitution"
+                    name="taxSubstitution"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={formData.taxSubstitution}
+                    onChange={handleInputChange}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Valor percentual do ICMS usado para calcular a substituição tributária
+                  </p>
                 </div>
-                <ul className="text-sm text-blue-700 space-y-1 list-disc pl-5">
-                  <li>Os percentuais de desconto (retirada, à vista e meia nota) são subtraídos do preço unitário do produto</li>
-                  <li>A substituição tributária é um acréscimo que é somado após a aplicação dos descontos</li>
-                  <li>O valor das taxas de entrega é somado ao valor total do pedido</li>
-                </ul>
+
+                <div className="space-y-2">
+                  <Label htmlFor="ipiRate">IPI (%)</Label>
+                  <Input
+                    id="ipiRate"
+                    name="ipiRate"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={formData.ipiRate}
+                    onChange={handleInputChange}
+                  />
+                   <p className="text-xs text-muted-foreground">
+                    Valor percentual do IPI (Imposto sobre Produtos Industrializados)
+                  </p>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        </>
-      )}
+            </div>
+
+            <div className="grid gap-4">
+              <h3 className="text-lg font-medium">Taxas de Entrega</h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="capitalDeliveryFee">Capital (R$)</Label>
+                  <Input
+                    id="capitalDeliveryFee"
+                    name="capitalDeliveryFee"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={formData.capitalDeliveryFee}
+                    onChange={handleInputChange}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Taxa de entrega para a capital
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="interiorDeliveryFee">Interior (R$)</Label>
+                  <Input
+                    id="interiorDeliveryFee"
+                    name="interiorDeliveryFee"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={formData.interiorDeliveryFee}
+                    onChange={handleInputChange}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Taxa de entrega para o interior
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-4">
+              <Button type="button" variant="outline" onClick={handleReset}>
+                Restaurar Padrões
+              </Button>
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Salvando...
+                  </>
+                ) : 'Salvar Configurações'}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 };
