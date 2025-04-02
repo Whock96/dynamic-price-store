@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Percent, ArrowLeft, Save, RotateCcw,
+  ArrowLeft, Save,
   DollarSign, Truck, ShoppingBasket, CreditCard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,7 +23,7 @@ import { useDiscountSettings } from '@/hooks/use-discount-settings';
 const DiscountManagement = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { settings, isLoading, saveSettings, resetSettings } = useDiscountSettings();
+  const { settings, isLoading, saveSettings } = useDiscountSettings();
   const [formData, setFormData] = useState(settings);
 
   // Verify if user is administrator
@@ -70,14 +69,6 @@ const DiscountManagement = () => {
     }
   };
 
-  const handleResetSettings = () => {
-    const confirmed = window.confirm('Deseja restaurar as configurações padrão?');
-    if (confirmed) {
-      resetSettings();
-      toast.info('Configurações restauradas para os valores padrão');
-    }
-  };
-
   return (
     <div className="space-y-6 animate-fade-in">
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -98,14 +89,6 @@ const DiscountManagement = () => {
           </div>
         </div>
         <div className="flex space-x-2">
-          <Button 
-            variant="outline"
-            onClick={handleResetSettings}
-            className="button-transition"
-          >
-            <RotateCcw className="mr-2 h-4 w-4" />
-            Redefinir
-          </Button>
           <Button 
             className="bg-ferplas-500 hover:bg-ferplas-600 button-transition"
             onClick={handleSaveSettings}
