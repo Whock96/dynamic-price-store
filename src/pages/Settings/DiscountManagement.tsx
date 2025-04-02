@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Save,
-  DollarSign, Truck, ShoppingBasket, CreditCard
+  DollarSign, Truck, ShoppingBasket, CreditCard,
+  PercentIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -173,7 +175,7 @@ const DiscountManagement = () => {
                   <TableRow>
                     <TableCell className="font-medium">
                       <div className="flex items-center">
-                        <Percent className="mr-2 h-4 w-4 text-blue-500" />
+                        <PercentIcon className="mr-2 h-4 w-4 text-blue-500" />
                         Meia Nota
                       </div>
                     </TableCell>
@@ -221,7 +223,7 @@ const DiscountManagement = () => {
                   <TableRow>
                     <TableCell className="font-medium">
                       <div className="flex items-center">
-                        <Percent className="mr-2 h-4 w-4 text-purple-500" />
+                        <PercentIcon className="mr-2 h-4 w-4 text-purple-500" />
                         IPI
                       </div>
                     </TableCell>
