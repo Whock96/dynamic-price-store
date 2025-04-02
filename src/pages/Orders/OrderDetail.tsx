@@ -63,7 +63,7 @@ const OrderDetail = () => {
         <!DOCTYPE html>
         <html>
         <head>
-          <title>Pedido #${order.id.slice(-4)} - Impressão</title>
+          <title>Pedido #${order.orderNumber || '1'} - Impressão</title>
           <style>
             body { font-family: Arial, sans-serif; }
             @media print {
@@ -106,7 +106,7 @@ const OrderDetail = () => {
         iframe.onload = function() {
           const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
           if (iframeDoc) {
-            printWindow.document.title = `Pedido #${order.id.slice(-4)} - Impressão`;
+            printWindow.document.title = `Pedido #${order.orderNumber || '1'} - Impressão`;
             
             // Add component markup directly
             const companyInfo = JSON.parse(localStorage.getItem('ferplas-company-info') || '{}');
@@ -155,7 +155,7 @@ const OrderDetail = () => {
         <!-- Order title -->
         <div style="text-align: center; margin-bottom: 8px;">
           <h1 style="font-size: 16px; font-weight: bold; border: 1px solid #ddd; display: inline-block; padding: 4px 12px; margin: 4px 0;">
-            PEDIDO #${order.id.slice(-4)}
+            PEDIDO #${order.orderNumber || '1'}
           </h1>
           <p style="font-size: 10px; margin: 2px 0;">
             Emitido em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
@@ -311,7 +311,7 @@ const OrderDetail = () => {
     );
   }
 
-  const orderNumber = typeof order.orderNumber === 'number' ? order.orderNumber : 'N/A';
+  const orderNumber = order.orderNumber ? order.orderNumber : 1;
 
   const totalDiscount = order.totalDiscount || 0;
   const appliedDiscounts = order.discountOptions || [];

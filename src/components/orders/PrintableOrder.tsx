@@ -30,8 +30,9 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
     return () => clearTimeout(printTimeout);
   }, [onPrint]);
 
-  // Properly handle the order number with correct fallbacks
-  const orderNumber = order.orderNumber?.toString() || 'N/A';
+  // Display order number correctly, ensuring it's a number and not undefined
+  // The order_number field in the database is an integer with autoincrement
+  const orderNumber = order.orderNumber ? order.orderNumber.toString() : '1';
   
   // Determine invoice type text based on fullInvoice flag
   const invoiceTypeText = order.fullInvoice ? 'Nota Cheia' : 'Meia Nota';

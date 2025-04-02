@@ -91,7 +91,14 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
         
         // Use adapter to convert Supabase order to app Order
-        return supabaseOrderToAppOrder(order, itemsData || [], discounts);
+        const processedOrder = supabaseOrderToAppOrder(order, itemsData || [], discounts);
+        
+        // Make sure to include order_number from the database
+        if (order.order_number) {
+          processedOrder.orderNumber = order.order_number;
+        }
+        
+        return processedOrder;
       }));
       
       setOrders(processedOrders);
