@@ -27,6 +27,7 @@ const INITIAL_PRODUCTS = Array.from({ length: 20 }, (_, i) => {
     categoryId: i % 3 === 0 ? '1' : i % 3 === 1 ? '2' : '3',
     subcategoryId: i % 3 === 0 ? '1-1' : i % 3 === 1 ? '2-1' : '3-1',
     imageUrl: 'https://via.placeholder.com/150',
+    mva: 39, // Added MVA field with default of 39%
     createdAt: new Date(),
     updatedAt: new Date(),
   }

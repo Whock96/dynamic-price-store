@@ -531,7 +531,9 @@ const Cart = () => {
                   </TableHeader>
                   <TableBody>
                     {items.map(item => {
-                      const taxValue = calculateItemTaxSubstitutionValue(item) / item.quantity;
+                      const mvaRate = item.product.mva / 100; // Convert percentage to decimal
+                      const icmsSTRate = effectiveTaxRate / 100; // Convert percentage to decimal
+                      const taxValue = item.finalPrice * mvaRate * icmsSTRate;
                       
                       return (
                         <TableRow key={item.id}>

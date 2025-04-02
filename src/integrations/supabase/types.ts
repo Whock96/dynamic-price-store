@@ -346,6 +346,7 @@ export type Database = {
           image_url: string | null
           length: number
           list_price: number
+          mva: number
           name: string
           quantity: number
           quantity_per_volume: number
@@ -364,6 +365,7 @@ export type Database = {
           image_url?: string | null
           length?: number
           list_price?: number
+          mva?: number
           name: string
           quantity?: number
           quantity_per_volume?: number
@@ -382,6 +384,7 @@ export type Database = {
           image_url?: string | null
           length?: number
           list_price?: number
+          mva?: number
           name?: string
           quantity?: number
           quantity_per_volume?: number
