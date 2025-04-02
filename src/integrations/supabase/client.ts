@@ -19,6 +19,17 @@ export const uploadProductImage = async (file: File, productId: string): Promise
     const fileName = `${productId}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
     const filePath = `${productId}/${fileName}`;
 
+    // Check if the bucket exists and create it if it doesn't
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const bucketExists = buckets?.some(bucket => bucket.name === 'product_images');
+    
+    if (!bucketExists) {
+      await supabase.storage.createBucket('product_images', {
+        public: true,
+        fileSizeLimit: 5 * 1024 * 1024 // 5MB
+      });
+    }
+
     // Upload the file to the product_images bucket
     const { data, error } = await supabase.storage
       .from('product_images')

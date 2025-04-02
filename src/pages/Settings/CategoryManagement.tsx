@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Tag, Search, Plus, Edit, Trash2, ArrowLeft, Save,
-  ChevronRight, ChevronDown
+  ChevronRight, ChevronDown, Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,8 +36,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useAuth } from '../../context/AuthContext';
-import { useProducts } from '../../context/ProductContext';
+import { useAuth } from '@/context/AuthContext';
+import { useProducts } from '@/context/ProductContext';
 import { toast } from 'sonner';
 import { Category, Subcategory } from '@/types/types';
 
@@ -48,6 +48,7 @@ const CategoryManagement = () => {
   const { user } = useAuth();
   const { 
     categories, 
+    isLoadingCategories,
     addCategory, 
     updateCategory, 
     deleteCategory, 
@@ -120,7 +121,7 @@ const CategoryManagement = () => {
       setDialogMode('category-add');
       setSelectedCategory(null);
       setCategoryFormData({
-        id: `category-${Date.now()}`,
+        id: '',
         name: '',
         description: '',
       });
@@ -145,7 +146,7 @@ const CategoryManagement = () => {
       setSelectedCategory(category);
       setSelectedSubcategory(null);
       setSubcategoryFormData({
-        id: `subcategory-${Date.now()}`,
+        id: '',
         name: '',
         description: '',
         categoryId: category.id,
@@ -170,7 +171,7 @@ const CategoryManagement = () => {
     }));
   };
 
-  const handleSaveCategory = () => {
+  const handleSaveCategory = async () => {
     // Validação básica
     if (!categoryFormData.name) {
       toast.error('O nome da categoria é obrigatório');
@@ -179,26 +180,23 @@ const CategoryManagement = () => {
 
     if (dialogMode === 'category-edit') {
       // Update existing category using context
-      updateCategory({
+      await updateCategory({
         id: categoryFormData.id,
         name: categoryFormData.name,
         description: categoryFormData.description
       });
-      toast.success(`Categoria "${categoryFormData.name}" atualizada com sucesso`);
     } else {
       // Add new category using context
-      addCategory({
-        id: categoryFormData.id,
+      await addCategory({
         name: categoryFormData.name,
         description: categoryFormData.description
       });
-      toast.success(`Categoria "${categoryFormData.name}" adicionada com sucesso`);
     }
     
     handleCloseDialog();
   };
 
-  const handleSaveSubcategory = () => {
+  const handleSaveSubcategory = async () => {
     // Validação básica
     if (!subcategoryFormData.name) {
       toast.error('O nome da subcategoria é obrigatório');
@@ -212,40 +210,35 @@ const CategoryManagement = () => {
 
     if (dialogMode === 'subcategory-edit') {
       // Update existing subcategory using context
-      updateSubcategory({
+      await updateSubcategory({
         id: subcategoryFormData.id,
         name: subcategoryFormData.name,
         description: subcategoryFormData.description,
         categoryId: selectedCategory.id
       });
-      toast.success(`Subcategoria "${subcategoryFormData.name}" atualizada com sucesso`);
     } else {
       // Add new subcategory using context
-      addSubcategory(selectedCategory.id, {
-        id: subcategoryFormData.id,
+      const newSubcategory = await addSubcategory(selectedCategory.id, {
+        id: '',
         name: subcategoryFormData.name,
         description: subcategoryFormData.description
       });
       
       // Expandir a categoria automaticamente
-      if (!expandedCategories.includes(selectedCategory.id)) {
+      if (newSubcategory && !expandedCategories.includes(selectedCategory.id)) {
         setExpandedCategories(prev => [...prev, selectedCategory.id]);
       }
-      
-      toast.success(`Subcategoria "${subcategoryFormData.name}" adicionada com sucesso`);
     }
     
     handleCloseDialog();
   };
 
-  const handleDeleteCategory = (categoryId: string) => {
-    deleteCategory(categoryId);
-    toast.success('Categoria removida com sucesso');
+  const handleDeleteCategory = async (categoryId: string) => {
+    await deleteCategory(categoryId);
   };
 
-  const handleDeleteSubcategory = (categoryId: string, subcategoryId: string) => {
-    deleteSubcategory(categoryId, subcategoryId);
-    toast.success('Subcategoria removida com sucesso');
+  const handleDeleteSubcategory = async (categoryId: string, subcategoryId: string) => {
+    await deleteSubcategory(categoryId, subcategoryId);
   };
 
   return (
@@ -294,7 +287,14 @@ const CategoryManagement = () => {
       </Card>
 
       <div className="space-y-4">
-        {filteredCategories.length > 0 ? (
+        {isLoadingCategories ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-ferplas-500 mb-4" />
+              <p className="text-gray-500">Carregando categorias...</p>
+            </CardContent>
+          </Card>
+        ) : filteredCategories.length > 0 ? (
           filteredCategories.map(category => (
             <Card key={category.id} className="overflow-hidden">
               <Collapsible 
