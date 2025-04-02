@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Package, Search, Plus, Edit, Trash2, ArrowLeft, Save
+  Package, Search, Plus, Edit, Trash2, ArrowLeft, Save, Image
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,9 +47,10 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { useSupabaseData } from '@/hooks/use-supabase-data';
-import { Tables } from '@/integrations/supabase/client';
+import { Tables, uploadProductImage } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/utils/formatters';
+import { FileUpload } from '@/components/ui/file-upload';
 
 type Product = Tables<'products'>;
 type Category = Tables<'categories'>;
@@ -79,6 +81,8 @@ const ProductManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [availableSubcategories, setAvailableSubcategories] = useState<Subcategory[]>([]);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
@@ -189,6 +193,7 @@ const ProductManagement = () => {
         subcategory_id: product.subcategory_id,
         image_url: product.image_url,
       });
+      setImageFile(null);
     } else {
       setIsEditMode(false);
       setFormData({
@@ -206,6 +211,7 @@ const ProductManagement = () => {
         subcategory_id: null,
         image_url: 'https://via.placeholder.com/150',
       });
+      setImageFile(null);
     }
     
     setIsDialogOpen(true);
@@ -248,8 +254,12 @@ const ProductManagement = () => {
   const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({
       ...prev,
-      [name]: value === '' ? null : value
+      [name]: value === 'none' ? null : value
     }));
+  };
+
+  const handleImageChange = (file: File | null) => {
+    setImageFile(file);
   };
 
   const handleSaveProduct = async () => {
@@ -258,13 +268,34 @@ const ProductManagement = () => {
       return;
     }
 
+    setIsUploading(true);
     try {
+      let imageUrl = formData.image_url;
+      
+      // If there's a new image file, upload it
+      if (imageFile) {
+        // For new products, we need a temporary ID to organize storage
+        const tempId = formData.id || Math.random().toString(36).substring(2, 15);
+        imageUrl = await uploadProductImage(imageFile, tempId);
+        
+        if (!imageUrl) {
+          toast.error('Falha ao fazer upload da imagem. Tente novamente.');
+          setIsUploading(false);
+          return;
+        }
+      }
+      
+      const productData = {
+        ...formData,
+        image_url: imageUrl
+      };
+
       if (isEditMode && formData.id) {
-        const { id, ...updateData } = formData;
+        const { id, ...updateData } = productData;
         await updateProduct(id, updateData);
         toast.success(`Produto "${formData.name}" atualizado com sucesso`);
       } else {
-        await createProduct(formData);
+        await createProduct(productData);
         toast.success(`Produto "${formData.name}" adicionado com sucesso`);
       }
       
@@ -272,6 +303,8 @@ const ProductManagement = () => {
       handleCloseDialog();
     } catch (error) {
       toast.error(`Erro ao salvar produto: ${(error as Error).message}`);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -479,12 +512,22 @@ const ProductManagement = () => {
                     rows={3}
                   />
                 </div>
+
+                <div>
+                  <Label htmlFor="image">Imagem do Produto</Label>
+                  <FileUpload
+                    value={imageFile ? URL.createObjectURL(imageFile) : formData.image_url || undefined}
+                    onChange={handleImageChange}
+                    accept="image/*"
+                    maxSize={2} // 2MB max
+                  />
+                </div>
               </div>
               
               <div>
                 <Label htmlFor="category_id">Categoria</Label>
                 <Select 
-                  value={formData.category_id || ''} 
+                  value={formData.category_id || 'none'} 
                   onValueChange={(value) => handleSelectChange('category_id', value)}
                 >
                   <SelectTrigger id="category_id">
@@ -504,7 +547,7 @@ const ProductManagement = () => {
               <div>
                 <Label htmlFor="subcategory_id">Subcategoria</Label>
                 <Select 
-                  value={formData.subcategory_id || ''} 
+                  value={formData.subcategory_id || 'none'} 
                   onValueChange={(value) => handleSelectChange('subcategory_id', value)}
                   disabled={!formData.category_id || availableSubcategories.length === 0}
                 >
@@ -617,27 +660,29 @@ const ProductManagement = () => {
                   Volume calculado: {formData.cubic_volume} m³
                 </p>
               </div>
-              
-              <div>
-                <Label htmlFor="image_url">URL da Imagem</Label>
-                <Input
-                  id="image_url"
-                  name="image_url"
-                  value={formData.image_url || ''}
-                  onChange={handleInputChange}
-                  placeholder="https://exemplo.com/imagem.jpg"
-                />
-              </div>
             </div>
           </DialogBody>
           
           <DialogFooter className="px-6 py-4 border-t">
-            <Button variant="outline" onClick={handleCloseDialog}>
+            <Button variant="outline" onClick={handleCloseDialog} disabled={isUploading}>
               Cancelar
             </Button>
-            <Button onClick={handleSaveProduct} className="bg-ferplas-500 hover:bg-ferplas-600">
-              <Save className="mr-2 h-4 w-4" />
-              {isEditMode ? 'Salvar Alterações' : 'Adicionar Produto'}
+            <Button 
+              onClick={handleSaveProduct} 
+              className="bg-ferplas-500 hover:bg-ferplas-600"
+              disabled={isUploading}
+            >
+              {isUploading ? (
+                <>
+                  <span className="animate-spin mr-2">&#8635;</span>
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  {isEditMode ? 'Salvar Alterações' : 'Adicionar Produto'}
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

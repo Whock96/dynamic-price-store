@@ -11,6 +11,38 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
+// Storage helper function for uploading product images
+export const uploadProductImage = async (file: File, productId: string): Promise<string | null> => {
+  try {
+    // Create a unique file path using the product ID and timestamp
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${productId}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+    const filePath = `${productId}/${fileName}`;
+
+    // Upload the file to the product_images bucket
+    const { data, error } = await supabase.storage
+      .from('product_images')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: true,
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    // Get the public URL for the uploaded file
+    const { data: { publicUrl } } = supabase.storage
+      .from('product_images')
+      .getPublicUrl(data.path);
+
+    return publicUrl;
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    return null;
+  }
+};
+
 // Helper types for better TypeScript support
 export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
 export type Enums<T extends keyof Database['public']['Enums']> = Database['public']['Enums'][T];
