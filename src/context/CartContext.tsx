@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
@@ -19,6 +20,7 @@ interface CartContextType {
   total: number;
   deliveryFee: number;
   applyDiscounts: boolean;
+  withIPI: boolean;
   setCustomer: (customer: Customer | null) => void;
   addItem: (product: Product, quantity: number) => void;
   removeItem: (id: string) => void;
@@ -34,6 +36,8 @@ interface CartContextType {
   isDiscountOptionSelected: (id: string) => boolean;
   toggleApplyDiscounts: () => void;
   calculateTaxSubstitutionValue: () => number;
+  toggleIPI: () => void;
+  calculateIPIValue: () => number;
 }
 
 const MOCK_DISCOUNT_OPTIONS: DiscountOption[] = [
@@ -85,6 +89,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [observations, setObservations] = useState<string>('');
   const [paymentTerms, setPaymentTerms] = useState<string>('');
   const [applyDiscounts, setApplyDiscounts] = useState<boolean>(true);
+  const [withIPI, setWithIPI] = useState<boolean>(false);
 
   const isDiscountOptionSelected = (id: string) => {
     return selectedDiscountOptions.includes(id);
@@ -149,6 +154,30 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     return standardRate * subtotal;
+  };
+
+  const calculateIPIValue = () => {
+    if (!withIPI || !applyDiscounts) return 0;
+    
+    // Base IPI rate of 10%
+    const standardRate = 10 / 100;
+    
+    // If half invoice option is selected, adjust the IPI rate
+    if (isDiscountOptionSelected('2')) {
+      const adjustedRate = standardRate * (halfInvoicePercentage / 100);
+      
+      // Calculate IPI based on subtotal with discounts but before tax substitution or delivery fees
+      const discountedSubtotal = items.reduce((total, item) => 
+        total + item.subtotal, 0);
+        
+      return adjustedRate * discountedSubtotal;
+    }
+    
+    // Calculate IPI based on subtotal with discounts but before tax substitution or delivery fees
+    const discountedSubtotal = items.reduce((total, item) => 
+      total + item.subtotal, 0);
+      
+    return standardRate * discountedSubtotal;
   };
 
   const recalculateCart = () => {
@@ -218,11 +247,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, 0);
 
   const taxSubstitutionValue = calculateTaxSubstitutionValue();
+  const ipiValue = calculateIPIValue();
   
-  const total = items.reduce((total, item) => total + (item.subtotal || 0), 0) + deliveryFee;
+  const total = items.reduce((total, item) => total + (item.subtotal || 0), 0) + deliveryFee + ipiValue;
 
   const toggleApplyDiscounts = () => {
     setApplyDiscounts(prev => !prev);
+  };
+
+  const toggleIPI = () => {
+    setWithIPI(prev => !prev);
   };
 
   const addItem = (product: Product, quantity: number) => {
@@ -344,6 +378,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setHalfInvoicePercentage(50);
     setObservations('');
     setPaymentTerms('');
+    setWithIPI(false);
     toast.info('Carrinho limpo');
   };
 
@@ -382,6 +417,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         paymentTerms: !isDiscountOptionSelected('4') ? paymentTerms : undefined,
         fullInvoice: !isDiscountOptionSelected('2'),
         taxSubstitution: isDiscountOptionSelected('3'),
+        withIPI,
+        ipiValue: withIPI ? ipiValue : undefined,
         status: 'pending',
         notes: observations
       };
@@ -421,6 +458,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       total,
       deliveryFee,
       applyDiscounts,
+      withIPI,
       setCustomer,
       addItem,
       removeItem,
@@ -435,7 +473,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sendOrder,
       isDiscountOptionSelected,
       toggleApplyDiscounts,
-      calculateTaxSubstitutionValue
+      calculateTaxSubstitutionValue,
+      toggleIPI,
+      calculateIPIValue
     }}>
       {children}
     </CartContext.Provider>

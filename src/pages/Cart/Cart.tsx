@@ -63,7 +63,7 @@ const Cart = () => {
     deliveryLocation, setDeliveryLocation, halfInvoicePercentage, setHalfInvoicePercentage,
     observations, setObservations, totalItems, subtotal, totalDiscount, total, sendOrder, clearCart, 
     deliveryFee, applyDiscounts, toggleApplyDiscounts, paymentTerms, setPaymentTerms,
-    calculateTaxSubstitutionValue
+    calculateTaxSubstitutionValue, withIPI, toggleIPI, calculateIPIValue
   } = useCart();
   
   const [customerSearch, setCustomerSearch] = useState('');
@@ -131,6 +131,7 @@ const Cart = () => {
   };
   
   const taxSubstitutionValue = calculateTaxSubstitutionValue();
+  const ipiValue = calculateIPIValue();
   
   const getTaxSubstitutionRate = () => {
     if (!isDiscountOptionSelected('3') || !applyDiscounts) return 7.8;
@@ -143,6 +144,18 @@ const Cart = () => {
   };
   
   const effectiveTaxRate = getTaxSubstitutionRate();
+  
+  const getIPIRate = () => {
+    if (!withIPI || !applyDiscounts) return 10;
+    
+    if (isDiscountOptionSelected('2')) {
+      return 10 * halfInvoicePercentage / 100;
+    }
+    
+    return 10;
+  };
+  
+  const effectiveIPIRate = getIPIRate();
   
   return (
     <div className="space-y-6 animate-fade-in">
@@ -735,6 +748,29 @@ const Cart = () => {
                   </div>
                 </div>
               ))}
+
+              {/* Opção de IPI */}
+              <div className="space-y-3 pt-2 border-t border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">
+                      IPI {applyDiscounts && (
+                        <span className="text-red-600">(+10%)</span>
+                      )}
+                      {isDiscountOptionSelected('2') && applyDiscounts && (
+                        <span className="text-red-600 ml-1">
+                          (Ajustado: +{(10 * halfInvoicePercentage / 100).toFixed(2)}%)
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-sm text-gray-500">Acréscimo de Imposto sobre Produtos Industrializados</p>
+                  </div>
+                  <Switch
+                    checked={withIPI}
+                    onCheckedChange={toggleIPI}
+                  />
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -771,6 +807,12 @@ const Cart = () => {
                 <div className="flex justify-between text-sm text-orange-600">
                   <span>Substituição Tributária ({effectiveTaxRate.toFixed(2)}%):</span>
                   <span>+{formatCurrency(taxSubstitutionValue)}</span>
+                </div>
+              )}
+              {withIPI && applyDiscounts && ipiValue > 0 && (
+                <div className="flex justify-between text-sm text-orange-600">
+                  <span>IPI ({effectiveIPIRate.toFixed(2)}%):</span>
+                  <span>+{formatCurrency(ipiValue)}</span>
                 </div>
               )}
               {deliveryLocation && (
