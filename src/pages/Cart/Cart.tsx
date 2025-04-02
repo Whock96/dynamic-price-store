@@ -66,7 +66,7 @@ const Cart = () => {
     deliveryLocation, setDeliveryLocation, halfInvoicePercentage, setHalfInvoicePercentage,
     observations, setObservations, totalItems, subtotal, totalDiscount, total, sendOrder, clearCart, 
     deliveryFee, applyDiscounts, toggleApplyDiscounts, paymentTerms, setPaymentTerms,
-    calculateTaxSubstitutionValue, withIPI, toggleIPI, calculateIPIValue
+    calculateTaxSubstitutionValue, withIPI, toggleIPI, calculateIPIValue, calculateItemTaxSubstitutionValue
   } = useCart();
   
   const [customerSearch, setCustomerSearch] = useState('');
@@ -515,68 +515,79 @@ const Cart = () => {
                       <TableHead>Preço Unitário</TableHead>
                       <TableHead>Desconto (%)</TableHead>
                       <TableHead>Preço Final</TableHead>
+                      <TableHead>Substituição Tributária</TableHead>
                       <TableHead>Quantidade</TableHead>
                       <TableHead>Subtotal</TableHead>
                       <TableHead className="w-14"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {items.map(item => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium">{item.product.name}</TableCell>
-                        <TableCell>{formatCurrency(item.product.listPrice)}</TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={item.discount}
-                            onChange={(e) => updateItemDiscount(item.id, Number(e.target.value))}
-                            className="w-20 h-8 text-center"
-                          />
-                        </TableCell>
-                        <TableCell>{formatCurrency(item.finalPrice)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => updateItemQuantity(item.id, item.quantity - 1)}
-                              className="h-8 w-8"
-                              disabled={item.quantity <= 1}
-                            >
-                              -
-                            </Button>
+                    {items.map(item => {
+                      const taxValue = calculateItemTaxSubstitutionValue(item) / item.quantity;
+                      
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.product.name}</TableCell>
+                          <TableCell>{formatCurrency(item.product.listPrice)}</TableCell>
+                          <TableCell>
                             <Input
                               type="number"
-                              min="1"
-                              value={item.quantity}
-                              onChange={(e) => updateItemQuantity(item.id, Number(e.target.value) || 1)}
-                              className="w-14 h-8 mx-1 text-center"
+                              min="0"
+                              max="100"
+                              value={item.discount}
+                              onChange={(e) => updateItemDiscount(item.id, Number(e.target.value))}
+                              className="w-20 h-8 text-center"
                             />
+                          </TableCell>
+                          <TableCell>{formatCurrency(item.finalPrice)}</TableCell>
+                          <TableCell>
+                            {isDiscountOptionSelected('3') && applyDiscounts ? 
+                              formatCurrency(taxValue) : 
+                              formatCurrency(0)
+                            }
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => updateItemQuantity(item.id, item.quantity - 1)}
+                                className="h-8 w-8"
+                                disabled={item.quantity <= 1}
+                              >
+                                -
+                              </Button>
+                              <Input
+                                type="number"
+                                min="1"
+                                value={item.quantity}
+                                onChange={(e) => updateItemQuantity(item.id, Number(e.target.value) || 1)}
+                                className="w-14 h-8 mx-1 text-center"
+                              />
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
+                                className="h-8 w-8"
+                              >
+                                +
+                              </Button>
+                            </div>
+                          </TableCell>
+                          <TableCell>{formatCurrency(item.subtotal)}</TableCell>
+                          <TableCell>
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="icon"
-                              onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
-                              className="h-8 w-8"
+                              onClick={() => removeItem(item.id)}
+                              className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
                             >
-                              +
+                              <Trash2 className="h-4 w-4" />
                             </Button>
-                          </div>
-                        </TableCell>
-                        <TableCell>{formatCurrency(item.subtotal)}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeItem(item.id)}
-                            className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
@@ -873,7 +884,7 @@ const Cart = () => {
               )}
               {withIPI && applyDiscounts && ipiValue > 0 && (
                 <div className="flex justify-between text-sm text-orange-600">
-                  <span>IPI ({effectiveIPIRate.toFixed(2)}%):</span>
+                  <span>IPI ({getIPIRate().toFixed(2)}%):</span>
                   <span>+{formatCurrency(ipiValue)}</span>
                 </div>
               )}

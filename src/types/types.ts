@@ -77,8 +77,8 @@ export interface CartItem {
   product: Product;
   quantity: number;
   discount: number; // Individual discount percentage
-  finalPrice: number; // After all discounts
-  subtotal: number;
+  finalPrice: number; // After all discounts, without tax substitution
+  subtotal: number; // (finalPrice + tax) * quantity
 }
 
 export interface DiscountOption {

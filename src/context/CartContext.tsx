@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
@@ -37,6 +38,7 @@ interface CartContextType {
   calculateTaxSubstitutionValue: () => number;
   toggleIPI: () => void;
   calculateIPIValue: () => number;
+  calculateItemTaxSubstitutionValue: (item: CartItem) => number;
 }
 
 const MOCK_DISCOUNT_OPTIONS: DiscountOption[] = [
@@ -100,28 +102,28 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return total + (item.product.listPrice * item.quantity);
   }, 0);
 
-  const getNetAdjustmentPercentage = () => {
+  // Retorna apenas os descontos (sem substituição tributária)
+  const getNetDiscountPercentage = () => {
     if (!applyDiscounts) return 0;
     
     let discountPercentage = 0;
-    let surchargePercentage = 0;
     
     selectedDiscountOptions.forEach(id => {
       const option = discountOptions.find(opt => opt.id === id);
       if (!option) return;
 
+      // Pular substituição tributária (id 3)
       if (option.id === '3') return;
       
       if (option.type === 'discount') {
         discountPercentage += option.value;
-      } else {
-        surchargePercentage += option.value;
       }
     });
     
-    return discountPercentage - surchargePercentage;
+    return discountPercentage;
   };
 
+  // Retorna a taxa de substituição tributária (ajustada para meia nota se aplicável)
   const getTaxSubstitutionRate = () => {
     if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
     
@@ -137,20 +139,31 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deliveryFee = deliveryLocation === 'capital' ? 25 : deliveryLocation === 'interior' ? 50 : 0;
 
+  // Calcula valor total de substituição tributária para o carrinho
   const calculateTaxSubstitutionValue = () => {
+    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
+    
+    return items.reduce((total, item) => {
+      return total + calculateItemTaxSubstitutionValue(item);
+    }, 0);
+  };
+
+  // Calcula valor de substituição tributária por item
+  const calculateItemTaxSubstitutionValue = (item: CartItem) => {
     if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
     
     const taxOption = discountOptions.find(opt => opt.id === '3');
     if (!taxOption) return 0;
     
     const standardRate = taxOption.value / 100;
+    let taxRate = standardRate;
     
     if (isDiscountOptionSelected('2')) {
-      const adjustedRate = standardRate * (halfInvoicePercentage / 100);
-      return adjustedRate * subtotal;
+      taxRate = standardRate * (halfInvoicePercentage / 100);
     }
     
-    return standardRate * subtotal;
+    // Aplicar substituição tributária sobre o preço final (após descontos)
+    return item.finalPrice * taxRate * item.quantity;
   };
 
   const calculateIPIValue = () => {
@@ -161,34 +174,38 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (isDiscountOptionSelected('2')) {
       const adjustedRate = standardRate * (halfInvoicePercentage / 100);
       
+      // Aplicar IPI sobre o preço final (após descontos) e multiplicado pela quantidade
       const discountedSubtotal = items.reduce((total, item) => 
-        total + item.subtotal, 0);
+        total + (item.finalPrice * item.quantity), 0);
         
       return adjustedRate * discountedSubtotal;
     }
     
+    // Aplicar IPI sobre o preço final (após descontos) e multiplicado pela quantidade
     const discountedSubtotal = items.reduce((total, item) => 
-      total + item.subtotal, 0);
+      total + (item.finalPrice * item.quantity), 0);
       
     return standardRate * discountedSubtotal;
   };
 
   const recalculateCart = () => {
-    const netAdjustmentPercentage = getNetAdjustmentPercentage();
-    const taxSubstitutionRate = getTaxSubstitutionRate();
+    const discountPercentage = getNetDiscountPercentage();
     
     const updatedItems = items.map(item => {
+      // Cálculo do preço final: preço unitário - descontos (individuais + globais)
       let itemDiscount = item.discount || 0;
+      let netDiscount = applyDiscounts ? itemDiscount + discountPercentage : itemDiscount;
       
-      let netPercentage = applyDiscounts ? itemDiscount + netAdjustmentPercentage : itemDiscount;
+      // Preço final é o preço unitário menos os descontos aplicados
+      // Não inclui substituição tributária
+      let finalPrice = item.product.listPrice * (1 - (netDiscount / 100));
       
-      let adjustmentFactor = 1 - (netPercentage / 100);
+      // Calcula valor da substituição tributária para este item específico
+      const taxRate = getTaxSubstitutionRate() / 100;
+      const taxValue = finalPrice * taxRate;
       
-      let taxFactor = applyDiscounts && taxSubstitutionRate > 0 ? (1 + taxSubstitutionRate / 100) : 1;
-      
-      let finalPrice = item.product.listPrice * adjustmentFactor * taxFactor;
-      
-      const subtotal = finalPrice * item.quantity;
+      // Subtotal: (preço final + substituição tributária) * quantidade
+      const subtotal = (finalPrice + (applyDiscounts ? taxValue : 0)) * item.quantity;
       
       return {
         ...item,
@@ -208,36 +225,55 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (customer) {
       setItems(prevItems => 
         prevItems.map(item => {
+          // Aplicar desconto do cliente ao preço final
           const finalPrice = item.product.listPrice * (1 - customer.defaultDiscount / 100);
+          
+          // Calcular subtotal com nova lógica
+          const taxRate = getTaxSubstitutionRate() / 100;
+          const taxValue = finalPrice * taxRate;
+          const subtotal = (finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * item.quantity;
+          
           return {
             ...item,
             discount: customer.defaultDiscount,
             finalPrice,
-            subtotal: finalPrice * item.quantity
+            subtotal
           };
         })
       );
     } else {
       setItems(prevItems => 
-        prevItems.map(item => ({
-          ...item,
-          discount: 0,
-          finalPrice: item.product.listPrice,
-          subtotal: item.product.listPrice * item.quantity
-        }))
+        prevItems.map(item => {
+          const finalPrice = item.product.listPrice;
+          
+          // Calcular subtotal com nova lógica
+          const taxRate = getTaxSubstitutionRate() / 100;
+          const taxValue = finalPrice * taxRate;
+          const subtotal = (finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * item.quantity;
+          
+          return {
+            ...item,
+            discount: 0,
+            finalPrice,
+            subtotal
+          };
+        })
       );
     }
   }, [customer]);
 
   const totalDiscount = items.reduce((total, item) => {
     const fullPrice = item.product.listPrice * item.quantity;
-    return total + (fullPrice - (item.subtotal || 0));
+    // Calculando apenas o desconto sem considerar acréscimos de substituição tributária
+    const discountValue = fullPrice - (item.finalPrice * item.quantity);
+    return total + discountValue;
   }, 0);
 
   const taxSubstitutionValue = calculateTaxSubstitutionValue();
   const ipiValue = calculateIPIValue();
   
-  const total = items.reduce((total, item) => total + (item.subtotal || 0), 0) + deliveryFee + ipiValue;
+  // Total agora considera os preços finais + substituição tributária + IPI + frete
+  const total = items.reduce((total, item) => total + item.subtotal, 0) + deliveryFee + ipiValue;
 
   const toggleApplyDiscounts = () => {
     setApplyDiscounts(prev => !prev);
@@ -262,10 +298,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const existingItem = newItems[existingItemIndex];
       const newQuantity = existingItem.quantity + quantity;
       
+      // Recalcular subtotal com a nova lógica
+      const taxRate = getTaxSubstitutionRate() / 100;
+      const taxValue = existingItem.finalPrice * taxRate;
+      const subtotal = (existingItem.finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * newQuantity;
+      
       newItems[existingItemIndex] = {
         ...existingItem,
         quantity: newQuantity,
-        subtotal: existingItem.finalPrice * newQuantity
+        subtotal
       };
       
       setItems(newItems);
@@ -273,16 +314,28 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else {
       const listPrice = Number(product.listPrice) || 0;
       const initialDiscount = customer ? Number(customer.defaultDiscount) || 0 : 0;
-      const netAdjustmentPercentage = getNetAdjustmentPercentage();
-      const combinedDiscount = initialDiscount + netAdjustmentPercentage;
+      const discountPercentage = getNetDiscountPercentage();
+      const combinedDiscount = initialDiscount + discountPercentage;
+      
+      // Preço final só considera descontos, não a substituição tributária
       const finalPrice = listPrice * (1 - combinedDiscount / 100);
+      
+      // Calcular valor da substituição tributária
+      const taxRate = getTaxSubstitutionRate() / 100;
+      const taxValue = finalPrice * taxRate;
+      
+      // Subtotal: (preço final + substituição tributária) * quantidade
+      const subtotal = (finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * quantity;
       
       console.log("Valores calculados:", {
         listPrice,
         initialDiscount,
-        netAdjustmentPercentage,
+        discountPercentage,
         combinedDiscount,
-        finalPrice
+        finalPrice,
+        taxRate,
+        taxValue,
+        subtotal
       });
       
       const newItem: CartItem = {
@@ -292,7 +345,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         quantity,
         discount: initialDiscount,
         finalPrice,
-        subtotal: finalPrice * quantity
+        subtotal
       };
       
       setItems(prevItems => [...prevItems, newItem]);
@@ -311,15 +364,21 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateItemQuantity = (id: string, quantity: number) => {
     if (quantity < 1) return;
     
-    setItems(prevItems => prevItems.map(item => 
-      item.id === id 
-        ? { 
-            ...item, 
-            quantity, 
-            subtotal: item.finalPrice * quantity 
-          } 
-        : item
-    ));
+    setItems(prevItems => prevItems.map(item => {
+      if (item.id === id) {
+        // Recalcular subtotal com a nova lógica
+        const taxRate = getTaxSubstitutionRate() / 100;
+        const taxValue = item.finalPrice * taxRate;
+        const subtotal = (item.finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * quantity;
+        
+        return { 
+          ...item, 
+          quantity, 
+          subtotal
+        };
+      }
+      return item;
+    }));
   };
 
   const updateItemDiscount = (id: string, discount: number) => {
@@ -332,18 +391,27 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       appliedDiscount = customer.maxDiscount;
     }
     
-    const netAdjustmentPercentage = getNetAdjustmentPercentage();
+    const discountPercentage = getNetDiscountPercentage();
     
     setItems(prevItems => prevItems.map(item => {
       if (item.id === id) {
-        const combinedDiscount = appliedDiscount + netAdjustmentPercentage;
+        const combinedDiscount = appliedDiscount + discountPercentage;
+        
+        // Preço final só considera descontos, não a substituição tributária
         const finalPrice = item.product.listPrice * (1 - combinedDiscount / 100);
+        
+        // Calcular valor da substituição tributária
+        const taxRate = getTaxSubstitutionRate() / 100;
+        const taxValue = finalPrice * taxRate;
+        
+        // Subtotal: (preço final + substituição tributária) * quantidade
+        const subtotal = (finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * item.quantity;
         
         return {
           ...item,
           discount: appliedDiscount,
           finalPrice,
-          subtotal: finalPrice * item.quantity
+          subtotal
         };
       }
       return item;
@@ -474,7 +542,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toggleApplyDiscounts,
       calculateTaxSubstitutionValue,
       toggleIPI,
-      calculateIPIValue
+      calculateIPIValue,
+      calculateItemTaxSubstitutionValue
     }}>
       {children}
     </CartContext.Provider>
