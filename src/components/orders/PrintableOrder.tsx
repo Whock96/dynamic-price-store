@@ -29,8 +29,8 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
     return () => clearTimeout(printTimeout);
   }, [onPrint]);
 
-  // Get order number properly
-  const orderNumber = order.orderNumber?.toString() || (order.id ? order.id.split('-')[0] : 'N/A');
+  // Usar diretamente o orderNumber se disponível, ao invés de extrair do ID
+  const orderNumber = order.orderNumber || 'N/A';
 
   // Determine invoice type text based on fullInvoice flag
   const invoiceTypeText = order.fullInvoice ? 'Nota Cheia' : 'Meia Nota';

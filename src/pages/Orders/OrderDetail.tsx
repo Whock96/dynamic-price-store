@@ -313,8 +313,9 @@ const OrderDetail = () => {
     );
   }
 
-  // Extract order number properly
-  const orderNumber = order.orderNumber || (order.id ? order.id.split('-')[0] : 'N/A');
+  // Extrair corretamente o número do pedido
+  // Usar diretamente o orderNumber se disponível, ao invés de extrair do ID
+  const orderNumber = order.orderNumber || 'N/A';
 
   const totalDiscount = order.totalDiscount || 0;
   const appliedDiscounts = order.discountOptions || [];
@@ -726,3 +727,4 @@ const OrderDetail = () => {
 };
 
 export default OrderDetail;
+
