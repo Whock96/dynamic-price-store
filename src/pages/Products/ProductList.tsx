@@ -12,41 +12,103 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useProducts } from '@/context/ProductContext';
 import { formatCurrency } from '@/utils/formatters';
+import { useSupabaseData } from '@/hooks/use-supabase-data';
+import { Tables } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
+
+type Product = Tables<'products'>;
+type Category = Tables<'categories'>;
+type Subcategory = Tables<'subcategories'>;
 
 const ProductList = () => {
   const navigate = useNavigate();
-  const { 
-    products, 
-    getCategoryName, 
-    getSubcategoryName, 
-    categories 
-  } = useProducts();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [subcategoryFilter, setSubcategoryFilter] = useState('all');
-  const [availableSubcategories, setAvailableSubcategories] = useState<any[]>([]);
+  const [availableSubcategories, setAvailableSubcategories] = useState<Subcategory[]>([]);
+  
+  // Fetch products from Supabase
+  const { 
+    data: products, 
+    isLoading: productsLoading,
+    error: productsError
+  } = useSupabaseData<Product>('products');
+  
+  // Fetch categories from Supabase
+  const { 
+    data: categories, 
+    isLoading: categoriesLoading,
+    error: categoriesError
+  } = useSupabaseData<Category>('categories');
+  
+  // Fetch subcategories from Supabase
+  const { 
+    data: subcategories, 
+    isLoading: subcategoriesLoading,
+    error: subcategoriesError
+  } = useSupabaseData<Subcategory>('subcategories');
 
+  // Show toast errors if any
+  useEffect(() => {
+    if (productsError) {
+      toast({ 
+        title: "Erro ao carregar produtos", 
+        description: productsError.message, 
+        variant: "destructive" 
+      });
+    }
+    if (categoriesError) {
+      toast({ 
+        title: "Erro ao carregar categorias", 
+        description: categoriesError.message, 
+        variant: "destructive" 
+      });
+    }
+  }, [productsError, categoriesError, toast]);
+
+  // Update available subcategories when category filter changes
   useEffect(() => {
     if (categoryFilter === 'all') {
       setAvailableSubcategories([]);
       setSubcategoryFilter('all');
     } else {
-      const selectedCategory = categories.find(cat => cat.id === categoryFilter);
-      setAvailableSubcategories(selectedCategory?.subcategories || []);
+      const filteredSubcategories = subcategories.filter(
+        sub => sub.category_id === categoryFilter
+      );
+      setAvailableSubcategories(filteredSubcategories);
       setSubcategoryFilter('all');
     }
-  }, [categoryFilter, categories]);
+  }, [categoryFilter, subcategories]);
 
+  // Helper functions to get category and subcategory names
+  const getCategoryName = (categoryId: string | null) => {
+    if (!categoryId) return 'Sem categoria';
+    const category = categories.find(cat => cat.id === categoryId);
+    return category ? category.name : 'Sem categoria';
+  };
+
+  const getSubcategoryName = (subcategoryId: string | null) => {
+    if (!subcategoryId) return 'Sem subcategoria';
+    const subcategory = subcategories.find(sub => sub.id === subcategoryId);
+    return subcategory ? subcategory.name : 'Sem subcategoria';
+  };
+
+  // Filter products based on search query and category/subcategory filters
   const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         product.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = categoryFilter === 'all' || product.categoryId === categoryFilter;
-    const matchesSubcategory = subcategoryFilter === 'all' || product.subcategoryId === subcategoryFilter;
+    const nameMatch = product.name?.toLowerCase().includes(searchQuery.toLowerCase()) || false;
+    const descriptionMatch = product.description?.toLowerCase().includes(searchQuery.toLowerCase()) || false;
+    const matchesSearch = nameMatch || descriptionMatch;
+    
+    const matchesCategory = categoryFilter === 'all' || product.category_id === categoryFilter;
+    const matchesSubcategory = subcategoryFilter === 'all' || product.subcategory_id === subcategoryFilter;
     
     return matchesSearch && matchesCategory && matchesSubcategory;
   });
+
+  const isLoading = productsLoading || categoriesLoading || subcategoriesLoading;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -83,7 +145,7 @@ const ProductList = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter} disabled={isLoading}>
               <SelectTrigger>
                 <div className="flex items-center">
                   <Filter className="mr-2 h-4 w-4 text-gray-400" />
@@ -103,7 +165,7 @@ const ProductList = () => {
             <Select 
               value={subcategoryFilter} 
               onValueChange={setSubcategoryFilter}
-              disabled={categoryFilter === 'all'}
+              disabled={categoryFilter === 'all' || isLoading}
             >
               <SelectTrigger>
                 <div className="flex items-center">
@@ -124,55 +186,77 @@ const ProductList = () => {
         </CardContent>
       </Card>
 
-      {/* Modificando de grid-cols-3 para grid-cols-4 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {filteredProducts.map(product => (
-          <Card 
-            key={product.id} 
-            className="overflow-hidden hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
-            onClick={() => navigate(`/products/${product.id}`)}
-          >
-            <div className="aspect-square relative overflow-hidden bg-gray-100">
-              <img 
-                src={product.imageUrl} 
-                alt={product.name}
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-              />
-              <div className="absolute top-2 right-2 flex flex-col items-end">
-                <div className="bg-ferplas-500 text-white text-xs px-2 py-1 rounded-full inline-block min-w-[20px] text-center">
-                  {getCategoryName(product.categoryId)}
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(8)].map((_, i) => (
+            <Card key={i} className="overflow-hidden">
+              <div className="aspect-square relative overflow-hidden bg-gray-100">
+                <Skeleton className="absolute inset-0 w-full h-full" />
+              </div>
+              <CardContent className="p-3">
+                <Skeleton className="h-6 w-3/4 mb-2" />
+                <Skeleton className="h-8 w-full mb-4" />
+                <div className="flex justify-between items-end mt-1">
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-1" />
+                    <Skeleton className="h-5 w-24" />
+                  </div>
+                  <Skeleton className="h-8 w-24" />
                 </div>
-                <div className="bg-ferplas-600 text-white text-xs px-2 py-1 rounded-full inline-block min-w-[20px] text-center mt-1">
-                  {getSubcategoryName(product.categoryId, product.subcategoryId)}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {filteredProducts.map(product => (
+            <Card 
+              key={product.id} 
+              className="overflow-hidden hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
+              onClick={() => navigate(`/products/${product.id}`)}
+            >
+              <div className="aspect-square relative overflow-hidden bg-gray-100">
+                <img 
+                  src={product.image_url || 'https://via.placeholder.com/150'} 
+                  alt={product.name}
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+                />
+                <div className="absolute top-2 right-2 flex flex-col items-end">
+                  <div className="bg-ferplas-500 text-white text-xs px-2 py-1 rounded-full inline-block min-w-[20px] text-center">
+                    {getCategoryName(product.category_id)}
+                  </div>
+                  <div className="bg-ferplas-600 text-white text-xs px-2 py-1 rounded-full inline-block min-w-[20px] text-center mt-1">
+                    {getSubcategoryName(product.subcategory_id)}
+                  </div>
                 </div>
               </div>
-            </div>
-            <CardContent className="p-3">
-              <h3 className="text-base font-medium truncate">{product.name}</h3>
-              <p className="text-xs text-gray-500 line-clamp-2 h-8 mb-1">{product.description}</p>
-              <div className="flex justify-between items-end mt-1">
-                <div>
-                  <p className="text-xs text-gray-500">Preço de tabela</p>
-                  <p className="text-base font-bold text-ferplas-600">{formatCurrency(product.listPrice)}</p>
+              <CardContent className="p-3">
+                <h3 className="text-base font-medium truncate">{product.name}</h3>
+                <p className="text-xs text-gray-500 line-clamp-2 h-8 mb-1">{product.description || ''}</p>
+                <div className="flex justify-between items-end mt-1">
+                  <div>
+                    <p className="text-xs text-gray-500">Preço de tabela</p>
+                    <p className="text-base font-bold text-ferplas-600">{formatCurrency(product.list_price || 0)}</p>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="text-xs text-ferplas-500 border-ferplas-500 hover:bg-ferplas-50"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/products/${product.id}`);
+                    }}
+                  >
+                    Ver detalhes
+                  </Button>
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="text-xs text-ferplas-500 border-ferplas-500 hover:bg-ferplas-50"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/products/${product.id}`);
-                  }}
-                >
-                  Ver detalhes
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
-      {filteredProducts.length === 0 && (
+      {!isLoading && filteredProducts.length === 0 && (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <Package className="h-12 w-12 text-gray-300 mb-4" />
           <h2 className="text-xl font-medium text-gray-600">Nenhum produto encontrado</h2>

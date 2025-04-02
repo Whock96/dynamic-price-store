@@ -44,43 +44,84 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
-import { Product } from '@/types/types';
-import { useProducts } from '@/context/ProductContext';
-import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
-import { useForm } from "react-hook-form";
+import { useSupabaseData } from '@/hooks/use-supabase-data';
+import { Tables } from '@/integrations/supabase/client';
+import { Skeleton } from '@/components/ui/skeleton';
+import { formatCurrency } from '@/utils/formatters';
+
+type Product = Tables<'products'>;
+type Category = Tables<'categories'>;
+type Subcategory = Tables<'subcategories'>;
+
+type ProductFormData = {
+  id?: string;
+  name: string;
+  description: string | null;
+  list_price: number;
+  weight: number;
+  quantity: number;
+  quantity_per_volume: number;
+  width: number;
+  height: number;
+  length: number;
+  cubic_volume: number;
+  category_id: string | null;
+  subcategory_id: string | null;
+  image_url: string | null;
+};
 
 const ProductManagement = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const { products, setProducts, categories, getCategoryName, getSubcategoryName } = useProducts();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [formData, setFormData] = useState({
-    id: '',
+  const [availableSubcategories, setAvailableSubcategories] = useState<Subcategory[]>([]);
+  
+  // Initialize form data with default values
+  const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     description: '',
-    listPrice: 0,
+    list_price: 0,
     weight: 0,
     quantity: 0,
-    quantityPerVolume: 0,
-    dimensions: {
-      width: 0,
-      height: 0,
-      length: 0
-    },
-    cubicVolume: 0,
-    categoryId: '',
-    subcategoryId: '',
-    imageUrl: 'https://via.placeholder.com/150',
+    quantity_per_volume: 1,
+    width: 0,
+    height: 0,
+    length: 0,
+    cubic_volume: 0,
+    category_id: null,
+    subcategory_id: null,
+    image_url: 'https://via.placeholder.com/150',
   });
-  const [availableSubcategories, setAvailableSubcategories] = useState<{ id: string, name: string }[]>([]);
 
-  // Verificar se o usuário é administrador
+  // Fetch data from Supabase
+  const { 
+    data: products, 
+    isLoading: productsLoading, 
+    error: productsError,
+    fetchData: refetchProducts,
+    createRecord: createProduct,
+    updateRecord: updateProduct,
+    deleteRecord: deleteProduct
+  } = useSupabaseData<Product>('products');
+
+  const { 
+    data: categories, 
+    isLoading: categoriesLoading,
+    error: categoriesError
+  } = useSupabaseData<Category>('categories');
+
+  const { 
+    data: subcategories, 
+    isLoading: subcategoriesLoading,
+    error: subcategoriesError
+  } = useSupabaseData<Subcategory>('subcategories');
+
+  // Check if user has admin permissions
   useEffect(() => {
     if (user?.role !== 'administrator') {
       toast.error('Você não tem permissão para acessar esta página');
@@ -88,86 +129,92 @@ const ProductManagement = () => {
     }
   }, [user, navigate]);
 
-  // Filtrar produtos com base na pesquisa e categoria
+  // Show errors as toasts
+  useEffect(() => {
+    if (productsError) toast.error(`Erro ao carregar produtos: ${productsError.message}`);
+    if (categoriesError) toast.error(`Erro ao carregar categorias: ${categoriesError.message}`);
+    if (subcategoriesError) toast.error(`Erro ao carregar subcategorias: ${subcategoriesError.message}`);
+  }, [productsError, categoriesError, subcategoriesError]);
+
+  // Update available subcategories when category changes
+  useEffect(() => {
+    if (formData.category_id) {
+      const filtered = subcategories.filter(sub => sub.category_id === formData.category_id);
+      setAvailableSubcategories(filtered);
+      
+      // Reset subcategory if the current one is not valid for the new category
+      if (!filtered.some(sub => sub.id === formData.subcategory_id)) {
+        setFormData(prev => ({
+          ...prev,
+          subcategory_id: filtered[0]?.id || null
+        }));
+      }
+    } else {
+      setAvailableSubcategories([]);
+      setFormData(prev => ({...prev, subcategory_id: null}));
+    }
+  }, [formData.category_id, subcategories]);
+
+  // Filter products based on search query and category filter
   const filteredProducts = products.filter(product => {
-    const matchesSearch = 
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const nameMatch = product.name?.toLowerCase().includes(searchQuery.toLowerCase()) || false;
+    const descriptionMatch = product.description?.toLowerCase().includes(searchQuery.toLowerCase()) || false;
+    const matchesSearch = nameMatch || descriptionMatch;
     
-    const matchesCategory = categoryFilter === 'all' || product.categoryId === categoryFilter;
+    const matchesCategory = categoryFilter === 'all' || product.category_id === categoryFilter;
     
     return matchesSearch && matchesCategory;
   });
 
-  // Make sure we're using updated subcategories when category changes
-  useEffect(() => {
-    if (formData.categoryId) {
-      const category = categories.find(cat => cat.id === formData.categoryId);
-      if (category) {
-        setAvailableSubcategories(category.subcategories);
-        if (!category.subcategories.some(sub => sub.id === formData.subcategoryId)) {
-          // Reset subcategory if current selection is not valid for the new category
-          setFormData(prev => ({
-            ...prev,
-            subcategoryId: category.subcategories[0]?.id || ''
-          }));
-        }
-      }
-    } else {
-      setAvailableSubcategories([]);
-    }
-  }, [formData.categoryId, categories]);
+  // Helper functions to get category and subcategory names
+  const getCategoryName = (categoryId: string | null) => {
+    if (!categoryId) return 'Sem categoria';
+    const category = categories.find(cat => cat.id === categoryId);
+    return category ? category.name : 'Sem categoria';
+  };
+
+  const getSubcategoryName = (subcategoryId: string | null) => {
+    if (!subcategoryId) return 'Sem subcategoria';
+    const subcategory = subcategories.find(sub => sub.id === subcategoryId);
+    return subcategory ? subcategory.name : 'Sem subcategoria';
+  };
 
   const handleOpenDialog = (product?: Product) => {
     if (product) {
       setIsEditMode(true);
-      setSelectedProduct(product);
       setFormData({
         id: product.id,
         name: product.name,
         description: product.description,
-        listPrice: product.listPrice,
-        weight: product.weight,
-        quantity: product.quantity,
-        quantityPerVolume: product.quantityPerVolume || 0,
-        dimensions: product.dimensions || { width: 0, height: 0, length: 0 },
-        cubicVolume: product.cubicVolume || 0,
-        categoryId: product.categoryId,
-        subcategoryId: product.subcategoryId,
-        imageUrl: product.imageUrl,
+        list_price: product.list_price || 0,
+        weight: product.weight || 0,
+        quantity: product.quantity || 0,
+        quantity_per_volume: product.quantity_per_volume || 1,
+        width: product.width || 0,
+        height: product.height || 0,
+        length: product.length || 0,
+        cubic_volume: product.cubic_volume || 0,
+        category_id: product.category_id,
+        subcategory_id: product.subcategory_id,
+        image_url: product.image_url,
       });
-      
-      // Atualizar subcategorias disponíveis
-      const category = categories.find(cat => cat.id === product.categoryId);
-      if (category) {
-        setAvailableSubcategories(category.subcategories);
-      }
     } else {
       setIsEditMode(false);
-      setSelectedProduct(null);
       setFormData({
-        id: `product-${Date.now()}`,
         name: '',
         description: '',
-        listPrice: 0,
+        list_price: 0,
         weight: 0,
         quantity: 0,
-        quantityPerVolume: 0,
-        dimensions: {
-          width: 0,
-          height: 0,
-          length: 0
-        },
-        cubicVolume: 0,
-        categoryId: categories[0]?.id || '',
-        subcategoryId: categories[0]?.subcategories[0]?.id || '',
-        imageUrl: 'https://via.placeholder.com/150',
+        quantity_per_volume: 1,
+        width: 0,
+        height: 0,
+        length: 0,
+        cubic_volume: 0,
+        category_id: categories.length > 0 ? categories[0].id : null,
+        subcategory_id: null,
+        image_url: 'https://via.placeholder.com/150',
       });
-      
-      // Definir subcategorias iniciais
-      if (categories.length > 0) {
-        setAvailableSubcategories(categories[0].subcategories);
-      }
     }
     
     setIsDialogOpen(true);
@@ -180,29 +227,29 @@ const ProductManagement = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     
-    // Handle dimension fields
-    if (name.startsWith('dimension.')) {
-      const dimensionKey = name.split('.')[1] as 'width' | 'height' | 'length';
+    if (name === 'width' || name === 'height' || name === 'length') {
       const dimensionValue = parseFloat(value) || 0;
       
-      const updatedDimensions = {
-        ...formData.dimensions,
-        [dimensionKey]: dimensionValue
+      const updatedFormData = {
+        ...formData,
+        [name]: dimensionValue
       };
       
       // Calculate cubic volume (width * height * length) in cubic meters
-      const cubicVolume = (updatedDimensions.width * updatedDimensions.height * updatedDimensions.length) / 1000000;
+      const newWidth = name === 'width' ? dimensionValue : formData.width;
+      const newHeight = name === 'height' ? dimensionValue : formData.height;
+      const newLength = name === 'length' ? dimensionValue : formData.length;
+      const cubicVolume = (newWidth * newHeight * newLength) / 1000000; // Convert from mm³ to m³
       
-      setFormData(prev => ({
-        ...prev,
-        dimensions: updatedDimensions,
-        cubicVolume: parseFloat(cubicVolume.toFixed(4))
-      }));
+      setFormData({
+        ...updatedFormData,
+        cubic_volume: parseFloat(cubicVolume.toFixed(4))
+      });
     } else {
       // Handle other fields
       setFormData(prev => ({
         ...prev,
-        [name]: name === 'listPrice' || name === 'weight' || name === 'quantity' || name === 'quantityPerVolume'
+        [name]: name === 'list_price' || name === 'weight' || name === 'quantity' || name === 'quantity_per_volume'
           ? parseFloat(value) || 0 
           : value
       }));
@@ -212,67 +259,48 @@ const ProductManagement = () => {
   const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: value === '' ? null : value
     }));
   };
 
-  const handleSaveProduct = () => {
-    // Validação básica
-    if (!formData.name || !formData.description || formData.listPrice <= 0) {
-      toast.error('Preencha todos os campos obrigatórios');
+  const handleSaveProduct = async () => {
+    // Basic validation
+    if (!formData.name || formData.list_price <= 0) {
+      toast.error('Preencha todos os campos obrigatórios: nome e preço');
       return;
     }
 
-    // Ensure proper number values
-    const processedData = {
-      ...formData,
-      listPrice: Number(formData.listPrice),
-      weight: Number(formData.weight),
-      quantity: Number(formData.quantity),
-      quantityPerVolume: Number(formData.quantityPerVolume),
-      dimensions: {
-        width: Number(formData.dimensions.width),
-        height: Number(formData.dimensions.height),
-        length: Number(formData.dimensions.length)
-      },
-      cubicVolume: Number(formData.cubicVolume)
-    };
-
-    if (isEditMode) {
-      // Atualizar produto existente
-      setProducts(prev => prev.map(p => p.id === processedData.id ? {
-        ...p,
-        ...processedData,
-        updatedAt: new Date()
-      } as Product : p));
-      toast.success(`Produto "${processedData.name}" atualizado com sucesso`);
-    } else {
-      // Adicionar novo produto
-      const newProduct: Product = {
-        ...processedData,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      } as Product;
+    try {
+      if (isEditMode && formData.id) {
+        // Update existing product
+        const { id, ...updateData } = formData;
+        await updateProduct(id, updateData);
+        toast.success(`Produto "${formData.name}" atualizado com sucesso`);
+      } else {
+        // Create new product
+        await createProduct(formData);
+        toast.success(`Produto "${formData.name}" adicionado com sucesso`);
+      }
       
-      setProducts(prev => [...prev, newProduct]);
-      toast.success(`Produto "${processedData.name}" adicionado com sucesso`);
+      // Refresh product list
+      refetchProducts();
+      handleCloseDialog();
+    } catch (error) {
+      toast.error(`Erro ao salvar produto: ${(error as Error).message}`);
     }
-    
-    handleCloseDialog();
   };
 
-  const handleDeleteProduct = (productId: string) => {
-    setProducts(prev => prev.filter(p => p.id !== productId));
-    toast.success('Produto removido com sucesso');
+  const handleDeleteProduct = async (productId: string) => {
+    try {
+      await deleteProduct(productId);
+      toast.success('Produto removido com sucesso');
+      refetchProducts();
+    } catch (error) {
+      toast.error(`Erro ao remover produto: ${(error as Error).message}`);
+    }
   };
 
-  // Formatar moeda
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
-  };
+  const isLoading = productsLoading || categoriesLoading || subcategoriesLoading;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -296,6 +324,7 @@ const ProductManagement = () => {
         <Button 
           className="bg-ferplas-500 hover:bg-ferplas-600 button-transition"
           onClick={() => handleOpenDialog()}
+          disabled={isLoading}
         >
           <Plus className="mr-2 h-4 w-4" />
           Novo Produto
@@ -317,7 +346,11 @@ const ProductManagement = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <Select 
+              value={categoryFilter} 
+              onValueChange={setCategoryFilter}
+              disabled={isLoading}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Categoria" />
               </SelectTrigger>
@@ -336,74 +369,87 @@ const ProductManagement = () => {
 
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>Preço</TableHead>
-                <TableHead>Estoque</TableHead>
-                <TableHead>Peso</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredProducts.map(product => (
-                <TableRow key={product.id}>
-                  <TableCell className="font-medium">{product.name}</TableCell>
-                  <TableCell>
-                    {getCategoryName(product.categoryId)} / {getSubcategoryName(product.categoryId, product.subcategoryId)}
-                  </TableCell>
-                  <TableCell>{formatCurrency(product.listPrice)}</TableCell>
-                  <TableCell>{product.quantity} un.</TableCell>
-                  <TableCell>{product.weight} kg</TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="h-8 px-2 text-amber-600"
-                      onClick={() => handleOpenDialog(product)}
-                    >
-                      <Edit className="h-4 w-4 mr-1" />
-                      Editar
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="h-8 px-2 text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Excluir
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Remover produto?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esta ação irá remover permanentemente o produto "{product.name}" do sistema. 
-                            Esta ação não pode ser desfeita.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction 
-                            className="bg-red-600 hover:bg-red-700"
-                            onClick={() => handleDeleteProduct(product.id)}
-                          >
-                            Remover
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </TableCell>
+          {isLoading ? (
+            // Loading skeleton
+            <div className="p-6">
+              <div className="flex flex-col space-y-3">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex justify-between items-center">
+                    <Skeleton className="h-8 w-full max-w-[800px]" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Categoria</TableHead>
+                  <TableHead>Preço</TableHead>
+                  <TableHead>Estoque</TableHead>
+                  <TableHead>Peso</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredProducts.map(product => (
+                  <TableRow key={product.id}>
+                    <TableCell className="font-medium">{product.name}</TableCell>
+                    <TableCell>
+                      {getCategoryName(product.category_id)} / {getSubcategoryName(product.subcategory_id)}
+                    </TableCell>
+                    <TableCell>{formatCurrency(product.list_price || 0)}</TableCell>
+                    <TableCell>{product.quantity || 0} un.</TableCell>
+                    <TableCell>{product.weight || 0} kg</TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="h-8 px-2 text-amber-600"
+                        onClick={() => handleOpenDialog(product)}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Editar
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="h-8 px-2 text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Excluir
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remover produto?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta ação irá remover permanentemente o produto "{product.name}" do sistema. 
+                              Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction 
+                              className="bg-red-600 hover:bg-red-700"
+                              onClick={() => handleDeleteProduct(product.id)}
+                            >
+                              Remover
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
           
-          {filteredProducts.length === 0 && (
+          {!isLoading && filteredProducts.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Package className="h-12 w-12 text-gray-300 mb-4" />
               <h2 className="text-xl font-medium text-gray-600">Nenhum produto encontrado</h2>
@@ -413,7 +459,7 @@ const ProductManagement = () => {
         </CardContent>
       </Card>
 
-      {/* Dialog para adicionar/editar produto */}
+      {/* Dialog to add/edit product */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl flex flex-col h-[85vh]">
           <DialogHeader className="px-6 py-4">
@@ -440,11 +486,11 @@ const ProductManagement = () => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="description">Descrição*</Label>
+                  <Label htmlFor="description">Descrição</Label>
                   <Textarea
                     id="description"
                     name="description"
-                    value={formData.description}
+                    value={formData.description || ''}
                     onChange={handleInputChange}
                     placeholder="Descreva o produto em detalhes..."
                     rows={3}
@@ -453,15 +499,16 @@ const ProductManagement = () => {
               </div>
               
               <div>
-                <Label htmlFor="categoryId">Categoria*</Label>
+                <Label htmlFor="category_id">Categoria</Label>
                 <Select 
-                  value={formData.categoryId} 
-                  onValueChange={(value) => handleSelectChange('categoryId', value)}
+                  value={formData.category_id || ''} 
+                  onValueChange={(value) => handleSelectChange('category_id', value)}
                 >
-                  <SelectTrigger id="categoryId">
+                  <SelectTrigger id="category_id">
                     <SelectValue placeholder="Selecione uma categoria" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="">Sem categoria</SelectItem>
                     {categories.map(category => (
                       <SelectItem key={category.id} value={category.id}>
                         {category.name}
@@ -472,16 +519,17 @@ const ProductManagement = () => {
               </div>
               
               <div>
-                <Label htmlFor="subcategoryId">Subcategoria*</Label>
+                <Label htmlFor="subcategory_id">Subcategoria</Label>
                 <Select 
-                  value={formData.subcategoryId} 
-                  onValueChange={(value) => handleSelectChange('subcategoryId', value)}
-                  disabled={availableSubcategories.length === 0}
+                  value={formData.subcategory_id || ''} 
+                  onValueChange={(value) => handleSelectChange('subcategory_id', value)}
+                  disabled={!formData.category_id || availableSubcategories.length === 0}
                 >
-                  <SelectTrigger id="subcategoryId">
+                  <SelectTrigger id="subcategory_id">
                     <SelectValue placeholder="Selecione uma subcategoria" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="">Sem subcategoria</SelectItem>
                     {availableSubcategories.map(subcategory => (
                       <SelectItem key={subcategory.id} value={subcategory.id}>
                         {subcategory.name}
@@ -492,14 +540,14 @@ const ProductManagement = () => {
               </div>
               
               <div>
-                <Label htmlFor="listPrice">Preço de Tabela (R$)*</Label>
+                <Label htmlFor="list_price">Preço de Tabela (R$)*</Label>
                 <Input
-                  id="listPrice"
-                  name="listPrice"
+                  id="list_price"
+                  name="list_price"
                   type="number"
                   min="0"
                   step="0.01"
-                  value={formData.listPrice}
+                  value={formData.list_price}
                   onChange={handleInputChange}
                 />
               </div>
@@ -530,14 +578,14 @@ const ProductManagement = () => {
               </div>
 
               <div>
-                <Label htmlFor="quantityPerVolume">Quantidade por Volume</Label>
+                <Label htmlFor="quantity_per_volume">Quantidade por Volume</Label>
                 <Input
-                  id="quantityPerVolume"
-                  name="quantityPerVolume"
+                  id="quantity_per_volume"
+                  name="quantity_per_volume"
                   type="number"
                   min="0"
                   step="1"
-                  value={formData.quantityPerVolume}
+                  value={formData.quantity_per_volume}
                   onChange={handleInputChange}
                 />
               </div>
@@ -546,53 +594,53 @@ const ProductManagement = () => {
                 <Label>Dimensões (mm)</Label>
                 <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <Label htmlFor="dimension.width" className="text-xs text-gray-500">Largura</Label>
+                    <Label htmlFor="width" className="text-xs text-gray-500">Largura</Label>
                     <Input
-                      id="dimension.width"
-                      name="dimension.width"
+                      id="width"
+                      name="width"
                       type="number"
                       min="0"
                       step="1"
-                      value={formData.dimensions.width}
+                      value={formData.width}
                       onChange={handleInputChange}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="dimension.height" className="text-xs text-gray-500">Altura</Label>
+                    <Label htmlFor="height" className="text-xs text-gray-500">Altura</Label>
                     <Input
-                      id="dimension.height"
-                      name="dimension.height"
+                      id="height"
+                      name="height"
                       type="number"
                       min="0"
                       step="1"
-                      value={formData.dimensions.height}
+                      value={formData.height}
                       onChange={handleInputChange}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="dimension.length" className="text-xs text-gray-500">Comprimento</Label>
+                    <Label htmlFor="length" className="text-xs text-gray-500">Comprimento</Label>
                     <Input
-                      id="dimension.length"
-                      name="dimension.length"
+                      id="length"
+                      name="length"
                       type="number"
                       min="0"
                       step="1"
-                      value={formData.dimensions.length}
+                      value={formData.length}
                       onChange={handleInputChange}
                     />
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Volume calculado: {formData.cubicVolume} m³
+                  Volume calculado: {formData.cubic_volume} m³
                 </p>
               </div>
               
               <div>
-                <Label htmlFor="imageUrl">URL da Imagem</Label>
+                <Label htmlFor="image_url">URL da Imagem</Label>
                 <Input
-                  id="imageUrl"
-                  name="imageUrl"
-                  value={formData.imageUrl}
+                  id="image_url"
+                  name="image_url"
+                  value={formData.image_url || ''}
                   onChange={handleInputChange}
                   placeholder="https://exemplo.com/imagem.jpg"
                 />
