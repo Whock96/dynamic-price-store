@@ -34,13 +34,13 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <AuthProvider>
-        <ProductProvider>
-          <CustomerProvider>
-            <OrderProvider>
-              <CartProvider>
-                <CompanyProvider>
-                  <BrowserRouter>
+      <BrowserRouter>
+        <AuthProvider>
+          <ProductProvider>
+            <CustomerProvider>
+              <OrderProvider>
+                <CartProvider>
+                  <CompanyProvider>
                     <Toaster />
                     <Sonner />
                     <Routes>
@@ -77,13 +77,13 @@ const App = () => (
                       {/* Catch-all route */}
                       <Route path="*" element={<NotFound />} />
                     </Routes>
-                  </BrowserRouter>
-                </CompanyProvider>
-              </CartProvider>
-            </OrderProvider>
-          </CustomerProvider>
-        </ProductProvider>
-      </AuthProvider>
+                  </CompanyProvider>
+                </CartProvider>
+              </OrderProvider>
+            </CustomerProvider>
+          </ProductProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );

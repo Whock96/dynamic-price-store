@@ -17,8 +17,20 @@ import {
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
-  const { totalItems } = useCart();
   const navigate = useNavigate();
+  
+  // Safely access the cart context, providing fallback values if not available
+  const cart = React.useContext(
+    React.createContext<{ totalItems: number }>({ totalItems: 0 })
+  );
+  
+  // Try to use the real cart if available
+  try {
+    const { totalItems } = useCart();
+    cart.totalItems = totalItems;
+  } catch (error) {
+    console.log('CartContext not available yet');
+  }
 
   const handleLogout = () => {
     logout();
@@ -92,9 +104,9 @@ const Navbar: React.FC = () => {
                 <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
               </svg>
               <span>Carrinho</span>
-              {totalItems > 0 && (
+              {cart.totalItems > 0 && (
                 <span className="absolute -top-2 -right-2 bg-ferplas-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  {totalItems}
+                  {cart.totalItems}
                 </span>
               )}
             </Button>
