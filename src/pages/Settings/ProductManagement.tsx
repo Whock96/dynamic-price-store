@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -81,7 +80,6 @@ const ProductManagement = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [availableSubcategories, setAvailableSubcategories] = useState<Subcategory[]>([]);
   
-  // Initialize form data with default values
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     description: '',
@@ -98,7 +96,6 @@ const ProductManagement = () => {
     image_url: 'https://via.placeholder.com/150',
   });
 
-  // Fetch data from Supabase
   const { 
     data: products, 
     isLoading: productsLoading, 
@@ -121,7 +118,6 @@ const ProductManagement = () => {
     error: subcategoriesError
   } = useSupabaseData<Subcategory>('subcategories');
 
-  // Check if user has admin permissions
   useEffect(() => {
     if (user?.role !== 'administrator') {
       toast.error('Você não tem permissão para acessar esta página');
@@ -129,20 +125,17 @@ const ProductManagement = () => {
     }
   }, [user, navigate]);
 
-  // Show errors as toasts
   useEffect(() => {
     if (productsError) toast.error(`Erro ao carregar produtos: ${productsError.message}`);
     if (categoriesError) toast.error(`Erro ao carregar categorias: ${categoriesError.message}`);
     if (subcategoriesError) toast.error(`Erro ao carregar subcategorias: ${subcategoriesError.message}`);
   }, [productsError, categoriesError, subcategoriesError]);
 
-  // Update available subcategories when category changes
   useEffect(() => {
     if (formData.category_id) {
       const filtered = subcategories.filter(sub => sub.category_id === formData.category_id);
       setAvailableSubcategories(filtered);
       
-      // Reset subcategory if the current one is not valid for the new category
       if (!filtered.some(sub => sub.id === formData.subcategory_id)) {
         setFormData(prev => ({
           ...prev,
@@ -155,7 +148,6 @@ const ProductManagement = () => {
     }
   }, [formData.category_id, subcategories]);
 
-  // Filter products based on search query and category filter
   const filteredProducts = products.filter(product => {
     const nameMatch = product.name?.toLowerCase().includes(searchQuery.toLowerCase()) || false;
     const descriptionMatch = product.description?.toLowerCase().includes(searchQuery.toLowerCase()) || false;
@@ -166,7 +158,6 @@ const ProductManagement = () => {
     return matchesSearch && matchesCategory;
   });
 
-  // Helper functions to get category and subcategory names
   const getCategoryName = (categoryId: string | null) => {
     if (!categoryId) return 'Sem categoria';
     const category = categories.find(cat => cat.id === categoryId);
@@ -235,18 +226,16 @@ const ProductManagement = () => {
         [name]: dimensionValue
       };
       
-      // Calculate cubic volume (width * height * length) in cubic meters
       const newWidth = name === 'width' ? dimensionValue : formData.width;
       const newHeight = name === 'height' ? dimensionValue : formData.height;
       const newLength = name === 'length' ? dimensionValue : formData.length;
-      const cubicVolume = (newWidth * newHeight * newLength) / 1000000; // Convert from mm³ to m³
+      const cubicVolume = (newWidth * newHeight * newLength) / 1000000;
       
       setFormData({
         ...updatedFormData,
         cubic_volume: parseFloat(cubicVolume.toFixed(4))
       });
     } else {
-      // Handle other fields
       setFormData(prev => ({
         ...prev,
         [name]: name === 'list_price' || name === 'weight' || name === 'quantity' || name === 'quantity_per_volume'
@@ -264,7 +253,6 @@ const ProductManagement = () => {
   };
 
   const handleSaveProduct = async () => {
-    // Basic validation
     if (!formData.name || formData.list_price <= 0) {
       toast.error('Preencha todos os campos obrigatórios: nome e preço');
       return;
@@ -272,17 +260,14 @@ const ProductManagement = () => {
 
     try {
       if (isEditMode && formData.id) {
-        // Update existing product
         const { id, ...updateData } = formData;
         await updateProduct(id, updateData);
         toast.success(`Produto "${formData.name}" atualizado com sucesso`);
       } else {
-        // Create new product
         await createProduct(formData);
         toast.success(`Produto "${formData.name}" adicionado com sucesso`);
       }
       
-      // Refresh product list
       refetchProducts();
       handleCloseDialog();
     } catch (error) {
@@ -370,7 +355,6 @@ const ProductManagement = () => {
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            // Loading skeleton
             <div className="p-6">
               <div className="flex flex-col space-y-3">
                 {[...Array(5)].map((_, i) => (
@@ -459,7 +443,6 @@ const ProductManagement = () => {
         </CardContent>
       </Card>
 
-      {/* Dialog to add/edit product */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl flex flex-col h-[85vh]">
           <DialogHeader className="px-6 py-4">
@@ -508,7 +491,7 @@ const ProductManagement = () => {
                     <SelectValue placeholder="Selecione uma categoria" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sem categoria</SelectItem>
+                    <SelectItem value="none">Sem categoria</SelectItem>
                     {categories.map(category => (
                       <SelectItem key={category.id} value={category.id}>
                         {category.name}
@@ -529,7 +512,7 @@ const ProductManagement = () => {
                     <SelectValue placeholder="Selecione uma subcategoria" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sem subcategoria</SelectItem>
+                    <SelectItem value="none">Sem subcategoria</SelectItem>
                     {availableSubcategories.map(subcategory => (
                       <SelectItem key={subcategory.id} value={subcategory.id}>
                         {subcategory.name}
