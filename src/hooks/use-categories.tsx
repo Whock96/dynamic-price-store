@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -9,13 +8,11 @@ export function useCategories() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  // Fetch all categories with their subcategories
   const fetchCategories = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     
     try {
-      // Fetch categories from Supabase
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
         .select('*')
@@ -23,7 +20,6 @@ export function useCategories() {
 
       if (categoriesError) throw categoriesError;
 
-      // Fetch all subcategories
       const { data: subcategoriesData, error: subcategoriesError } = await supabase
         .from('subcategories')
         .select('*')
@@ -31,7 +27,6 @@ export function useCategories() {
 
       if (subcategoriesError) throw subcategoriesError;
 
-      // Map subcategories to their respective categories
       const formattedCategories: Category[] = (categoriesData || []).map(cat => ({
         id: cat.id,
         name: cat.name,
@@ -59,7 +54,6 @@ export function useCategories() {
     }
   }, []);
 
-  // Add a new category
   const addCategory = async (categoryData: Omit<Category, 'subcategories' | 'id'>) => {
     try {
       const { data, error } = await supabase
@@ -93,7 +87,6 @@ export function useCategories() {
     }
   };
 
-  // Update an existing category
   const updateCategory = async (categoryData: Pick<Category, 'id' | 'name' | 'description'>) => {
     try {
       const { error } = await supabase
@@ -122,10 +115,8 @@ export function useCategories() {
     }
   };
 
-  // Delete a category
   const deleteCategory = async (categoryId: string) => {
     try {
-      // First delete all subcategories related to this category
       const { error: subcategoryError } = await supabase
         .from('subcategories')
         .delete()
@@ -133,7 +124,6 @@ export function useCategories() {
 
       if (subcategoryError) throw subcategoryError;
 
-      // Then delete the category itself
       const { error } = await supabase
         .from('categories')
         .delete()
@@ -141,7 +131,6 @@ export function useCategories() {
 
       if (error) throw error;
 
-      // Update local state
       setCategories(prev => prev.filter(cat => cat.id !== categoryId));
       
       toast.success('Categoria removida com sucesso');
@@ -154,8 +143,6 @@ export function useCategories() {
     }
   };
 
-  // Add a subcategory
-  // Modified the type here from Omit<Subcategory, 'categoryId'> to Omit<Subcategory, 'categoryId' | 'id'>
   const addSubcategory = async (categoryId: string, subcategoryData: Omit<Subcategory, 'categoryId' | 'id'>) => {
     try {
       console.log('Adding subcategory to category:', categoryId);
@@ -184,15 +171,20 @@ export function useCategories() {
         };
 
         console.log('New subcategory created:', newSubcategory);
-
-        setCategories(prev => prev.map(cat => 
-          cat.id === categoryId
-            ? { 
-                ...cat, 
-                subcategories: [...cat.subcategories, newSubcategory]
-              }
-            : cat
-        ));
+        
+        setCategories(prev => {
+          console.log('Previous categories state:', prev);
+          const updated = prev.map(cat => 
+            cat.id === categoryId
+              ? { 
+                  ...cat, 
+                  subcategories: [...cat.subcategories, newSubcategory]
+                }
+              : cat
+          );
+          console.log('Updated categories state:', updated);
+          return updated;
+        });
         
         toast.success(`Subcategoria "${subcategoryData.name}" adicionada com sucesso`);
         return newSubcategory;
@@ -206,7 +198,6 @@ export function useCategories() {
     }
   };
 
-  // Update a subcategory
   const updateSubcategory = async (subcategoryData: Subcategory) => {
     try {
       const { error } = await supabase
@@ -243,7 +234,6 @@ export function useCategories() {
     }
   };
 
-  // Delete a subcategory
   const deleteSubcategory = async (categoryId: string, subcategoryId: string) => {
     try {
       const { error } = await supabase
@@ -272,13 +262,11 @@ export function useCategories() {
     }
   };
 
-  // Get category name by id
   const getCategoryName = useCallback((categoryId: string) => {
     const category = categories.find(cat => cat.id === categoryId);
     return category ? category.name : 'Sem categoria';
   }, [categories]);
 
-  // Get subcategory name by id
   const getSubcategoryName = useCallback((categoryId: string, subcategoryId: string) => {
     const category = categories.find(cat => cat.id === categoryId);
     if (!category) return 'Desconhecida';
@@ -287,7 +275,6 @@ export function useCategories() {
     return subcategory?.name || 'Desconhecida';
   }, [categories]);
 
-  // Fetch categories on component mount
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);

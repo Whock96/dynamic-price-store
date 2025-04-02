@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -75,7 +74,6 @@ const CategoryManagement = () => {
     categoryId: '',
   });
 
-  // Verificar se o usuário é administrador
   useEffect(() => {
     if (user?.role !== 'administrator') {
       toast.error('Você não tem permissão para acessar esta página');
@@ -83,7 +81,6 @@ const CategoryManagement = () => {
     }
   }, [user, navigate]);
 
-  // Filtrar categorias e subcategorias com base na pesquisa
   const filteredCategories = categories.filter(category => {
     const categoryMatches = 
       category.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -94,7 +91,6 @@ const CategoryManagement = () => {
       (subcategory.description && subcategory.description.toLowerCase().includes(searchQuery.toLowerCase()))
     );
     
-    // Se a categoria corresponde ou tem subcategorias correspondentes, incluir na filtragem
     return categoryMatches || hasMatchingSubcategories;
   });
 
@@ -172,21 +168,18 @@ const CategoryManagement = () => {
   };
 
   const handleSaveCategory = async () => {
-    // Validação básica
     if (!categoryFormData.name) {
       toast.error('O nome da categoria é obrigatório');
       return;
     }
 
     if (dialogMode === 'category-edit') {
-      // Update existing category using context
       await updateCategory({
         id: categoryFormData.id,
         name: categoryFormData.name,
         description: categoryFormData.description
       });
     } else {
-      // Add new category using context
       await addCategory({
         name: categoryFormData.name,
         description: categoryFormData.description
@@ -197,7 +190,6 @@ const CategoryManagement = () => {
   };
 
   const handleSaveSubcategory = async () => {
-    // Validação básica
     if (!subcategoryFormData.name) {
       toast.error('O nome da subcategoria é obrigatório');
       return;
@@ -208,8 +200,10 @@ const CategoryManagement = () => {
       return;
     }
 
+    console.log("Trying to save subcategory with mode:", dialogMode);
+    console.log("Selected category:", selectedCategory);
+
     if (dialogMode === 'subcategory-edit') {
-      // Update existing subcategory using context
       await updateSubcategory({
         id: subcategoryFormData.id,
         name: subcategoryFormData.name,
@@ -217,8 +211,12 @@ const CategoryManagement = () => {
         categoryId: selectedCategory.id
       });
     } else {
-      // Add new subcategory using context
-      // This is the fixed part - we're using addSubcategory correctly now
+      console.log("Adding new subcategory to categoryId:", selectedCategory.id);
+      console.log("Subcategory data:", {
+        name: subcategoryFormData.name,
+        description: subcategoryFormData.description
+      });
+      
       const newSubcategory = await addSubcategory(
         selectedCategory.id, 
         {
@@ -227,7 +225,8 @@ const CategoryManagement = () => {
         }
       );
       
-      // Expandir a categoria automaticamente
+      console.log("Result of addSubcategory:", newSubcategory);
+      
       if (newSubcategory && !expandedCategories.includes(selectedCategory.id)) {
         setExpandedCategories(prev => [...prev, selectedCategory.id]);
       }
@@ -466,7 +465,6 @@ const CategoryManagement = () => {
         )}
       </div>
 
-      {/* Dialog para adicionar/editar categoria */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-md flex flex-col h-[80vh]">
           <DialogHeader className="px-6 py-4">
