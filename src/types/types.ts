@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   username: string;
@@ -114,6 +115,8 @@ export interface Order {
   halfInvoicePercentage?: number;
   discountOptions?: DiscountOption[];
   deliveryFee?: number;
+  withIPI?: boolean; // Add the new IPI flag
+  ipiValue?: number; // Add the IPI value
 }
 
 export interface MenuItem {
