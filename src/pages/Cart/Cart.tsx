@@ -77,31 +77,32 @@ const Cart = () => {
   const [products, setProducts] = useState<SupabaseProduct[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   
-  useEffect(() => {
-    async function fetchProducts() {
-      try {
-        setIsLoadingProducts(true);
-        const { data, error } = await supabase
-          .from('products')
-          .select('*');
-        
-        if (error) {
-          console.error('Error fetching products:', error);
-          toast.error('Erro ao carregar produtos');
-          return;
-        }
-        
-        if (data) {
-          setProducts(data);
-        }
-      } catch (error) {
+  const fetchProducts = async () => {
+    try {
+      setIsLoadingProducts(true);
+      const { data, error } = await supabase
+        .from('products')
+        .select('*');
+      
+      if (error) {
         console.error('Error fetching products:', error);
         toast.error('Erro ao carregar produtos');
-      } finally {
-        setIsLoadingProducts(false);
+        return;
       }
+      
+      if (data) {
+        console.log("Produtos carregados:", data);
+        setProducts(data);
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      toast.error('Erro ao carregar produtos');
+    } finally {
+      setIsLoadingProducts(false);
     }
-    
+  };
+  
+  useEffect(() => {
     fetchProducts();
   }, []);
   
@@ -139,7 +140,9 @@ const Cart = () => {
           }
           
           if (data) {
+            console.log("Produto para adicionar:", data);
             const appProduct = supabaseProductToAppProduct(data);
+            console.log("Produto convertido:", appProduct);
             addItem(appProduct, 1);
             navigate('/cart', { replace: true });
           }
@@ -202,6 +205,19 @@ const Cart = () => {
   
   const effectiveIPIRate = getIPIRate();
   
+  const handleAddProduct = (p: SupabaseProduct) => {
+    try {
+      console.log("Produto antes da conversão:", p);
+      const appProduct = supabaseProductToAppProduct(p);
+      console.log("Produto após conversão:", appProduct);
+      addItem(appProduct, 1);
+      toast.success(`${p.name} adicionado ao carrinho`);
+    } catch (error) {
+      console.error("Erro ao adicionar produto:", error);
+      toast.error(`Erro ao adicionar ${p.name} ao carrinho`);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -452,20 +468,16 @@ const Cart = () => {
                             <TableRow key={p.id}>
                               <TableCell>
                                 <div className="font-medium">{p.name}</div>
-                                <div className="text-sm text-gray-500">{p.description ? p.description.substring(0, 30) + '...' : ''}</div>
+                                <div className="text-sm text-gray-500">{p.description ? p.description.substring(0, 30) + (p.description.length > 30 ? '...' : '') : ''}</div>
                               </TableCell>
-                              <TableCell>{formatCurrency(p.list_price || 0)}</TableCell>
+                              <TableCell>{formatCurrency(Number(p.list_price) || 0)}</TableCell>
                               <TableCell>{p.quantity || 0} unidades</TableCell>
                               <TableCell className="text-right">
                                 <Button 
                                   variant="outline" 
                                   size="sm"
                                   className="h-8 px-2 text-ferplas-500"
-                                  onClick={() => {
-                                    const appProduct = supabaseProductToAppProduct(p);
-                                    addItem(appProduct, 1);
-                                    toast.success(`${p.name} adicionado ao carrinho`);
-                                  }}
+                                  onClick={() => handleAddProduct(p)}
                                 >
                                   Adicionar
                                 </Button>

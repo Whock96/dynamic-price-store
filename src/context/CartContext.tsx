@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
@@ -101,7 +100,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return total + (item.product.listPrice * item.quantity);
   }, 0);
 
-  // Calculate the net percentage adjustment (discounts minus surcharges)
   const getNetAdjustmentPercentage = () => {
     if (!applyDiscounts) return 0;
     
@@ -112,7 +110,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const option = discountOptions.find(opt => opt.id === id);
       if (!option) return;
 
-      // Handle tax substitution separately
       if (option.id === '3') return;
       
       if (option.type === 'discount') {
@@ -159,21 +156,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const calculateIPIValue = () => {
     if (!withIPI || !applyDiscounts) return 0;
     
-    // Base IPI rate of 10%
     const standardRate = 10 / 100;
     
-    // If half invoice option is selected, adjust the IPI rate
     if (isDiscountOptionSelected('2')) {
       const adjustedRate = standardRate * (halfInvoicePercentage / 100);
       
-      // Calculate IPI based on subtotal with discounts but before tax substitution or delivery fees
       const discountedSubtotal = items.reduce((total, item) => 
         total + item.subtotal, 0);
         
       return adjustedRate * discountedSubtotal;
     }
     
-    // Calculate IPI based on subtotal with discounts but before tax substitution or delivery fees
     const discountedSubtotal = items.reduce((total, item) => 
       total + item.subtotal, 0);
       
@@ -187,17 +180,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updatedItems = items.map(item => {
       let itemDiscount = item.discount || 0;
       
-      // Apply all percentage adjustments at once (including item discount)
-      // This is the key fix - combining all percentages first, then applying once
       let netPercentage = applyDiscounts ? itemDiscount + netAdjustmentPercentage : itemDiscount;
       
-      // Calculate the adjustment factor (including both discounts and surcharges)
       let adjustmentFactor = 1 - (netPercentage / 100);
       
-      // Apply the tax substitution separately after other adjustments
       let taxFactor = applyDiscounts && taxSubstitutionRate > 0 ? (1 + taxSubstitutionRate / 100) : 1;
       
-      // Apply all adjustments in one step
       let finalPrice = item.product.listPrice * adjustmentFactor * taxFactor;
       
       const subtotal = finalPrice * item.quantity;
@@ -265,6 +253,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     
+    console.log("Adicionando produto ao carrinho:", product);
+    
     const existingItemIndex = items.findIndex(item => item.productId === product.id);
     
     if (existingItemIndex >= 0) {
@@ -281,10 +271,19 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setItems(newItems);
       toast.success(`Quantidade de ${product.name} atualizada no carrinho`);
     } else {
-      const initialDiscount = customer ? customer.defaultDiscount : 0;
+      const listPrice = Number(product.listPrice) || 0;
+      const initialDiscount = customer ? Number(customer.defaultDiscount) || 0 : 0;
       const netAdjustmentPercentage = getNetAdjustmentPercentage();
       const combinedDiscount = initialDiscount + netAdjustmentPercentage;
-      const finalPrice = product.listPrice * (1 - combinedDiscount / 100);
+      const finalPrice = listPrice * (1 - combinedDiscount / 100);
+      
+      console.log("Valores calculados:", {
+        listPrice,
+        initialDiscount,
+        netAdjustmentPercentage,
+        combinedDiscount,
+        finalPrice
+      });
       
       const newItem: CartItem = {
         id: Date.now().toString(),
