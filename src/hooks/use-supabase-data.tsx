@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, Tables } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Database } from '@/integrations/supabase/types';
 
 // Define the table names as a type from the Supabase schema
 type TableName = keyof Database['public']['Tables'];
