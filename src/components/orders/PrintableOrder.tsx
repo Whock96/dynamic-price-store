@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -31,7 +30,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
   }, [onPrint]);
 
   // Get order number properly
-  const orderNumber = order.orderNumber || (order.id ? order.id.split('-')[0] : 'N/A');
+  const orderNumber = order.orderNumber?.toString() || (order.id ? order.id.split('-')[0] : 'N/A');
 
   // Determine invoice type text based on fullInvoice flag
   const invoiceTypeText = order.fullInvoice ? 'Nota Cheia' : 'Meia Nota';

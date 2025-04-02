@@ -92,6 +92,7 @@ export interface DiscountOption {
 
 export interface Order {
   id: string;
+  orderNumber?: number; // Add orderNumber as optional property
   customerId: string;
   customer: Customer;
   userId: string;
@@ -115,8 +116,8 @@ export interface Order {
   halfInvoicePercentage?: number;
   discountOptions?: DiscountOption[];
   deliveryFee?: number;
-  withIPI?: boolean; // Add the new IPI flag
-  ipiValue?: number; // Add the IPI value
+  withIPI?: boolean; // IPI flag
+  ipiValue?: number; // IPI value
 }
 
 export interface MenuItem {
