@@ -1,7 +1,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, Tables } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+// Define the table names as a type from the Supabase schema
+type TableName = keyof Database['public']['Tables'];
 
 // Hook genérico para operações CRUD com o Supabase
 export function useSupabaseData<T extends Record<string, any>>(
@@ -25,7 +28,8 @@ export function useSupabaseData<T extends Record<string, any>>(
     setError(null);
 
     try {
-      let query = supabase.from(tableName).select(options.select || '*');
+      // Use type assertion to tell TypeScript this is a valid table name
+      let query = supabase.from(tableName as any).select(options.select || '*');
 
       // Add join table if needed
       if (options.joinTable) {
@@ -48,8 +52,9 @@ export function useSupabaseData<T extends Record<string, any>>(
         throw responseError;
       }
 
-      setData(responseData as T[]);
-      return responseData as T[];
+      // Use type assertion to convert the response data
+      setData(responseData as unknown as T[]);
+      return responseData as unknown as T[];
     } catch (err) {
       const error = err as Error;
       setError(error);
@@ -65,8 +70,8 @@ export function useSupabaseData<T extends Record<string, any>>(
   const createRecord = async (record: Omit<T, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const { data: createdData, error: createError } = await supabase
-        .from(tableName)
-        .insert(record)
+        .from(tableName as any)
+        .insert(record as any)
         .select();
 
       if (createError) throw createError;
@@ -75,7 +80,7 @@ export function useSupabaseData<T extends Record<string, any>>(
       fetchData();
       
       toast.success('Registro criado com sucesso');
-      return createdData?.[0] as T;
+      return createdData?.[0] as unknown as T;
     } catch (err) {
       const error = err as Error;
       console.error(`Error creating record in ${tableName}:`, error);
@@ -94,8 +99,8 @@ export function useSupabaseData<T extends Record<string, any>>(
       };
 
       const { data: updatedData, error: updateError } = await supabase
-        .from(tableName)
-        .update(recordWithTimestamp)
+        .from(tableName as any)
+        .update(recordWithTimestamp as any)
         .eq('id', id)
         .select();
 
@@ -109,7 +114,7 @@ export function useSupabaseData<T extends Record<string, any>>(
       );
 
       toast.success('Registro atualizado com sucesso');
-      return updatedData?.[0] as T;
+      return updatedData?.[0] as unknown as T;
     } catch (err) {
       const error = err as Error;
       console.error(`Error updating record in ${tableName}:`, error);
@@ -122,7 +127,7 @@ export function useSupabaseData<T extends Record<string, any>>(
   const deleteRecord = async (id: string) => {
     try {
       const { error: deleteError } = await supabase
-        .from(tableName)
+        .from(tableName as any)
         .delete()
         .eq('id', id);
 
