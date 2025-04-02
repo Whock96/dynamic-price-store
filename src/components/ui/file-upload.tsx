@@ -72,13 +72,26 @@ export function FileUpload({
     onChange(null);
   };
   
+  // Determine if we have a valid image URL to display
+  const hasValidImageUrl = value && typeof value === 'string' && value.length > 0;
+  
+  // Check if the URL actually represents an image based on extension or type
+  const isImageUrl = hasValidImageUrl && (
+    value.includes('image') || 
+    value.endsWith('.jpg') || 
+    value.endsWith('.jpeg') || 
+    value.endsWith('.png') || 
+    value.endsWith('.webp') || 
+    value.endsWith('.gif')
+  );
+  
   return (
     <div className="space-y-2">
       <div
         className={cn(
           "border-2 border-dashed rounded-lg p-4 transition-all text-center",
           dragActive ? "border-primary bg-muted/20" : "border-muted-foreground/20",
-          value ? "border-primary/50" : "",
+          hasValidImageUrl ? "border-primary/50" : "",
           className
         )}
         onDragEnter={handleDrag}
@@ -86,9 +99,9 @@ export function FileUpload({
         onDragOver={handleDrag}
         onDrop={handleDrop}
       >
-        {value ? (
+        {hasValidImageUrl ? (
           <div className="relative w-full aspect-video flex items-center justify-center bg-muted/20 rounded-md overflow-hidden">
-            {value.includes('image') || value.endsWith('.jpg') || value.endsWith('.jpeg') || value.endsWith('.png') || value.endsWith('.webp') || value.endsWith('.gif') ? (
+            {isImageUrl ? (
               <img 
                 src={value} 
                 alt="Preview" 
