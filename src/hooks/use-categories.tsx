@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -123,7 +122,6 @@ export function useCategories() {
 
   const deleteCategory = async (categoryId: string) => {
     try {
-      // First delete all subcategories
       const { error: subcategoryError } = await supabase
         .from('subcategories')
         .delete()
@@ -131,7 +129,6 @@ export function useCategories() {
 
       if (subcategoryError) throw subcategoryError;
 
-      // Then delete the category
       const { error } = await supabase
         .from('categories')
         .delete()
@@ -154,14 +151,12 @@ export function useCategories() {
     try {
       console.log('Adding subcategory to category:', categoryId);
       
-      // Check if category exists
       const categoryExists = categories.some(cat => cat.id === categoryId);
       if (!categoryExists) {
         toast.error('Categoria não encontrada');
         return null;
       }
 
-      // Insert subcategory into the database
       const { data, error } = await supabase
         .from('subcategories')
         .insert({
@@ -181,7 +176,6 @@ export function useCategories() {
           categoryId: data[0].category_id
         };
         
-        // Update our state
         setCategories(prev => {
           return prev.map(cat => {
             if (cat.id === categoryId) {
@@ -269,6 +263,21 @@ export function useCategories() {
     }
   };
 
+  const getCategoryName = (categoryId: string): string => {
+    if (!categoryId) return 'Sem categoria';
+    const category = categories.find(cat => cat.id === categoryId);
+    return category ? category.name : 'Sem categoria';
+  };
+
+  const getSubcategoryName = (categoryId: string, subcategoryId: string): string => {
+    if (!categoryId || !subcategoryId) return 'Sem subcategoria';
+    const category = categories.find(cat => cat.id === categoryId);
+    if (!category) return 'Sem subcategoria';
+    
+    const subcategory = category.subcategories.find(sub => sub.id === subcategoryId);
+    return subcategory ? subcategory.name : 'Sem subcategoria';
+  };
+
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
@@ -283,6 +292,8 @@ export function useCategories() {
     deleteCategory,
     addSubcategory,
     updateSubcategory,
-    deleteSubcategory
+    deleteSubcategory,
+    getCategoryName,
+    getSubcategoryName
   };
 }
