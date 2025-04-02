@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -29,9 +30,9 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
     return () => clearTimeout(printTimeout);
   }, [onPrint]);
 
-  // Usar diretamente o orderNumber se disponível, ao invés de extrair do ID
-  const orderNumber = order.orderNumber || 'N/A';
-
+  // Properly handle the order number with correct fallbacks
+  const orderNumber = order.orderNumber?.toString() || 'N/A';
+  
   // Determine invoice type text based on fullInvoice flag
   const invoiceTypeText = order.fullInvoice ? 'Nota Cheia' : 'Meia Nota';
   

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
@@ -122,7 +121,6 @@ const OrderDetail = () => {
     }
   };
   
-  // Simple HTML template for the fallback rendering
   const renderPrintableOrderHTML = (order: any, companyInfo: any) => {
     // Determine invoice type text based on fullInvoice flag
     const invoiceTypeText = order.fullInvoice ? 'Nota Cheia' : 'Meia Nota';
@@ -313,9 +311,7 @@ const OrderDetail = () => {
     );
   }
 
-  // Extrair corretamente o número do pedido
-  // Usar diretamente o orderNumber se disponível, ao invés de extrair do ID
-  const orderNumber = order.orderNumber || 'N/A';
+  const orderNumber = typeof order.orderNumber === 'number' ? order.orderNumber : 'N/A';
 
   const totalDiscount = order.totalDiscount || 0;
   const appliedDiscounts = order.discountOptions || [];
@@ -332,7 +328,6 @@ const OrderDetail = () => {
   const withIPI = order.withIPI || false;
   const ipiValue = order.ipiValue || 0;
   
-  // Calculate tax substitution value
   const taxSubstitutionValue = taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
 
   return (
@@ -727,4 +722,3 @@ const OrderDetail = () => {
 };
 
 export default OrderDetail;
-
