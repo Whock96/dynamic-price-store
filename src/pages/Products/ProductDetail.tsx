@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -9,25 +10,32 @@ import { useProducts } from '@/context/ProductContext';
 import { useCart } from '../../context/CartContext';
 import { Input } from '@/components/ui/input';
 import { formatCurrency } from '@/utils/formatters';
+import { toast } from 'sonner';
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getProductById, getCategoryName, getSubcategoryName } = useProducts();
-  const { addItem } = useCart();
   
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   
+  // Handle cases where id is undefined
   if (!id) {
-    navigate('/products');
+    // Use useEffect for navigation to avoid React warnings
+    React.useEffect(() => {
+      navigate('/products');
+    }, [navigate]);
     return null;
   }
   
   const product = getProductById(id);
   
+  // Handle cases where product is not found
   if (!product) {
-    navigate('/products');
+    React.useEffect(() => {
+      navigate('/products');
+    }, [navigate]);
     return null;
   }
   
@@ -38,8 +46,15 @@ const ProductDetail = () => {
     'https://via.placeholder.com/500/0CAB77',
   ];
   
-  const handleAddToCart = () => {
-    addItem(product, quantity);
+  // Safely access cart context
+  const addToCart = () => {
+    try {
+      const { addItem } = useCart();
+      addItem(product, quantity);
+    } catch (error) {
+      console.error('Cart context not available:', error);
+      toast.error('Não foi possível adicionar ao carrinho. Tente novamente mais tarde.');
+    }
   };
 
   const specifications = [
@@ -53,6 +68,28 @@ const ProductDetail = () => {
     { name: "Categoria", value: getCategoryName(product.categoryId) },
     { name: "Subcategoria", value: getSubcategoryName(product.categoryId, product.subcategoryId) }
   ];
+  
+  // Wrap cart-dependent functions in try/catch to handle potential context issues
+  const handleAddToCart = () => {
+    try {
+      const { addItem } = useCart();
+      addItem(product, quantity);
+    } catch (error) {
+      console.error('Cart context not available:', error);
+      toast.error('Não foi possível adicionar ao carrinho. Tente novamente mais tarde.');
+    }
+  };
+  
+  const handleBuyNow = () => {
+    try {
+      const { addItem } = useCart();
+      addItem(product, quantity);
+      navigate('/cart');
+    } catch (error) {
+      console.error('Cart context not available:', error);
+      toast.error('Não foi possível comprar agora. Tente novamente mais tarde.');
+    }
+  };
   
   return (
     <div className="space-y-6 animate-fade-in">
@@ -210,10 +247,7 @@ const ProductDetail = () => {
               <Button
                 variant="outline"
                 className="flex-1 text-ferplas-500 border-ferplas-500 hover:bg-ferplas-50 gap-2 button-transition py-6"
-                onClick={() => {
-                  handleAddToCart();
-                  navigate('/cart');
-                }}
+                onClick={handleBuyNow}
               >
                 Comprar Agora
               </Button>

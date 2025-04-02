@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { User, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -18,19 +18,18 @@ import {
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [cartItemCount, setCartItemCount] = useState(0);
   
-  // Safely access the cart context, providing fallback values if not available
-  const cart = React.useContext(
-    React.createContext<{ totalItems: number }>({ totalItems: 0 })
-  );
-  
-  // Try to use the real cart if available
-  try {
-    const { totalItems } = useCart();
-    cart.totalItems = totalItems;
-  } catch (error) {
-    console.log('CartContext not available yet');
-  }
+  // Safely access the cart context using useEffect
+  useEffect(() => {
+    try {
+      const { totalItems } = useCart();
+      setCartItemCount(totalItems);
+    } catch (error) {
+      console.log('CartContext not available yet');
+      setCartItemCount(0);
+    }
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -104,9 +103,9 @@ const Navbar: React.FC = () => {
                 <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
               </svg>
               <span>Carrinho</span>
-              {cart.totalItems > 0 && (
+              {cartItemCount > 0 && (
                 <span className="absolute -top-2 -right-2 bg-ferplas-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  {cart.totalItems}
+                  {cartItemCount}
                 </span>
               )}
             </Button>
