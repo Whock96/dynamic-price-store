@@ -20,12 +20,12 @@ import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { Toggle } from '@/components/ui/toggle';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useCart } from '../../context/CartContext';
-import { useProducts } from '../../context/ProductContext';
 import { useCustomers } from '../../context/CustomerContext';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { Tables } from '@/integrations/supabase/client';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,11 +47,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { formatCurrency } from '@/utils/formatters';
+
+type Product = Tables<'products'>;
 
 const Cart = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { products } = useProducts();
   const { customers } = useCustomers();
   const searchParams = new URLSearchParams(location.search);
   const productParam = searchParams.get('product');
@@ -71,6 +73,36 @@ const Cart = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        setIsLoadingProducts(true);
+        const { data, error } = await supabase
+          .from('products')
+          .select('*');
+        
+        if (error) {
+          console.error('Error fetching products:', error);
+          toast.error('Erro ao carregar produtos');
+          return;
+        }
+        
+        if (data) {
+          setProducts(data);
+        }
+      } catch (error) {
+        console.error('Error fetching products:', error);
+        toast.error('Erro ao carregar produtos');
+      } finally {
+        setIsLoadingProducts(false);
+      }
+    }
+    
+    fetchProducts();
+  }, []);
   
   const filteredCustomers = customers.filter(c => 
     c.companyName.toLowerCase().includes(customerSearch.toLowerCase()) ||
@@ -79,7 +111,7 @@ const Cart = () => {
   
   const filteredProducts = products.filter(p => 
     p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-    p.description.toLowerCase().includes(productSearch.toLowerCase())
+    (p.description && p.description.toLowerCase().includes(productSearch.toLowerCase()))
   );
   
   useEffect(() => {
@@ -92,20 +124,31 @@ const Cart = () => {
     }
     
     if (productParam) {
-      const selectedProduct = products.find(p => p.id === productParam);
-      if (selectedProduct) {
-        addItem(selectedProduct, 1);
-        navigate('/cart', { replace: true });
-      }
+      const loadProduct = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('products')
+            .select('*')
+            .eq('id', productParam)
+            .single();
+          
+          if (error) {
+            console.error('Error fetching product:', error);
+            return;
+          }
+          
+          if (data) {
+            addItem(data, 1);
+            navigate('/cart', { replace: true });
+          }
+        } catch (error) {
+          console.error('Error loading product:', error);
+        }
+      };
+      
+      loadProduct();
     }
-  }, [customerParam, productParam, customer, addItem, navigate, setCustomer, products, customers]);
-  
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(Math.max(value, 0));
-  };
+  }, [customerParam, productParam, customer, addItem, navigate, setCustomer, customers]);
   
   const handleSubmitOrder = async () => {
     if (!customer) {
@@ -387,7 +430,11 @@ const Cart = () => {
                     </div>
                   </div>
                   
-                  {filteredProducts.length > 0 ? (
+                  {isLoadingProducts ? (
+                    <div className="flex items-center justify-center h-64">
+                      <div className="w-10 h-10 border-4 border-ferplas-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  ) : filteredProducts.length > 0 ? (
                     <div className="max-h-96 overflow-y-auto">
                       <Table>
                         <TableHeader>
@@ -403,10 +450,10 @@ const Cart = () => {
                             <TableRow key={p.id}>
                               <TableCell>
                                 <div className="font-medium">{p.name}</div>
-                                <div className="text-sm text-gray-500">{p.description.substring(0, 30)}...</div>
+                                <div className="text-sm text-gray-500">{p.description ? p.description.substring(0, 30) + '...' : ''}</div>
                               </TableCell>
-                              <TableCell>{formatCurrency(p.listPrice)}</TableCell>
-                              <TableCell>{p.quantity} unidades</TableCell>
+                              <TableCell>{formatCurrency(p.list_price || 0)}</TableCell>
+                              <TableCell>{p.quantity || 0} unidades</TableCell>
                               <TableCell className="text-right">
                                 <Button 
                                   variant="outline" 
