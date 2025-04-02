@@ -14,39 +14,37 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Storage helper function for uploading product images
 export const uploadProductImage = async (file: File, productId: string): Promise<string | null> => {
   try {
+    console.log('Starting image upload for product:', productId);
+    
     // Create a unique file path using the product ID and timestamp
     const fileExt = file.name.split('.').pop();
     const fileName = `${productId}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-    const filePath = `${productId}/${fileName}`;
-
-    // Check if the bucket exists and create it if it doesn't
-    const { data: buckets } = await supabase.storage.listBuckets();
-    const bucketExists = buckets?.some(bucket => bucket.name === 'product_images');
+    const filePath = `${fileName}`;
     
-    if (!bucketExists) {
-      await supabase.storage.createBucket('product_images', {
-        public: true,
-        fileSizeLimit: 5 * 1024 * 1024 // 5MB
-      });
-    }
-
+    console.log('File path:', filePath, 'File type:', file.type);
+    
     // Upload the file to the product_images bucket
     const { data, error } = await supabase.storage
       .from('product_images')
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: true,
+        contentType: file.type, // Explicitly set content type
       });
 
     if (error) {
+      console.error('Upload error details:', error);
       throw error;
     }
+
+    console.log('Upload successful:', data);
 
     // Get the public URL for the uploaded file
     const { data: { publicUrl } } = supabase.storage
       .from('product_images')
       .getPublicUrl(data.path);
 
+    console.log('Public URL:', publicUrl);
     return publicUrl;
   } catch (error) {
     console.error('Error uploading image:', error);
