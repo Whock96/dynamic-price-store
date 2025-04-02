@@ -313,6 +313,9 @@ const OrderDetail = () => {
     );
   }
 
+  // Extract order number properly
+  const orderNumber = order.orderNumber || (order.id ? order.id.split('-')[0] : 'N/A');
+
   const totalDiscount = order.totalDiscount || 0;
   const appliedDiscounts = order.discountOptions || [];
   const items = order.items || [];
@@ -325,6 +328,8 @@ const OrderDetail = () => {
   const deliveryLocation = order.deliveryLocation || null;
   const deliveryFee = order.deliveryFee || 0;
   const halfInvoicePercentage = order.halfInvoicePercentage || 50;
+  const withIPI = order.withIPI || false;
+  const ipiValue = order.ipiValue || 0;
   
   // Calculate tax substitution value
   const taxSubstitutionValue = taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
@@ -343,7 +348,7 @@ const OrderDetail = () => {
           </Button>
           <div>
             <div className="flex items-center">
-              <h1 className="text-3xl font-bold tracking-tight">Pedido #{order.id.slice(-4)}</h1>
+              <h1 className="text-3xl font-bold tracking-tight">Pedido #{orderNumber}</h1>
               <div className="ml-4">{getStatusBadge(order.status)}</div>
             </div>
             <p className="text-muted-foreground">
@@ -513,6 +518,12 @@ const OrderDetail = () => {
                 <span>Descontos:</span>
                 <span>-{formatCurrency(totalDiscount)}</span>
               </div>
+              {withIPI && ipiValue > 0 && (
+                <div className="flex justify-between text-sm text-blue-600">
+                  <span>IPI:</span>
+                  <span>+{formatCurrency(ipiValue)}</span>
+                </div>
+              )}
               {taxSubstitution && taxSubstitutionValue > 0 && (
                 <div className="flex justify-between text-sm text-orange-600">
                   <span>Substituição Tributária (7.8%):</span>
@@ -558,6 +569,10 @@ const OrderDetail = () => {
                 <div className="flex justify-between text-sm">
                   <span>Substituição Tributária:</span>
                   <span>{taxSubstitution ? 'Sim' : 'Não'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>IPI:</span>
+                  <span>{withIPI ? 'Sim' : 'Não'}</span>
                 </div>
               </div>
             </div>

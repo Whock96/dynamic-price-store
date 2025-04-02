@@ -30,6 +30,9 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
     return () => clearTimeout(printTimeout);
   }, [onPrint]);
 
+  // Get order number properly
+  const orderNumber = order.orderNumber || (order.id ? order.id.split('-')[0] : 'N/A');
+
   // Determine invoice type text based on fullInvoice flag
   const invoiceTypeText = order.fullInvoice ? 'Nota Cheia' : 'Meia Nota';
   
@@ -73,7 +76,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
       {/* Order Title - More compact */}
       <div className="text-center mb-3">
         <h1 className="text-xl font-bold border border-gray-300 inline-block px-3 py-1">
-          PEDIDO #{order.id.slice(-4)}
+          PEDIDO #{orderNumber}
         </h1>
         <p className="text-xs mt-0.5">
           Emitido em {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
@@ -193,6 +196,12 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
                 <td className="py-0.5">Descontos:</td>
                 <td className="py-0.5 text-right text-red-600 font-medium">-{formatCurrency(order.totalDiscount || 0)}</td>
               </tr>
+              {order.withIPI && (order.ipiValue || 0) > 0 && (
+                <tr>
+                  <td className="py-0.5">IPI:</td>
+                  <td className="py-0.5 text-right text-blue-600 font-medium">+{formatCurrency(order.ipiValue || 0)}</td>
+                </tr>
+              )}
               {order.taxSubstitution && taxSubstitutionValue > 0 && (
                 <tr>
                   <td className="py-0.5">Substituição Tributária ({effectiveTaxRate.toFixed(2)}%):</td>
