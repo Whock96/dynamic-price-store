@@ -127,10 +127,10 @@ const ProductDetail = () => {
     }
   };
   
-  // Product specifications
+  // Product specifications - Fixed by providing default values for material and color
   const specifications = [
-    { name: "Material", value: product.material || "PVC" },
-    { name: "Cor", value: product.color || "Branco" },
+    { name: "Material", value: "PVC" }, // Default value since material doesn't exist in Product type
+    { name: "Cor", value: "Branco" }, // Default value since color doesn't exist in Product type
     { name: "Dimensões", value: `${product.width || 0} × ${product.height || 0} × ${product.length || 0} mm` },
     { name: "Volume Cúbico", value: `${product.cubic_volume || 0} m³` },
     { name: "Quantidade por Volume", value: `${product.quantity_per_volume || 1} un.` },
