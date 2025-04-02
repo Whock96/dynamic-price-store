@@ -26,6 +26,7 @@ import { useCustomers } from '../../context/CustomerContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/client';
+import { supabaseProductToAppProduct } from '@/utils/adapters';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,7 +50,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatCurrency } from '@/utils/formatters';
 
-type Product = Tables<'products'>;
+type SupabaseProduct = Tables<'products'>;
 
 const Cart = () => {
   const navigate = useNavigate();
@@ -73,7 +74,7 @@ const Cart = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<SupabaseProduct[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   
   useEffect(() => {
@@ -138,7 +139,8 @@ const Cart = () => {
           }
           
           if (data) {
-            addItem(data, 1);
+            const appProduct = supabaseProductToAppProduct(data);
+            addItem(appProduct, 1);
             navigate('/cart', { replace: true });
           }
         } catch (error) {
@@ -460,7 +462,8 @@ const Cart = () => {
                                   size="sm"
                                   className="h-8 px-2 text-ferplas-500"
                                   onClick={() => {
-                                    addItem(p, 1);
+                                    const appProduct = supabaseProductToAppProduct(p);
+                                    addItem(appProduct, 1);
                                     toast.success(`${p.name} adicionado ao carrinho`);
                                   }}
                                 >
