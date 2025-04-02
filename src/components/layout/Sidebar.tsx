@@ -1,8 +1,9 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home, ShoppingCart, Users, Package, Clipboard, Settings, 
-  ChevronRight, List, UserPlus, Search, Edit, Menu, Building2
+  ChevronRight, List, UserPlus, Search, Edit, Menu, Building2, LogOut
 } from 'lucide-react';
 import { useAuth, MENU_ITEMS } from '../../context/AuthContext';
 import { cn } from '@/lib/utils';
@@ -14,7 +15,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
-  const { user, hasPermission } = useAuth();
+  const { user, hasPermission, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -51,6 +52,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
     if (window.innerWidth < 1024) {
       setIsExpanded(false);
     }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
   const getIcon = (iconName: string) => {
@@ -164,6 +170,28 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
               </div>
             ))}
         </nav>
+        
+        {/* Botão de Sair */}
+        <div className="px-2 mt-2 mb-2">
+          <button
+            onClick={handleLogout}
+            className={cn(
+              "group w-full flex items-center py-2 px-2 rounded-md transition-all duration-200 text-red-500 hover:bg-red-50 hover:text-red-600",
+              !isExpanded && "justify-center"
+            )}
+          >
+            <div className="flex items-center justify-center w-8 h-8">
+              <LogOut size={20} />
+            </div>
+            {isExpanded && <span className="ml-3">Sair</span>}
+          </button>
+          
+          {!isExpanded && (
+            <div className="sidebar-tooltip group-hover:scale-100">
+              Sair
+            </div>
+          )}
+        </div>
         
         <div className="px-2 mt-auto">
           {isExpanded ? (

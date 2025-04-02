@@ -543,7 +543,8 @@ const Cart = () => {
             <div className="space-y-4">
               {discountOptions.length > 0 ? (
                 <>
-                  {discountOptions.map(option => (
+                  {/* Opção de Retirada */}
+                  {discountOptions.filter(option => option.id === '1').map(option => (
                     <div key={option.id} className="space-y-3">
                       <div className="flex items-center justify-between">
                         <div>
@@ -551,11 +552,6 @@ const Cart = () => {
                             {option.name} {applyDiscounts && (
                               <span className={option.type === 'discount' ? 'text-green-600' : 'text-red-600'}>
                                 {option.type === 'discount' ? '(-' : '(+'}{option.value}%)
-                              </span>
-                            )}
-                            {option.id === '3' && isDiscountOptionSelected('2') && applyDiscounts && (
-                              <span className="text-red-600 ml-1">
-                                (Ajustado: +{(option.value * halfInvoicePercentage / 100).toFixed(2)}%)
                               </span>
                             )}
                           </p>
@@ -589,6 +585,67 @@ const Cart = () => {
                           </RadioGroup>
                         </div>
                       )}
+                    </div>
+                  ))}
+
+                  {/* Opção A Vista */}
+                  {discountOptions.filter(option => option.id === '4').map(option => (
+                    <div key={option.id} className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">
+                            {option.name} {applyDiscounts && (
+                              <span className={option.type === 'discount' ? 'text-green-600' : 'text-red-600'}>
+                                {option.type === 'discount' ? '(-' : '(+'}{option.value}%)
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-sm text-gray-500">{option.description}</p>
+                        </div>
+                        <Switch
+                          checked={isDiscountOptionSelected(option.id)}
+                          onCheckedChange={() => toggleDiscountOption(option.id)}
+                        />
+                      </div>
+
+                      {option.id === '4' && !isDiscountOptionSelected(option.id) && (
+                        <div className="ml-6 p-3 border-l-2 border-ferplas-100 bg-gray-50 rounded-md">
+                          <div className="flex items-center mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-ferplas-500 mr-1"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+                            <span className="text-sm font-medium text-gray-700">Prazo de pagamento:</span>
+                          </div>
+                          <Input
+                            type="text"
+                            placeholder="Ex: 30/60/90 ou 28 DDL"
+                            value={paymentTerms}
+                            onChange={(e) => setPaymentTerms(e.target.value)}
+                            className="w-full"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Informe o prazo de pagamento combinado com o cliente</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Opção Meia Nota */}
+                  {discountOptions.filter(option => option.id === '2').map(option => (
+                    <div key={option.id} className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">
+                            {option.name} {applyDiscounts && (
+                              <span className={option.type === 'discount' ? 'text-green-600' : 'text-red-600'}>
+                                {option.type === 'discount' ? '(-' : '(+'}{option.value}%)
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-sm text-gray-500">{option.description}</p>
+                        </div>
+                        <Switch
+                          checked={isDiscountOptionSelected(option.id)}
+                          onCheckedChange={() => toggleDiscountOption(option.id)}
+                        />
+                      </div>
                       
                       {option.id === '2' && isDiscountOptionSelected(option.id) && (
                         <div className="ml-6 p-3 border-l-2 border-ferplas-100 bg-gray-50 rounded-md">
@@ -621,23 +678,6 @@ const Cart = () => {
                           </div>
                         </div>
                       )}
-
-                      {option.id === '4' && !isDiscountOptionSelected(option.id) && (
-                        <div className="ml-6 p-3 border-l-2 border-ferplas-100 bg-gray-50 rounded-md">
-                          <div className="flex items-center mb-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-ferplas-500 mr-1"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
-                            <span className="text-sm font-medium text-gray-700">Prazo de pagamento:</span>
-                          </div>
-                          <Input
-                            type="text"
-                            placeholder="Ex: 30/60/90 ou 28 DDL"
-                            value={paymentTerms}
-                            onChange={(e) => setPaymentTerms(e.target.value)}
-                            className="w-full"
-                          />
-                          <p className="text-xs text-gray-500 mt-1">Informe o prazo de pagamento combinado com o cliente</p>
-                        </div>
-                      )}
                     </div>
                   ))}
                 </>
@@ -661,6 +701,40 @@ const Cart = () => {
                   </div>
                 </div>
               )}
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-medium">Opções Tributárias</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Opção de Substituição Tributária */}
+              {discountOptions.filter(option => option.id === '3').map(option => (
+                <div key={option.id} className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">
+                        {option.name} {applyDiscounts && (
+                          <span className="text-red-600">(+{option.value}%)</span>
+                        )}
+                        {option.id === '3' && isDiscountOptionSelected('2') && applyDiscounts && (
+                          <span className="text-red-600 ml-1">
+                            (Ajustado: +{(option.value * halfInvoicePercentage / 100).toFixed(2)}%)
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-sm text-gray-500">{option.description}</p>
+                    </div>
+                    <Switch
+                      checked={isDiscountOptionSelected(option.id)}
+                      onCheckedChange={() => toggleDiscountOption(option.id)}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
