@@ -73,17 +73,23 @@ export function FileUpload({
   };
   
   // Determine if we have a valid image URL to display
-  const hasValidImageUrl = value && typeof value === 'string' && value.length > 0;
+  // Make sure value is actually a string and not null or undefined
+  const hasValidImageUrl = Boolean(value && typeof value === 'string' && value.trim().length > 0);
   
   // Check if the URL actually represents an image based on extension or type
   const isImageUrl = hasValidImageUrl && (
-    value.includes('image') || 
-    value.endsWith('.jpg') || 
-    value.endsWith('.jpeg') || 
-    value.endsWith('.png') || 
-    value.endsWith('.webp') || 
-    value.endsWith('.gif')
+    value?.includes('image') || 
+    value?.endsWith('.jpg') || 
+    value?.endsWith('.jpeg') || 
+    value?.endsWith('.png') || 
+    value?.endsWith('.webp') || 
+    value?.endsWith('.gif') ||
+    value?.startsWith('blob:') ||
+    value?.startsWith('data:image/')
   );
+  
+  // Only show the image preview if we have a valid image URL
+  const showImagePreview = hasValidImageUrl && isImageUrl;
   
   return (
     <div className="space-y-2">
@@ -91,7 +97,7 @@ export function FileUpload({
         className={cn(
           "border-2 border-dashed rounded-lg p-4 transition-all text-center",
           dragActive ? "border-primary bg-muted/20" : "border-muted-foreground/20",
-          hasValidImageUrl ? "border-primary/50" : "",
+          showImagePreview ? "border-primary/50" : "",
           className
         )}
         onDragEnter={handleDrag}
@@ -99,20 +105,13 @@ export function FileUpload({
         onDragOver={handleDrag}
         onDrop={handleDrop}
       >
-        {hasValidImageUrl ? (
+        {showImagePreview ? (
           <div className="relative w-full aspect-video flex items-center justify-center bg-muted/20 rounded-md overflow-hidden">
-            {isImageUrl ? (
-              <img 
-                src={value} 
-                alt="Preview" 
-                className="max-h-full max-w-full object-contain" 
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center text-muted-foreground">
-                <ImageIcon className="w-10 h-10 mb-2" />
-                <span>Arquivo selecionado</span>
-              </div>
-            )}
+            <img 
+              src={value!} 
+              alt="Preview" 
+              className="max-h-full max-w-full object-contain" 
+            />
             <button
               type="button"
               onClick={handleRemove}
