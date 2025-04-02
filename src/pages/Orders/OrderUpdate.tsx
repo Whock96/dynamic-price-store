@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Save } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { OrderStatusBadge } from '@/components/orders/OrderStatusBadge';
+import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import { formatCurrency } from '@/utils/formatters';
 import { toast } from 'sonner';
 import { format } from 'date-fns';

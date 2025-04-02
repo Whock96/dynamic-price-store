@@ -24,7 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { OrderStatusBadge } from '@/components/orders/OrderStatusBadge';
+import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import { formatCurrency } from '@/utils/formatters';
 import { Order } from '@/types/types';
 import { useNavigate } from 'react-router-dom';

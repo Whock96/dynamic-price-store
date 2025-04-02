@@ -116,6 +116,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             }
           }
           
+          // Ensure user.role is always one of the allowed values
+          const userRole: 'administrator' | 'salesperson' | 'employee' = 'salesperson';
+          
           // Map the Supabase order to our frontend Order type
           return {
             id: order.id,
@@ -144,7 +147,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               id: order.user_id,
               name: 'Usuário do Sistema', // We would fetch this from users table in a real app
               username: '',
-              role: 'salesperson',
+              role: userRole, // Use the typed role value
               permissions: [],
               email: '',
               createdAt: new Date(),
