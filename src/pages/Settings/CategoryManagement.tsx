@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -444,7 +445,10 @@ const CategoryManagement = () => {
                       variant="outline" 
                       size="sm"
                       className="w-full text-ferplas-500"
-                      onClick={() => handleOpenSubcategoryDialog('add', category)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenSubcategoryDialog('add', category);
+                      }}
                     >
                       <Plus className="h-4 w-4 mr-1" />
                       Adicionar Subcategoria
@@ -571,3 +575,4 @@ const CategoryManagement = () => {
 };
 
 export default CategoryManagement;
+
