@@ -10,6 +10,7 @@ import { migrateCustomersToSupabase, migrateCategoriesToSupabase, migrateProduct
 import { toast } from 'sonner';
 
 const MigrationTool = () => {
+  // Make sure we're properly accessing the context with useProducts()
   const { customers } = useCustomers();
   const { products, categories } = useProducts();
   const [isMigrating, setIsMigrating] = useState(false);

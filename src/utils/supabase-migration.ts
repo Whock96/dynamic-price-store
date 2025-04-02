@@ -213,6 +213,7 @@ export const migrateProductsToSupabase = async (products: Product[]) => {
 
 // Componente para migrar todos os dados para o Supabase
 export const MigrateAllData = () => {
+  // Make sure we're properly accessing the context with useProducts()
   const { customers } = useCustomers();
   const { products, categories } = useProducts();
   

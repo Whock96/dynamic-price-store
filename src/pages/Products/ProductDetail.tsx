@@ -19,7 +19,6 @@ const ProductDetail = () => {
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   
-  // Check if id exists, otherwise navigate back to products list
   if (!id) {
     navigate('/products');
     return null;
@@ -27,13 +26,11 @@ const ProductDetail = () => {
   
   const product = getProductById(id);
   
-  // If product not found, navigate back to products list
   if (!product) {
     navigate('/products');
     return null;
   }
   
-  // Mock multiple images for the gallery
   const productImages = [
     product.imageUrl,
     'https://via.placeholder.com/500/0A8A5F',
@@ -45,7 +42,6 @@ const ProductDetail = () => {
     addItem(product, quantity);
   };
 
-  // Updated product specifications with the correct labels and values
   const specifications = [
     { name: "Material", value: "PVC" },
     { name: "Cor", value: "Branco" },
@@ -60,7 +56,6 @@ const ProductDetail = () => {
   
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Back button */}
       <div>
         <Button 
           variant="ghost" 
@@ -74,7 +69,6 @@ const ProductDetail = () => {
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Product images */}
         <div className="space-y-4">
           <div className="aspect-square relative rounded-lg overflow-hidden bg-gray-100 border">
             <img 
@@ -92,7 +86,6 @@ const ProductDetail = () => {
             </div>
           </div>
           
-          {/* Thumbnail gallery */}
           <div className="grid grid-cols-4 gap-2">
             {productImages.map((img, index) => (
               <div 
@@ -114,7 +107,6 @@ const ProductDetail = () => {
           </div>
         </div>
         
-        {/* Product details */}
         <div className="space-y-6">
           <div>
             <div className="flex items-center text-sm text-gray-500 mb-2">
