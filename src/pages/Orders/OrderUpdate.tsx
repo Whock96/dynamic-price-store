@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useOrders } from '@/context/OrderContext';
@@ -184,6 +183,12 @@ const OrderUpdate = () => {
                     <div className="flex justify-between mb-2">
                       <span className="text-sm text-gray-700">Taxa de entrega</span>
                       <span>{formatCurrency(order.deliveryFee)}</span>
+                    </div>
+                  )}
+                  {order.withIPI && order.ipiValue > 0 && (
+                    <div className="flex justify-between mb-2">
+                      <span className="text-sm text-gray-700">IPI</span>
+                      <span>{formatCurrency(order.ipiValue)}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-bold mt-4 pt-4 border-t">

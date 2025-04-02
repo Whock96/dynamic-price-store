@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Order, CartItem } from '@/types/types';
 import { format } from 'date-fns';
@@ -164,9 +163,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           delivery_fee: newOrder.deliveryFee || 0,
           subtotal: newOrder.subtotal || 0,
           total_discount: newOrder.totalDiscount || 0,
-          total: newOrder.total || 0,
-          with_ipi: newOrder.withIPI || false,
-          ipi_value: newOrder.ipiValue || 0
+          total: newOrder.total || 0
         })
         .select()
         .single();
@@ -260,8 +257,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         delivery_location: orderData.deliveryLocation,
         half_invoice_percentage: orderData.halfInvoicePercentage,
         delivery_fee: orderData.deliveryFee,
-        with_ipi: orderData.withIPI,
-        ipi_value: orderData.ipiValue,
         updated_at: new Date().toISOString()
       };
       
@@ -281,11 +276,11 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 ...order, 
                 ...orderData, 
                 updatedAt: new Date(),
-                // Ensure required fields are always set correctly
                 shipping: orderData.shipping || order.shipping,
                 paymentMethod: orderData.paymentMethod || order.paymentMethod,
-                // Update observations for backward compatibility
                 observations: orderData.notes || orderData.observations || order.observations || order.notes,
+                withIPI: orderData.withIPI !== undefined ? orderData.withIPI : order.withIPI,
+                ipiValue: orderData.ipiValue !== undefined ? orderData.ipiValue : order.ipiValue
               }
             : order
         )
