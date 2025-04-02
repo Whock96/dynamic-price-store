@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,89 +7,138 @@ import {
   ShoppingCart, ArrowLeft, Package, Truck, Weight, Box, Ruler
 } from 'lucide-react';
 import { useProducts } from '@/context/ProductContext';
-import { useCart } from '../../context/CartContext';
+import { useCart } from '@/context/CartContext';
 import { Input } from '@/components/ui/input';
 import { formatCurrency } from '@/utils/formatters';
 import { toast } from 'sonner';
+import { useSupabaseData } from '@/hooks/use-supabase-data';
+import { Tables } from '@/integrations/supabase/client';
+
+type Product = Tables<'products'>;
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getProductById, getCategoryName, getSubcategoryName } = useProducts();
-  
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [cartActions, setCartActions] = useState<{ addItem: Function } | null>(null);
   
-  // Handle cases where id is undefined
-  if (!id) {
-    // Use useEffect for navigation to avoid React warnings
-    React.useEffect(() => {
+  // Fetch the specific product using Supabase
+  const { 
+    data: products, 
+    isLoading: productsLoading,
+    error: productsError 
+  } = useSupabaseData<Product>('products');
+  
+  // Get categories and subcategories
+  const { 
+    data: categories,
+    isLoading: categoriesLoading
+  } = useSupabaseData('categories');
+  
+  const { 
+    data: subcategories,
+    isLoading: subcategoriesLoading
+  } = useSupabaseData('subcategories');
+  
+  // Safely try to get cart context
+  useEffect(() => {
+    try {
+      const cartContext = useCart();
+      setCartActions(cartContext);
+    } catch (error) {
+      console.error("CartContext not available yet", error);
+    }
+  }, []);
+  
+  // Find the product when products are loaded
+  useEffect(() => {
+    if (!productsLoading && products.length > 0 && id) {
+      const foundProduct = products.find(p => p.id === id);
+      setProduct(foundProduct || null);
+      setIsLoading(false);
+    }
+  }, [id, products, productsLoading]);
+  
+  // Helper functions to get category and subcategory names
+  const getCategoryName = (categoryId: string | null) => {
+    if (!categoryId) return 'Sem categoria';
+    const category = categories.find(cat => cat.id === categoryId);
+    return category ? category.name : 'Sem categoria';
+  };
+
+  const getSubcategoryName = (subcategoryId: string | null) => {
+    if (!subcategoryId) return 'Sem subcategoria';
+    const subcategory = subcategories.find(sub => sub.id === subcategoryId);
+    return subcategory ? subcategory.name : 'Sem subcategoria';
+  };
+  
+  // If there's an error or product not found, go back to products page
+  useEffect(() => {
+    if (!isLoading && !product) {
+      toast.error("Produto não encontrado");
       navigate('/products');
-    }, [navigate]);
-    return null;
-  }
+    }
+  }, [product, isLoading, navigate]);
   
-  const product = getProductById(id);
-  
-  // Handle cases where product is not found
-  if (!product) {
-    React.useEffect(() => {
-      navigate('/products');
-    }, [navigate]);
-    return null;
+  if (isLoading || !product) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-16 h-16 border-4 border-ferplas-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
   }
   
   const productImages = [
-    product.imageUrl,
+    product.image_url || 'https://via.placeholder.com/500',
     'https://via.placeholder.com/500/0A8A5F',
     'https://via.placeholder.com/500/0B9C6B',
     'https://via.placeholder.com/500/0CAB77',
   ];
   
-  // Safely access cart context
-  const addToCart = () => {
-    try {
-      const { addItem } = useCart();
-      addItem(product, quantity);
-    } catch (error) {
-      console.error('Cart context not available:', error);
-      toast.error('Não foi possível adicionar ao carrinho. Tente novamente mais tarde.');
-    }
-  };
-
-  const specifications = [
-    { name: "Material", value: "PVC" },
-    { name: "Cor", value: "Branco" },
-    { name: "Dimensões", value: `${product.dimensions?.width || 0} × ${product.dimensions?.height || 0} × ${product.dimensions?.length || 0} mm` },
-    { name: "Volume Cúbico", value: `${product.cubicVolume} m³` },
-    { name: "Quantidade por Volume", value: `${product.quantityPerVolume || 1} un.` },
-    { name: "Peso", value: `${product.weight} kg` },
-    { name: "Código do Produto", value: product.id },
-    { name: "Categoria", value: getCategoryName(product.categoryId) },
-    { name: "Subcategoria", value: getSubcategoryName(product.categoryId, product.subcategoryId) }
-  ];
-  
-  // Wrap cart-dependent functions in try/catch to handle potential context issues
+  // Safely handle cart operations
   const handleAddToCart = () => {
     try {
-      const { addItem } = useCart();
-      addItem(product, quantity);
+      if (cartActions) {
+        cartActions.addItem(product, quantity);
+        toast.success(`${product.name} adicionado ao carrinho`);
+      } else {
+        toast.error('Não foi possível adicionar ao carrinho. Tente novamente mais tarde.');
+      }
     } catch (error) {
-      console.error('Cart context not available:', error);
+      console.error('Erro ao adicionar ao carrinho:', error);
       toast.error('Não foi possível adicionar ao carrinho. Tente novamente mais tarde.');
     }
   };
   
   const handleBuyNow = () => {
     try {
-      const { addItem } = useCart();
-      addItem(product, quantity);
-      navigate('/cart');
+      if (cartActions) {
+        cartActions.addItem(product, quantity);
+        navigate('/cart');
+      } else {
+        toast.error('Não foi possível comprar agora. Tente novamente mais tarde.');
+      }
     } catch (error) {
-      console.error('Cart context not available:', error);
+      console.error('Erro ao processar a compra:', error);
       toast.error('Não foi possível comprar agora. Tente novamente mais tarde.');
     }
   };
+  
+  // Product specifications
+  const specifications = [
+    { name: "Material", value: product.material || "PVC" },
+    { name: "Cor", value: product.color || "Branco" },
+    { name: "Dimensões", value: `${product.width || 0} × ${product.height || 0} × ${product.length || 0} mm` },
+    { name: "Volume Cúbico", value: `${product.cubic_volume || 0} m³` },
+    { name: "Quantidade por Volume", value: `${product.quantity_per_volume || 1} un.` },
+    { name: "Peso", value: `${product.weight || 0} kg` },
+    { name: "Código do Produto", value: product.id },
+    { name: "Categoria", value: getCategoryName(product.category_id) },
+    { name: "Subcategoria", value: getSubcategoryName(product.subcategory_id) }
+  ];
   
   return (
     <div className="space-y-6 animate-fade-in">
@@ -115,10 +164,10 @@ const ProductDetail = () => {
             />
             <div className="absolute top-2 right-2 flex flex-col items-end">
               <div className="bg-ferplas-500 text-white text-xs px-2 py-1 rounded-full inline-block min-w-[20px] text-center">
-                {getCategoryName(product.categoryId)}
+                {getCategoryName(product.category_id)}
               </div>
               <div className="bg-ferplas-600 text-white text-xs px-2 py-1 rounded-full inline-block min-w-[20px] text-center mt-1">
-                {getSubcategoryName(product.categoryId, product.subcategoryId)}
+                {getSubcategoryName(product.subcategory_id)}
               </div>
             </div>
           </div>
@@ -147,15 +196,15 @@ const ProductDetail = () => {
         <div className="space-y-6">
           <div>
             <div className="flex items-center text-sm text-gray-500 mb-2">
-              <span>{getCategoryName(product.categoryId)}</span>
+              <span>{getCategoryName(product.category_id)}</span>
               <span className="mx-2">›</span>
-              <span>{getSubcategoryName(product.categoryId, product.subcategoryId)}</span>
+              <span>{getSubcategoryName(product.subcategory_id)}</span>
             </div>
             <h1 className="text-3xl font-bold tracking-tight">{product.name}</h1>
             <div className="flex items-center mt-2">
               <div className="bg-ferplas-100 text-ferplas-700 px-2 py-1 rounded text-sm font-medium flex items-center">
                 <Package className="mr-1 h-3 w-3" /> 
-                Em estoque: {product.quantity} unidades
+                Em estoque: {product.quantity || 0} unidades
               </div>
             </div>
           </div>
@@ -175,7 +224,7 @@ const ProductDetail = () => {
                 <Weight className="h-5 w-5 text-ferplas-500 mr-2" />
                 <div>
                   <p className="text-xs text-gray-500">Peso</p>
-                  <p className="font-medium">{product.weight} kg</p>
+                  <p className="font-medium">{product.weight || 0} kg</p>
                 </div>
               </CardContent>
             </Card>
@@ -184,7 +233,7 @@ const ProductDetail = () => {
                 <Ruler className="h-5 w-5 text-ferplas-500 mr-2" />
                 <div>
                   <p className="text-xs text-gray-500">Dimensões</p>
-                  <p className="font-medium">{product.dimensions?.width || 0} × {product.dimensions?.height || 0} × {product.dimensions?.length || 0} mm</p>
+                  <p className="font-medium">{product.width || 0} × {product.height || 0} × {product.length || 0} mm</p>
                 </div>
               </CardContent>
             </Card>
@@ -193,7 +242,7 @@ const ProductDetail = () => {
                 <Box className="h-5 w-5 text-ferplas-500 mr-2" />
                 <div>
                   <p className="text-xs text-gray-500">Volume</p>
-                  <p className="font-medium">{product.cubicVolume} m³</p>
+                  <p className="font-medium">{product.cubic_volume || 0} m³</p>
                 </div>
               </CardContent>
             </Card>
@@ -203,7 +252,7 @@ const ProductDetail = () => {
             <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6">
               <div>
                 <p className="text-sm text-gray-500">Preço de tabela</p>
-                <p className="text-3xl font-bold text-ferplas-600">{formatCurrency(product.listPrice)}</p>
+                <p className="text-3xl font-bold text-ferplas-600">{formatCurrency(product.list_price || 0)}</p>
               </div>
               <div className="mt-4 sm:mt-0">
                 <p className="text-sm text-gray-500 mb-1">Quantidade</p>
@@ -275,21 +324,28 @@ const ProductDetail = () => {
       <div className="mt-12">
         <h2 className="text-2xl font-bold mb-4">Produtos Relacionados</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="cursor-pointer hover:shadow-md transition-all duration-300">
-              <div className="aspect-square relative overflow-hidden bg-gray-100">
-                <img 
-                  src={`https://via.placeholder.com/300/${i % 2 === 0 ? '0A8A5F' : '0B9C6B'}`} 
-                  alt="Produto relacionado"
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-              </div>
-              <CardContent className="p-4">
-                <h3 className="text-lg font-medium truncate">Produto Relacionado {i + 1}</h3>
-                <p className="text-ferplas-600 font-bold mt-2">{formatCurrency((Math.floor(Math.random() * 500) + 100))}</p>
-              </CardContent>
-            </Card>
-          ))}
+          {products
+            .filter(p => p.category_id === product.category_id && p.id !== product.id)
+            .slice(0, 4)
+            .map((relatedProduct) => (
+              <Card 
+                key={relatedProduct.id} 
+                className="cursor-pointer hover:shadow-md transition-all duration-300"
+                onClick={() => navigate(`/products/${relatedProduct.id}`)}
+              >
+                <div className="aspect-square relative overflow-hidden bg-gray-100">
+                  <img 
+                    src={relatedProduct.image_url || 'https://via.placeholder.com/300'} 
+                    alt={relatedProduct.name}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                </div>
+                <CardContent className="p-4">
+                  <h3 className="text-lg font-medium truncate">{relatedProduct.name}</h3>
+                  <p className="text-ferplas-600 font-bold mt-2">{formatCurrency(relatedProduct.list_price || 0)}</p>
+                </CardContent>
+              </Card>
+            ))}
         </div>
       </div>
     </div>

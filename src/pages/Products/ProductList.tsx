@@ -110,6 +110,11 @@ const ProductList = () => {
 
   const isLoading = productsLoading || categoriesLoading || subcategoriesLoading;
 
+  // Função para navegar para a página de detalhes do produto
+  const handleProductClick = (productId: string) => {
+    navigate(`/products/${productId}`);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -213,7 +218,7 @@ const ProductList = () => {
             <Card 
               key={product.id} 
               className="overflow-hidden hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
-              onClick={() => navigate(`/products/${product.id}`)}
+              onClick={() => handleProductClick(product.id)}
             >
               <div className="aspect-square relative overflow-hidden bg-gray-100">
                 <img 
@@ -244,7 +249,7 @@ const ProductList = () => {
                     className="text-xs text-ferplas-500 border-ferplas-500 hover:bg-ferplas-50"
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/products/${product.id}`);
+                      handleProductClick(product.id);
                     }}
                   >
                     Ver detalhes
