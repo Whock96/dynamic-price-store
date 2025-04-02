@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -154,6 +155,7 @@ export function useCategories() {
   };
 
   // Add a subcategory
+  // Modified the type here from Omit<Subcategory, 'categoryId'> to Omit<Subcategory, 'categoryId' | 'id'>
   const addSubcategory = async (categoryId: string, subcategoryData: Omit<Subcategory, 'categoryId' | 'id'>) => {
     try {
       console.log('Adding subcategory to category:', categoryId);
