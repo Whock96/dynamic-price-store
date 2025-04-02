@@ -22,7 +22,7 @@ export const supabaseProductToAppProduct = (supabaseProduct: Tables<'products'>)
     categoryId: supabaseProduct.category_id || "",
     subcategoryId: supabaseProduct.subcategory_id || "",
     imageUrl: supabaseProduct.image_url || "",
-    mva: Number(supabaseProduct.mva) || 39, // Added MVA field with default of 39%
+    mva: Number(supabaseProduct.mva) || 39, // Ensure we convert mva to number
     createdAt: new Date(supabaseProduct.created_at),
     updatedAt: new Date(supabaseProduct.updated_at),
   };
@@ -78,7 +78,7 @@ export const supabaseOrderToAppOrder = (
       categoryId: item.products.category_id || '',
       subcategoryId: item.products.subcategory_id || '',
       imageUrl: item.products.image_url || '',
-      mva: Number(item.products.mva) || 39, // Added MVA field with default of 39%
+      mva: Number(item.products.mva) || 39, // Ensure mva is included with a default value
       createdAt: new Date(item.products.created_at),
       updatedAt: new Date(item.products.updated_at),
     } : {} as Product,
