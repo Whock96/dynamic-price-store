@@ -41,6 +41,13 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
   onEditSubcategory,
   onDeleteSubcategory,
 }) => {
+  // Função para lidar com clique no botão de adicionar subcategoria
+  const handleAddSubcategoryClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Impedir propagação do evento para o Collapsible
+    console.log('Adicionando subcategoria à categoria:', category.name);
+    onAddSubcategory(category);
+  };
+
   return (
     <Collapsible 
       open={isExpanded}
@@ -60,10 +67,8 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
               variant="ghost" 
               size="sm"
               className="h-8 w-8 p-0 text-ferplas-500"
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddSubcategory(category);
-              }}
+              onClick={handleAddSubcategoryClick}
+              type="button"
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -75,6 +80,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
                 e.stopPropagation();
                 onEditCategory(category);
               }}
+              type="button"
             >
               <Edit className="h-4 w-4" />
             </Button>
@@ -85,6 +91,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
                   size="sm"
                   className="h-8 w-8 p-0 text-red-500"
                   onClick={(e) => e.stopPropagation()}
+                  type="button"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -139,6 +146,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
                     size="sm"
                     className="h-8 w-8 p-0 text-amber-500"
                     onClick={() => onEditSubcategory(category, subcategory)}
+                    type="button"
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
@@ -148,6 +156,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
                         variant="ghost" 
                         size="sm"
                         className="h-8 w-8 p-0 text-red-500"
+                        type="button"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -186,10 +195,8 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
             variant="outline" 
             size="sm"
             className="w-full text-ferplas-500"
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddSubcategory(category);
-            }}
+            onClick={handleAddSubcategoryClick}
+            type="button"
           >
             <Plus className="h-4 w-4 mr-1" />
             Adicionar Subcategoria

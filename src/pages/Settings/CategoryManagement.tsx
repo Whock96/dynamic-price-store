@@ -111,6 +111,8 @@ const CategoryManagement = () => {
   };
 
   const handleOpenSubcategoryDialog = (category: Category, subcategory?: Subcategory) => {
+    console.log('handleOpenSubcategoryDialog chamado para categoria:', category.name);
+    
     if (subcategory) {
       setDialogMode('subcategory-edit');
       setSelectedCategory(category);
@@ -133,6 +135,7 @@ const CategoryManagement = () => {
       });
     }
     
+    console.log('DialogMode definido para:', dialogMode === 'subcategory-add' ? 'subcategory-add' : dialogMode);
     setIsDialogOpen(true);
   };
 
@@ -184,6 +187,8 @@ const CategoryManagement = () => {
   };
 
   const handleSaveSubcategory = async () => {
+    console.log('Salvando subcategoria:', subcategoryFormData);
+    
     if (!subcategoryFormData.name) {
       toast.error('O nome da subcategoria é obrigatório');
       return;
@@ -203,6 +208,7 @@ const CategoryManagement = () => {
           categoryId: selectedCategory.id
         });
       } else {
+        console.log('Adicionando subcategoria à categoria:', selectedCategory.id);
         const newSubcategory = await addSubcategory(
           selectedCategory.id, 
           {
@@ -285,7 +291,7 @@ const CategoryManagement = () => {
                 onToggleExpansion={toggleCategoryExpansion}
                 onEditCategory={(category) => handleOpenCategoryDialog('edit', category)}
                 onDeleteCategory={deleteCategory}
-                onAddSubcategory={(category) => handleOpenSubcategoryDialog(category)}
+                onAddSubcategory={handleOpenSubcategoryDialog}
                 onEditSubcategory={(category, subcategory) => handleOpenSubcategoryDialog(category, subcategory)}
                 onDeleteSubcategory={deleteSubcategory}
               />
