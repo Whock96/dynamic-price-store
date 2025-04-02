@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -157,6 +156,9 @@ export function useCategories() {
   // Add a subcategory
   const addSubcategory = async (categoryId: string, subcategoryData: Omit<Subcategory, 'categoryId' | 'id'>) => {
     try {
+      console.log('Adding subcategory to category:', categoryId);
+      console.log('Subcategory data:', subcategoryData);
+      
       const { data, error } = await supabase
         .from('subcategories')
         .insert({
@@ -166,7 +168,10 @@ export function useCategories() {
         })
         .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
 
       if (data && data.length > 0) {
         const newSubcategory: Subcategory = {
@@ -175,6 +180,8 @@ export function useCategories() {
           description: data[0].description || '',
           categoryId: data[0].category_id
         };
+
+        console.log('New subcategory created:', newSubcategory);
 
         setCategories(prev => prev.map(cat => 
           cat.id === categoryId

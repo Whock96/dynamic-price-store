@@ -218,11 +218,14 @@ const CategoryManagement = () => {
       });
     } else {
       // Add new subcategory using context
-      const newSubcategory = await addSubcategory(selectedCategory.id, {
-        id: '',
-        name: subcategoryFormData.name,
-        description: subcategoryFormData.description
-      });
+      // This is the fixed part - we're using addSubcategory correctly now
+      const newSubcategory = await addSubcategory(
+        selectedCategory.id, 
+        {
+          name: subcategoryFormData.name,
+          description: subcategoryFormData.description
+        }
+      );
       
       // Expandir a categoria automaticamente
       if (newSubcategory && !expandedCategories.includes(selectedCategory.id)) {
