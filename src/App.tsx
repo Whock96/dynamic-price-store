@@ -36,11 +36,11 @@ const App = () => (
     <TooltipProvider>
       <BrowserRouter>
         <AuthProvider>
-          <ProductProvider>
-            <CustomerProvider>
-              <OrderProvider>
-                <CartProvider>
-                  <CompanyProvider>
+          <CompanyProvider>
+            <ProductProvider>
+              <CustomerProvider>
+                <OrderProvider>
+                  <CartProvider>
                     <Toaster />
                     <Sonner />
                     <Routes>
@@ -77,11 +77,11 @@ const App = () => (
                       {/* Catch-all route */}
                       <Route path="*" element={<NotFound />} />
                     </Routes>
-                  </CompanyProvider>
-                </CartProvider>
-              </OrderProvider>
-            </CustomerProvider>
-          </ProductProvider>
+                  </CartProvider>
+                </OrderProvider>
+              </CustomerProvider>
+            </ProductProvider>
+          </CompanyProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
