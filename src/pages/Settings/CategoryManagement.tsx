@@ -111,12 +111,13 @@ const CategoryManagement = () => {
     setActiveDialog(DialogType.EDIT_CATEGORY);
   };
 
-  const openAddSubcategoryDialog = () => {
+  const openAddSubcategoryDialog = (category: Category) => {
+    setSelectedCategory(category);
     setSubcategoryFormData({
       id: '',
       name: '',
       description: '',
-      categoryId: '',
+      categoryId: category.id, // Pre-select the category
     });
     setActiveDialog(DialogType.ADD_SUBCATEGORY);
   };
@@ -281,14 +282,6 @@ const CategoryManagement = () => {
             <Plus className="mr-2 h-4 w-4" />
             Nova Categoria
           </Button>
-          <Button 
-            variant="outline"
-            className="border-ferplas-500 text-ferplas-500 hover:bg-ferplas-50"
-            onClick={openAddSubcategoryDialog}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Nova Subcategoria
-          </Button>
         </div>
       </header>
 
@@ -323,6 +316,7 @@ const CategoryManagement = () => {
           onToggleExpansion={toggleCategoryExpansion}
           onEditCategory={openEditCategoryDialog}
           onDeleteCategory={handleDeleteCategory}
+          onAddSubcategory={openAddSubcategoryDialog}
           onEditSubcategory={openEditSubcategoryDialog}
           onDeleteSubcategory={handleDeleteSubcategory}
         />
@@ -350,7 +344,6 @@ const CategoryManagement = () => {
           onClose={closeDialog}
           onSave={handleSaveSubcategory}
           onInputChange={handleSubcategoryInputChange}
-          selectedCategoryId={selectedCategory?.id}
         />
       )}
     </div>

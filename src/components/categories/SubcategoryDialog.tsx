@@ -34,7 +34,6 @@ interface SubcategoryDialogProps {
   isEdit: boolean;
   formData: SubcategoryFormData;
   categories: Category[];
-  selectedCategoryId?: string;
   onClose: () => void;
   onSave: () => void;
   onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
@@ -45,7 +44,6 @@ const SubcategoryDialog: React.FC<SubcategoryDialogProps> = ({
   isEdit, 
   formData,
   categories,
-  selectedCategoryId,
   onClose, 
   onSave, 
   onInputChange 
@@ -78,7 +76,7 @@ const SubcategoryDialog: React.FC<SubcategoryDialogProps> = ({
             <Select 
               value={formData.categoryId} 
               onValueChange={handleCategorySelect}
-              disabled={isEdit}
+              disabled={isEdit || formData.categoryId !== ''} // Disable if editing or category is preselected
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione uma categoria" />

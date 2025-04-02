@@ -10,6 +10,7 @@ interface CategoryListProps {
   onToggleExpansion: (categoryId: string) => void;
   onEditCategory: (category: Category) => void;
   onDeleteCategory: (categoryId: string) => void;
+  onAddSubcategory: (category: Category) => void;
   onEditSubcategory: (category: Category, subcategory: Subcategory) => void;
   onDeleteSubcategory: (categoryId: string, subcategoryId: string) => void;
 }
@@ -20,6 +21,7 @@ const CategoryList: React.FC<CategoryListProps> = ({
   onToggleExpansion,
   onEditCategory,
   onDeleteCategory,
+  onAddSubcategory,
   onEditSubcategory,
   onDeleteSubcategory
 }) => {
@@ -47,6 +49,7 @@ const CategoryList: React.FC<CategoryListProps> = ({
             onToggleExpansion={onToggleExpansion}
             onEditCategory={onEditCategory}
             onDeleteCategory={onDeleteCategory}
+            onAddSubcategory={onAddSubcategory}
             onEditSubcategory={onEditSubcategory}
             onDeleteSubcategory={onDeleteSubcategory}
           />

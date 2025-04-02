@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Tag, Edit, Trash2, ChevronRight, ChevronDown } from 'lucide-react';
+import { Tag, Edit, Trash2, ChevronRight, ChevronDown, Plus } from 'lucide-react';
 import {
   Collapsible,
   CollapsibleContent,
@@ -26,6 +26,7 @@ interface CategoryItemProps {
   onToggleExpansion: (categoryId: string) => void;
   onEditCategory: (category: Category) => void;
   onDeleteCategory: (categoryId: string) => void;
+  onAddSubcategory: (category: Category) => void;
   onEditSubcategory: (category: Category, subcategory: Subcategory) => void;
   onDeleteSubcategory: (categoryId: string, subcategoryId: string) => void;
 }
@@ -36,6 +37,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
   onToggleExpansion,
   onEditCategory,
   onDeleteCategory,
+  onAddSubcategory,
   onEditSubcategory,
   onDeleteSubcategory,
 }) => {
@@ -107,8 +109,21 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
       </CollapsibleTrigger>
       
       <CollapsibleContent>
-        <div className="px-6 py-3 bg-gray-50 border-t">
+        <div className="px-6 py-3 bg-gray-50 border-t flex justify-between items-center">
           <h4 className="text-sm font-medium text-gray-500">Subcategorias</h4>
+          <Button 
+            variant="outline"
+            size="sm"
+            className="border-ferplas-500 text-ferplas-500 hover:bg-ferplas-50"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddSubcategory(category);
+            }}
+            type="button"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Nova Subcategoria
+          </Button>
         </div>
         
         {category.subcategories.length > 0 ? (
