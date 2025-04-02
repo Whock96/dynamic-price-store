@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Category, Subcategory } from '@/types/types';
@@ -8,10 +8,12 @@ export function useCategoryManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
   
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     setIsLoading(true);
     
     try {
+      console.log('Fetching categories...');
+      
       // Fetch categories
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
@@ -27,6 +29,9 @@ export function useCategoryManagement() {
         .order('name');
 
       if (subcategoriesError) throw subcategoriesError;
+
+      console.log('Categories fetched:', categoriesData?.length || 0);
+      console.log('Subcategories fetched:', subcategoriesData?.length || 0);
 
       // Map the data to our Category type
       const formattedCategories: Category[] = (categoriesData || []).map(cat => ({
@@ -53,7 +58,7 @@ export function useCategoryManagement() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   const addCategory = async (categoryData: Omit<Category, 'subcategories' | 'id'>) => {
     try {

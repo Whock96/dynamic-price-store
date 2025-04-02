@@ -52,6 +52,7 @@ const CategoryManagement = () => {
     categoryId: '',
   });
 
+  // Run only once when component mounts
   useEffect(() => {
     if (user?.role !== 'administrator') {
       toast.error('Você não tem permissão para acessar esta página');
@@ -59,8 +60,10 @@ const CategoryManagement = () => {
       return;
     }
     
+    // Only fetch categories once when component mounts
     fetchCategories();
-  }, [user, navigate, fetchCategories]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, navigate]);
 
   const filteredCategories = categories.filter(category => {
     const categoryMatches = 
@@ -108,8 +111,6 @@ const CategoryManagement = () => {
   };
 
   const handleOpenSubcategoryDialog = (category: Category, subcategory?: Subcategory) => {
-    console.log(`Opening subcategory dialog for category: ${category.name}`);
-    
     if (subcategory) {
       setDialogMode('subcategory-edit');
       setSelectedCategory(category);
