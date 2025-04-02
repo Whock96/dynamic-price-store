@@ -52,42 +52,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const [items, setItems] = useState<CartItem[]>([]);
   const [customer, setCustomer] = useState<Customer | null>(null);
-
-  const discountOptions: DiscountOption[] = [
-    {
-      id: '1',
-      name: 'Retirada',
-      description: 'Desconto para retirada na loja',
-      value: settings.pickup,
-      type: 'discount',
-      isActive: true,
-    },
-    {
-      id: '2',
-      name: 'Meia nota',
-      description: 'Desconto para meia nota fiscal',
-      value: settings.halfInvoice,
-      type: 'discount',
-      isActive: true,
-    },
-    {
-      id: '3',
-      name: 'Substituição tributária',
-      description: 'Acréscimo para substituição tributária',
-      value: settings.taxSubstitution,
-      type: 'surcharge',
-      isActive: true,
-    },
-    {
-      id: '4',
-      name: 'A Vista',
-      description: 'Desconto para pagamento à vista',
-      value: settings.cashPayment,
-      type: 'discount',
-      isActive: true,
-    }
-  ];
-  
+  const [discountOptions, setDiscountOptions] = useState<DiscountOption[]>([]);
   const [selectedDiscountOptions, setSelectedDiscountOptions] = useState<string[]>([]);
   const [deliveryLocation, setDeliveryLocation] = useState<'capital' | 'interior' | null>(null);
   const [halfInvoicePercentage, setHalfInvoicePercentage] = useState<number>(50);
@@ -96,6 +61,47 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [paymentTerms, setPaymentTerms] = useState<string>('');
   const [applyDiscounts, setApplyDiscounts] = useState<boolean>(true);
   const [withIPI, setWithIPI] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (settings) {
+      const updatedDiscountOptions: DiscountOption[] = [
+        {
+          id: '1',
+          name: 'Retirada',
+          description: 'Desconto para retirada na loja',
+          value: settings.pickup,
+          type: 'discount',
+          isActive: true,
+        },
+        {
+          id: '2',
+          name: 'Meia nota',
+          description: 'Desconto para meia nota fiscal',
+          value: settings.halfInvoice,
+          type: 'discount',
+          isActive: true,
+        },
+        {
+          id: '3',
+          name: 'Substituição tributária',
+          description: 'Acréscimo para substituição tributária',
+          value: settings.taxSubstitution,
+          type: 'surcharge',
+          isActive: true,
+        },
+        {
+          id: '4',
+          name: 'A Vista',
+          description: 'Desconto para pagamento à vista',
+          value: settings.cashPayment,
+          type: 'discount',
+          isActive: true,
+        }
+      ];
+      
+      setDiscountOptions(updatedDiscountOptions);
+    }
+  }, [settings]);
 
   const isDiscountOptionSelected = (id: string) => {
     return selectedDiscountOptions.includes(id);
@@ -139,9 +145,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return taxOption.value;
   };
 
-  const deliveryFee = deliveryLocation === 'capital' 
+  const deliveryFee = settings && deliveryLocation === 'capital' 
     ? settings.deliveryFees.capital 
-    : deliveryLocation === 'interior' 
+    : deliveryLocation === 'interior' && settings 
       ? settings.deliveryFees.interior 
       : 0;
 
@@ -170,7 +176,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const calculateIPIValue = () => {
-    if (!withIPI || !applyDiscounts) return 0;
+    if (!withIPI || !applyDiscounts || !settings) return 0;
     
     const standardRate = settings.ipiRate / 100;
     
@@ -215,7 +221,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     recalculateCart();
-  }, [selectedDiscountOptions, applyDiscounts, halfInvoicePercentage]);
+  }, [selectedDiscountOptions, applyDiscounts, halfInvoicePercentage, discountOptions]);
 
   useEffect(() => {
     if (customer) {
@@ -253,10 +259,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         })
       );
     }
-  }, [customer]);
+  }, [customer, discountOptions]);
 
   useEffect(() => {
-    recalculateCart();
+    if (settings) {
+      recalculateCart();
+    }
   }, [settings]);
 
   const totalDiscount = items.reduce((total, item) => {

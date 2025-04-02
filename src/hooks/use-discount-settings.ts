@@ -52,13 +52,39 @@ export const useDiscountSettings = () => {
     };
 
     loadSettings();
+
+    // Add event listener to detect changes in localStorage from other tabs/windows
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === STORAGE_KEY && event.newValue) {
+        try {
+          setSettings(JSON.parse(event.newValue));
+        } catch (error) {
+          console.error('Error parsing updated settings:', error);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
-  // Save settings to localStorage
+  // Save settings to localStorage and trigger an event for other components
   const saveSettings = (newSettings: DiscountSettings) => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
+      
+      // Update local state
       setSettings(newSettings);
+      
+      // Dispatch a custom event to notify other components about the change
+      const event = new CustomEvent('discount-settings-changed', { 
+        detail: { settings: newSettings } 
+      });
+      window.dispatchEvent(event);
+      
       toast.success('Configurações de descontos salvas com sucesso');
       return true;
     } catch (error) {

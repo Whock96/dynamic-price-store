@@ -184,25 +184,31 @@ const Cart = () => {
   const ipiValue = calculateIPIValue();
   
   const getTaxSubstitutionRate = () => {
-    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 7.8;
+    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
+    
+    const taxOption = discountOptions.find(opt => opt.id === '3');
+    if (!taxOption) return 0;
     
     if (isDiscountOptionSelected('2')) {
-      return 7.8 * halfInvoicePercentage / 100;
+      return taxOption.value * halfInvoicePercentage / 100;
     }
     
-    return 7.8;
+    return taxOption.value;
   };
   
   const effectiveTaxRate = getTaxSubstitutionRate();
   
   const getIPIRate = () => {
-    if (!withIPI || !applyDiscounts) return 10;
+    if (!withIPI || !applyDiscounts) return 0;
+    
+    const ipiOption = discountOptions.find(opt => opt.id === '5');
+    const ipiRate = ipiOption ? ipiOption.value : 10;
     
     if (isDiscountOptionSelected('2')) {
-      return 10 * halfInvoicePercentage / 100;
+      return ipiRate * halfInvoicePercentage / 100;
     }
     
-    return 10;
+    return ipiRate;
   };
   
   const effectiveIPIRate = getIPIRate();
@@ -907,7 +913,7 @@ const Cart = () => {
               )}
               {withIPI && applyDiscounts && ipiValue > 0 && (
                 <div className="flex justify-between text-sm text-orange-600">
-                  <span>IPI ({getIPIRate().toFixed(2)}%):</span>
+                  <span>IPI ({effectiveIPIRate.toFixed(2)}%):</span>
                   <span>+{formatCurrency(ipiValue)}</span>
                 </div>
               )}
