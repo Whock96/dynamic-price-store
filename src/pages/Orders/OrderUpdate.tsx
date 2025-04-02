@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, Package, User, Calendar, Truck, Receipt, ShoppingCart, Trash } from 'lucide-react';
@@ -17,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from 'sonner';
-import { Order, Customer, CartItem } from '@/types/types';
+import { Order, Customer, CartItem, DiscountOption } from '@/types/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useOrders } from '@/context/OrderContext';
@@ -33,6 +34,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { supabase } from '@/integrations/supabase/client';
 
 const ORDER_STATUS_OPTIONS = [
   { value: "pending", label: "Pendente" },
@@ -62,50 +64,212 @@ const OrderUpdate = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   
   const [selectedDiscountOptions, setSelectedDiscountOptions] = useState<string[]>([]);
+  const [discountOptions, setDiscountOptions] = useState<DiscountOption[]>([]);
+  
+  // Fetch discount options from Supabase
+  useEffect(() => {
+    const fetchDiscountOptions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('discount_options')
+          .select('*')
+          .order('name');
+
+        if (error) {
+          throw error;
+        }
+
+        if (data) {
+          setDiscountOptions(data.map(discount => ({
+            id: discount.id,
+            name: discount.name,
+            description: discount.description || '',
+            value: discount.value,
+            type: discount.type as 'discount' | 'surcharge',
+            isActive: discount.is_active,
+          })));
+        }
+      } catch (error) {
+        console.error('Error fetching discount options:', error);
+        toast.error('Erro ao carregar opções de desconto');
+      }
+    };
+
+    fetchDiscountOptions();
+  }, []);
   
   useEffect(() => {
     if (!id) return;
     
     setIsLoading(true);
-    console.log(`Loading order with ID: ${id}`);
     
-    const orderData = getOrderById(id);
-    console.log(`Fetched order:`, orderData);
-    
-    if (orderData) {
-      setOrder(orderData);
-      
-      setNotes(orderData.notes || orderData.observations || "");
-      setStatus(orderData.status);
-      
-      setShipping(orderData.shipping === "pickup" ? "pickup" : "delivery");
-      
-      setFullInvoice(Boolean(orderData.fullInvoice));
-      setTaxSubstitution(Boolean(orderData.taxSubstitution));
-      
-      setPaymentMethod(orderData.paymentMethod === "credit" ? "credit" : "cash");
-      setPaymentTerms(orderData.paymentTerms || "");
-      
-      setDeliveryLocation(orderData.deliveryLocation || null);
-      
-      if (orderData.halfInvoicePercentage) {
-        setHalfInvoicePercentage(orderData.halfInvoicePercentage);
+    const fetchOrder = async () => {
+      try {
+        // First get the order
+        const { data: orderData, error: orderError } = await supabase
+          .from('orders')
+          .select(`
+            *,
+            customer:customers(*)
+          `)
+          .eq('id', id)
+          .single();
+          
+        if (orderError) {
+          throw orderError;
+        }
+        
+        if (!orderData) {
+          throw new Error(`Order with ID ${id} not found`);
+        }
+        
+        // Get order items
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('order_items')
+          .select(`
+            *,
+            product:products(*)
+          `)
+          .eq('order_id', id);
+          
+        if (itemsError) {
+          throw itemsError;
+        }
+        
+        // Get applied discounts
+        const { data: discountsData, error: discountsError } = await supabase
+          .from('order_discounts')
+          .select(`
+            discount:discount_options(*)
+          `)
+          .eq('order_id', id);
+          
+        if (discountsError) {
+          throw discountsError;
+        }
+        
+        // Transform data to match our types
+        const appliedDiscounts = discountsData.map(d => ({
+          id: d.discount.id,
+          name: d.discount.name,
+          description: d.discount.description || '',
+          value: d.discount.value,
+          type: d.discount.type as 'discount' | 'surcharge',
+          isActive: d.discount.is_active,
+        }));
+        
+        const items = itemsData.map(item => ({
+          id: item.id,
+          productId: item.product_id,
+          product: {
+            id: item.product.id,
+            name: item.product.name,
+            description: item.product.description || '',
+            listPrice: item.product.list_price,
+            weight: item.product.weight,
+            quantity: item.product.quantity,
+            quantityPerVolume: item.product.quantity_per_volume,
+            dimensions: {
+              width: item.product.width,
+              height: item.product.height,
+              length: item.product.length,
+            },
+            cubicVolume: item.product.cubic_volume,
+            categoryId: item.product.category_id,
+            subcategoryId: item.product.subcategory_id,
+            imageUrl: item.product.image_url,
+            createdAt: new Date(item.product.created_at),
+            updatedAt: new Date(item.product.updated_at),
+          },
+          quantity: item.quantity,
+          discount: item.discount,
+          finalPrice: item.final_price,
+          subtotal: item.subtotal,
+        }));
+        
+        const orderObj: Order = {
+          id: orderData.id,
+          customerId: orderData.customer_id,
+          customer: {
+            id: orderData.customer.id,
+            companyName: orderData.customer.company_name,
+            document: orderData.customer.document,
+            salesPersonId: orderData.customer.sales_person_id,
+            street: orderData.customer.street,
+            number: orderData.customer.number || '',
+            noNumber: orderData.customer.no_number,
+            complement: orderData.customer.complement || '',
+            city: orderData.customer.city,
+            state: orderData.customer.state,
+            zipCode: orderData.customer.zip_code,
+            phone: orderData.customer.phone || '',
+            email: orderData.customer.email || '',
+            defaultDiscount: orderData.customer.default_discount,
+            maxDiscount: orderData.customer.max_discount,
+            createdAt: new Date(orderData.customer.created_at),
+            updatedAt: new Date(orderData.customer.updated_at),
+          },
+          userId: orderData.user_id,
+          user: {
+            id: orderData.user_id,
+            username: 'user', // We don't have this in DB yet
+            name: 'User', // We don't have this in DB yet
+            role: 'salesperson' as const,
+            permissions: [],
+            email: '',
+            createdAt: new Date(),
+          },
+          items: items,
+          appliedDiscounts: appliedDiscounts,
+          totalDiscount: orderData.total_discount,
+          subtotal: orderData.subtotal,
+          total: orderData.total,
+          status: orderData.status as Order['status'],
+          shipping: orderData.shipping as 'delivery' | 'pickup',
+          fullInvoice: orderData.full_invoice,
+          taxSubstitution: orderData.tax_substitution,
+          paymentMethod: orderData.payment_method as 'cash' | 'credit',
+          paymentTerms: orderData.payment_terms || undefined,
+          notes: orderData.notes || '',
+          observations: orderData.observations || '',
+          createdAt: new Date(orderData.created_at),
+          updatedAt: new Date(orderData.updated_at),
+          deliveryLocation: orderData.delivery_location as 'capital' | 'interior' | null || null,
+          halfInvoicePercentage: orderData.half_invoice_percentage || undefined,
+          deliveryFee: orderData.delivery_fee || 0,
+          discountOptions: appliedDiscounts,
+        };
+        
+        setOrder(orderObj);
+        setNotes(orderObj.notes || orderObj.observations || "");
+        setStatus(orderObj.status);
+        setShipping(orderObj.shipping === "pickup" ? "pickup" : "delivery");
+        setFullInvoice(Boolean(orderObj.fullInvoice));
+        setTaxSubstitution(Boolean(orderObj.taxSubstitution));
+        setPaymentMethod(orderObj.paymentMethod === "credit" ? "credit" : "cash");
+        setPaymentTerms(orderObj.paymentTerms || "");
+        setDeliveryLocation(orderObj.deliveryLocation || null);
+        
+        if (orderObj.halfInvoicePercentage) {
+          setHalfInvoicePercentage(orderObj.halfInvoicePercentage);
+        }
+
+        if (appliedDiscounts.length > 0) {
+          const discountIds = appliedDiscounts.map(discount => discount.id);
+          setSelectedDiscountOptions(discountIds);
+        }
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error fetching order:', error);
+        toast.error(`Não foi possível encontrar o pedido com ID: ${id}`);
+        navigate('/orders');
+        setIsLoading(false);
       }
-      
-      if (orderData.discountOptions && Array.isArray(orderData.discountOptions)) {
-        const discountIds = orderData.discountOptions.map((discount) => discount.id);
-        setSelectedDiscountOptions(discountIds);
-      } else if (orderData.appliedDiscounts && Array.isArray(orderData.appliedDiscounts)) {
-        const discountIds = orderData.appliedDiscounts.map(discount => discount.id);
-        setSelectedDiscountOptions(discountIds);
-      }
-    } else {
-      toast.error(`Não foi possível encontrar o pedido com ID: ${id}`);
-      navigate('/orders');
-    }
+    };
     
-    setIsLoading(false);
-  }, [id, getOrderById, navigate]);
+    fetchOrder();
+  }, [id, navigate]);
   
   const handleStatusChange = (value: string) => {
     if (
@@ -155,25 +319,29 @@ const OrderUpdate = () => {
     setIsSaving(true);
     
     try {
-      const updatedOrderData: Partial<Order> = {
+      const updatedOrderData = {
         status,
-        notes,
         shipping,
-        fullInvoice,
-        taxSubstitution,
-        paymentMethod,
-        paymentTerms: paymentMethod === "credit" ? paymentTerms : undefined,
-        deliveryLocation,
-        halfInvoicePercentage: !fullInvoice ? halfInvoicePercentage : undefined,
+        full_invoice: fullInvoice,
+        tax_substitution: taxSubstitution,
+        payment_method: paymentMethod,
+        payment_terms: paymentMethod === "credit" ? paymentTerms : null,
+        delivery_location: deliveryLocation,
+        half_invoice_percentage: !fullInvoice ? halfInvoicePercentage : null,
+        notes,
         observations: notes,
+        updated_at: new Date().toISOString(),
       };
       
-      console.log("Saving order with data:", updatedOrderData);
-      
-      updateOrder(id, updatedOrderData);
+      // Update order in Supabase
+      const { error } = await supabase
+        .from('orders')
+        .update(updatedOrderData)
+        .eq('id', id);
+        
+      if (error) throw error;
       
       toast.success(`Pedido #${id.slice(-4)} foi atualizado com sucesso.`);
-      
       navigate(`/orders/${id}`);
     } catch (error) {
       console.error("Error saving order:", error);
@@ -183,13 +351,21 @@ const OrderUpdate = () => {
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!id) return;
     
     setIsDeleting(true);
     
     try {
-      deleteOrder(id);
+      // Delete order from Supabase
+      const { error } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', id);
+        
+      if (error) throw error;
+      
+      toast.success(`Pedido #${id.slice(-4)} excluído com sucesso!`);
       navigate('/orders');
     } catch (error) {
       console.error("Error deleting order:", error);

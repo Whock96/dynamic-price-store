@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, Calendar, ShoppingCart, ArrowDown, ArrowUp, Plus, FileText } from 'lucide-react';
+import { Search, Filter, Calendar, ShoppingCart, ArrowDown, ArrowUp, Plus, FileText, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +26,8 @@ import { ptBR } from 'date-fns/locale';
 import { Order } from '@/types/types';
 import { useOrders } from '@/context/OrderContext';
 import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 type SortField = 'id' | 'customer' | 'createdAt' | 'user' | 'items' | 'total' | 'status';
 type SortDirection = 'asc' | 'desc';
@@ -36,8 +39,145 @@ const OrderList = () => {
   const [dateFilter, setDateFilter] = useState('all');
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-  const { orders } = useOrders();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Fetch orders with customer data
+        const { data: ordersData, error: ordersError } = await supabase
+          .from('orders')
+          .select(`
+            *,
+            customer:customers(*)
+          `)
+          .order('created_at', { ascending: false });
+          
+        if (ordersError) throw ordersError;
+        
+        // Fetch order items for each order
+        const ordersWithItems = await Promise.all(
+          ordersData.map(async (order) => {
+            // Get order items
+            const { data: itemsData, error: itemsError } = await supabase
+              .from('order_items')
+              .select(`
+                *,
+                product:products(*)
+              `)
+              .eq('order_id', order.id);
+              
+            if (itemsError) {
+              console.error(`Error fetching items for order ${order.id}:`, itemsError);
+              return {
+                ...order,
+                items: []
+              };
+            }
+            
+            return {
+              ...order,
+              items: itemsData || []
+            };
+          })
+        );
+        
+        // Transform to match our Order type
+        const transformedOrders: Order[] = ordersWithItems.map(orderData => {
+          const items = orderData.items.map(item => ({
+            id: item.id,
+            productId: item.product_id,
+            product: {
+              id: item.product.id,
+              name: item.product.name,
+              description: item.product.description || '',
+              listPrice: item.product.list_price,
+              weight: item.product.weight,
+              quantity: item.product.quantity,
+              quantityPerVolume: item.product.quantity_per_volume,
+              dimensions: {
+                width: item.product.width,
+                height: item.product.height,
+                length: item.product.length,
+              },
+              cubicVolume: item.product.cubic_volume,
+              categoryId: item.product.category_id,
+              subcategoryId: item.product.subcategory_id,
+              imageUrl: item.product.image_url,
+              createdAt: new Date(item.product.created_at),
+              updatedAt: new Date(item.product.updated_at),
+            },
+            quantity: item.quantity,
+            discount: item.discount,
+            finalPrice: item.final_price,
+            subtotal: item.subtotal,
+          }));
+          
+          return {
+            id: orderData.id,
+            customerId: orderData.customer_id,
+            customer: {
+              id: orderData.customer.id,
+              companyName: orderData.customer.company_name,
+              document: orderData.customer.document,
+              salesPersonId: orderData.customer.sales_person_id,
+              street: orderData.customer.street,
+              number: orderData.customer.number || '',
+              noNumber: orderData.customer.no_number,
+              complement: orderData.customer.complement || '',
+              city: orderData.customer.city,
+              state: orderData.customer.state,
+              zipCode: orderData.customer.zip_code,
+              phone: orderData.customer.phone || '',
+              email: orderData.customer.email || '',
+              defaultDiscount: orderData.customer.default_discount,
+              maxDiscount: orderData.customer.max_discount,
+              createdAt: new Date(orderData.customer.created_at),
+              updatedAt: new Date(orderData.customer.updated_at),
+            },
+            userId: orderData.user_id,
+            user: {
+              id: orderData.user_id,
+              username: 'user', // We don't have this in DB yet
+              name: 'User', // We don't have this in DB yet
+              role: 'salesperson' as const,
+              permissions: [],
+              email: '',
+              createdAt: new Date(),
+            },
+            items: items,
+            appliedDiscounts: [], // We'll ignore this for the listing
+            totalDiscount: orderData.total_discount,
+            subtotal: orderData.subtotal,
+            total: orderData.total,
+            status: orderData.status as Order['status'],
+            shipping: orderData.shipping as 'delivery' | 'pickup',
+            fullInvoice: orderData.full_invoice,
+            taxSubstitution: orderData.tax_substitution,
+            paymentMethod: orderData.payment_method as 'cash' | 'credit',
+            paymentTerms: orderData.payment_terms || undefined,
+            notes: orderData.notes || '',
+            createdAt: new Date(orderData.created_at),
+            updatedAt: new Date(orderData.updated_at),
+            deliveryLocation: orderData.delivery_location as 'capital' | 'interior' | null || null,
+          };
+        });
+        
+        setOrders(transformedOrders);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+        toast.error('Falha ao carregar os pedidos. Tente novamente.');
+        setIsLoading(false);
+      }
+    };
+    
+    fetchOrders();
+  }, []);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -123,12 +263,10 @@ const OrderList = () => {
 
   const handleEditClick = (e: React.MouseEvent, orderId: string) => {
     e.stopPropagation();
-    console.log(`Navigating to edit order: ${orderId}`);
     navigate(`/orders/${orderId}/edit`);
   };
 
   const handleOrderClick = (orderId: string) => {
-    console.log(`Navigating to order details: ${orderId}`);
     navigate(`/orders/${orderId}`);
   };
 
@@ -209,65 +347,72 @@ const OrderList = () => {
 
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <SortableHeader field="id">Pedido</SortableHeader>
-                <SortableHeader field="customer">Cliente</SortableHeader>
-                <SortableHeader field="createdAt">Data</SortableHeader>
-                <SortableHeader field="user">Vendedor</SortableHeader>
-                <SortableHeader field="items">Itens</SortableHeader>
-                <SortableHeader field="total">Valor</SortableHeader>
-                <SortableHeader field="status">Status</SortableHeader>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredOrders.map(order => (
-                <TableRow 
-                  key={order.id}
-                  className="cursor-pointer hover:bg-gray-50"
-                  onClick={() => handleOrderClick(order.id)}
-                >
-                  <TableCell className="font-medium">#{order.id.slice(-4)}</TableCell>
-                  <TableCell>{order.customer.companyName}</TableCell>
-                  <TableCell>
-                    {format(order.createdAt, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                  </TableCell>
-                  <TableCell>{order.user.name}</TableCell>
-                  <TableCell>{order.items.length}</TableCell>
-                  <TableCell>{formatCurrency(order.total)}</TableCell>
-                  <TableCell>
-                    <OrderStatusBadge status={order.status} />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end space-x-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        className="h-8 px-2"
-                        onClick={(e) => handleEditClick(e, order.id)}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Editar
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        className="h-8 px-2"
-                        onClick={(e) => handleGenerateInvoice(e, order.id)}
-                      >
-                        <FileText className="h-4 w-4 mr-1" />
-                        Nota
-                      </Button>
-                    </div>
-                  </TableCell>
+          {isLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-ferplas-500" />
+              <span className="ml-2 text-lg text-gray-600">Carregando pedidos...</span>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <SortableHeader field="id">Pedido</SortableHeader>
+                  <SortableHeader field="customer">Cliente</SortableHeader>
+                  <SortableHeader field="createdAt">Data</SortableHeader>
+                  <SortableHeader field="user">Vendedor</SortableHeader>
+                  <SortableHeader field="items">Itens</SortableHeader>
+                  <SortableHeader field="total">Valor</SortableHeader>
+                  <SortableHeader field="status">Status</SortableHeader>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredOrders.map(order => (
+                  <TableRow 
+                    key={order.id}
+                    className="cursor-pointer hover:bg-gray-50"
+                    onClick={() => handleOrderClick(order.id)}
+                  >
+                    <TableCell className="font-medium">#{order.id.slice(-4)}</TableCell>
+                    <TableCell>{order.customer.companyName}</TableCell>
+                    <TableCell>
+                      {format(order.createdAt, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                    </TableCell>
+                    <TableCell>{order.user.name}</TableCell>
+                    <TableCell>{order.items.length}</TableCell>
+                    <TableCell>{formatCurrency(order.total)}</TableCell>
+                    <TableCell>
+                      <OrderStatusBadge status={order.status} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end space-x-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="h-8 px-2"
+                          onClick={(e) => handleEditClick(e, order.id)}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Editar
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="h-8 px-2"
+                          onClick={(e) => handleGenerateInvoice(e, order.id)}
+                        >
+                          <FileText className="h-4 w-4 mr-1" />
+                          Nota
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
           
-          {filteredOrders.length === 0 && (
+          {!isLoading && filteredOrders.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <ShoppingCart className="h-12 w-12 text-gray-300 mb-4" />
               <h2 className="text-xl font-medium text-gray-600">Nenhum pedido encontrado</h2>
