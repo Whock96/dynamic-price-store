@@ -39,7 +39,7 @@ interface ProductContextType {
   categories: Category[];
   getCategoryName: (categoryId: string) => string;
   getSubcategoryName: (categoryId: string, subcategoryId: string) => string;
-  addCategory: (category: Omit<Category, 'subcategories'>) => Promise<Category | null>;
+  addCategory: (category: Omit<Category, 'subcategories' | 'id'>) => Promise<Category | null>;
   updateCategory: (category: Pick<Category, 'id' | 'name' | 'description'>) => Promise<boolean>;
   deleteCategory: (categoryId: string) => Promise<boolean>;
   addSubcategory: (categoryId: string, subcategory: Omit<Subcategory, 'categoryId'>) => Promise<Subcategory | null>;

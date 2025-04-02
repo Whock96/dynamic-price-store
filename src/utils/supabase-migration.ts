@@ -2,7 +2,7 @@
 import { Customer, Product, Category, Subcategory } from '@/types/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useCustomers } from '@/context/CustomerContext';
-import { useProducts, MOCK_CATEGORIES } from '@/context/ProductContext';
+import { useProducts } from '@/context/ProductContext';
 import { toast } from 'sonner';
 
 // Função para migrar dados de clientes do localStorage para o Supabase
