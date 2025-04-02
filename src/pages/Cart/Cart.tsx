@@ -49,6 +49,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatCurrency } from '@/utils/formatters';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 
 type SupabaseProduct = Tables<'products'>;
 
@@ -64,6 +65,7 @@ const Cart = () => {
     items, customer, setCustomer, addItem, removeItem, updateItemQuantity,
     updateItemDiscount, discountOptions, toggleDiscountOption, isDiscountOptionSelected,
     deliveryLocation, setDeliveryLocation, halfInvoicePercentage, setHalfInvoicePercentage,
+    halfInvoiceType, setHalfInvoiceType,
     observations, setObservations, totalItems, subtotal, totalDiscount, total, sendOrder, clearCart, 
     deliveryFee, applyDiscounts, toggleApplyDiscounts, paymentTerms, setPaymentTerms,
     calculateTaxSubstitutionValue, withIPI, toggleIPI, calculateIPIValue, calculateItemTaxSubstitutionValue
@@ -734,7 +736,7 @@ const Cart = () => {
                       </div>
                       
                       {option.id === '2' && isDiscountOptionSelected(option.id) && (
-                        <div className="ml-6 p-3 border-l-2 border-ferplas-100 bg-gray-50 rounded-md">
+                        <div className="ml-6 p-3 border-l-2 border-ferplas-100 bg-gray-50 rounded-md space-y-4">
                           <div className="flex items-center mb-2">
                             <Percent className="h-4 w-4 text-ferplas-500 mr-1" />
                             <span className="text-sm font-medium text-gray-700">Percentual da nota: {halfInvoicePercentage}%</span>
@@ -761,6 +763,27 @@ const Cart = () => {
                               min={0}
                               max={100}
                             />
+                          </div>
+                          
+                          <div className="flex flex-col space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Tipo de aplicação:</label>
+                            <Select 
+                              value={halfInvoiceType}
+                              onValueChange={(value: 'quantity' | 'price') => setHalfInvoiceType(value)}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Selecione o tipo" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="quantity">Na quantidade</SelectItem>
+                                <SelectItem value="price">No preço</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {halfInvoiceType === 'quantity' 
+                                ? 'A nota fiscal será emitida com quantidade reduzida mantendo o preço original' 
+                                : 'A nota fiscal será emitida com preço reduzido mantendo a quantidade original'}
+                            </p>
                           </div>
                         </div>
                       )}

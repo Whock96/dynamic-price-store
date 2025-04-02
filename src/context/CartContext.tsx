@@ -12,6 +12,7 @@ interface CartContextType {
   selectedDiscountOptions: string[];
   deliveryLocation: 'capital' | 'interior' | null;
   halfInvoicePercentage: number;
+  halfInvoiceType: 'quantity' | 'price'; // Add the new property
   observations: string;
   paymentTerms: string;
   totalItems: number;
@@ -29,6 +30,7 @@ interface CartContextType {
   toggleDiscountOption: (id: string) => void;
   setDeliveryLocation: (location: 'capital' | 'interior' | null) => void;
   setHalfInvoicePercentage: (percentage: number) => void;
+  setHalfInvoiceType: (type: 'quantity' | 'price') => void; // Add the new function
   setObservations: (text: string) => void;
   setPaymentTerms: (terms: string) => void;
   clearCart: () => void;
@@ -87,6 +89,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [selectedDiscountOptions, setSelectedDiscountOptions] = useState<string[]>([]);
   const [deliveryLocation, setDeliveryLocation] = useState<'capital' | 'interior' | null>(null);
   const [halfInvoicePercentage, setHalfInvoicePercentage] = useState<number>(50);
+  const [halfInvoiceType, setHalfInvoiceType] = useState<'quantity' | 'price'>('quantity'); // Add the new state
   const [observations, setObservations] = useState<string>('');
   const [paymentTerms, setPaymentTerms] = useState<string>('');
   const [applyDiscounts, setApplyDiscounts] = useState<boolean>(true);
@@ -426,6 +429,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         if (id === '2') {
           setHalfInvoicePercentage(50);
+          setHalfInvoiceType('quantity'); // Reset to default when deselecting
         }
         if (id === '4') {
           setPaymentTerms('');
@@ -475,6 +479,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deliveryLocation,
         deliveryFee,
         halfInvoicePercentage: isDiscountOptionSelected('2') ? halfInvoicePercentage : undefined,
+        halfInvoiceType: isDiscountOptionSelected('2') ? halfInvoiceType : undefined, // Add the new property
         observations,
         subtotal,
         totalDiscount,
@@ -509,6 +514,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Return the context provider with the updated properties and functions
   return (
     <CartContext.Provider value={{
       items,
@@ -517,6 +523,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       selectedDiscountOptions,
       deliveryLocation,
       halfInvoicePercentage,
+      halfInvoiceType,
       observations,
       paymentTerms,
       totalItems,
@@ -534,6 +541,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toggleDiscountOption,
       setDeliveryLocation,
       setHalfInvoicePercentage,
+      setHalfInvoiceType,
       setObservations,
       setPaymentTerms,
       clearCart,
