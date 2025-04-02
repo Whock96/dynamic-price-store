@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -99,68 +98,71 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
         </div>
 
         <nav className="flex-1 space-y-1 px-2">
-          {/* Removed the standalone Home/Início button that was here */}
-          
-          {MENU_ITEMS.filter(item => hasPermission(item.path)).map((item) => (
-            <div key={item.id} className="relative">
-              <button
-                onClick={() => item.submenus?.length ? toggleMenu(item.id) : handleNavigate(item.path)}
-                className={cn(
-                  "group w-full flex items-center py-2 px-2 rounded-md transition-all duration-200",
-                  isActive(item.path) 
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                  !isExpanded && "justify-center"
-                )}
-              >
-                <div className="flex items-center justify-center w-8 h-8">
-                  {getIcon(item.icon)}
-                </div>
-                {isExpanded && (
-                  <>
-                    <span className="ml-3">{item.name}</span>
-                    {item.submenus?.length > 0 && (
-                      <ChevronRight 
-                        className={cn(
-                          "ml-auto transition-transform duration-200",
-                          expandedMenu === item.id && "transform rotate-90"
-                        )}
-                        size={16} 
-                      />
-                    )}
-                  </>
-                )}
-              </button>
-              
-              {!isExpanded && (
-                <div className="sidebar-tooltip group-hover:scale-100">
-                  {item.name}
-                </div>
-              )}
-              
-              {isExpanded && item.submenus && expandedMenu === item.id && (
-                <div className="pl-10 mt-1 space-y-1 animate-accordion-down">
-                  {item.submenus.filter(submenu => hasPermission(submenu.path)).map((submenu) => (
-                    <button
-                      key={submenu.id}
-                      onClick={() => handleNavigate(submenu.path)}
-                      className={cn(
-                        "w-full flex items-center py-2 px-2 rounded-md transition-colors duration-200",
-                        isActive(submenu.path) 
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          {MENU_ITEMS
+            .filter(item => 
+              hasPermission(item.path) && 
+              item.name !== "Atualizar Pedidos"
+            )
+            .map((item) => (
+              <div key={item.id} className="relative">
+                <button
+                  onClick={() => item.submenus?.length ? toggleMenu(item.id) : handleNavigate(item.path)}
+                  className={cn(
+                    "group w-full flex items-center py-2 px-2 rounded-md transition-all duration-200",
+                    isActive(item.path) 
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                    !isExpanded && "justify-center"
+                  )}
+                >
+                  <div className="flex items-center justify-center w-8 h-8">
+                    {getIcon(item.icon)}
+                  </div>
+                  {isExpanded && (
+                    <>
+                      <span className="ml-3">{item.name}</span>
+                      {item.submenus?.length > 0 && (
+                        <ChevronRight 
+                          className={cn(
+                            "ml-auto transition-transform duration-200",
+                            expandedMenu === item.id && "transform rotate-90"
+                          )}
+                          size={16} 
+                        />
                       )}
-                    >
-                      <div className="flex items-center justify-center w-5 h-5">
-                        {getIcon(submenu.icon)}
-                      </div>
-                      <span className="ml-2 text-sm">{submenu.name}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+                    </>
+                  )}
+                </button>
+                
+                {!isExpanded && (
+                  <div className="sidebar-tooltip group-hover:scale-100">
+                    {item.name}
+                  </div>
+                )}
+                
+                {isExpanded && item.submenus && expandedMenu === item.id && (
+                  <div className="pl-10 mt-1 space-y-1 animate-accordion-down">
+                    {item.submenus.filter(submenu => hasPermission(submenu.path)).map((submenu) => (
+                      <button
+                        key={submenu.id}
+                        onClick={() => handleNavigate(submenu.path)}
+                        className={cn(
+                          "w-full flex items-center py-2 px-2 rounded-md transition-colors duration-200",
+                          isActive(submenu.path) 
+                            ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                            : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        )}
+                      >
+                        <div className="flex items-center justify-center w-5 h-5">
+                          {getIcon(submenu.icon)}
+                        </div>
+                        <span className="ml-2 text-sm">{submenu.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
         </nav>
         
         <div className="px-2 mt-auto">
