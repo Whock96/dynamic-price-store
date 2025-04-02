@@ -14,6 +14,8 @@ export function useCategories() {
     setError(null);
     
     try {
+      console.log('Fetching categories...');
+      
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
         .select('*')
@@ -27,6 +29,9 @@ export function useCategories() {
         .order('name');
 
       if (subcategoriesError) throw subcategoriesError;
+
+      console.log('Categories fetched:', categoriesData?.length || 0);
+      console.log('Subcategories fetched:', subcategoriesData?.length || 0);
 
       const formattedCategories: Category[] = (categoriesData || []).map(cat => ({
         id: cat.id,
@@ -118,6 +123,7 @@ export function useCategories() {
 
   const deleteCategory = async (categoryId: string) => {
     try {
+      // First delete all subcategories
       const { error: subcategoryError } = await supabase
         .from('subcategories')
         .delete()
@@ -125,6 +131,7 @@ export function useCategories() {
 
       if (subcategoryError) throw subcategoryError;
 
+      // Then delete the category
       const { error } = await supabase
         .from('categories')
         .delete()
@@ -133,7 +140,6 @@ export function useCategories() {
       if (error) throw error;
 
       setCategories(prev => prev.filter(cat => cat.id !== categoryId));
-      
       toast.success('Categoria removida com sucesso');
       return true;
     } catch (err) {
@@ -146,18 +152,16 @@ export function useCategories() {
 
   const addSubcategory = async (categoryId: string, subcategoryData: Omit<Subcategory, 'categoryId' | 'id'>) => {
     try {
-      console.log('Adicionando subcategoria à categoria:', categoryId);
-      console.log('Dados da subcategoria:', subcategoryData);
+      console.log('Adding subcategory to category:', categoryId);
       
-      // Verifica se a categoria existe
+      // Check if category exists
       const categoryExists = categories.some(cat => cat.id === categoryId);
       if (!categoryExists) {
-        console.error('Categoria não encontrada:', categoryId);
         toast.error('Categoria não encontrada');
         return null;
       }
 
-      // Insere a subcategoria no banco de dados
+      // Insert subcategory into the database
       const { data, error } = await supabase
         .from('subcategories')
         .insert({
@@ -167,10 +171,7 @@ export function useCategories() {
         })
         .select();
 
-      if (error) {
-        console.error('Erro do Supabase:', error);
-        throw error;
-      }
+      if (error) throw error;
 
       if (data && data.length > 0) {
         const newSubcategory: Subcategory = {
@@ -179,10 +180,8 @@ export function useCategories() {
           description: data[0].description || '',
           categoryId: data[0].category_id
         };
-
-        console.log('Nova subcategoria criada:', newSubcategory);
         
-        // Atualiza o estado das categorias adicionando a nova subcategoria
+        // Update our state
         setCategories(prev => {
           return prev.map(cat => {
             if (cat.id === categoryId) {
@@ -201,7 +200,7 @@ export function useCategories() {
       return null;
     } catch (err) {
       const error = err as Error;
-      console.error('Erro ao adicionar subcategoria:', error);
+      console.error('Error adding subcategory:', error);
       toast.error(`Erro ao adicionar subcategoria: ${error.message}`);
       return null;
     }
@@ -213,8 +212,7 @@ export function useCategories() {
         .from('subcategories')
         .update({
           name: subcategoryData.name,
-          description: subcategoryData.description,
-          category_id: subcategoryData.categoryId
+          description: subcategoryData.description
         })
         .eq('id', subcategoryData.id);
 
@@ -271,19 +269,6 @@ export function useCategories() {
     }
   };
 
-  const getCategoryName = useCallback((categoryId: string) => {
-    const category = categories.find(cat => cat.id === categoryId);
-    return category ? category.name : 'Sem categoria';
-  }, [categories]);
-
-  const getSubcategoryName = useCallback((categoryId: string, subcategoryId: string) => {
-    const category = categories.find(cat => cat.id === categoryId);
-    if (!category) return 'Desconhecida';
-    
-    const subcategory = category.subcategories.find(sub => sub.id === subcategoryId);
-    return subcategory?.name || 'Desconhecida';
-  }, [categories]);
-
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
@@ -298,8 +283,6 @@ export function useCategories() {
     deleteCategory,
     addSubcategory,
     updateSubcategory,
-    deleteSubcategory,
-    getCategoryName,
-    getSubcategoryName
+    deleteSubcategory
   };
 }

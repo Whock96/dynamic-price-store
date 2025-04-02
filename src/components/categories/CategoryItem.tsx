@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Tag, Edit, Trash2, ChevronRight, ChevronDown, Plus } from 'lucide-react';
+import { Tag, Edit, Trash2, ChevronRight, ChevronDown } from 'lucide-react';
 import {
   Collapsible,
   CollapsibleContent,
@@ -26,7 +26,6 @@ interface CategoryItemProps {
   onToggleExpansion: (categoryId: string) => void;
   onEditCategory: (category: Category) => void;
   onDeleteCategory: (categoryId: string) => void;
-  onAddSubcategory: (category: Category) => void;
   onEditSubcategory: (category: Category, subcategory: Subcategory) => void;
   onDeleteSubcategory: (categoryId: string, subcategoryId: string) => void;
 }
@@ -37,17 +36,9 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
   onToggleExpansion,
   onEditCategory,
   onDeleteCategory,
-  onAddSubcategory,
   onEditSubcategory,
   onDeleteSubcategory,
 }) => {
-  // Função para lidar com clique no botão de adicionar subcategoria
-  const handleAddSubcategoryClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Impedir propagação do evento para o Collapsible
-    console.log('Adicionando subcategoria à categoria:', category.name);
-    onAddSubcategory(category);
-  };
-
   return (
     <Collapsible 
       open={isExpanded}
@@ -63,15 +54,6 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              className="h-8 w-8 p-0 text-ferplas-500"
-              onClick={handleAddSubcategoryClick}
-              type="button"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
             <Button 
               variant="ghost" 
               size="sm"
@@ -186,22 +168,9 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
           </div>
         ) : (
           <div className="flex items-center justify-center p-6 text-gray-500">
-            <p>Nenhuma subcategoria encontrada. Adicione uma nova.</p>
+            <p>Nenhuma subcategoria encontrada.</p>
           </div>
         )}
-        
-        <div className="p-3 bg-gray-50 border-t">
-          <Button 
-            variant="outline" 
-            size="sm"
-            className="w-full text-ferplas-500"
-            onClick={handleAddSubcategoryClick}
-            type="button"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Adicionar Subcategoria
-          </Button>
-        </div>
       </CollapsibleContent>
     </Collapsible>
   );

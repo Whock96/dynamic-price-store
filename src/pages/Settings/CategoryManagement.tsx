@@ -5,16 +5,21 @@ import { Search, Plus, ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog } from "@/components/ui/dialog";
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { Category, Subcategory } from '@/types/types';
-import { useCategoryManagement } from '@/hooks/use-category-management';
-import CategoryItem from '@/components/categories/CategoryItem';
+import { useCategories } from '@/hooks/use-categories';
+import CategoryList from '@/components/categories/CategoryList';
 import CategoryDialog from '@/components/categories/CategoryDialog';
 import SubcategoryDialog from '@/components/categories/SubcategoryDialog';
 
-type DialogMode = 'category-add' | 'category-edit' | 'subcategory-add' | 'subcategory-edit';
+export enum DialogType {
+  NONE = 'NONE',
+  ADD_CATEGORY = 'ADD_CATEGORY',
+  EDIT_CATEGORY = 'EDIT_CATEGORY',
+  ADD_SUBCATEGORY = 'ADD_SUBCATEGORY',
+  EDIT_SUBCATEGORY = 'EDIT_SUBCATEGORY',
+}
 
 const CategoryManagement = () => {
   const navigate = useNavigate();
@@ -29,12 +34,11 @@ const CategoryManagement = () => {
     addSubcategory, 
     updateSubcategory, 
     deleteSubcategory 
-  } = useCategoryManagement();
+  } = useCategories();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [dialogMode, setDialogMode] = useState<DialogMode>('category-add');
+  const [activeDialog, setActiveDialog] = useState<DialogType>(DialogType.NONE);
   
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<Subcategory | null>(null);
@@ -52,7 +56,6 @@ const CategoryManagement = () => {
     categoryId: '',
   });
 
-  // Run only once when component mounts
   useEffect(() => {
     if (user?.role !== 'administrator') {
       toast.error('Você não tem permissão para acessar esta página');
@@ -63,7 +66,7 @@ const CategoryManagement = () => {
     // Only fetch categories once when component mounts
     fetchCategories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, navigate]);
+  }, []);
 
   const filteredCategories = categories.filter(category => {
     const categoryMatches = 
@@ -88,72 +91,73 @@ const CategoryManagement = () => {
     });
   };
 
-  const handleOpenCategoryDialog = (mode: 'add' | 'edit', category?: Category) => {
-    if (mode === 'edit' && category) {
-      setDialogMode('category-edit');
-      setSelectedCategory(category);
-      setCategoryFormData({
-        id: category.id,
-        name: category.name,
-        description: category.description || '',
-      });
-    } else {
-      setDialogMode('category-add');
-      setSelectedCategory(null);
-      setCategoryFormData({
-        id: '',
-        name: '',
-        description: '',
-      });
-    }
-    
-    setIsDialogOpen(true);
+  // Dialog open handlers
+  const openAddCategoryDialog = () => {
+    setCategoryFormData({
+      id: '',
+      name: '',
+      description: '',
+    });
+    setActiveDialog(DialogType.ADD_CATEGORY);
   };
 
-  const handleOpenSubcategoryDialog = (category: Category, subcategory?: Subcategory) => {
-    console.log('handleOpenSubcategoryDialog chamado para categoria:', category.name);
-    
-    if (subcategory) {
-      setDialogMode('subcategory-edit');
-      setSelectedCategory(category);
-      setSelectedSubcategory(subcategory);
-      setSubcategoryFormData({
-        id: subcategory.id,
-        name: subcategory.name,
-        description: subcategory.description || '',
-        categoryId: subcategory.categoryId,
-      });
-    } else {
-      setDialogMode('subcategory-add');
-      setSelectedCategory(category);
-      setSelectedSubcategory(null);
-      setSubcategoryFormData({
-        id: '',
-        name: '',
-        description: '',
-        categoryId: category.id,
-      });
-    }
-    
-    console.log('DialogMode definido para:', dialogMode === 'subcategory-add' ? 'subcategory-add' : dialogMode);
-    setIsDialogOpen(true);
+  const openEditCategoryDialog = (category: Category) => {
+    setSelectedCategory(category);
+    setCategoryFormData({
+      id: category.id,
+      name: category.name,
+      description: category.description || '',
+    });
+    setActiveDialog(DialogType.EDIT_CATEGORY);
   };
 
-  const handleCloseDialog = () => {
-    setIsDialogOpen(false);
+  const openAddSubcategoryDialog = () => {
+    setSubcategoryFormData({
+      id: '',
+      name: '',
+      description: '',
+      categoryId: '',
+    });
+    setActiveDialog(DialogType.ADD_SUBCATEGORY);
   };
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-    setFormData: React.Dispatch<React.SetStateAction<any>>
-  ) => {
+  const openEditSubcategoryDialog = (category: Category, subcategory: Subcategory) => {
+    setSelectedCategory(category);
+    setSelectedSubcategory(subcategory);
+    setSubcategoryFormData({
+      id: subcategory.id,
+      name: subcategory.name,
+      description: subcategory.description || '',
+      categoryId: subcategory.categoryId,
+    });
+    setActiveDialog(DialogType.EDIT_SUBCATEGORY);
+  };
+
+  // Dialog close handler
+  const closeDialog = () => {
+    setActiveDialog(DialogType.NONE);
+    setSelectedCategory(null);
+    setSelectedSubcategory(null);
+  };
+
+  // Form input change handlers
+  const handleCategoryInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setCategoryFormData(prev => ({
       ...prev,
       [name]: value
     }));
   };
 
+  const handleSubcategoryInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setSubcategoryFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Save handlers
   const handleSaveCategory = async () => {
     if (!categoryFormData.name) {
       toast.error('O nome da categoria é obrigatório');
@@ -161,7 +165,7 @@ const CategoryManagement = () => {
     }
 
     try {
-      if (dialogMode === 'category-edit' && categoryFormData.id) {
+      if (activeDialog === DialogType.EDIT_CATEGORY && categoryFormData.id) {
         await updateCategory({
           id: categoryFormData.id,
           name: categoryFormData.name,
@@ -179,7 +183,7 @@ const CategoryManagement = () => {
         }
       }
       
-      handleCloseDialog();
+      closeDialog();
     } catch (error) {
       console.error('Failed to save category:', error);
       toast.error('Erro ao salvar categoria');
@@ -187,45 +191,66 @@ const CategoryManagement = () => {
   };
 
   const handleSaveSubcategory = async () => {
-    console.log('Salvando subcategoria:', subcategoryFormData);
-    
     if (!subcategoryFormData.name) {
       toast.error('O nome da subcategoria é obrigatório');
       return;
     }
 
-    if (!selectedCategory) {
-      toast.error('Nenhuma categoria selecionada');
+    if (!subcategoryFormData.categoryId) {
+      toast.error('Selecione uma categoria');
       return;
     }
 
     try {
-      if (dialogMode === 'subcategory-edit' && subcategoryFormData.id) {
+      if (activeDialog === DialogType.EDIT_SUBCATEGORY && subcategoryFormData.id) {
         await updateSubcategory({
           id: subcategoryFormData.id,
           name: subcategoryFormData.name,
           description: subcategoryFormData.description,
-          categoryId: selectedCategory.id
+          categoryId: subcategoryFormData.categoryId
         });
       } else {
-        console.log('Adicionando subcategoria à categoria:', selectedCategory.id);
         const newSubcategory = await addSubcategory(
-          selectedCategory.id, 
+          subcategoryFormData.categoryId, 
           {
             name: subcategoryFormData.name,
             description: subcategoryFormData.description
           }
         );
         
-        if (newSubcategory && !expandedCategories.includes(selectedCategory.id)) {
-          setExpandedCategories(prev => [...prev, selectedCategory.id]);
+        if (newSubcategory) {
+          setExpandedCategories(prev => 
+            prev.includes(subcategoryFormData.categoryId) 
+              ? prev 
+              : [...prev, subcategoryFormData.categoryId]
+          );
         }
       }
       
-      handleCloseDialog();
+      closeDialog();
     } catch (error) {
       console.error('Failed to save subcategory:', error);
       toast.error('Erro ao salvar subcategoria');
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    try {
+      await deleteCategory(categoryId);
+      // Remove from expanded list if it exists
+      setExpandedCategories(prev => prev.filter(id => id !== categoryId));
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      toast.error('Erro ao remover categoria');
+    }
+  };
+
+  const handleDeleteSubcategory = async (categoryId: string, subcategoryId: string) => {
+    try {
+      await deleteSubcategory(categoryId, subcategoryId);
+    } catch (error) {
+      console.error('Error deleting subcategory:', error);
+      toast.error('Erro ao remover subcategoria');
     }
   };
 
@@ -248,13 +273,23 @@ const CategoryManagement = () => {
             </p>
           </div>
         </div>
-        <Button 
-          className="bg-ferplas-500 hover:bg-ferplas-600 button-transition"
-          onClick={() => handleOpenCategoryDialog('add')}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Nova Categoria
-        </Button>
+        <div className="flex space-x-2">
+          <Button 
+            className="bg-ferplas-500 hover:bg-ferplas-600"
+            onClick={openAddCategoryDialog}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Nova Categoria
+          </Button>
+          <Button 
+            variant="outline"
+            className="border-ferplas-500 text-ferplas-500 hover:bg-ferplas-50"
+            onClick={openAddSubcategoryDialog}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Nova Subcategoria
+          </Button>
+        </div>
       </header>
 
       <Card>
@@ -266,7 +301,7 @@ const CategoryManagement = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <Input
               placeholder="Buscar categorias e subcategorias..."
-              className="pl-10 input-transition"
+              className="pl-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -274,69 +309,50 @@ const CategoryManagement = () => {
         </CardContent>
       </Card>
 
-      <div className="space-y-4">
-        {isLoading ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-ferplas-500 mb-4" />
-              <p className="text-gray-500">Carregando categorias...</p>
-            </CardContent>
-          </Card>
-        ) : filteredCategories.length > 0 ? (
-          filteredCategories.map(category => (
-            <Card key={category.id} className="overflow-hidden">
-              <CategoryItem 
-                category={category}
-                isExpanded={expandedCategories.includes(category.id)}
-                onToggleExpansion={toggleCategoryExpansion}
-                onEditCategory={(category) => handleOpenCategoryDialog('edit', category)}
-                onDeleteCategory={deleteCategory}
-                onAddSubcategory={handleOpenSubcategoryDialog}
-                onEditSubcategory={(category, subcategory) => handleOpenSubcategoryDialog(category, subcategory)}
-                onDeleteSubcategory={deleteSubcategory}
-              />
-            </Card>
-          ))
-        ) : (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="text-gray-300 text-6xl mb-4">
-                <i className="far fa-folder-open"></i>
-              </div>
-              <h2 className="text-xl font-medium text-gray-600">Nenhuma categoria encontrada</h2>
-              <p className="text-gray-500 mt-1">Adicione uma nova categoria para começar.</p>
-              <Button 
-                className="mt-4 bg-ferplas-500 hover:bg-ferplas-600 button-transition"
-                onClick={() => handleOpenCategoryDialog('add')}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Nova Categoria
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      {isLoading ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-ferplas-500 mb-4" />
+            <p className="text-gray-500">Carregando categorias...</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <CategoryList 
+          categories={filteredCategories}
+          expandedCategories={expandedCategories}
+          onToggleExpansion={toggleCategoryExpansion}
+          onEditCategory={openEditCategoryDialog}
+          onDeleteCategory={handleDeleteCategory}
+          onEditSubcategory={openEditSubcategoryDialog}
+          onDeleteSubcategory={handleDeleteSubcategory}
+        />
+      )}
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        {dialogMode.includes('category') ? (
-          <CategoryDialog 
-            isEdit={dialogMode === 'category-edit'}
-            formData={categoryFormData}
-            onClose={handleCloseDialog}
-            onSave={handleSaveCategory}
-            onInputChange={(e) => handleInputChange(e, setCategoryFormData)}
-          />
-        ) : (
-          <SubcategoryDialog 
-            isEdit={dialogMode === 'subcategory-edit'}
-            formData={subcategoryFormData}
-            categoryName={selectedCategory?.name || ''}
-            onClose={handleCloseDialog}
-            onSave={handleSaveSubcategory}
-            onInputChange={(e) => handleInputChange(e, setSubcategoryFormData)}
-          />
-        )}
-      </Dialog>
+      {/* Category Dialog */}
+      {(activeDialog === DialogType.ADD_CATEGORY || activeDialog === DialogType.EDIT_CATEGORY) && (
+        <CategoryDialog 
+          isOpen={true}
+          isEdit={activeDialog === DialogType.EDIT_CATEGORY}
+          formData={categoryFormData}
+          onClose={closeDialog}
+          onSave={handleSaveCategory}
+          onInputChange={handleCategoryInputChange}
+        />
+      )}
+
+      {/* Subcategory Dialog */}
+      {(activeDialog === DialogType.ADD_SUBCATEGORY || activeDialog === DialogType.EDIT_SUBCATEGORY) && (
+        <SubcategoryDialog 
+          isOpen={true}
+          isEdit={activeDialog === DialogType.EDIT_SUBCATEGORY}
+          formData={subcategoryFormData}
+          categories={categories}
+          onClose={closeDialog}
+          onSave={handleSaveSubcategory}
+          onInputChange={handleSubcategoryInputChange}
+          selectedCategoryId={selectedCategory?.id}
+        />
+      )}
     </div>
   );
 };
