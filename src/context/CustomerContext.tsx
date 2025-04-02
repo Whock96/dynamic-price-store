@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+
+import React, { createContext, useContext, useState } from 'react';
 import { Customer } from '@/types/types';
 import { useSupabaseData } from '@/hooks/use-supabase-data';
 import { supabase, Tables } from '@/integrations/supabase/client';
@@ -15,11 +16,10 @@ interface CustomerContextType {
   addCustomer: (customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Customer | null>;
   updateCustomer: (id: string, customer: Partial<Customer>) => Promise<Customer | null>;
   deleteCustomer: (id: string) => Promise<boolean>;
+  refreshCustomers: () => Promise<void>;
 }
 
 const CustomerContext = createContext<CustomerContextType | undefined>(undefined);
-
-const LOCAL_STORAGE_KEY = 'ferplas_customers';
 
 // Função para converter o formato Supabase para nosso modelo frontend
 const supabaseToCustomer = (supabaseCustomer: SupabaseCustomer): Customer => ({
@@ -65,26 +65,9 @@ const customerToSupabase = (customer: Partial<Customer>): Partial<SupabaseCustom
 };
 
 export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [useLocalStorage, setUseLocalStorage] = useState(true);
-  const [localCustomers, setLocalCustomers] = useState<Customer[]>(() => {
-    try {
-      const storedCustomers = localStorage.getItem(LOCAL_STORAGE_KEY);
-      
-      if (storedCustomers) {
-        const parsedData = JSON.parse(storedCustomers) as Customer[];
-        return parsedData.map(customer => ({
-          ...customer,
-          createdAt: new Date(customer.createdAt),
-          updatedAt: new Date(customer.updatedAt)
-        }));
-      }
-
-      return [];
-    } catch (error) {
-      console.error("Error loading customers from localStorage:", error);
-      return [];
-    }
-  });
+  // Removemos a lógica de verificação de localStorage vs Supabase
+  // Agora sempre usamos Supabase
+  const [localCustomers, setLocalCustomers] = useState<Customer[]>([]);
 
   // Use our custom hook for Supabase data
   const { 
@@ -93,55 +76,24 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     createRecord,
     updateRecord,
     deleteRecord,
-    getRecordById: getSupabaseCustomerById
+    getRecordById: getSupabaseCustomerById,
+    fetchData: refreshData
   } = useSupabaseData<SupabaseCustomer>('customers', {
     orderBy: { column: 'company_name', ascending: true }
   });
 
   // Convert Supabase customers to our frontend model
   const customers = React.useMemo(() => {
-    // If we're using localStorage, return the local customers
-    if (useLocalStorage) {
-      return localCustomers;
-    }
-
-    // Otherwise, convert Supabase customers to our model
     return supabaseCustomers.map(supabaseToCustomer);
-  }, [useLocalStorage, localCustomers, supabaseCustomers]);
+  }, [supabaseCustomers]);
 
-  // Save local customers to localStorage whenever they change
-  useEffect(() => {
-    if (useLocalStorage) {
-      try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(localCustomers));
-      } catch (error) {
-        console.error("Error saving customers to localStorage:", error);
-      }
+  const refreshCustomers = async () => {
+    try {
+      await refreshData();
+    } catch (error) {
+      console.error('Error refreshing customers:', error);
     }
-  }, [localCustomers, useLocalStorage]);
-
-  // Check if we should switch to using Supabase
-  useEffect(() => {
-    const checkSupabase = async () => {
-      try {
-        const { count } = await supabase
-          .from('customers')
-          .select('*', { count: 'exact', head: true });
-        
-        // If there are records in Supabase, switch to using it
-        if (count && count > 0) {
-          setUseLocalStorage(false);
-          console.log('Using Supabase for customers data');
-        } else {
-          console.log('Using localStorage for customers data');
-        }
-      } catch (error) {
-        console.error('Error checking Supabase customers:', error);
-      }
-    };
-
-    checkSupabase();
-  }, []);
+  };
 
   const getCustomerById = (id: string) => {
     return customers.find(customer => customer.id === id);
@@ -149,23 +101,15 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const addCustomer = async (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      if (useLocalStorage) {
-        // Add to localStorage
-        const newCustomer: Customer = {
-          ...customerData,
-          id: `customer-${Date.now()}`,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        };
-        
-        setLocalCustomers(prev => [...prev, newCustomer]);
-        return newCustomer;
-      } else {
-        // Add to Supabase
-        const supabaseData = customerToSupabase(customerData);
-        const createdCustomer = await createRecord(supabaseData as any);
-        return createdCustomer ? supabaseToCustomer(createdCustomer) : null;
+      // Add to Supabase
+      const supabaseData = customerToSupabase(customerData);
+      const createdCustomer = await createRecord(supabaseData as any);
+      
+      if (createdCustomer) {
+        await refreshCustomers();
+        return supabaseToCustomer(createdCustomer);
       }
+      return null;
     } catch (error) {
       console.error('Error adding customer:', error);
       toast.error('Erro ao adicionar cliente');
@@ -175,23 +119,15 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const updateCustomer = async (id: string, customerData: Partial<Customer>) => {
     try {
-      if (useLocalStorage) {
-        // Update in localStorage
-        setLocalCustomers(prev => 
-          prev.map(customer => 
-            customer.id === id 
-              ? { ...customer, ...customerData, updatedAt: new Date() } 
-              : customer
-          )
-        );
-        
-        return getCustomerById(id) || null;
-      } else {
-        // Update in Supabase
-        const supabaseData = customerToSupabase(customerData);
-        const updatedCustomer = await updateRecord(id, supabaseData);
-        return updatedCustomer ? supabaseToCustomer(updatedCustomer) : null;
+      // Update in Supabase
+      const supabaseData = customerToSupabase(customerData);
+      const updatedCustomer = await updateRecord(id, supabaseData);
+      
+      if (updatedCustomer) {
+        await refreshCustomers();
+        return supabaseToCustomer(updatedCustomer);
       }
+      return null;
     } catch (error) {
       console.error('Error updating customer:', error);
       toast.error('Erro ao atualizar cliente');
@@ -201,14 +137,12 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const deleteCustomer = async (id: string) => {
     try {
-      if (useLocalStorage) {
-        // Delete from localStorage
-        setLocalCustomers(prev => prev.filter(customer => customer.id !== id));
-        return true;
-      } else {
-        // Delete from Supabase
-        return await deleteRecord(id);
+      // Delete from Supabase
+      const result = await deleteRecord(id);
+      if (result) {
+        await refreshCustomers();
       }
+      return result;
     } catch (error) {
       console.error('Error deleting customer:', error);
       toast.error('Erro ao excluir cliente');
@@ -224,7 +158,8 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       getCustomerById, 
       addCustomer, 
       updateCustomer,
-      deleteCustomer
+      deleteCustomer,
+      refreshCustomers
     }}>
       {children}
     </CustomerContext.Provider>

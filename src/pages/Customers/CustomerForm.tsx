@@ -210,10 +210,10 @@ const CustomerForm = () => {
 
     try {
       if (isEditMode) {
-        updateCustomer(formData.id, formData);
+        await updateCustomer(formData.id, formData);
         toast.success('Cliente atualizado com sucesso');
       } else {
-        addCustomer(formData);
+        await addCustomer(formData);
         toast.success('Cliente cadastrado com sucesso');
       }
       navigate('/customers');
@@ -229,7 +229,7 @@ const CustomerForm = () => {
     setIsSubmitting(true);
 
     try {
-      deleteCustomer(formData.id);
+      await deleteCustomer(formData.id);
       toast.success('Cliente removido com sucesso');
       navigate('/customers');
     } catch (error) {
