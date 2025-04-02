@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product, Category, Subcategory } from '@/types/types';
 import { useCategories } from '@/hooks/use-categories';
@@ -47,8 +46,6 @@ interface ProductContextType {
   deleteSubcategory: (categoryId: string, subcategoryId: string) => Promise<boolean>;
   isLoadingCategories: boolean;
 }
-
-const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
 // Helper functions for localStorage
 const loadProductsFromStorage = (): Product[] => {

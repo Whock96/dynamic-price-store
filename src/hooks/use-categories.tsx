@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -145,9 +146,18 @@ export function useCategories() {
 
   const addSubcategory = async (categoryId: string, subcategoryData: Omit<Subcategory, 'categoryId' | 'id'>) => {
     try {
-      console.log('Adding subcategory to category:', categoryId);
-      console.log('Subcategory data:', subcategoryData);
+      console.log('Adicionando subcategoria à categoria:', categoryId);
+      console.log('Dados da subcategoria:', subcategoryData);
       
+      // Verifica se a categoria existe
+      const categoryExists = categories.some(cat => cat.id === categoryId);
+      if (!categoryExists) {
+        console.error('Categoria não encontrada:', categoryId);
+        toast.error('Categoria não encontrada');
+        return null;
+      }
+
+      // Insere a subcategoria no banco de dados
       const { data, error } = await supabase
         .from('subcategories')
         .insert({
@@ -158,7 +168,7 @@ export function useCategories() {
         .select();
 
       if (error) {
-        console.error('Supabase error:', error);
+        console.error('Erro do Supabase:', error);
         throw error;
       }
 
@@ -170,20 +180,19 @@ export function useCategories() {
           categoryId: data[0].category_id
         };
 
-        console.log('New subcategory created:', newSubcategory);
+        console.log('Nova subcategoria criada:', newSubcategory);
         
+        // Atualiza o estado das categorias adicionando a nova subcategoria
         setCategories(prev => {
-          console.log('Previous categories state:', prev);
-          const updated = prev.map(cat => 
-            cat.id === categoryId
-              ? { 
-                  ...cat, 
-                  subcategories: [...cat.subcategories, newSubcategory]
-                }
-              : cat
-          );
-          console.log('Updated categories state:', updated);
-          return updated;
+          return prev.map(cat => {
+            if (cat.id === categoryId) {
+              return {
+                ...cat,
+                subcategories: [...cat.subcategories, newSubcategory]
+              };
+            }
+            return cat;
+          });
         });
         
         toast.success(`Subcategoria "${subcategoryData.name}" adicionada com sucesso`);
@@ -192,7 +201,7 @@ export function useCategories() {
       return null;
     } catch (err) {
       const error = err as Error;
-      console.error('Error adding subcategory:', error);
+      console.error('Erro ao adicionar subcategoria:', error);
       toast.error(`Erro ao adicionar subcategoria: ${error.message}`);
       return null;
     }

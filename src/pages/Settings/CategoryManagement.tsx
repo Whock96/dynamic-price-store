@@ -127,6 +127,8 @@ const CategoryManagement = () => {
   };
 
   const handleOpenSubcategoryDialog = (mode: 'add' | 'edit', category: Category, subcategory?: Subcategory) => {
+    console.log(`Abrindo diálogo de subcategoria: modo=${mode}, categoria=${category.name}`);
+    
     if (mode === 'edit' && subcategory) {
       setDialogMode('subcategory-edit');
       setSelectedCategory(category);
@@ -200,39 +202,44 @@ const CategoryManagement = () => {
       return;
     }
 
-    console.log("Trying to save subcategory with mode:", dialogMode);
-    console.log("Selected category:", selectedCategory);
+    console.log("Tentando salvar subcategoria com modo:", dialogMode);
+    console.log("Categoria selecionada:", selectedCategory);
 
-    if (dialogMode === 'subcategory-edit') {
-      await updateSubcategory({
-        id: subcategoryFormData.id,
-        name: subcategoryFormData.name,
-        description: subcategoryFormData.description,
-        categoryId: selectedCategory.id
-      });
-    } else {
-      console.log("Adding new subcategory to categoryId:", selectedCategory.id);
-      console.log("Subcategory data:", {
-        name: subcategoryFormData.name,
-        description: subcategoryFormData.description
-      });
-      
-      const newSubcategory = await addSubcategory(
-        selectedCategory.id, 
-        {
+    try {
+      if (dialogMode === 'subcategory-edit' && selectedSubcategory) {
+        await updateSubcategory({
+          id: subcategoryFormData.id,
+          name: subcategoryFormData.name,
+          description: subcategoryFormData.description,
+          categoryId: selectedCategory.id
+        });
+      } else {
+        console.log("Adicionando nova subcategoria ao categoryId:", selectedCategory.id);
+        console.log("Dados da subcategoria:", {
           name: subcategoryFormData.name,
           description: subcategoryFormData.description
+        });
+        
+        const result = await addSubcategory(
+          selectedCategory.id, 
+          {
+            name: subcategoryFormData.name,
+            description: subcategoryFormData.description
+          }
+        );
+        
+        console.log("Resultado de addSubcategory:", result);
+        
+        if (result && !expandedCategories.includes(selectedCategory.id)) {
+          setExpandedCategories(prev => [...prev, selectedCategory.id]);
         }
-      );
-      
-      console.log("Result of addSubcategory:", newSubcategory);
-      
-      if (newSubcategory && !expandedCategories.includes(selectedCategory.id)) {
-        setExpandedCategories(prev => [...prev, selectedCategory.id]);
       }
+      
+      handleCloseDialog();
+    } catch (error) {
+      console.error("Erro ao salvar subcategoria:", error);
+      toast.error(`Erro ao salvar subcategoria: ${(error as Error).message || 'Erro desconhecido'}`);
     }
-    
-    handleCloseDialog();
   };
 
   const handleDeleteCategory = async (categoryId: string) => {
