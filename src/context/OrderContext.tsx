@@ -6,6 +6,7 @@ import { ptBR } from 'date-fns/locale';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 import { supabase, Tables } from '@/integrations/supabase/client';
+import { supabaseOrderToAppOrder } from '@/utils/adapters';
 
 // Define a type that maps database order to our frontend order type
 type SupabaseOrder = Tables<'orders'>;
@@ -47,135 +48,55 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
       if (ordersError) throw ordersError;
       
-      // Process each order to fetch items and applied discounts
-      if (ordersData) {
-        const processedOrders = await Promise.all(ordersData.map(async (order) => {
-          // Fetch order items with product details
-          const { data: itemsData } = await supabase
-            .from('order_items')
-            .select(`
-              *,
-              products(*)
-            `)
-            .eq('order_id', order.id);
-            
-          // Format the order items to match our frontend model
-          const items = itemsData?.map(item => ({
-            id: item.id,
-            productId: item.product_id,
-            product: item.products ? {
-              id: item.products.id,
-              name: item.products.name,
-              description: item.products.description || '',
-              listPrice: item.products.list_price,
-              weight: item.products.weight,
-              quantity: item.products.quantity,
-              quantityPerVolume: item.products.quantity_per_volume,
-              dimensions: {
-                width: item.products.width,
-                height: item.products.height,
-                length: item.products.length,
-              },
-              cubicVolume: item.products.cubic_volume,
-              categoryId: item.products.category_id || '',
-              subcategoryId: item.products.subcategory_id || '',
-              imageUrl: item.products.image_url || '',
-              createdAt: new Date(item.products.created_at),
-              updatedAt: new Date(item.products.updated_at),
-            } : {} as any,
-            quantity: item.quantity,
-            discount: item.discount,
-            finalPrice: item.final_price,
-            subtotal: item.subtotal,
-          })) as CartItem[];
-          
-          // Fetch discount options applied to this order
-          const { data: discountData } = await supabase
-            .from('order_discounts')
-            .select('discount_id')
-            .eq('order_id', order.id);
-            
-          // Fetch full discount details if there are any applied discounts
-          let discounts = [];
-          if (discountData && discountData.length > 0) {
-            const discountIds = discountData.map(d => d.discount_id);
-            const { data: discountDetails } = await supabase
-              .from('discount_options')
-              .select('*')
-              .in('id', discountIds);
-              
-            if (discountDetails) {
-              discounts = discountDetails.map(d => ({
-                id: d.id,
-                name: d.name,
-                description: d.description || '',
-                value: d.value,
-                type: d.type as 'discount' | 'surcharge',
-                isActive: d.is_active,
-              }));
-            }
-          }
-          
-          // Ensure user.role is always one of the allowed values
-          const userRole: 'administrator' | 'salesperson' | 'employee' = 'salesperson';
-          
-          // Map the Supabase order to our frontend Order type
-          return {
-            id: order.id,
-            customerId: order.customer_id,
-            customer: order.customers ? {
-              id: order.customers.id,
-              companyName: order.customers.company_name,
-              document: order.customers.document,
-              salesPersonId: order.customers.sales_person_id,
-              street: order.customers.street,
-              number: order.customers.number || '',
-              noNumber: order.customers.no_number,
-              complement: order.customers.complement || '',
-              city: order.customers.city,
-              state: order.customers.state,
-              zipCode: order.customers.zip_code,
-              phone: order.customers.phone || '',
-              email: order.customers.email || '',
-              defaultDiscount: order.customers.default_discount,
-              maxDiscount: order.customers.max_discount,
-              createdAt: new Date(order.customers.created_at),
-              updatedAt: new Date(order.customers.updated_at),
-            } : {} as any,
-            userId: order.user_id,
-            user: {
-              id: order.user_id,
-              name: 'Usuário do Sistema', // We would fetch this from users table in a real app
-              username: '',
-              role: userRole, // Use the typed role value
-              permissions: [],
-              email: '',
-              createdAt: new Date(),
-            },
-            items: items || [],
-            appliedDiscounts: discounts,
-            totalDiscount: order.total_discount,
-            subtotal: order.subtotal,
-            total: order.total,
-            status: order.status as any,
-            shipping: order.shipping as any,
-            fullInvoice: order.full_invoice,
-            taxSubstitution: order.tax_substitution,
-            paymentMethod: order.payment_method as any,
-            paymentTerms: order.payment_terms || '',
-            notes: order.notes || '',
-            observations: order.observations || '',
-            createdAt: new Date(order.created_at),
-            updatedAt: new Date(order.updated_at),
-            deliveryLocation: order.delivery_location as 'capital' | 'interior' | null,
-            halfInvoicePercentage: order.half_invoice_percentage,
-            deliveryFee: order.delivery_fee || 0,
-          };
-        }));
-        
-        setOrders(processedOrders);
-        console.log(`Loaded ${processedOrders.length} orders from Supabase`);
+      if (!ordersData) {
+        setOrders([]);
+        return;
       }
+      
+      // Process each order to fetch items and applied discounts
+      const processedOrders = await Promise.all(ordersData.map(async (order) => {
+        // Fetch order items with product details
+        const { data: itemsData } = await supabase
+          .from('order_items')
+          .select(`
+            *,
+            products(*)
+          `)
+          .eq('order_id', order.id);
+          
+        // Fetch discount options applied to this order
+        const { data: discountData } = await supabase
+          .from('order_discounts')
+          .select('discount_id')
+          .eq('order_id', order.id);
+          
+        // Fetch full discount details if there are any applied discounts
+        let discounts = [];
+        if (discountData && discountData.length > 0) {
+          const discountIds = discountData.map(d => d.discount_id);
+          const { data: discountDetails } = await supabase
+            .from('discount_options')
+            .select('*')
+            .in('id', discountIds);
+            
+          if (discountDetails) {
+            discounts = discountDetails.map(d => ({
+              id: d.id,
+              name: d.name,
+              description: d.description || '',
+              value: d.value,
+              type: d.type as 'discount' | 'surcharge',
+              isActive: d.is_active,
+            }));
+          }
+        }
+        
+        // Use adapter to convert Supabase order to app Order
+        return supabaseOrderToAppOrder(order, itemsData || [], discounts);
+      }));
+      
+      setOrders(processedOrders);
+      console.log(`Loaded ${processedOrders.length} orders from Supabase`);
     } catch (error) {
       console.error('Error loading orders from Supabase:', error);
       toast.error('Erro ao carregar pedidos');
@@ -243,7 +164,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           delivery_fee: newOrder.deliveryFee || 0,
           subtotal: newOrder.subtotal || 0,
           total_discount: newOrder.totalDiscount || 0,
-          total: newOrder.total || 0
+          total: newOrder.total || 0,
+          with_ipi: newOrder.withIPI || false,
+          ipi_value: newOrder.ipiValue || 0
         })
         .select()
         .single();
@@ -315,8 +238,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         )
       );
       
-      // Get the order number for the toast message from the state
-      const orderNumber = orders.find(order => order.id === orderId)?.id.split('-')[1] || '';
       toast.success(`Status do pedido atualizado para ${status}`);
     } catch (error) {
       console.error('Error updating order status:', error);
@@ -339,6 +260,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         delivery_location: orderData.deliveryLocation,
         half_invoice_percentage: orderData.halfInvoicePercentage,
         delivery_fee: orderData.deliveryFee,
+        with_ipi: orderData.withIPI,
+        ipi_value: orderData.ipiValue,
         updated_at: new Date().toISOString()
       };
       
@@ -376,7 +299,16 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const getOrderById = (id: string) => {
-    return orders.find(order => order.id === id);
+    console.log(`Fetching order with ID: ${id}`);
+    const foundOrder = orders.find(order => order.id === id);
+    console.log(`Fetched order:`, foundOrder);
+    
+    if (!foundOrder) {
+      console.error(`Order with ID ${id} not found`);
+      return undefined;
+    }
+    
+    return foundOrder;
   };
 
   return (

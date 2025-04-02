@@ -25,14 +25,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
-import { formatCurrency } from '@/utils/formatters';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 import { Order } from '@/types/types';
 import { useNavigate } from 'react-router-dom';
 import { supabase, Tables } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { Skeleton } from "@/components/ui/skeleton";
+import { supabaseOrderToAppOrder } from '@/utils/adapters';
 
 // Define custom type that includes joined tables
 interface OrderWithCustomer extends Tables<'orders'> {
@@ -68,6 +67,7 @@ const OrderList = () => {
       }
 
       if (data) {
+        console.log("Fetched orders:", data);
         setOrders(data as OrderWithCustomer[]);
         setFilteredOrders(data as OrderWithCustomer[]);
       }
@@ -123,10 +123,6 @@ const OrderList = () => {
     setIsAlertOpen(true);
   };
 
-  const formatDate = (dateString: string) => {
-    return format(new Date(dateString), 'dd/MM/yyyy', {locale: ptBR});
-  };
-
   return (
     <>
       <div className="flex flex-col space-y-6">
@@ -180,7 +176,7 @@ const OrderList = () => {
                         <TableRow key={order.id}>
                           <TableCell className="font-medium">#{order.order_number}</TableCell>
                           <TableCell>{order.customers?.company_name || "Cliente desconhecido"}</TableCell>
-                          <TableCell>{formatDate(order.created_at)}</TableCell>
+                          <TableCell>{formatDate(new Date(order.created_at))}</TableCell>
                           <TableCell>{formatCurrency(order.total)}</TableCell>
                           <TableCell>
                             <OrderStatusBadge status={order.status as any} />

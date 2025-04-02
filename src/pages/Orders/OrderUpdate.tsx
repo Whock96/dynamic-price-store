@@ -9,9 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Save } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
-import { formatCurrency } from '@/utils/formatters';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const OrderUpdate = () => {
@@ -26,6 +25,7 @@ const OrderUpdate = () => {
     if (!isLoading && id) {
       const foundOrder = getOrderById(id);
       if (foundOrder) {
+        console.log("Found order for editing:", foundOrder);
         setOrder(foundOrder);
         setStatus(foundOrder.status || 'pending');
         setNotes(foundOrder.notes || '');
@@ -53,10 +53,6 @@ const OrderUpdate = () => {
 
     toast.success('Pedido atualizado com sucesso');
     navigate(`/orders/${id}`);
-  };
-
-  const formatDate = (date: Date) => {
-    return format(date, 'dd/MM/yyyy');
   };
 
   if (isLoading) {
@@ -88,7 +84,7 @@ const OrderUpdate = () => {
           <Button variant="outline" size="icon" onClick={() => navigate('/orders')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-3xl font-bold">Editar Pedido #{order.id.split('-')[1]}</h1>
+          <h1 className="text-3xl font-bold">Editar Pedido #{order.id.split('-')[0]}</h1>
         </div>
         <div className="flex items-center gap-2">
           <Link to={`/orders/${id}`}>
@@ -163,7 +159,7 @@ const OrderUpdate = () => {
                   <h4 className="font-medium">Itens</h4>
                 </div>
                 <div className="p-4 space-y-3">
-                  {order.items.map((item: any) => (
+                  {order.items && order.items.map((item: any) => (
                     <div key={item.id} className="flex justify-between">
                       <div>
                         <div className="font-medium">{item.product.name}</div>
