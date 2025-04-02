@@ -26,7 +26,18 @@ const DiscountManagement = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { settings, isLoading, saveSettings } = useDiscountSettings();
-  const [formData, setFormData] = useState(settings);
+  // Initialize with default empty structure matching the settings shape
+  const [formData, setFormData] = useState({
+    pickup: 0,
+    cashPayment: 0,
+    halfInvoice: 0,
+    taxSubstitution: 0,
+    ipiRate: 0,
+    deliveryFees: {
+      capital: 0,
+      interior: 0
+    }
+  });
 
   // Verify if user is administrator
   useEffect(() => {
@@ -38,7 +49,7 @@ const DiscountManagement = () => {
 
   // Update formData when settings are loaded
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && settings) {
       setFormData(settings);
     }
   }, [settings, isLoading]);
