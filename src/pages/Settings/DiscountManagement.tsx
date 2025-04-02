@@ -2,16 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Percent, Plus, Edit, Trash2, ArrowLeft, Save,
-  DollarSign, CreditCard
+  Percent, ArrowLeft, Save, RotateCcw,
+  DollarSign, Truck, ShoppingBasket, CreditCard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -20,90 +17,17 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
-import { DiscountOption } from '@/types/types';
-
-// Mock data para opções de desconto, agora usando os valores solicitados
-const INITIAL_DISCOUNTS: DiscountOption[] = [
-  {
-    id: '1',
-    name: 'Retirada',
-    description: 'Desconto para retirada na loja',
-    value: 1,
-    type: 'discount',
-    isActive: true,
-  },
-  {
-    id: '2',
-    name: 'Meia nota',
-    description: 'Desconto para meia nota fiscal',
-    value: 3,
-    type: 'discount',
-    isActive: true,
-  },
-  {
-    id: '3',
-    name: 'Substituição tributária',
-    description: 'Acréscimo para substituição tributária',
-    value: 7.8,
-    type: 'surcharge',
-    isActive: true,
-  },
-  {
-    id: '4',
-    name: 'A Vista',
-    description: 'Desconto para pagamento à vista',
-    value: 1,
-    type: 'discount',
-    isActive: true,
-  },
-];
+import { useDiscountSettings } from '@/hooks/use-discount-settings';
 
 const DiscountManagement = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [discounts, setDiscounts] = useState<DiscountOption[]>(INITIAL_DISCOUNTS);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [selectedDiscount, setSelectedDiscount] = useState<DiscountOption | null>(null);
-  const [formData, setFormData] = useState({
-    id: '',
-    name: '',
-    description: '',
-    value: 0,
-    type: 'discount',
-    isActive: true,
-  });
+  const { settings, isLoading, saveSettings, resetSettings } = useDiscountSettings();
+  const [formData, setFormData] = useState(settings);
 
-  // Verificar se o usuário é administrador
+  // Verify if user is administrator
   useEffect(() => {
     if (user?.role !== 'administrator') {
       toast.error('Você não tem permissão para acessar esta página');
@@ -111,113 +35,47 @@ const DiscountManagement = () => {
     }
   }, [user, navigate]);
 
-  const handleOpenDialog = (discount?: DiscountOption) => {
-    if (discount) {
-      setIsEditMode(true);
-      setSelectedDiscount(discount);
-      setFormData({
-        id: discount.id,
-        name: discount.name,
-        description: discount.description,
-        value: discount.value,
-        type: discount.type,
-        isActive: discount.isActive,
-      });
-    } else {
-      setIsEditMode(false);
-      setSelectedDiscount(null);
-      setFormData({
-        id: `discount-${Date.now()}`,
-        name: '',
-        description: '',
-        value: 0,
-        type: 'discount',
-        isActive: true,
-      });
+  // Update formData when settings are loaded
+  useEffect(() => {
+    if (!isLoading) {
+      setFormData(settings);
     }
-    
-    setIsDialogOpen(true);
-  };
+  }, [settings, isLoading]);
 
-  const handleCloseDialog = () => {
-    setIsDialogOpen(false);
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'value' ? parseFloat(value) || 0 : value
-    }));
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSwitchChange = (name: string, checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      [name]: checked
-    }));
-  };
-
-  const handleToggleActive = (discountId: string) => {
-    setDiscounts(prev => prev.map(discount => 
-      discount.id === discountId 
-        ? { ...discount, isActive: !discount.isActive } 
-        : discount
-    ));
     
-    const discount = discounts.find(d => d.id === discountId);
-    if (discount) {
-      const action = discount.isActive ? 'desativado' : 'ativado';
-      toast.success(`Desconto "${discount.name}" ${action} com sucesso`);
-    }
-  };
-
-  const handleSaveDiscount = () => {
-    // Validação básica
-    if (!formData.name || formData.value <= 0) {
-      toast.error('Preencha todos os campos obrigatórios');
-      return;
-    }
-
-    if (isEditMode) {
-      // Atualizar desconto existente
-      setDiscounts(prev => prev.map(discount => discount.id === formData.id ? {
-        ...discount,
-        name: formData.name,
-        description: formData.description,
-        value: formData.value,
-        type: formData.type as 'discount' | 'surcharge',
-        isActive: formData.isActive,
-      } : discount));
-      toast.success(`Desconto "${formData.name}" atualizado com sucesso`);
+    // Handle nested properties for delivery fees
+    if (name.includes('.')) {
+      const [parent, child] = name.split('.');
+      setFormData(prev => ({
+        ...prev,
+        [parent]: {
+          ...prev[parent as keyof typeof prev],
+          [child]: parseFloat(value) || 0
+        }
+      }));
     } else {
-      // Adicionar novo desconto
-      const newDiscount: DiscountOption = {
-        id: formData.id,
-        name: formData.name,
-        description: formData.description,
-        value: formData.value,
-        type: formData.type as 'discount' | 'surcharge',
-        isActive: formData.isActive,
-      };
-      
-      setDiscounts(prev => [...prev, newDiscount]);
-      toast.success(`Desconto "${formData.name}" adicionado com sucesso`);
+      setFormData(prev => ({
+        ...prev,
+        [name]: parseFloat(value) || 0
+      }));
     }
-    
-    handleCloseDialog();
   };
 
-  const handleDeleteDiscount = (discountId: string) => {
-    setDiscounts(prev => prev.filter(discount => discount.id !== discountId));
-    toast.success('Desconto removido com sucesso');
+  const handleSaveSettings = () => {
+    const success = saveSettings(formData);
+    if (success) {
+      toast.success('Configurações de descontos salvas com sucesso');
+    }
+  };
+
+  const handleResetSettings = () => {
+    const confirmed = window.confirm('Deseja restaurar as configurações padrão?');
+    if (confirmed) {
+      resetSettings();
+      toast.info('Configurações restauradas para os valores padrão');
+    }
   };
 
   return (
@@ -235,239 +93,259 @@ const DiscountManagement = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Gerenciar Descontos</h1>
             <p className="text-muted-foreground">
-              Configure as opções de desconto disponíveis no carrinho
+              Configure os valores de descontos e taxas aplicados no carrinho
             </p>
           </div>
         </div>
-        <Button 
-          className="bg-ferplas-500 hover:bg-ferplas-600 button-transition"
-          onClick={() => handleOpenDialog()}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Desconto
-        </Button>
+        <div className="flex space-x-2">
+          <Button 
+            variant="outline"
+            onClick={handleResetSettings}
+            className="button-transition"
+          >
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Redefinir
+          </Button>
+          <Button 
+            className="bg-ferplas-500 hover:bg-ferplas-600 button-transition"
+            onClick={handleSaveSettings}
+          >
+            <Save className="mr-2 h-4 w-4" />
+            Salvar Alterações
+          </Button>
+        </div>
       </header>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-medium">Opções de Desconto Disponíveis</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {discounts.map(discount => (
-                <TableRow key={discount.id}>
-                  <TableCell className="font-medium">{discount.name}</TableCell>
-                  <TableCell>{discount.description}</TableCell>
-                  <TableCell>{discount.value}%</TableCell>
-                  <TableCell>
-                    {discount.type === 'discount' ? (
-                      <Badge className="bg-green-100 text-green-800 border-green-200">Desconto</Badge>
-                    ) : (
-                      <Badge className="bg-amber-100 text-amber-800 border-amber-200">Acréscimo</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Switch
-                      checked={discount.isActive}
-                      onCheckedChange={() => handleToggleActive(discount.id)}
-                    />
-                  </TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="h-8 px-2 text-amber-600"
-                      onClick={() => handleOpenDialog(discount)}
-                    >
-                      <Edit className="h-4 w-4 mr-1" />
-                      Editar
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="h-8 px-2 text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Excluir
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Remover desconto?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esta ação irá remover permanentemente o desconto "{discount.name}" do sistema. 
-                            Esta ação não pode ser desfeita.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction 
-                            className="bg-red-600 hover:bg-red-700"
-                            onClick={() => handleDeleteDiscount(discount.id)}
-                          >
-                            Remover
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          
-          {discounts.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Percent className="h-12 w-12 text-gray-300 mb-4" />
-              <h2 className="text-xl font-medium text-gray-600">Nenhum desconto encontrado</h2>
-              <p className="text-gray-500 mt-1">Adicione uma nova opção de desconto para começar.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {isLoading ? (
+        <div className="flex justify-center items-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-ferplas-500"></div>
+        </div>
+      ) : (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-medium">Opções de Desconto</CardTitle>
+              <CardDescription>
+                Configure os percentuais aplicados para cada tipo de desconto
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[300px]">Opção</TableHead>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead className="text-right w-[200px]">Valor (%)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center">
+                        <ShoppingBasket className="mr-2 h-4 w-4 text-amber-500" />
+                        Retirada
+                      </div>
+                    </TableCell>
+                    <TableCell>Desconto para retirada na loja</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end space-x-2">
+                        <Input
+                          type="number"
+                          name="pickup"
+                          className="w-24 text-right"
+                          value={formData.pickup}
+                          onChange={handleInputChange}
+                          min="0"
+                          step="0.1"
+                        />
+                        <span className="font-medium">%</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center">
+                        <CreditCard className="mr-2 h-4 w-4 text-green-500" />
+                        À Vista
+                      </div>
+                    </TableCell>
+                    <TableCell>Desconto para pagamento à vista</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end space-x-2">
+                        <Input
+                          type="number"
+                          name="cashPayment"
+                          className="w-24 text-right"
+                          value={formData.cashPayment}
+                          onChange={handleInputChange}
+                          min="0"
+                          step="0.1"
+                        />
+                        <span className="font-medium">%</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center">
+                        <Percent className="mr-2 h-4 w-4 text-blue-500" />
+                        Meia Nota
+                      </div>
+                    </TableCell>
+                    <TableCell>Desconto para meia nota fiscal</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end space-x-2">
+                        <Input
+                          type="number"
+                          name="halfInvoice"
+                          className="w-24 text-right"
+                          value={formData.halfInvoice}
+                          onChange={handleInputChange}
+                          min="0"
+                          step="0.1"
+                        />
+                        <span className="font-medium">%</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center">
+                        <DollarSign className="mr-2 h-4 w-4 text-red-500" />
+                        Substituição Tributária
+                      </div>
+                    </TableCell>
+                    <TableCell>Acréscimo para substituição tributária</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end space-x-2">
+                        <Input
+                          type="number"
+                          name="taxSubstitution"
+                          className="w-24 text-right"
+                          value={formData.taxSubstitution}
+                          onChange={handleInputChange}
+                          min="0"
+                          step="0.1"
+                        />
+                        <span className="font-medium">%</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-medium">Instruções</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p>
-            As opções de desconto configuradas aqui estarão disponíveis para seleção no carrinho durante o processo de pedido.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-green-50 p-4 rounded-md border border-green-100">
-              <div className="flex items-center mb-2">
-                <Percent className="h-5 w-5 text-green-600 mr-2" />
-                <h3 className="font-medium text-green-800">Descontos</h3>
-              </div>
-              <p className="text-sm text-green-700">
-                Reduzem o valor final do pedido. São exibidos com um sinal de menos (-) no carrinho.
-              </p>
-            </div>
-            <div className="bg-amber-50 p-4 rounded-md border border-amber-100">
-              <div className="flex items-center mb-2">
-                <CreditCard className="h-5 w-5 text-amber-600 mr-2" />
-                <h3 className="font-medium text-amber-800">Acréscimos</h3>
-              </div>
-              <p className="text-sm text-amber-700">
-                Aumentam o valor final do pedido. São exibidos com um sinal de mais (+) no carrinho.
-              </p>
-            </div>
-          </div>
-          <div className="bg-blue-50 p-4 rounded-md border border-blue-100">
-            <div className="flex items-center mb-2">
-              <DollarSign className="h-5 w-5 text-blue-600 mr-2" />
-              <h3 className="font-medium text-blue-800">Cálculo</h3>
-            </div>
-            <p className="text-sm text-blue-700">
-              Os descontos e acréscimos são calculados cumulativamente sobre o preço unitário dos produtos, 
-              junto com o desconto padrão do cliente e os descontos individuais de cada item.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center">
+                        <Percent className="mr-2 h-4 w-4 text-purple-500" />
+                        IPI
+                      </div>
+                    </TableCell>
+                    <TableCell>Taxa de IPI aplicada quando selecionado</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end space-x-2">
+                        <Input
+                          type="number"
+                          name="ipiRate"
+                          className="w-24 text-right"
+                          value={formData.ipiRate}
+                          onChange={handleInputChange}
+                          min="0"
+                          step="0.1"
+                        />
+                        <span className="font-medium">%</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
 
-      {/* Dialog para adicionar/editar desconto */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{isEditMode ? 'Editar Opção' : 'Nova Opção'}</DialogTitle>
-            <DialogDescription>
-              {isEditMode 
-                ? 'Atualize os detalhes da opção de desconto ou acréscimo.' 
-                : 'Configure uma nova opção de desconto ou acréscimo.'}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="name">Nome*</Label>
-              <Input
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                placeholder="Ex: Pagamento à Vista"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="description">Descrição</Label>
-              <Textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                placeholder="Ex: Desconto para pagamentos à vista"
-                rows={2}
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="value">Valor (%)*</Label>
-                <Input
-                  id="value"
-                  name="value"
-                  type="number"
-                  min="0.1"
-                  step="0.1"
-                  value={formData.value}
-                  onChange={handleInputChange}
-                />
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-medium">Taxas de Entrega</CardTitle>
+              <CardDescription>
+                Configure os valores das taxas de entrega para cada região
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Truck className="h-5 w-5 text-blue-500" />
+                    <h3 className="font-medium text-lg">Capital</h3>
+                  </div>
+                  <div>
+                    <Label htmlFor="capitalFee">Valor da entrega na capital</Label>
+                    <div className="flex items-center mt-2">
+                      <span className="bg-gray-100 p-2 border border-r-0 rounded-l-md">R$</span>
+                      <Input
+                        id="capitalFee"
+                        type="number"
+                        name="deliveryFees.capital"
+                        value={formData.deliveryFees.capital}
+                        onChange={handleInputChange}
+                        className="rounded-l-none"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Truck className="h-5 w-5 text-green-500" />
+                    <h3 className="font-medium text-lg">Interior</h3>
+                  </div>
+                  <div>
+                    <Label htmlFor="interiorFee">Valor da entrega para o interior</Label>
+                    <div className="flex items-center mt-2">
+                      <span className="bg-gray-100 p-2 border border-r-0 rounded-l-md">R$</span>
+                      <Input
+                        id="interiorFee"
+                        type="number"
+                        name="deliveryFees.interior"
+                        value={formData.deliveryFees.interior}
+                        onChange={handleInputChange}
+                        className="rounded-l-none"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-medium">Instruções</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p>
+                As configurações desta página afetam diretamente os cálculos de preço no carrinho de compras. 
+                Após alterar qualquer valor, certifique-se de clicar em "Salvar Alterações".
+              </p>
               
-              <div>
-                <Label htmlFor="type">Tipo*</Label>
-                <Select 
-                  value={formData.type} 
-                  onValueChange={(value) => handleSelectChange('type', value)}
-                >
-                  <SelectTrigger id="type">
-                    <SelectValue placeholder="Selecione um tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="discount">Desconto</SelectItem>
-                    <SelectItem value="surcharge">Acréscimo</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="bg-blue-50 p-4 rounded-md border border-blue-100">
+                <div className="flex items-center mb-2">
+                  <DollarSign className="h-5 w-5 text-blue-600 mr-2" />
+                  <h3 className="font-medium text-blue-800">Cálculos aplicados</h3>
+                </div>
+                <ul className="text-sm text-blue-700 space-y-1 list-disc pl-5">
+                  <li>Os percentuais de desconto (retirada, à vista e meia nota) são subtraídos do preço unitário do produto</li>
+                  <li>A substituição tributária é um acréscimo que é somado após a aplicação dos descontos</li>
+                  <li>O valor das taxas de entrega é somado ao valor total do pedido</li>
+                </ul>
               </div>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <Label htmlFor="isActive">Ativo</Label>
-              <Switch
-                id="isActive"
-                checked={formData.isActive}
-                onCheckedChange={(checked) => handleSwitchChange('isActive', checked)}
-              />
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={handleCloseDialog}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSaveDiscount} className="bg-ferplas-500 hover:bg-ferplas-600">
-              <Save className="mr-2 h-4 w-4" />
-              {isEditMode ? 'Salvar Alterações' : 'Adicionar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 };

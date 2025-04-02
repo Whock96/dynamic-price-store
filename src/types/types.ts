@@ -90,6 +90,11 @@ export interface DiscountOption {
   isActive: boolean;
 }
 
+export interface DeliveryFees {
+  capital: number;
+  interior: number;
+}
+
 export interface Order {
   id: string;
   orderNumber?: number; // Add orderNumber as optional property

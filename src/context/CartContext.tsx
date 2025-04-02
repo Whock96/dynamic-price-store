@@ -1,9 +1,9 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
 import { useOrders } from './OrderContext';
 import { useCustomers } from './CustomerContext';
+import { useDiscountSettings } from '../hooks/use-discount-settings';
 
 interface CartContextType {
   items: CartItem[];
@@ -12,7 +12,7 @@ interface CartContextType {
   selectedDiscountOptions: string[];
   deliveryLocation: 'capital' | 'interior' | null;
   halfInvoicePercentage: number;
-  halfInvoiceType: 'quantity' | 'price'; // Add the new property
+  halfInvoiceType: 'quantity' | 'price';
   observations: string;
   paymentTerms: string;
   totalItems: number;
@@ -30,7 +30,7 @@ interface CartContextType {
   toggleDiscountOption: (id: string) => void;
   setDeliveryLocation: (location: 'capital' | 'interior' | null) => void;
   setHalfInvoicePercentage: (percentage: number) => void;
-  setHalfInvoiceType: (type: 'quantity' | 'price') => void; // Add the new function
+  setHalfInvoiceType: (type: 'quantity' | 'price') => void;
   setObservations: (text: string) => void;
   setPaymentTerms: (terms: string) => void;
   clearCart: () => void;
@@ -43,53 +43,55 @@ interface CartContextType {
   calculateItemTaxSubstitutionValue: (item: CartItem) => number;
 }
 
-const MOCK_DISCOUNT_OPTIONS: DiscountOption[] = [
-  {
-    id: '1',
-    name: 'Retirada',
-    description: 'Desconto para retirada na loja',
-    value: 1,
-    type: 'discount',
-    isActive: true,
-  },
-  {
-    id: '2',
-    name: 'Meia nota',
-    description: 'Desconto para meia nota fiscal',
-    value: 3,
-    type: 'discount',
-    isActive: true,
-  },
-  {
-    id: '3',
-    name: 'Substituição tributária',
-    description: 'Acréscimo para substituição tributária',
-    value: 7.8,
-    type: 'surcharge',
-    isActive: true,
-  },
-  {
-    id: '4',
-    name: 'A Vista',
-    description: 'Desconto para pagamento à vista',
-    value: 1,
-    type: 'discount',
-    isActive: true,
-  }
-];
-
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { addOrder } = useOrders();
   const { customers } = useCustomers();
+  const { settings } = useDiscountSettings();
+  
   const [items, setItems] = useState<CartItem[]>([]);
   const [customer, setCustomer] = useState<Customer | null>(null);
-  const [discountOptions] = useState<DiscountOption[]>(MOCK_DISCOUNT_OPTIONS);
+
+  const discountOptions: DiscountOption[] = [
+    {
+      id: '1',
+      name: 'Retirada',
+      description: 'Desconto para retirada na loja',
+      value: settings.pickup,
+      type: 'discount',
+      isActive: true,
+    },
+    {
+      id: '2',
+      name: 'Meia nota',
+      description: 'Desconto para meia nota fiscal',
+      value: settings.halfInvoice,
+      type: 'discount',
+      isActive: true,
+    },
+    {
+      id: '3',
+      name: 'Substituição tributária',
+      description: 'Acréscimo para substituição tributária',
+      value: settings.taxSubstitution,
+      type: 'surcharge',
+      isActive: true,
+    },
+    {
+      id: '4',
+      name: 'A Vista',
+      description: 'Desconto para pagamento à vista',
+      value: settings.cashPayment,
+      type: 'discount',
+      isActive: true,
+    }
+  ];
+  
   const [selectedDiscountOptions, setSelectedDiscountOptions] = useState<string[]>([]);
   const [deliveryLocation, setDeliveryLocation] = useState<'capital' | 'interior' | null>(null);
   const [halfInvoicePercentage, setHalfInvoicePercentage] = useState<number>(50);
-  const [halfInvoiceType, setHalfInvoiceType] = useState<'quantity' | 'price'>('quantity'); // Add the new state
+  const [halfInvoiceType, setHalfInvoiceType] = useState<'quantity' | 'price'>('quantity');
   const [observations, setObservations] = useState<string>('');
   const [paymentTerms, setPaymentTerms] = useState<string>('');
   const [applyDiscounts, setApplyDiscounts] = useState<boolean>(true);
@@ -105,7 +107,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return total + (item.product.listPrice * item.quantity);
   }, 0);
 
-  // Retorna apenas os descontos (sem substituição tributária)
   const getNetDiscountPercentage = () => {
     if (!applyDiscounts) return 0;
     
@@ -115,7 +116,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const option = discountOptions.find(opt => opt.id === id);
       if (!option) return;
 
-      // Pular substituição tributária (id 3)
       if (option.id === '3') return;
       
       if (option.type === 'discount') {
@@ -126,7 +126,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return discountPercentage;
   };
 
-  // Retorna a taxa de substituição tributária (ajustada para meia nota se aplicável)
   const getTaxSubstitutionRate = () => {
     if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
     
@@ -140,9 +139,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return taxOption.value;
   };
 
-  const deliveryFee = deliveryLocation === 'capital' ? 25 : deliveryLocation === 'interior' ? 50 : 0;
+  const deliveryFee = deliveryLocation === 'capital' 
+    ? settings.deliveryFees.capital 
+    : deliveryLocation === 'interior' 
+      ? settings.deliveryFees.interior 
+      : 0;
 
-  // Calcula valor total de substituição tributária para o carrinho
   const calculateTaxSubstitutionValue = () => {
     if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
     
@@ -151,7 +153,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, 0);
   };
 
-  // Calcula valor de substituição tributária por item
   const calculateItemTaxSubstitutionValue = (item: CartItem) => {
     if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
     
@@ -165,26 +166,23 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       taxRate = standardRate * (halfInvoicePercentage / 100);
     }
     
-    // Aplicar substituição tributária sobre o preço final (após descontos)
     return item.finalPrice * taxRate * item.quantity;
   };
 
   const calculateIPIValue = () => {
     if (!withIPI || !applyDiscounts) return 0;
     
-    const standardRate = 10 / 100;
+    const standardRate = settings.ipiRate / 100;
     
     if (isDiscountOptionSelected('2')) {
       const adjustedRate = standardRate * (halfInvoicePercentage / 100);
       
-      // Aplicar IPI sobre o preço final (após descontos) e multiplicado pela quantidade
       const discountedSubtotal = items.reduce((total, item) => 
         total + (item.finalPrice * item.quantity), 0);
         
       return adjustedRate * discountedSubtotal;
     }
     
-    // Aplicar IPI sobre o preço final (após descontos) e multiplicado pela quantidade
     const discountedSubtotal = items.reduce((total, item) => 
       total + (item.finalPrice * item.quantity), 0);
       
@@ -195,19 +193,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const discountPercentage = getNetDiscountPercentage();
     
     const updatedItems = items.map(item => {
-      // Cálculo do preço final: preço unitário - descontos (individuais + globais)
       let itemDiscount = item.discount || 0;
       let netDiscount = applyDiscounts ? itemDiscount + discountPercentage : itemDiscount;
       
-      // Preço final é o preço unitário menos os descontos aplicados
-      // Não inclui substituição tributária
       let finalPrice = item.product.listPrice * (1 - (netDiscount / 100));
       
-      // Calcula valor da substituição tributária para este item específico
       const taxRate = getTaxSubstitutionRate() / 100;
       const taxValue = finalPrice * taxRate;
       
-      // Subtotal: (preço final + substituição tributária) * quantidade
       const subtotal = (finalPrice + (applyDiscounts ? taxValue : 0)) * item.quantity;
       
       return {
@@ -228,10 +221,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (customer) {
       setItems(prevItems => 
         prevItems.map(item => {
-          // Aplicar desconto do cliente ao preço final
           const finalPrice = item.product.listPrice * (1 - customer.defaultDiscount / 100);
           
-          // Calcular subtotal com nova lógica
           const taxRate = getTaxSubstitutionRate() / 100;
           const taxValue = finalPrice * taxRate;
           const subtotal = (finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * item.quantity;
@@ -249,7 +240,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         prevItems.map(item => {
           const finalPrice = item.product.listPrice;
           
-          // Calcular subtotal com nova lógica
           const taxRate = getTaxSubstitutionRate() / 100;
           const taxValue = finalPrice * taxRate;
           const subtotal = (finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * item.quantity;
@@ -265,9 +255,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [customer]);
 
+  useEffect(() => {
+    recalculateCart();
+  }, [settings]);
+
   const totalDiscount = items.reduce((total, item) => {
     const fullPrice = item.product.listPrice * item.quantity;
-    // Calculando apenas o desconto sem considerar acréscimos de substituição tributária
     const discountValue = fullPrice - (item.finalPrice * item.quantity);
     return total + discountValue;
   }, 0);
@@ -275,7 +268,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const taxSubstitutionValue = calculateTaxSubstitutionValue();
   const ipiValue = calculateIPIValue();
   
-  // Total agora considera os preços finais + substituição tributária + IPI + frete
   const total = items.reduce((total, item) => total + item.subtotal, 0) + deliveryFee + ipiValue;
 
   const toggleApplyDiscounts = () => {
@@ -301,7 +293,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const existingItem = newItems[existingItemIndex];
       const newQuantity = existingItem.quantity + quantity;
       
-      // Recalcular subtotal com a nova lógica
       const taxRate = getTaxSubstitutionRate() / 100;
       const taxValue = existingItem.finalPrice * taxRate;
       const subtotal = (existingItem.finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * newQuantity;
@@ -320,14 +311,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const discountPercentage = getNetDiscountPercentage();
       const combinedDiscount = initialDiscount + discountPercentage;
       
-      // Preço final só considera descontos, não a substituição tributária
       const finalPrice = listPrice * (1 - combinedDiscount / 100);
       
-      // Calcular valor da substituição tributária
       const taxRate = getTaxSubstitutionRate() / 100;
       const taxValue = finalPrice * taxRate;
       
-      // Subtotal: (preço final + substituição tributária) * quantidade
       const subtotal = (finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * quantity;
       
       console.log("Valores calculados:", {
@@ -369,7 +357,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     setItems(prevItems => prevItems.map(item => {
       if (item.id === id) {
-        // Recalcular subtotal com a nova lógica
         const taxRate = getTaxSubstitutionRate() / 100;
         const taxValue = item.finalPrice * taxRate;
         const subtotal = (item.finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * quantity;
@@ -400,14 +387,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (item.id === id) {
         const combinedDiscount = appliedDiscount + discountPercentage;
         
-        // Preço final só considera descontos, não a substituição tributária
         const finalPrice = item.product.listPrice * (1 - combinedDiscount / 100);
         
-        // Calcular valor da substituição tributária
         const taxRate = getTaxSubstitutionRate() / 100;
         const taxValue = finalPrice * taxRate;
         
-        // Subtotal: (preço final + substituição tributária) * quantidade
         const subtotal = (finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * item.quantity;
         
         return {
@@ -429,7 +413,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         if (id === '2') {
           setHalfInvoicePercentage(50);
-          setHalfInvoiceType('quantity'); // Reset to default when deselecting
+          setHalfInvoiceType('quantity');
         }
         if (id === '4') {
           setPaymentTerms('');
@@ -479,7 +463,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deliveryLocation,
         deliveryFee,
         halfInvoicePercentage: isDiscountOptionSelected('2') ? halfInvoicePercentage : undefined,
-        halfInvoiceType: isDiscountOptionSelected('2') ? halfInvoiceType : undefined, // Add the new property
+        halfInvoiceType: isDiscountOptionSelected('2') ? halfInvoiceType : undefined,
         observations,
         subtotal,
         totalDiscount,
@@ -514,7 +498,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Return the context provider with the updated properties and functions
   return (
     <CartContext.Provider value={{
       items,
