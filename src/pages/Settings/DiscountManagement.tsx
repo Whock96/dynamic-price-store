@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,7 @@ const DiscountManagement = () => {
         interiorDeliveryFee: settings.deliveryFees.interior,
         ipiRate: settings.ipiRate,
       });
+      console.log('Loaded settings:', settings);
     }
   }, [settings]);
 
@@ -57,16 +59,25 @@ const DiscountManagement = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
+    
     try {
-      const success1 = await updateSetting('pickup', formData.pickup);
-      const success2 = await updateSetting('cashPayment', formData.cashPayment);
-      const success3 = await updateSetting('halfInvoice', formData.halfInvoice);
-      const success4 = await updateSetting('taxSubstitution', formData.taxSubstitution);
-      const success5 = await updateDeliveryFee('capital', formData.capitalDeliveryFee);
-      const success6 = await updateDeliveryFee('interior', formData.interiorDeliveryFee);
-      const success7 = await updateSetting('ipiRate', formData.ipiRate);
-
-      if (success1 && success2 && success3 && success4 && success5 && success6 && success7) {
+      // Instead of making individual updates, build the complete settings object
+      const updatedSettings = {
+        pickup: formData.pickup,
+        cashPayment: formData.cashPayment,
+        halfInvoice: formData.halfInvoice,
+        taxSubstitution: formData.taxSubstitution,
+        ipiRate: formData.ipiRate,
+        deliveryFees: {
+          capital: formData.capitalDeliveryFee,
+          interior: formData.interiorDeliveryFee
+        }
+      };
+      
+      console.log('Saving settings:', updatedSettings);
+      const success = await saveSettings(updatedSettings);
+      
+      if (success) {
         toast.success('Configurações salvas com sucesso!');
       } else {
         toast.error('Erro ao salvar as configurações.');

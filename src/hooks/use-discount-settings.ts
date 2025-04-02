@@ -6,7 +6,7 @@ export interface DiscountSettings {
   pickup: number;
   cashPayment: number;
   halfInvoice: number;
-  taxSubstitution: number; // This represents ICMS ST rate (not changing the field name to maintain compatibility)
+  taxSubstitution: number; // This represents ICMS ST rate
   deliveryFees: {
     capital: number;
     interior: number;
@@ -19,7 +19,7 @@ const DEFAULT_SETTINGS: DiscountSettings = {
   pickup: 1,
   cashPayment: 1,
   halfInvoice: 3,
-  taxSubstitution: 20, // Changed from 7.8 to 20 (representing 20% ICMS ST)
+  taxSubstitution: 20, // Changed default to 20 (representing 20% ICMS ST)
   deliveryFees: {
     capital: 25,
     interior: 50
@@ -40,7 +40,18 @@ export const useDiscountSettings = () => {
       try {
         const storedSettings = localStorage.getItem(STORAGE_KEY);
         if (storedSettings) {
-          setSettings(JSON.parse(storedSettings));
+          const parsedSettings = JSON.parse(storedSettings);
+          // Ensure all required fields exist
+          const mergedSettings = {
+            ...DEFAULT_SETTINGS,
+            ...parsedSettings,
+            // Ensure nested objects are properly merged
+            deliveryFees: {
+              ...DEFAULT_SETTINGS.deliveryFees,
+              ...(parsedSettings.deliveryFees || {})
+            }
+          };
+          setSettings(mergedSettings);
         }
       } catch (error) {
         console.error('Error loading discount settings:', error);
@@ -57,7 +68,18 @@ export const useDiscountSettings = () => {
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === STORAGE_KEY && event.newValue) {
         try {
-          setSettings(JSON.parse(event.newValue));
+          const parsedSettings = JSON.parse(event.newValue);
+          // Ensure all required fields exist
+          const mergedSettings = {
+            ...DEFAULT_SETTINGS,
+            ...parsedSettings,
+            // Ensure nested objects are properly merged
+            deliveryFees: {
+              ...DEFAULT_SETTINGS.deliveryFees,
+              ...(parsedSettings.deliveryFees || {})
+            }
+          };
+          setSettings(mergedSettings);
         } catch (error) {
           console.error('Error parsing updated settings:', error);
         }
@@ -74,14 +96,25 @@ export const useDiscountSettings = () => {
   // Save settings to localStorage and trigger an event for other components
   const saveSettings = (newSettings: DiscountSettings) => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
+      // Ensure all fields are present before saving
+      const settingsToSave = {
+        ...DEFAULT_SETTINGS,
+        ...newSettings,
+        // Ensure nested objects are properly merged
+        deliveryFees: {
+          ...DEFAULT_SETTINGS.deliveryFees,
+          ...(newSettings.deliveryFees || {})
+        }
+      };
+      
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(settingsToSave));
       
       // Update local state
-      setSettings(newSettings);
+      setSettings(settingsToSave);
       
       // Dispatch a custom event to notify other components about the change
       const event = new CustomEvent('discount-settings-changed', { 
-        detail: { settings: newSettings } 
+        detail: { settings: settingsToSave } 
       });
       window.dispatchEvent(event);
       
