@@ -85,13 +85,6 @@ export const MENU_ITEMS: MenuItem[] = [
         icon: 'search',
         requiredRoles: ['administrator', 'salesperson', 'employee'],
       },
-      {
-        id: 'order-update',
-        name: 'Atualizar Pedidos',
-        path: '/orders/update',
-        icon: 'edit',
-        requiredRoles: ['administrator'],
-      },
     ],
   },
   {
