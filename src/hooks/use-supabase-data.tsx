@@ -65,7 +65,8 @@ export const useSupabaseData = <T extends Record<string, any>>(
       }
 
       await fetchData();
-      return createdRecord as T;
+      // Use proper type conversion with unknown as intermediate step
+      return (createdRecord as unknown) as T;
     } catch (e) {
       setError(e as Error);
       return null as any;
@@ -92,7 +93,8 @@ export const useSupabaseData = <T extends Record<string, any>>(
       }
 
       await fetchData();
-      return updatedRecord as T;
+      // Use proper type conversion with unknown as intermediate step
+      return (updatedRecord as unknown) as T;
     } catch (error) {
       console.error(`Error updating record in ${tableName}:`, error);
       throw error;
@@ -133,7 +135,8 @@ export const useSupabaseData = <T extends Record<string, any>>(
         .single();
 
       if (error) throw error;
-      return record as T;
+      // Use proper type conversion with unknown as intermediate step
+      return (record as unknown) as T;
     } catch (error) {
       console.error(`Error getting record from ${tableName}:`, error);
       return null;
