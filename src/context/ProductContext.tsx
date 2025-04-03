@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product, Category, Subcategory } from '@/types/types';
 import { useCategories } from '@/hooks/use-categories';
@@ -17,7 +16,7 @@ const INITIAL_PRODUCTS = Array.from({ length: 20 }, (_, i) => {
     listPrice: Math.floor(Math.random() * 900) + 100,
     weight: Math.floor(Math.random() * 5) + 0.5,
     quantity: Math.floor(Math.random() * 100) + 10,
-    quantityPerVolume: Math.floor(Math.random() * 10) + 1,
+    quantityPerVolume: parseFloat((Math.random() * 5 + 1).toFixed(2)), // Decimal values
     dimensions: {
       width,
       height,
@@ -63,6 +62,8 @@ const loadProductsFromStorage = (): Product[] => {
         ...product,
         createdAt: new Date(product.createdAt),
         updatedAt: new Date(product.updatedAt),
+        // Ensure quantityPerVolume is properly parsed as number
+        quantityPerVolume: parseFloat(product.quantityPerVolume) || 1,
         // Ensure mva has a default value if it's missing
         mva: product.mva !== undefined ? product.mva : 39
       }));

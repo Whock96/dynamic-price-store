@@ -185,7 +185,7 @@ const ProductManagement = () => {
         list_price: product.list_price || 0,
         weight: product.weight || 0,
         quantity: product.quantity || 0,
-        quantity_per_volume: product.quantity_per_volume || 1,
+        quantity_per_volume: Number(product.quantity_per_volume) || 1,
         width: product.width || 0,
         height: product.height || 0,
         length: product.length || 0,
@@ -247,7 +247,7 @@ const ProductManagement = () => {
     } else {
       setFormData(prev => ({
         ...prev,
-        [name]: name === 'list_price' || name === 'weight' || name === 'quantity' || name === 'quantity_per_volume'
+        [name]: name === 'list_price' || name === 'weight' || name === 'quantity' || name === 'quantity_per_volume' || name === 'mva'
           ? parseFloat(value) || 0 
           : value
       }));
@@ -615,6 +615,9 @@ const ProductManagement = () => {
                   value={formData.quantity_per_volume}
                   onChange={handleInputChange}
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Aceita valores decimais (ex: 1.5, 2.25)
+                </p>
               </div>
               
               <div className="md:col-span-2">
