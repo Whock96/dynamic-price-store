@@ -289,7 +289,6 @@ const ProductManagement = () => {
       const productData = {
         ...formData,
         image_url: imageUrl,
-        quantity_per_volume: formData.quantity_per_volume
       };
 
       console.log("Enviando produto para salvar:", productData);
@@ -299,7 +298,7 @@ const ProductManagement = () => {
         await updateProduct(id, updateData);
         toast.success(`Produto "${formData.name}" atualizado com sucesso`);
       } else {
-        await createProduct(productData);
+        await createProduct(productData as any);
         toast.success(`Produto "${formData.name}" adicionado com sucesso`);
       }
       

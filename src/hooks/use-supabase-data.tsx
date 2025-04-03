@@ -1,6 +1,9 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, Tables } from "@/integrations/supabase/client";
+
+// Define valid table names as a type from the Supabase database schema
+type TableName = keyof Database['public']['Tables'];
 
 export const useSupabaseData = <T extends Record<string, any>>(
   tableName: string,
@@ -33,7 +36,8 @@ export const useSupabaseData = <T extends Record<string, any>>(
       if (fetchError) {
         setError(fetchError);
       } else if (responseData) {
-        setData(responseData as T[]);
+        // Use type assertion to avoid type conflicts
+        setData(responseData as unknown as T[]);
       }
     } catch (e) {
       setError(e as Error);
@@ -49,7 +53,7 @@ export const useSupabaseData = <T extends Record<string, any>>(
     try {
       const { data: createdRecord, error: createError } = await supabase
         .from(tableName)
-        .insert([record])
+        .insert([record as any])
         .select()
         .single();
 
@@ -75,7 +79,7 @@ export const useSupabaseData = <T extends Record<string, any>>(
       
       const { data: updatedRecord, error } = await supabase
         .from(tableName)
-        .update(data)
+        .update(data as any)
         .eq('id', id)
         .select()
         .single();
