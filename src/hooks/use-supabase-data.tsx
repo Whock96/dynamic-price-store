@@ -1,9 +1,10 @@
 
 import { useState, useEffect } from 'react';
 import { supabase, Tables } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
 
-// Define valid table names as a type from the Supabase database schema
-type TableName = keyof Database['public']['Tables'];
+// Define a type for the valid table names
+type TableNames = keyof Database['public']['Tables'];
 
 export const useSupabaseData = <T extends Record<string, any>>(
   tableName: string,
@@ -18,19 +19,20 @@ export const useSupabaseData = <T extends Record<string, any>>(
     setIsLoading(true);
     setError(null);
 
-    let query = supabase.from(tableName).select('*');
-
-    if (initialFilters) {
-      initialFilters.forEach(({ column, value }) => {
-        query = query.eq(column, value);
-      });
-    }
-
-    if (orderBy) {
-      query = query.order(orderBy.column, { ascending: orderBy.ascending });
-    }
-
     try {
+      // Use type assertion to handle the dynamic table name
+      let query = supabase.from(tableName as any).select('*');
+
+      if (initialFilters) {
+        initialFilters.forEach(({ column, value }) => {
+          query = query.eq(column, value);
+        });
+      }
+
+      if (orderBy) {
+        query = query.order(orderBy.column, { ascending: orderBy.ascending });
+      }
+
       const { data: responseData, error: fetchError } = await query;
 
       if (fetchError) {
@@ -52,7 +54,7 @@ export const useSupabaseData = <T extends Record<string, any>>(
 
     try {
       const { data: createdRecord, error: createError } = await supabase
-        .from(tableName)
+        .from(tableName as any)
         .insert([record as any])
         .select()
         .single();
@@ -66,7 +68,7 @@ export const useSupabaseData = <T extends Record<string, any>>(
       return createdRecord as T;
     } catch (e) {
       setError(e as Error);
-      return false as any;
+      return null as any;
     } finally {
       setIsLoading(false);
     }
@@ -78,7 +80,7 @@ export const useSupabaseData = <T extends Record<string, any>>(
       console.log(`Atualizando registro em ${tableName}:`, data);
       
       const { data: updatedRecord, error } = await supabase
-        .from(tableName)
+        .from(tableName as any)
         .update(data as any)
         .eq('id', id)
         .select()
@@ -103,7 +105,7 @@ export const useSupabaseData = <T extends Record<string, any>>(
 
     try {
       const { error: deleteError } = await supabase
-        .from(tableName)
+        .from(tableName as any)
         .delete()
         .eq('id', id);
 
@@ -125,7 +127,7 @@ export const useSupabaseData = <T extends Record<string, any>>(
   const getRecordById = async (id: string) => {
     try {
       const { data: record, error } = await supabase
-        .from(tableName)
+        .from(tableName as any)
         .select('*')
         .eq('id', id)
         .single();

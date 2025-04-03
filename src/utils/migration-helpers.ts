@@ -1,3 +1,4 @@
+
 import { supabase, Tables } from '@/integrations/supabase/client';
 import { Product, Category, Customer } from '@/types/types';
 
@@ -30,9 +31,15 @@ export const migrateProductsToSupabase = async (products: Product[]): Promise<bo
     for (const product of products) {
       const mappedProduct = mapProductToSupabase(product);
       
+      // Ensure name is present since it's required in the database schema
+      if (!mappedProduct.name) {
+        console.error(`Produto ${product.id} não possui nome definido`);
+        return false;
+      }
+      
       const { error } = await supabase
         .from('products')
-        .upsert(mappedProduct, { 
+        .upsert(mappedProduct as any, { 
           onConflict: 'id',
           ignoreDuplicates: false,
         });
