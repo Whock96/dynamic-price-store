@@ -246,7 +246,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setItems([
         ...items, 
         {
-          id: product.id, // Ensure id exists for CartItem
+          id: product.id,
+          productId: product.id, // Add productId to match CartItem type
           product,
           quantity,
           discount,

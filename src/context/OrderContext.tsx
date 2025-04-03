@@ -20,6 +20,7 @@ interface OrderContextType {
   clearAllOrders: () => void;
   deleteOrder: (orderId: string) => void;
   isLoading: boolean;
+  fetchOrders: () => Promise<void>; // Add fetchOrders to the interface
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
@@ -331,7 +332,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       getOrderById, 
       clearAllOrders,
       deleteOrder,
-      isLoading
+      isLoading,
+      fetchOrders
     }}>
       {children}
     </OrderContext.Provider>

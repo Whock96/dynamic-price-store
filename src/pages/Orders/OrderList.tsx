@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -41,7 +40,7 @@ interface OrderWithCustomer extends Tables<'orders'> {
 
 const OrderList = () => {
   const navigate = useNavigate();
-  const { orders: contextOrders, fetchOrders, isLoading: isContextLoading } = useOrders();
+  const { orders: contextOrders, isLoading: isContextLoading } = useOrders();
   const [orders, setOrders] = useState<OrderWithCustomer[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<OrderWithCustomer[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
