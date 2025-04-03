@@ -247,7 +247,7 @@ const ProductManagement = () => {
     } else {
       setFormData(prev => ({
         ...prev,
-        [name]: name === 'list_price' || name === 'weight' || name === 'quantity' || name === 'quantity_per_volume'
+        [name]: name === 'list_price' || name === 'weight' || name === 'quantity' || name === 'quantity_per_volume' || name === 'mva'
           ? parseFloat(value) || 0 
           : value
       }));
@@ -288,8 +288,11 @@ const ProductManagement = () => {
       
       const productData = {
         ...formData,
-        image_url: imageUrl
+        image_url: imageUrl,
+        quantity_per_volume: formData.quantity_per_volume
       };
+
+      console.log("Enviando produto para salvar:", productData);
 
       if (isEditMode && formData.id) {
         const { id, ...updateData } = productData;
