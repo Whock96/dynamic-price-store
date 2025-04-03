@@ -227,6 +227,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           subtotal: newOrder.subtotal || 0,
           total_discount: newOrder.totalDiscount || 0,
           total: newOrder.total || 0,
+          // Ensure these match the column names in the Supabase database
           with_ipi: newOrder.withIPI || false,
           ipi_value: newOrder.ipiValue || 0
         })
@@ -329,7 +330,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const updateOrder = async (orderId: string, orderData: Partial<Order>) => {
     try {
       // Map frontend order data to Supabase schema
-      const supabaseOrderData: Partial<SupabaseOrder> = {
+      // Make sure to only include fields that exist in the Supabase database
+      const supabaseOrderData = {
         status: orderData.status,
         shipping: orderData.shipping,
         full_invoice: orderData.fullInvoice,
@@ -341,6 +343,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         delivery_location: orderData.deliveryLocation,
         half_invoice_percentage: orderData.halfInvoicePercentage,
         delivery_fee: orderData.deliveryFee,
+        // These need to match the column names in the Supabase orders table
         with_ipi: orderData.withIPI,
         ipi_value: orderData.ipiValue,
         updated_at: new Date().toISOString()
