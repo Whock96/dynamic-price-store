@@ -103,6 +103,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [settings]);
 
+  const calculateTotalUnits = (item: CartItem): number => {
+    return item.quantity * (item.product.quantityPerVolume || 1);
+  };
+
   const isDiscountOptionSelected = (id: string) => {
     return selectedDiscountOptions.includes(id);
   };
@@ -165,20 +169,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const taxOption = discountOptions.find(opt => opt.id === '3');
     if (!taxOption) return 0;
     
-    // Get the ICMS ST rate from settings (in percentage, so divide by 100 to get the decimal value)
     const icmsStRate = taxOption.value / 100;
-    
-    // Get the MVA from product (default to 39% if not defined)
     const mva = (item.product.mva ?? 39) / 100;
-    
-    // New formula: item price * mva * icmsStRate
     const basePrice = item.finalPrice;
     
-    // Calculate ST value for one unit: price * (1 + mva * icmsST) - price
-    // Simplified to: price * mva * icmsST
     let taxValue = basePrice * mva * icmsStRate;
     
-    // If half invoice is selected, adjust the tax rate
     if (isDiscountOptionSelected('2')) {
       taxValue = taxValue * (halfInvoicePercentage / 100);
     }
@@ -218,7 +214,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const taxRate = getTaxSubstitutionRate() / 100;
       const taxValue = finalPrice * taxRate;
       
-      const subtotal = (finalPrice + (applyDiscounts ? taxValue : 0)) * item.quantity;
+      const totalUnits = calculateTotalUnits(item);
+      
+      const subtotal = (finalPrice + (applyDiscounts ? taxValue : 0)) * totalUnits;
       
       return {
         ...item,
@@ -242,7 +240,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           const taxRate = getTaxSubstitutionRate() / 100;
           const taxValue = finalPrice * taxRate;
-          const subtotal = (finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * item.quantity;
+          
+          const totalUnits = calculateTotalUnits(item);
+          
+          const subtotal = (finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * totalUnits;
           
           return {
             ...item,
@@ -259,7 +260,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           const taxRate = getTaxSubstitutionRate() / 100;
           const taxValue = finalPrice * taxRate;
-          const subtotal = (finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * item.quantity;
+          
+          const totalUnits = calculateTotalUnits(item);
+          
+          const subtotal = (finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * totalUnits;
           
           return {
             ...item,
@@ -314,7 +318,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       const taxRate = getTaxSubstitutionRate() / 100;
       const taxValue = existingItem.finalPrice * taxRate;
-      const subtotal = (existingItem.finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * newQuantity;
+      
+      const totalUnits = newQuantity * (existingItem.product.quantityPerVolume || 1);
+      
+      const subtotal = (existingItem.finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * totalUnits;
       
       newItems[existingItemIndex] = {
         ...existingItem,
@@ -335,7 +342,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const taxRate = getTaxSubstitutionRate() / 100;
       const taxValue = finalPrice * taxRate;
       
-      const subtotal = (finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * quantity;
+      const totalUnits = quantity * (product.quantityPerVolume || 1);
+      
+      const subtotal = (finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * totalUnits;
       
       console.log("Valores calculados:", {
         listPrice,
@@ -345,7 +354,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         finalPrice,
         taxRate,
         taxValue,
-        subtotal
+        subtotal,
+        quantityPerVolume: product.quantityPerVolume || 1,
+        totalUnits
       });
       
       const newItem: CartItem = {
@@ -378,7 +389,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (item.id === id) {
         const taxRate = getTaxSubstitutionRate() / 100;
         const taxValue = item.finalPrice * taxRate;
-        const subtotal = (item.finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * quantity;
+        
+        const totalUnits = quantity * (item.product.quantityPerVolume || 1);
+        
+        const subtotal = (item.finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * totalUnits;
         
         return { 
           ...item, 
@@ -411,7 +425,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const taxRate = getTaxSubstitutionRate() / 100;
         const taxValue = finalPrice * taxRate;
         
-        const subtotal = (finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * item.quantity;
+        const totalUnits = item.quantity * (item.product.quantityPerVolume || 1);
+        
+        const subtotal = (finalPrice + (applyDiscounts && isDiscountOptionSelected('3') ? taxValue : 0)) * totalUnits;
         
         return {
           ...item,

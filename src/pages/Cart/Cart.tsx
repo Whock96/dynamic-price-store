@@ -226,6 +226,11 @@ const Cart = () => {
     }
   };
 
+  const calculateTotalUnits = (item) => {
+    const quantityPerVolume = item.product.quantityPerVolume || 1;
+    return item.quantity * quantityPerVolume;
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -524,7 +529,8 @@ const Cart = () => {
                       <TableHead>Desconto (%)</TableHead>
                       <TableHead>Preço Final</TableHead>
                       <TableHead>Substituição Tributária</TableHead>
-                      <TableHead>Quantidade</TableHead>
+                      <TableHead>Quantidade Volumes</TableHead>
+                      <TableHead>Total de Unidades</TableHead>
                       <TableHead>Subtotal</TableHead>
                       <TableHead className="w-14"></TableHead>
                     </TableRow>
@@ -534,6 +540,7 @@ const Cart = () => {
                       const mvaRate = item.product.mva / 100; // Convert percentage to decimal
                       const icmsSTRate = effectiveTaxRate / 100; // Convert percentage to decimal
                       const taxValue = item.finalPrice * mvaRate * icmsSTRate;
+                      const totalUnits = calculateTotalUnits(item);
                       
                       return (
                         <TableRow key={item.id}>
@@ -583,6 +590,14 @@ const Cart = () => {
                                 +
                               </Button>
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            {totalUnits}
+                            {item.product.quantityPerVolume > 1 && (
+                              <span className="text-xs text-gray-500 block">
+                                ({item.product.quantityPerVolume} un/vol)
+                              </span>
+                            )}
                           </TableCell>
                           <TableCell>{formatCurrency(item.subtotal)}</TableCell>
                           <TableCell>
