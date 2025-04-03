@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useOrders } from '@/context/OrderContext';
@@ -5,12 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { ArrowLeft, Save } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useSupabaseData } from '@/hooks/use-supabase-data';
 
 const OrderUpdate = () => {
   const { id } = useParams<{ id: string }>();
@@ -19,42 +23,72 @@ const OrderUpdate = () => {
   const [order, setOrder] = useState<any>(null);
   const [status, setStatus] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
+  const [withIPI, setWithIPI] = useState(false);
+  
+  // Use direct Supabase data for backup if context fails
+  const { data: supabaseOrders, isLoading: isLoadingSupabase } = useSupabaseData('orders', {
+    select: '*',
+    filterKey: 'id',
+    filterValue: id || '',
+  });
 
   useEffect(() => {
+    // First try to get the order from the context
     if (!isLoading && id) {
       const foundOrder = getOrderById(id);
       if (foundOrder) {
-        console.log("Found order for editing:", foundOrder);
+        console.log("Found order for editing from context:", foundOrder);
         setOrder(foundOrder);
         setStatus(foundOrder.status || 'pending');
-        setNotes(foundOrder.notes || '');
+        setNotes(foundOrder.notes || foundOrder.observations || '');
+        setWithIPI(foundOrder.withIPI || false);
+      } else if (supabaseOrders && supabaseOrders.length > 0) {
+        // Fall back to direct Supabase data if context doesn't have the order
+        const supabaseOrder = supabaseOrders[0];
+        console.log("Found order for editing from Supabase:", supabaseOrder);
+        setOrder(supabaseOrder);
+        setStatus(supabaseOrder.status || 'pending');
+        setNotes(supabaseOrder.notes || supabaseOrder.observations || '');
+        setWithIPI(supabaseOrder.with_ipi || false);
       } else {
         toast.error('Pedido não encontrado');
         navigate('/orders');
       }
     }
-  }, [id, getOrderById, isLoading, navigate]);
+  }, [id, getOrderById, isLoading, supabaseOrders, navigate]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!order || !id) return;
 
-    // Atualizar status se ele foi alterado
+    const updates: any = {};
+
+    // Update status if it was changed
     if (status !== order.status) {
       updateOrderStatus(id, status as any);
     }
 
-    // Atualizar notas se foram alteradas
+    // Update notes if they were changed
     if (notes !== order.notes) {
-      updateOrder(id, { notes });
+      updates.notes = notes;
+    }
+
+    // Update IPI if it was changed
+    if (withIPI !== order.withIPI) {
+      updates.withIPI = withIPI;
+    }
+
+    // Only call updateOrder if there are changes to make
+    if (Object.keys(updates).length > 0) {
+      updateOrder(id, updates);
     }
 
     toast.success('Pedido atualizado com sucesso');
     navigate(`/orders/${id}`);
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingSupabase) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
@@ -76,6 +110,9 @@ const OrderUpdate = () => {
     );
   }
 
+  // Calculate order number display
+  const orderNumber = order.orderNumber || (order.order_number ? order.order_number : id?.split('-')[0]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -83,7 +120,7 @@ const OrderUpdate = () => {
           <Button variant="outline" size="icon" onClick={() => navigate('/orders')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-3xl font-bold">Editar Pedido #{order.id.split('-')[0]}</h1>
+          <h1 className="text-3xl font-bold">Editar Pedido #{orderNumber}</h1>
         </div>
         <div className="flex items-center gap-2">
           <Link to={`/orders/${id}`}>
@@ -111,14 +148,14 @@ const OrderUpdate = () => {
                 <div>
                   <label className="text-sm font-medium">Cliente</label>
                   <div className="mt-1 border rounded-md p-3 bg-gray-50">
-                    {order.customer?.companyName}
+                    {order.customer?.companyName || order.customers?.company_name || "Cliente não encontrado"}
                   </div>
                 </div>
 
                 <div>
                   <label className="text-sm font-medium">Data</label>
                   <div className="mt-1 border rounded-md p-3 bg-gray-50">
-                    {formatDate(order.createdAt)}
+                    {formatDate(order.createdAt || order.created_at)}
                   </div>
                 </div>
 
@@ -136,6 +173,15 @@ const OrderUpdate = () => {
                       <SelectItem value="canceled">Cancelado</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="flex items-center space-x-2 py-2">
+                  <Switch 
+                    id="with-ipi" 
+                    checked={withIPI} 
+                    onCheckedChange={setWithIPI} 
+                  />
+                  <Label htmlFor="with-ipi">IPI</Label>
                 </div>
 
                 <div>
@@ -161,7 +207,9 @@ const OrderUpdate = () => {
                   {order.items && order.items.map((item: any) => (
                     <div key={item.id} className="flex justify-between">
                       <div>
-                        <div className="font-medium">{item.product.name}</div>
+                        <div className="font-medium">
+                          {item.product?.name || "Produto não encontrado"}
+                        </div>
                         <div className="text-sm text-gray-500">
                           {item.quantity} x {formatCurrency(item.finalPrice)}
                         </div>
@@ -185,10 +233,16 @@ const OrderUpdate = () => {
                       <span>{formatCurrency(order.deliveryFee)}</span>
                     </div>
                   )}
-                  {order.withIPI && order.ipiValue > 0 && (
+                  {order.taxSubstitution && (
+                    <div className="flex justify-between mb-2">
+                      <span className="text-sm text-gray-700">Substituição Tributária</span>
+                      <span>+ {formatCurrency((7.8 / 100) * order.subtotal)}</span>
+                    </div>
+                  )}
+                  {(order.withIPI || order.with_ipi) && (order.ipiValue || order.ipi_value) > 0 && (
                     <div className="flex justify-between mb-2">
                       <span className="text-sm text-gray-700">IPI</span>
-                      <span>{formatCurrency(order.ipiValue)}</span>
+                      <span>{formatCurrency(order.ipiValue || order.ipi_value)}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-bold mt-4 pt-4 border-t">

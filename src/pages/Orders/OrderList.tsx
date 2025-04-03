@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Plus, FileText, Edit3, Trash2, Search, Printer } from 'lucide-react';
+import { Plus, FileText, Edit3, Trash2, Search, Printer, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +32,7 @@ import { supabase, Tables } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabaseOrderToAppOrder } from '@/utils/adapters';
+import { useOrders } from '@/context/OrderContext';
 
 // Define custom type that includes joined tables
 interface OrderWithCustomer extends Tables<'orders'> {
@@ -40,16 +41,25 @@ interface OrderWithCustomer extends Tables<'orders'> {
 
 const OrderList = () => {
   const navigate = useNavigate();
-  const [orders, setOrders] = useState<OrderWithCustomer[]>([]);
-  const [filteredOrders, setFilteredOrders] = useState<OrderWithCustomer[]>([]);
+  const { orders: contextOrders, isLoading: contextLoading, deleteOrder } = useOrders();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Use orders from context but fetch directly if needed
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    if (!contextLoading && contextOrders.length > 0) {
+      console.log("Using orders from context:", contextOrders.length);
+      setOrders(contextOrders);
+      setIsLoading(false);
+    } else {
+      console.log("Fetching orders directly from Supabase");
+      fetchOrders();
+    }
+  }, [contextOrders, contextLoading]);
 
   const fetchOrders = async () => {
     setIsLoading(true);
@@ -67,9 +77,51 @@ const OrderList = () => {
       }
 
       if (data) {
-        console.log("Fetched orders:", data);
-        setOrders(data as OrderWithCustomer[]);
-        setFilteredOrders(data as OrderWithCustomer[]);
+        console.log("Fetched orders directly:", data);
+        
+        // Process each order to fetch items and applied discounts
+        const processedOrders = await Promise.all(data.map(async (order) => {
+          // Fetch order items with product details
+          const { data: itemsData } = await supabase
+            .from('order_items')
+            .select(`
+              *,
+              products(*)
+            `)
+            .eq('order_id', order.id);
+            
+          // Fetch discount options applied to this order
+          const { data: discountData } = await supabase
+            .from('order_discounts')
+            .select('discount_id')
+            .eq('order_id', order.id);
+            
+          // Fetch full discount details if there are any applied discounts
+          let discounts = [];
+          if (discountData && discountData.length > 0) {
+            const discountIds = discountData.map(d => d.discount_id);
+            const { data: discountDetails } = await supabase
+              .from('discount_options')
+              .select('*')
+              .in('id', discountIds);
+              
+            if (discountDetails) {
+              discounts = discountDetails.map(d => ({
+                id: d.id,
+                name: d.name,
+                description: d.description || '',
+                value: d.value,
+                type: d.type as 'discount' | 'surcharge',
+                isActive: d.is_active,
+              }));
+            }
+          }
+          
+          // Use adapter to convert Supabase order to app Order
+          return supabaseOrderToAppOrder(order, itemsData || [], discounts);
+        }));
+        
+        setOrders(processedOrders);
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -85,8 +137,8 @@ const OrderList = () => {
     } else {
       const lowercasedSearch = searchTerm.toLowerCase();
       const filtered = orders.filter(order => {
-        const customerName = order.customers?.company_name?.toLowerCase() || '';
-        const orderNumber = String(order.order_number);
+        const customerName = order.customer?.companyName?.toLowerCase() || '';
+        const orderNumber = String(order.orderNumber);
         
         return customerName.includes(lowercasedSearch) || 
                orderNumber.includes(lowercasedSearch);
@@ -99,14 +151,7 @@ const OrderList = () => {
     if (!selectedOrderId) return;
     
     try {
-      const { error } = await supabase
-        .from('orders')
-        .delete()
-        .eq('id', selectedOrderId);
-      
-      if (error) throw error;
-      
-      toast.success('Pedido excluído com sucesso');
+      await deleteOrder(selectedOrderId);
       setOrders(orders.filter(order => order.id !== selectedOrderId));
       setFilteredOrders(filteredOrders.filter(order => order.id !== selectedOrderId));
     } catch (error) {
@@ -174,12 +219,12 @@ const OrderList = () => {
                     {filteredOrders.length > 0 ? (
                       filteredOrders.map((order) => (
                         <TableRow key={order.id}>
-                          <TableCell className="font-medium">#{order.order_number}</TableCell>
-                          <TableCell>{order.customers?.company_name || "Cliente desconhecido"}</TableCell>
-                          <TableCell>{formatDate(new Date(order.created_at))}</TableCell>
+                          <TableCell className="font-medium">#{order.orderNumber}</TableCell>
+                          <TableCell>{order.customer?.companyName || "Cliente desconhecido"}</TableCell>
+                          <TableCell>{formatDate(new Date(order.createdAt))}</TableCell>
                           <TableCell>{formatCurrency(order.total)}</TableCell>
                           <TableCell>
-                            <OrderStatusBadge status={order.status as any} />
+                            <OrderStatusBadge status={order.status} />
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
@@ -187,6 +232,7 @@ const OrderList = () => {
                                 variant="outline" 
                                 size="icon"
                                 onClick={() => navigate(`/orders/${order.id}`)}
+                                title="Ver detalhes"
                               >
                                 <FileText className="h-4 w-4" />
                               </Button>
@@ -194,6 +240,7 @@ const OrderList = () => {
                                 variant="outline" 
                                 size="icon"
                                 onClick={() => navigate(`/orders/${order.id}/edit`)}
+                                title="Editar"
                               >
                                 <Edit3 className="h-4 w-4" />
                               </Button>
@@ -202,8 +249,17 @@ const OrderList = () => {
                                 size="icon"
                                 onClick={() => confirmDelete(order.id)}
                                 className="text-red-500 hover:bg-red-50"
+                                title="Excluir"
                               >
                                 <Trash2 className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="icon"
+                                onClick={() => window.open(`/orders/${order.id}`, '_blank')}
+                                title="Abrir em nova aba"
+                              >
+                                <ExternalLink className="h-4 w-4" />
                               </Button>
                             </div>
                           </TableCell>

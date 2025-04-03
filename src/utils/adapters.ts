@@ -94,6 +94,7 @@ export const supabaseOrderToAppOrder = (
 
   return {
     id: order.id,
+    orderNumber: order.order_number,
     customerId: order.customer_id,
     customer,
     userId: order.user_id,

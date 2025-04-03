@@ -267,6 +267,7 @@ export type Database = {
           full_invoice: boolean
           half_invoice_percentage: number | null
           id: string
+          ipi_value: number | null
           notes: string | null
           observations: string | null
           order_number: number
@@ -280,6 +281,7 @@ export type Database = {
           total_discount: number
           updated_at: string
           user_id: string
+          with_ipi: boolean | null
         }
         Insert: {
           created_at?: string
@@ -289,6 +291,7 @@ export type Database = {
           full_invoice?: boolean
           half_invoice_percentage?: number | null
           id?: string
+          ipi_value?: number | null
           notes?: string | null
           observations?: string | null
           order_number?: number
@@ -302,6 +305,7 @@ export type Database = {
           total_discount?: number
           updated_at?: string
           user_id: string
+          with_ipi?: boolean | null
         }
         Update: {
           created_at?: string
@@ -311,6 +315,7 @@ export type Database = {
           full_invoice?: boolean
           half_invoice_percentage?: number | null
           id?: string
+          ipi_value?: number | null
           notes?: string | null
           observations?: string | null
           order_number?: number
@@ -324,6 +329,7 @@ export type Database = {
           total_discount?: number
           updated_at?: string
           user_id?: string
+          with_ipi?: boolean | null
         }
         Relationships: [
           {

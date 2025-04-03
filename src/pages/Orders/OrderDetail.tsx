@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
@@ -20,6 +21,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useOrders } from '@/context/OrderContext';
+import { useOrderData } from '@/hooks/use-order-data';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import PrintableOrder from '@/components/orders/PrintableOrder';
 
@@ -28,25 +30,34 @@ const OrderDetail = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { getOrderById } = useOrders();
+  const { order: supabaseOrder, isLoading: isSupabaseLoading } = useOrderData(id);
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (id) {
       console.log(`Fetching order with ID: ${id}`);
-      const fetchedOrder = getOrderById(id);
-      console.log(`Fetched order:`, fetchedOrder);
       
-      if (fetchedOrder) {
-        setOrder(fetchedOrder);
-      } else {
+      // First try to get from context
+      const contextOrder = getOrderById(id);
+      
+      if (contextOrder) {
+        console.log(`Found order in context:`, contextOrder);
+        setOrder(contextOrder);
+        setLoading(false);
+      } else if (supabaseOrder) {
+        // If not in context, use the one fetched directly from Supabase
+        console.log(`Found order in Supabase:`, supabaseOrder);
+        setOrder(supabaseOrder);
+        setLoading(false);
+      } else if (!isSupabaseLoading) {
+        // If we've tried both and still don't have it, show error
         console.error(`Order with ID ${id} not found`);
         toast.error("Pedido não encontrado");
+        setLoading(false);
       }
-      
-      setLoading(false);
     }
-  }, [id, getOrderById]);
+  }, [id, getOrderById, supabaseOrder, isSupabaseLoading]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -136,6 +147,9 @@ const OrderDetail = () => {
       taxSubstitutionValue = (7.8 / 100) * order.subtotal;
     }
     
+    // Calculate IPI if applicable
+    const ipiValue = (order.withIPI || order.with_ipi) ? (order.ipiValue || order.ipi_value || 0) : 0;
+    
     return `
       <div style="max-width: 800px; margin: 0 auto; padding: 12px; font-family: Arial, sans-serif; font-size: 11px;">
         <!-- Company header - more compact -->
@@ -155,7 +169,7 @@ const OrderDetail = () => {
         <!-- Order title -->
         <div style="text-align: center; margin-bottom: 8px;">
           <h1 style="font-size: 16px; font-weight: bold; border: 1px solid #ddd; display: inline-block; padding: 4px 12px; margin: 4px 0;">
-            PEDIDO #${order.orderNumber || '1'}
+            PEDIDO #${order.orderNumber || order.order_number || '1'}
           </h1>
           <p style="font-size: 10px; margin: 2px 0;">
             Emitido em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
@@ -166,16 +180,16 @@ const OrderDetail = () => {
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
           <div style="border: 1px solid #ddd; border-radius: 4px; padding: 8px;">
             <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Cliente</h2>
-            <p style="font-weight: 600; margin: 2px 0;">${order.customer.companyName}</p>
-            <p style="margin: 2px 0;">CNPJ/CPF: ${order.customer.document}</p>
-            <p style="margin: 2px 0;">${order.customer.street}, ${order.customer.number} ${order.customer.complement ? `- ${order.customer.complement}` : ''}</p>
-            <p style="margin: 2px 0;">${order.customer.city}/${order.customer.state} - ${order.customer.zipCode}</p>
-            <p style="margin: 2px 0;">Tel: ${order.customer.phone}</p>
+            <p style="font-weight: 600; margin: 2px 0;">${order.customer?.companyName || order.customers?.company_name || 'Cliente não identificado'}</p>
+            <p style="margin: 2px 0;">CNPJ/CPF: ${order.customer?.document || order.customers?.document || 'N/A'}</p>
+            <p style="margin: 2px 0;">${order.customer?.street || order.customers?.street || ''}, ${order.customer?.number || order.customers?.number || ''} ${order.customer?.complement ? `- ${order.customer.complement}` : (order.customers?.complement ? `- ${order.customers.complement}` : '')}</p>
+            <p style="margin: 2px 0;">${order.customer?.city || order.customers?.city || 'N/A'}/${order.customer?.state || order.customers?.state || 'N/A'} - ${order.customer?.zipCode || order.customers?.zip_code || 'N/A'}</p>
+            <p style="margin: 2px 0;">Tel: ${order.customer?.phone || order.customers?.phone || 'N/A'}</p>
           </div>
           
           <div style="border: 1px solid #ddd; border-radius: 4px; padding: 8px;">
             <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Dados do Pedido</h2>
-            <p style="margin: 2px 0;"><span style="font-weight: 600;">Data:</span> ${format(new Date(order.createdAt), "dd/MM/yyyy", { locale: ptBR })}</p>
+            <p style="margin: 2px 0;"><span style="font-weight: 600;">Data:</span> ${format(new Date(order.createdAt || order.created_at), "dd/MM/yyyy", { locale: ptBR })}</p>
             <p style="margin: 2px 0;"><span style="font-weight: 600;">Vendedor:</span> ${order.user?.name || 'Não informado'}</p>
             <p style="margin: 2px 0;"><span style="font-weight: 600;">Status:</span> ${
               order.status === 'pending' ? 'Pendente' : 
@@ -183,11 +197,12 @@ const OrderDetail = () => {
               order.status === 'invoiced' ? 'Faturado' : 
               order.status === 'completed' ? 'Concluído' : 'Cancelado'
             }</p>
-            <p style="margin: 2px 0;"><span style="font-weight: 600;">Pagamento:</span> ${order.paymentMethod === 'cash' ? 'À Vista' : 'A Prazo'}</p>
-            ${order.paymentMethod === 'credit' && order.paymentTerms ? 
-              `<p style="margin: 2px 0;"><span style="font-weight: 600;">Prazos:</span> ${order.paymentTerms}</p>` : ''}
+            <p style="margin: 2px 0;"><span style="font-weight: 600;">Pagamento:</span> ${(order.paymentMethod || order.payment_method) === 'cash' ? 'À Vista' : 'A Prazo'}</p>
+            ${(order.paymentMethod || order.payment_method) === 'credit' && (order.paymentTerms || order.payment_terms) ? 
+              `<p style="margin: 2px 0;"><span style="font-weight: 600;">Prazos:</span> ${order.paymentTerms || order.payment_terms}</p>` : ''}
             <p style="margin: 2px 0;"><span style="font-weight: 600;">Tipo de Nota:</span> ${invoiceTypeText} ${halfInvoiceText}</p>
-            <p style="margin: 2px 0;"><span style="font-weight: 600;">Substituição Tributária:</span> ${order.taxSubstitution ? 'Sim' : 'Não'}</p>
+            <p style="margin: 2px 0;"><span style="font-weight: 600;">Substituição Tributária:</span> ${order.taxSubstitution || order.tax_substitution ? 'Sim' : 'Não'}</p>
+            <p style="margin: 2px 0;"><span style="font-weight: 600;">IPI:</span> ${order.withIPI || order.with_ipi ? 'Sim' : 'Não'}</p>
           </div>
         </div>
         
@@ -227,11 +242,11 @@ const OrderDetail = () => {
           <!-- Delivery info -->
           <div>
             <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Entrega</h2>
-            <p style="margin: 2px 0;"><span style="font-weight: 600;">Tipo:</span> ${order.shipping === 'delivery' ? 'Entrega' : 'Retirada'}</p>
-            ${order.shipping === 'delivery' && order.deliveryLocation ? 
-              `<p style="margin: 2px 0;"><span style="font-weight: 600;">Região:</span> ${order.deliveryLocation === 'capital' ? 'Capital' : 'Interior'}</p>` : ''}
-            ${order.shipping === 'delivery' && order.deliveryFee && order.deliveryFee > 0 ? 
-              `<p style="margin: 2px 0;"><span style="font-weight: 600;">Taxa:</span> ${formatCurrency(order.deliveryFee)}</p>` : ''}
+            <p style="margin: 2px 0;"><span style="font-weight: 600;">Tipo:</span> ${(order.shipping || order.shipping) === 'delivery' ? 'Entrega' : 'Retirada'}</p>
+            ${(order.shipping || order.shipping) === 'delivery' && (order.deliveryLocation || order.delivery_location) ? 
+              `<p style="margin: 2px 0;"><span style="font-weight: 600;">Região:</span> ${(order.deliveryLocation || order.delivery_location) === 'capital' ? 'Capital' : 'Interior'}</p>` : ''}
+            ${(order.shipping || order.shipping) === 'delivery' && (order.deliveryFee || order.delivery_fee) && (order.deliveryFee || order.delivery_fee) > 0 ? 
+              `<p style="margin: 2px 0;"><span style="font-weight: 600;">Taxa:</span> ${formatCurrency(order.deliveryFee || order.delivery_fee)}</p>` : ''}
           </div>
           
           <!-- Financial summary -->
@@ -245,10 +260,10 @@ const OrderDetail = () => {
               <tr>
                 <td style="padding: 2px 0;">Descontos:</td>
                 <td style="padding: 2px 0; text-align: right; color: #dc2626; font-weight: 500;">
-                  -${formatCurrency(order.totalDiscount || 0)}
+                  -${formatCurrency(order.totalDiscount || order.total_discount || 0)}
                 </td>
               </tr>
-              ${order.taxSubstitution ? `
+              ${(order.taxSubstitution || order.tax_substitution) ? `
                 <tr>
                   <td style="padding: 2px 0;">Substituição Tributária (7.8%):</td>
                   <td style="padding: 2px 0; text-align: right; color: #ea580c; font-weight: 500;">
@@ -256,10 +271,18 @@ const OrderDetail = () => {
                   </td>
                 </tr>
               ` : ''}
-              ${order.deliveryFee && order.deliveryFee > 0 ? `
+              ${(order.withIPI || order.with_ipi) && ipiValue > 0 ? `
+                <tr>
+                  <td style="padding: 2px 0;">IPI:</td>
+                  <td style="padding: 2px 0; text-align: right; color: #ea580c; font-weight: 500;">
+                    +${formatCurrency(ipiValue)}
+                  </td>
+                </tr>
+              ` : ''}
+              ${(order.deliveryFee || order.delivery_fee) && (order.deliveryFee || order.delivery_fee) > 0 ? `
                 <tr>
                   <td style="padding: 2px 0;">Taxa de Entrega:</td>
-                  <td style="padding: 2px 0; text-align: right; font-weight: 500;">${formatCurrency(order.deliveryFee)}</td>
+                  <td style="padding: 2px 0; text-align: right; font-weight: 500;">${formatCurrency(order.deliveryFee || order.delivery_fee)}</td>
                 </tr>
               ` : ''}
               <tr style="border-top: 1px solid #ddd;">
@@ -270,10 +293,10 @@ const OrderDetail = () => {
           </div>
         </div>
         
-        ${order.notes ? `
+        ${(order.notes || order.observations) ? `
           <div style="margin-bottom: 8px;">
             <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Observações</h2>
-            <p style="border: 1px solid #ddd; padding: 4px; background-color: #f9f9f9; margin: 0;">${order.notes}</p>
+            <p style="border: 1px solid #ddd; padding: 4px; background-color: #f9f9f9; margin: 0;">${order.notes || order.observations}</p>
           </div>
         ` : ''}
         
@@ -288,7 +311,7 @@ const OrderDetail = () => {
     return <OrderStatusBadge status={status as any} />;
   };
 
-  if (loading) {
+  if (loading || isSupabaseLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-ferplas-500"></div>
@@ -311,23 +334,24 @@ const OrderDetail = () => {
     );
   }
 
-  const orderNumber = order.orderNumber ? order.orderNumber : 1;
-
-  const totalDiscount = order.totalDiscount || 0;
-  const appliedDiscounts = order.discountOptions || [];
+  // Handle different field names between context and direct DB access
+  const orderNumber = order.orderNumber || order.order_number || 1;
+  const totalDiscount = order.totalDiscount || order.total_discount || 0;
+  const appliedDiscounts = order.appliedDiscounts || order.discountOptions || [];
   const items = order.items || [];
   const shipping = order.shipping || 'delivery';
   const notes = order.observations || order.notes || '';
-  const fullInvoice = order.fullInvoice || false;
-  const taxSubstitution = order.taxSubstitution || false;
-  const paymentMethod = order.paymentMethod || 'cash';
-  const paymentTerms = order.paymentTerms || '';
-  const deliveryLocation = order.deliveryLocation || null;
-  const deliveryFee = order.deliveryFee || 0;
-  const halfInvoicePercentage = order.halfInvoicePercentage || 50;
-  const withIPI = order.withIPI || false;
-  const ipiValue = order.ipiValue || 0;
+  const fullInvoice = order.fullInvoice !== undefined ? order.fullInvoice : (order.full_invoice !== undefined ? order.full_invoice : true);
+  const taxSubstitution = order.taxSubstitution !== undefined ? order.taxSubstitution : (order.tax_substitution !== undefined ? order.tax_substitution : false);
+  const paymentMethod = order.paymentMethod || order.payment_method || 'cash';
+  const paymentTerms = order.paymentTerms || order.payment_terms || '';
+  const deliveryLocation = order.deliveryLocation || order.delivery_location || null;
+  const deliveryFee = order.deliveryFee || order.delivery_fee || 0;
+  const halfInvoicePercentage = order.halfInvoicePercentage || order.half_invoice_percentage || 50;
+  const withIPI = order.withIPI !== undefined ? order.withIPI : (order.with_ipi !== undefined ? order.with_ipi : false);
+  const ipiValue = order.ipiValue || order.ipi_value || 0;
   
+  // Calculate tax substitution value
   const taxSubstitutionValue = taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
 
   return (
@@ -348,7 +372,7 @@ const OrderDetail = () => {
               <div className="ml-4">{getStatusBadge(order.status)}</div>
             </div>
             <p className="text-muted-foreground">
-              Criado em {format(new Date(order.createdAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+              Criado em {format(new Date(order.createdAt || order.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
             </p>
           </div>
         </div>
@@ -380,8 +404,12 @@ const OrderDetail = () => {
           <div className="space-y-4">
             <div>
               <h3 className="text-sm font-medium text-gray-500">Empresa</h3>
-              <p className="text-lg font-semibold">{order.customer.companyName}</p>
-              <p className="text-sm text-gray-500">CNPJ/CPF: {order.customer.document}</p>
+              <p className="text-lg font-semibold">
+                {order.customer?.companyName || order.customers?.company_name || "Cliente não identificado"}
+              </p>
+              <p className="text-sm text-gray-500">
+                CNPJ/CPF: {order.customer?.document || order.customers?.document || "N/A"}
+              </p>
             </div>
             
             <Separator />
@@ -392,11 +420,15 @@ const OrderDetail = () => {
                 Endereço
               </h3>
               <p className="text-md">
-                {order.customer.street}, {order.customer.number}
-                {order.customer.complement && ` - ${order.customer.complement}`}
+                {order.customer?.street || order.customers?.street || "Endereço não disponível"}, 
+                {order.customer?.number || order.customers?.number || "S/N"}
+                {(order.customer?.complement || order.customers?.complement) && 
+                  ` - ${order.customer?.complement || order.customers?.complement}`}
               </p>
               <p className="text-md">
-                {order.customer.city}/{order.customer.state} - {order.customer.zipCode}
+                {order.customer?.city || order.customers?.city || "Cidade não informada"}/
+                {order.customer?.state || order.customers?.state || "Estado não informado"} - 
+                {order.customer?.zipCode || order.customers?.zip_code || "CEP não informado"}
               </p>
             </div>
             
@@ -408,7 +440,7 @@ const OrderDetail = () => {
                   <Phone className="h-4 w-4 mr-1 text-gray-400" />
                   Telefone
                 </h3>
-                <p className="text-md">{order.customer.phone}</p>
+                <p className="text-md">{order.customer?.phone || order.customers?.phone || "Não informado"}</p>
               </div>
               
               <div>
@@ -416,18 +448,20 @@ const OrderDetail = () => {
                   <Mail className="h-4 w-4 mr-1 text-gray-400" />
                   Email
                 </h3>
-                <p className="text-md">{order.customer.email}</p>
+                <p className="text-md">{order.customer?.email || order.customers?.email || "Não informado"}</p>
               </div>
             </div>
             
-            <Button 
-              variant="outline" 
-              className="w-full"
-              onClick={() => navigate(`/customers/${order.customer.id}`)}
-            >
-              <User className="mr-2 h-4 w-4" />
-              Ver Detalhes do Cliente
-            </Button>
+            {(order.customer?.id || order.customers?.id) && (
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => navigate(`/customers/${order.customer?.id || order.customers?.id}`)}
+              >
+                <User className="mr-2 h-4 w-4" />
+                Ver Detalhes do Cliente
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -446,7 +480,7 @@ const OrderDetail = () => {
                 <div>
                   <p className="font-medium">Pedido Criado</p>
                   <p className="text-sm text-gray-500">
-                    {format(new Date(order.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    {format(new Date(order.createdAt || order.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                   </p>
                   <p className="text-sm text-gray-500">Por {order.user?.name || 'Usuário'}</p>
                 </div>
@@ -460,14 +494,29 @@ const OrderDetail = () => {
                   <div>
                     <p className="font-medium">Pedido Confirmado</p>
                     <p className="text-sm text-gray-500">
-                      {format(new Date(new Date(order.createdAt).getTime() + 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      {format(new Date(new Date(order.createdAt || order.created_at).getTime() + 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                     </p>
                     <p className="text-sm text-gray-500">Por Administrador</p>
                   </div>
                 </div>
               )}
               
-              {order.status === 'delivered' && (
+              {order.status === 'invoiced' && (
+                <div className="flex items-start">
+                  <div className="min-w-8 min-h-8 rounded-full bg-amber-100 flex items-center justify-center mr-3">
+                    <Receipt className="h-4 w-4 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Pedido Faturado</p>
+                    <p className="text-sm text-gray-500">
+                      {format(new Date(new Date(order.createdAt || order.created_at).getTime() + 2 * 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    </p>
+                    <p className="text-sm text-gray-500">Por Financeiro</p>
+                  </div>
+                </div>
+              )}
+              
+              {order.status === 'completed' && (
                 <div className="flex items-start">
                   <div className="min-w-8 min-h-8 rounded-full bg-ferplas-100 flex items-center justify-center mr-3">
                     <Truck className="h-4 w-4 text-ferplas-600" />
@@ -475,7 +524,7 @@ const OrderDetail = () => {
                   <div>
                     <p className="font-medium">Pedido Entregue</p>
                     <p className="text-sm text-gray-500">
-                      {format(new Date(new Date(order.createdAt).getTime() + 3 * 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      {format(new Date(new Date(order.createdAt || order.created_at).getTime() + 3 * 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                     </p>
                     <p className="text-sm text-gray-500">Entregue por Transporte Ferplas</p>
                   </div>
@@ -490,7 +539,7 @@ const OrderDetail = () => {
                   <div>
                     <p className="font-medium">Pedido Cancelado</p>
                     <p className="text-sm text-gray-500">
-                      {format(new Date(new Date(order.createdAt).getTime() + 2 * 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      {format(new Date(new Date(order.createdAt || order.created_at).getTime() + 2 * 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                     </p>
                     <p className="text-sm text-gray-500">Por Cliente</p>
                   </div>
@@ -599,7 +648,7 @@ const OrderDetail = () => {
               {items.map((item: any, index: number) => (
                 <TableRow key={item?.id || `item-${index}`}>
                   <TableCell className="font-medium">
-                    {item?.product?.name || item?.productName || `Produto ${index + 1}`}
+                    {item?.product?.name || "Produto não encontrado"}
                   </TableCell>
                   <TableCell>{formatCurrency(item?.listPrice || item?.product?.listPrice || 0)}</TableCell>
                   <TableCell>{item?.discount || 0}%</TableCell>
@@ -615,6 +664,7 @@ const OrderDetail = () => {
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Package className="h-12 w-12 text-gray-300 mb-4" />
               <h2 className="text-xl font-medium text-gray-600">Nenhum item no pedido</h2>
+              <p className="text-muted-foreground">Este pedido não contém itens ou os dados não estão disponíveis.</p>
             </div>
           )}
         </CardContent>

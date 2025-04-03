@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Order, CartItem } from '@/types/types';
 import { format } from 'date-fns';
@@ -12,7 +13,7 @@ type SupabaseOrder = Tables<'orders'>;
 
 interface OrderContextType {
   orders: Order[];
-  addOrder: (newOrder: Partial<Order>) => void;
+  addOrder: (newOrder: Partial<Order>) => Promise<string | undefined>;
   updateOrderStatus: (orderId: string, status: Order['status']) => void;
   updateOrder: (orderId: string, orderData: Partial<Order>) => void;
   getOrderById: (id: string) => Order | undefined;
@@ -51,6 +52,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setOrders([]);
         return;
       }
+      
+      console.log("Fetched orders data:", ordersData);
       
       // Process each order to fetch items and applied discounts
       const processedOrders = await Promise.all(ordersData.map(async (order) => {
@@ -92,11 +95,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
         // Use adapter to convert Supabase order to app Order
         const processedOrder = supabaseOrderToAppOrder(order, itemsData || [], discounts);
-        
-        // Make sure to include order_number from the database
-        if (order.order_number) {
-          processedOrder.orderNumber = order.order_number;
-        }
         
         return processedOrder;
       }));
@@ -151,32 +149,48 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
     
     try {
+      console.log("Adding new order:", newOrder);
+      
       // First, insert the order into Supabase
+      const orderInsert = {
+        customer_id: newOrder.customer.id,
+        user_id: user?.id || 'anonymous',
+        status: 'pending',
+        shipping: newOrder.shipping || 'delivery',
+        full_invoice: newOrder.fullInvoice !== undefined ? newOrder.fullInvoice : true,
+        tax_substitution: newOrder.taxSubstitution || false,
+        payment_method: newOrder.paymentMethod || 'cash',
+        payment_terms: newOrder.paymentTerms,
+        notes: newOrder.notes || '',
+        observations: newOrder.observations || '',
+        delivery_location: newOrder.deliveryLocation,
+        half_invoice_percentage: newOrder.halfInvoicePercentage,
+        delivery_fee: newOrder.deliveryFee || 0,
+        subtotal: newOrder.subtotal || 0,
+        total_discount: newOrder.totalDiscount || 0,
+        total: newOrder.total || 0,
+        with_ipi: newOrder.withIPI || false,
+        ipi_value: newOrder.ipiValue || 0
+      };
+      
+      console.log("Order data being inserted:", orderInsert);
+      
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
-        .insert({
-          customer_id: newOrder.customer.id,
-          user_id: user?.id || 'anonymous',
-          status: 'pending',
-          shipping: newOrder.shipping || 'delivery',
-          full_invoice: newOrder.fullInvoice !== undefined ? newOrder.fullInvoice : true,
-          tax_substitution: newOrder.taxSubstitution || false,
-          payment_method: newOrder.paymentMethod || 'cash',
-          payment_terms: newOrder.paymentTerms,
-          notes: newOrder.notes || '',
-          observations: newOrder.observations || '',
-          delivery_location: newOrder.deliveryLocation,
-          half_invoice_percentage: newOrder.halfInvoicePercentage,
-          delivery_fee: newOrder.deliveryFee || 0,
-          subtotal: newOrder.subtotal || 0,
-          total_discount: newOrder.totalDiscount || 0,
-          total: newOrder.total || 0
-        })
+        .insert(orderInsert)
         .select()
         .single();
         
-      if (orderError) throw orderError;
-      if (!orderData) throw new Error('Erro ao criar pedido');
+      if (orderError) {
+        console.error("Order insert error:", orderError);
+        throw orderError;
+      }
+      
+      if (!orderData) {
+        throw new Error('Erro ao criar pedido: No data returned');
+      }
+      
+      console.log("Order created successfully:", orderData);
       
       // Now insert the order items
       if (newOrder.items && newOrder.items.length > 0) {
@@ -189,11 +203,18 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           subtotal: item.subtotal
         }));
         
+        console.log("Inserting order items:", orderItems);
+        
         const { error: itemsError } = await supabase
           .from('order_items')
           .insert(orderItems);
           
-        if (itemsError) throw itemsError;
+        if (itemsError) {
+          console.error("Order items insert error:", itemsError);
+          throw itemsError;
+        }
+        
+        console.log("Order items inserted successfully");
       }
       
       // Insert order discounts if any
@@ -203,25 +224,36 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           discount_id: discount.id
         }));
         
+        console.log("Inserting order discounts:", orderDiscounts);
+        
         const { error: discountsError } = await supabase
           .from('order_discounts')
           .insert(orderDiscounts);
           
-        if (discountsError) throw discountsError;
+        if (discountsError) {
+          console.error("Order discounts insert error:", discountsError);
+          throw discountsError;
+        }
+        
+        console.log("Order discounts inserted successfully");
       }
       
       // Refetch orders to get the complete order with all relationships
       await fetchOrders();
       
       toast.success(`Pedido #${orderData.order_number} criado com sucesso!`);
-    } catch (error) {
+      return orderData.id;
+    } catch (error: any) {
       console.error('Error creating order:', error);
-      toast.error('Erro ao criar pedido');
+      toast.error(`Erro ao criar pedido: ${error.message || 'Erro desconhecido'}`);
+      return undefined;
     }
   };
 
   const updateOrderStatus = async (orderId: string, status: Order['status']) => {
     try {
+      console.log(`Updating order ${orderId} status to ${status}`);
+      
       // Update the order status in Supabase
       const { error } = await supabase
         .from('orders')
@@ -231,7 +263,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         })
         .eq('id', orderId);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Order status update error:", error);
+        throw error;
+      }
       
       // Update local state
       setOrders(prevOrders =>
@@ -243,29 +278,37 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       );
       
       toast.success(`Status do pedido atualizado para ${status}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating order status:', error);
-      toast.error('Erro ao atualizar status do pedido');
+      toast.error(`Erro ao atualizar status do pedido: ${error.message || 'Erro desconhecido'}`);
     }
   };
   
   const updateOrder = async (orderId: string, orderData: Partial<Order>) => {
     try {
-      // Map frontend order data to Supabase schema
-      const supabaseOrderData: Partial<SupabaseOrder> = {
-        status: orderData.status,
-        shipping: orderData.shipping,
-        full_invoice: orderData.fullInvoice,
-        tax_substitution: orderData.taxSubstitution,
-        payment_method: orderData.paymentMethod,
-        payment_terms: orderData.paymentTerms,
-        notes: orderData.notes,
-        observations: orderData.observations,
-        delivery_location: orderData.deliveryLocation,
-        half_invoice_percentage: orderData.halfInvoicePercentage,
-        delivery_fee: orderData.deliveryFee,
+      console.log(`Updating order ${orderId} with data:`, orderData);
+      
+      // Create plain object with properties matching Supabase column names
+      const supabaseOrderData: Record<string, any> = {
         updated_at: new Date().toISOString()
       };
+      
+      // Map frontend properties to database column names
+      if (orderData.status !== undefined) supabaseOrderData.status = orderData.status;
+      if (orderData.shipping !== undefined) supabaseOrderData.shipping = orderData.shipping;
+      if (orderData.fullInvoice !== undefined) supabaseOrderData.full_invoice = orderData.fullInvoice;
+      if (orderData.taxSubstitution !== undefined) supabaseOrderData.tax_substitution = orderData.taxSubstitution;
+      if (orderData.paymentMethod !== undefined) supabaseOrderData.payment_method = orderData.paymentMethod;
+      if (orderData.paymentTerms !== undefined) supabaseOrderData.payment_terms = orderData.paymentTerms;
+      if (orderData.notes !== undefined) supabaseOrderData.notes = orderData.notes;
+      if (orderData.observations !== undefined) supabaseOrderData.observations = orderData.observations;
+      if (orderData.deliveryLocation !== undefined) supabaseOrderData.delivery_location = orderData.deliveryLocation;
+      if (orderData.halfInvoicePercentage !== undefined) supabaseOrderData.half_invoice_percentage = orderData.halfInvoicePercentage;
+      if (orderData.deliveryFee !== undefined) supabaseOrderData.delivery_fee = orderData.deliveryFee;
+      if (orderData.withIPI !== undefined) supabaseOrderData.with_ipi = orderData.withIPI;
+      if (orderData.ipiValue !== undefined) supabaseOrderData.ipi_value = orderData.ipiValue;
+      
+      console.log("Supabase order data for update:", supabaseOrderData);
       
       // Update the order in Supabase
       const { error } = await supabase
@@ -273,7 +316,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .update(supabaseOrderData)
         .eq('id', orderId);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Order update error:", error);
+        throw error;
+      }
       
       // Update local state
       setOrders(prevOrders =>
@@ -282,34 +328,31 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             ? { 
                 ...order, 
                 ...orderData, 
-                updatedAt: new Date(),
-                shipping: orderData.shipping || order.shipping,
-                paymentMethod: orderData.paymentMethod || order.paymentMethod,
-                observations: orderData.notes || orderData.observations || order.observations || order.notes,
-                withIPI: orderData.withIPI !== undefined ? orderData.withIPI : order.withIPI,
-                ipiValue: orderData.ipiValue !== undefined ? orderData.ipiValue : order.ipiValue
+                updatedAt: new Date()
               }
             : order
         )
       );
       
       toast.success(`Pedido atualizado com sucesso!`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating order:', error);
-      toast.error('Erro ao atualizar pedido');
+      toast.error(`Erro ao atualizar pedido: ${error.message || 'Erro desconhecido'}`);
     }
   };
 
   const getOrderById = (id: string) => {
     console.log(`Fetching order with ID: ${id}`);
+    console.log(`Current orders in state:`, orders.map(o => ({ id: o.id, number: o.orderNumber })));
+    
     const foundOrder = orders.find(order => order.id === id);
-    console.log(`Fetched order:`, foundOrder);
     
     if (!foundOrder) {
-      console.error(`Order with ID ${id} not found`);
+      console.error(`Order with ID ${id} not found in state`);
       return undefined;
     }
     
+    console.log(`Found order:`, foundOrder);
     return foundOrder;
   };
 
