@@ -611,7 +611,7 @@ const ProductManagement = () => {
                   name="quantity_per_volume"
                   type="number"
                   min="0"
-                  step="1"
+                  step="0.1"
                   value={formData.quantity_per_volume}
                   onChange={handleInputChange}
                 />

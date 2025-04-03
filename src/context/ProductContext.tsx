@@ -17,7 +17,7 @@ const INITIAL_PRODUCTS = Array.from({ length: 20 }, (_, i) => {
     listPrice: Math.floor(Math.random() * 900) + 100,
     weight: Math.floor(Math.random() * 5) + 0.5,
     quantity: Math.floor(Math.random() * 100) + 10,
-    quantityPerVolume: Math.floor(Math.random() * 10) + 1,
+    quantityPerVolume: Math.random() < 0.5 ? Math.floor(Math.random() * 10) + 1 : parseFloat((Math.random() * 5 + 0.5).toFixed(1)),
     dimensions: {
       width,
       height,
