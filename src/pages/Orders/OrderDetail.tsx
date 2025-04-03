@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   ArrowLeft, Edit, Printer, Truck, Package, 
-  Calendar, User, Phone, Mail, MapPin, Receipt, ShoppingCart
+  Calendar, User, Phone, Mail, MapPin, Receipt, ShoppingCart, RefreshCcw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,31 +22,66 @@ import { toast } from 'sonner';
 import { useOrders } from '@/context/OrderContext';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import PrintableOrder from '@/components/orders/PrintableOrder';
+import { Order } from '@/types/types';
+import { useOrderManagement } from '@/hooks/use-order-management';
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { getOrderById } = useOrders();
-  const [order, setOrder] = useState<any>(null);
+  const { getOrderById, orders, fetchOrders } = useOrders();
+  const { fetchOrderById, isLoading: isLoadingDirect } = useOrderManagement();
+  const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const [usingDirectFetch, setUsingDirectFetch] = useState(false);
 
   useEffect(() => {
-    if (id) {
-      console.log(`Fetching order with ID: ${id}`);
-      const fetchedOrder = getOrderById(id);
-      console.log(`Fetched order:`, fetchedOrder);
+    const loadOrders = async () => {
+      if (orders.length === 0) {
+        await fetchOrders();
+      }
+    };
+    
+    loadOrders();
+  }, [orders.length, fetchOrders]);
+
+  useEffect(() => {
+    const getOrderDetails = async () => {
+      if (!id) return;
       
-      if (fetchedOrder) {
-        setOrder(fetchedOrder);
+      setLoading(true);
+      console.log(`Attempting to fetch order with ID: ${id}`);
+      console.log(`Current orders in context: ${orders.length}`);
+      
+      console.log("Available order IDs:", orders.map(o => o.id));
+      
+      const foundOrder = getOrderById(id);
+      
+      if (foundOrder) {
+        console.log("Found order in context:", foundOrder);
+        setOrder(foundOrder);
+        setUsingDirectFetch(false);
       } else {
-        console.error(`Order with ID ${id} not found`);
-        toast.error("Pedido não encontrado");
+        console.log(`Order with ID ${id} not found in context, trying direct fetch...`);
+        
+        const directOrder = await fetchOrderById(id);
+        
+        if (directOrder) {
+          console.log("Found order via direct fetch:", directOrder);
+          setOrder(directOrder);
+          setUsingDirectFetch(true);
+        } else {
+          console.error(`Order with ID ${id} not found at all`);
+          toast.error("Pedido não encontrado");
+          setOrder(null);
+        }
       }
       
       setLoading(false);
-    }
-  }, [id, getOrderById]);
+    };
+
+    getOrderDetails();
+  }, [id, getOrderById, orders, fetchOrderById]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -56,7 +91,6 @@ const OrderDetail = () => {
   };
 
   const handlePrintOrder = () => {
-    // Open in new window
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(`
@@ -80,7 +114,6 @@ const OrderDetail = () => {
         <body>
           <div id="printable-content"></div>
           <script>
-            // This will trigger print when content is loaded
             window.onload = function() {
               setTimeout(() => window.print(), 1000);
             };
@@ -91,10 +124,8 @@ const OrderDetail = () => {
       
       printWindow.document.close();
       
-      // Use fallback method for rendering since we can't use React in the new window
       const mountNode = printWindow.document.getElementById('printable-content');
       if (mountNode) {
-        // Create an iframe to hold the content
         const iframe = document.createElement('iframe');
         iframe.style.width = '100%';
         iframe.style.height = '100vh';
@@ -102,13 +133,11 @@ const OrderDetail = () => {
         
         mountNode.appendChild(iframe);
         
-        // Wait for iframe to load then add content
         iframe.onload = function() {
           const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
           if (iframeDoc) {
             printWindow.document.title = `Pedido #${order.orderNumber || '1'} - Impressão`;
             
-            // Add component markup directly
             const companyInfo = JSON.parse(localStorage.getItem('ferplas-company-info') || '{}');
             iframeDoc.body.innerHTML = renderPrintableOrderHTML(order, companyInfo);
           }
@@ -120,19 +149,14 @@ const OrderDetail = () => {
       toast.error("Não foi possível abrir a janela de impressão. Verifique se o seu navegador está bloqueando pop-ups.");
     }
   };
-  
+
   const renderPrintableOrderHTML = (order: any, companyInfo: any) => {
-    // Determine invoice type text based on fullInvoice flag
     const invoiceTypeText = order.fullInvoice ? 'Nota Cheia' : 'Meia Nota';
-    
-    // Show percentage only if it's a half invoice
     const halfInvoiceText = !order.fullInvoice && order.halfInvoicePercentage ? 
       `(${order.halfInvoicePercentage}%)` : '';
       
-    // Calculate tax substitution value if applicable
     let taxSubstitutionValue = 0;
     if (order.taxSubstitution) {
-      // Using 7.8% which is the standard tax substitution rate in the system
       taxSubstitutionValue = (7.8 / 100) * order.subtotal;
     }
     
@@ -288,7 +312,31 @@ const OrderDetail = () => {
     return <OrderStatusBadge status={status as any} />;
   };
 
-  if (loading) {
+  const handleRefreshOrder = async () => {
+    if (!id) return;
+    
+    setLoading(true);
+    
+    try {
+      const refreshedOrder = await fetchOrderById(id);
+      
+      if (refreshedOrder) {
+        setOrder(refreshedOrder);
+        toast.success("Pedido atualizado com sucesso!");
+        
+        fetchOrders();
+      } else {
+        toast.error("Pedido não encontrado");
+      }
+    } catch (error) {
+      console.error("Error refreshing order:", error);
+      toast.error("Erro ao atualizar pedido");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading || isLoadingDirect) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-ferplas-500"></div>
@@ -301,12 +349,21 @@ const OrderDetail = () => {
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold text-gray-700">Pedido não encontrado</h2>
         <p className="text-gray-500 mt-2">O pedido que você está procurando não existe ou foi removido.</p>
-        <Button 
-          className="mt-6"
-          onClick={() => navigate('/orders')}
-        >
-          Voltar para lista de pedidos
-        </Button>
+        <div className="flex flex-col gap-3 items-center mt-6">
+          <Button 
+            onClick={handleRefreshOrder}
+            className="bg-ferplas-500 hover:bg-ferplas-600"
+          >
+            <RefreshCcw className="mr-2 h-4 w-4" />
+            Tentar atualizar pedido
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={() => navigate('/orders')}
+          >
+            Voltar para lista de pedidos
+          </Button>
+        </div>
       </div>
     );
   }
@@ -346,6 +403,18 @@ const OrderDetail = () => {
             <div className="flex items-center">
               <h1 className="text-3xl font-bold tracking-tight">Pedido #{orderNumber}</h1>
               <div className="ml-4">{getStatusBadge(order.status)}</div>
+              {usingDirectFetch && (
+                <div className="ml-4 text-amber-500 text-sm flex items-center">
+                  <span className="px-2 py-1 bg-amber-100 rounded-full text-xs">Visualização direta</span>
+                  <Button 
+                    variant="link" 
+                    className="text-xs text-amber-600 p-1 h-auto" 
+                    onClick={handleRefreshOrder}
+                  >
+                    <RefreshCcw className="h-3 w-3 mr-1" /> Sincronizar
+                  </Button>
+                </div>
+              )}
             </div>
             <p className="text-muted-foreground">
               Criado em {format(new Date(order.createdAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}

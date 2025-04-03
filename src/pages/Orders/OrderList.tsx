@@ -32,6 +32,7 @@ import { supabase, Tables } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabaseOrderToAppOrder } from '@/utils/adapters';
+import { useOrders } from '@/context/OrderContext';
 
 // Define custom type that includes joined tables
 interface OrderWithCustomer extends Tables<'orders'> {
@@ -40,44 +41,18 @@ interface OrderWithCustomer extends Tables<'orders'> {
 
 const OrderList = () => {
   const navigate = useNavigate();
-  const [orders, setOrders] = useState<OrderWithCustomer[]>([]);
-  const [filteredOrders, setFilteredOrders] = useState<OrderWithCustomer[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  
+  // Use the orders context instead of local state
+  const { orders, isLoading, fetchOrders, deleteOrder } = useOrders();
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
 
   useEffect(() => {
+    // Fetch orders through the context
     fetchOrders();
-  }, []);
-
-  const fetchOrders = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          customers(*)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data) {
-        console.log("Fetched orders:", data);
-        setOrders(data as OrderWithCustomer[]);
-        setFilteredOrders(data as OrderWithCustomer[]);
-      }
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-      toast.error('Erro ao carregar pedidos');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [fetchOrders]);
 
   useEffect(() => {
     if (searchTerm.trim() === '') {
@@ -85,8 +60,8 @@ const OrderList = () => {
     } else {
       const lowercasedSearch = searchTerm.toLowerCase();
       const filtered = orders.filter(order => {
-        const customerName = order.customers?.company_name?.toLowerCase() || '';
-        const orderNumber = String(order.order_number);
+        const customerName = order.customer?.companyName?.toLowerCase() || '';
+        const orderNumber = String(order.orderNumber || '');
         
         return customerName.includes(lowercasedSearch) || 
                orderNumber.includes(lowercasedSearch);
@@ -95,20 +70,17 @@ const OrderList = () => {
     }
   }, [searchTerm, orders]);
 
+  const confirmDelete = (id: string) => {
+    setSelectedOrderId(id);
+    setIsAlertOpen(true);
+  };
+
   const handleDeleteOrder = async () => {
     if (!selectedOrderId) return;
     
     try {
-      const { error } = await supabase
-        .from('orders')
-        .delete()
-        .eq('id', selectedOrderId);
-      
-      if (error) throw error;
-      
-      toast.success('Pedido excluído com sucesso');
-      setOrders(orders.filter(order => order.id !== selectedOrderId));
-      setFilteredOrders(filteredOrders.filter(order => order.id !== selectedOrderId));
+      await deleteOrder(selectedOrderId);
+      // No need to update local state, as deleteOrder will call fetch orders
     } catch (error) {
       console.error('Error deleting order:', error);
       toast.error('Erro ao excluir pedido');
@@ -116,11 +88,6 @@ const OrderList = () => {
       setIsAlertOpen(false);
       setSelectedOrderId(null);
     }
-  };
-
-  const confirmDelete = (id: string) => {
-    setSelectedOrderId(id);
-    setIsAlertOpen(true);
   };
 
   return (
@@ -174,12 +141,12 @@ const OrderList = () => {
                     {filteredOrders.length > 0 ? (
                       filteredOrders.map((order) => (
                         <TableRow key={order.id}>
-                          <TableCell className="font-medium">#{order.order_number}</TableCell>
-                          <TableCell>{order.customers?.company_name || "Cliente desconhecido"}</TableCell>
-                          <TableCell>{formatDate(new Date(order.created_at))}</TableCell>
+                          <TableCell className="font-medium">#{order.orderNumber}</TableCell>
+                          <TableCell>{order.customer?.companyName || "Cliente desconhecido"}</TableCell>
+                          <TableCell>{formatDate(new Date(order.createdAt))}</TableCell>
                           <TableCell>{formatCurrency(order.total)}</TableCell>
                           <TableCell>
-                            <OrderStatusBadge status={order.status as any} />
+                            <OrderStatusBadge status={order.status} />
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
