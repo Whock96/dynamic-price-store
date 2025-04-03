@@ -536,7 +536,7 @@ const OrderDetail = () => {
                 </div>
               )}
               
-              {order.status === 'delivered' && (
+              {order.status === 'completed' && (
                 <div className="flex items-start">
                   <div className="min-w-8 min-h-8 rounded-full bg-ferplas-100 flex items-center justify-center mr-3">
                     <Truck className="h-4 w-4 text-ferplas-600" />
