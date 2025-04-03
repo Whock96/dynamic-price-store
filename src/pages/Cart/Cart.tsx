@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -52,6 +53,15 @@ import { formatCurrency } from '@/utils/formatters';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 
 type SupabaseProduct = Tables<'products'>;
+
+interface CartItemWithTotalUnits {
+  product: any;
+  quantity: number;
+  discount: number;
+  finalPrice: number;
+  id: string;
+  subtotal: number;
+}
 
 const Cart = () => {
   const navigate = useNavigate();
@@ -219,7 +229,7 @@ const Cart = () => {
     }
   };
 
-  const calculateTotalUnits = (item) => {
+  const calculateTotalUnits = (item: CartItemWithTotalUnits) => {
     const quantityPerVolume = item.product.quantityPerVolume || 1;
     return item.quantity * quantityPerVolume;
   };
@@ -787,8 +797,8 @@ const Cart = () => {
                               : 'A nota fiscal será emitida com preço reduzido mantendo a quantidade original'}
                           </p>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </>
               ) : (
@@ -822,4 +832,141 @@ const Cart = () => {
           <CardContent>
             <div className="space-y-4">
               {/* Opção de Substituição Tributária */}
-              <div className="space-
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">
+                      Substituição tributária (ICMS ST)
+                      {applyDiscounts && effectiveTaxRate > 0 && (
+                        <span className="text-green-600 ml-1">
+                          ({effectiveTaxRate}%)
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Imposto sobre Circulação de Mercadorias e Serviços - Substituição Tributária
+                    </p>
+                  </div>
+                  <Switch
+                    checked={isDiscountOptionSelected('3')}
+                    onCheckedChange={() => toggleDiscount('3')}
+                  />
+                </div>
+              </div>
+
+              {/* Opção de IPI */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">
+                      IPI (Imposto sobre Produtos Industrializados)
+                      {withIPI && applyDiscounts && effectiveIPIRate > 0 && (
+                        <span className="text-green-600 ml-1">
+                          ({effectiveIPIRate}%)
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Aplicar IPI no valor total da nota
+                    </p>
+                  </div>
+                  <Switch
+                    checked={withIPI}
+                    onCheckedChange={toggleIPI}
+                  />
+                </div>
+              </div>
+
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Observações do pedido */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-medium">Observações</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              placeholder="Digite observações adicionais para este pedido..."
+              value={observations}
+              onChange={(e) => setObservations(e.target.value)}
+              className="min-h-[100px]"
+            />
+          </CardContent>
+        </Card>
+        
+        {/* Resumo do pedido */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-medium">Resumo do pedido</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between py-2">
+                <span className="text-gray-500">Subtotal:</span>
+                <span className="font-medium">{formatCurrency(subtotal)}</span>
+              </div>
+              
+              {applyDiscounts && totalDiscount > 0 && (
+                <div className="flex justify-between py-2 text-green-600">
+                  <span>Descontos:</span>
+                  <span>- {formatCurrency(totalDiscount)}</span>
+                </div>
+              )}
+              
+              {taxSubstitutionValue > 0 && (
+                <div className="flex justify-between py-2 text-amber-600">
+                  <span>Substituição Tributária:</span>
+                  <span>+ {formatCurrency(taxSubstitutionValue)}</span>
+                </div>
+              )}
+              
+              {ipiValue > 0 && (
+                <div className="flex justify-between py-2 text-amber-600">
+                  <span>IPI:</span>
+                  <span>+ {formatCurrency(ipiValue)}</span>
+                </div>
+              )}
+              
+              {deliveryFee > 0 && (
+                <div className="flex justify-between py-2">
+                  <span>Taxa de entrega:</span>
+                  <span>+ {formatCurrency(deliveryFee)}</span>
+                </div>
+              )}
+              
+              <Separator className="my-2" />
+              
+              <div className="flex justify-between py-2 text-lg font-bold">
+                <span>Total:</span>
+                <span className="text-ferplas-600">{formatCurrency(total)}</span>
+              </div>
+              
+              <Button 
+                className="w-full mt-4 bg-ferplas-500 hover:bg-ferplas-600"
+                size="lg"
+                onClick={handleSubmitOrder}
+                disabled={isSubmitting || items.length === 0 || !customer}
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="mr-2 h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Enviando pedido...
+                  </>
+                ) : (
+                  <>
+                    <Send className="mr-2 h-5 w-5" />
+                    Finalizar Pedido
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default Cart;
