@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Order, CartItem } from '@/types/types';
 import { format } from 'date-fns';
@@ -20,7 +19,6 @@ interface OrderContextType {
   clearAllOrders: () => void;
   deleteOrder: (orderId: string) => void;
   isLoading: boolean;
-  fetchOrders: () => Promise<void>;
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
@@ -38,7 +36,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const fetchOrders = async () => {
     setIsLoading(true);
     try {
-      console.info("Fetching all orders from Supabase...");
       // Fetch orders with customer details
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
@@ -54,8 +51,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setOrders([]);
         return;
       }
-      
-      console.info("Fetched orders:", ordersData);
       
       // Process each order to fetch items and applied discounts
       const processedOrders = await Promise.all(ordersData.map(async (order) => {
@@ -107,7 +102,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }));
       
       setOrders(processedOrders);
-      console.info(`Loaded ${processedOrders.length} orders from Supabase`);
+      console.log(`Loaded ${processedOrders.length} orders from Supabase`);
     } catch (error) {
       console.error('Error loading orders from Supabase:', error);
       toast.error('Erro ao carregar pedidos');
@@ -182,8 +177,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
       if (orderError) throw orderError;
       if (!orderData) throw new Error('Erro ao criar pedido');
-      
-      console.log("Created order:", orderData);
       
       // Now insert the order items
       if (newOrder.items && newOrder.items.length > 0) {
@@ -309,8 +302,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const getOrderById = (id: string) => {
     console.log(`Fetching order with ID: ${id}`);
-    console.log("Available orders:", JSON.stringify(orders));
-    
     const foundOrder = orders.find(order => order.id === id);
     console.log(`Fetched order:`, foundOrder);
     
@@ -331,8 +322,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       getOrderById, 
       clearAllOrders,
       deleteOrder,
-      isLoading,
-      fetchOrders
+      isLoading
     }}>
       {children}
     </OrderContext.Provider>
