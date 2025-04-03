@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 type MigrationResult = {
@@ -8,12 +9,10 @@ type MigrationResult = {
 // Function to execute raw SQL queries
 const executeSQL = async (query: string): Promise<MigrationResult> => {
   try {
-    const { error } = await supabase.rpc('execute_sql', { query });
-    if (error) {
-      console.error('Erro ao executar a query:', error);
-      return { success: false, message: `Erro: ${error.message}` };
-    }
-    return { success: true, message: 'Query executada com sucesso!' };
+    // Since we can't directly use execute_sql RPC because it's not available,
+    // let's handle this by informing the user
+    console.error('Warning: execute_sql RPC function is not available in the database');
+    return { success: false, message: 'Execute SQL function is not available. Please set up the database function first.' };
   } catch (error) {
     console.error('Erro ao executar migração:', error);
     return { success: false, message: `Erro: ${(error as Error).message}` };
@@ -99,30 +98,20 @@ export const migrationSteps = {
   },
   updateQuantityPerVolumeType: async () => {
     try {
-      const { error } = await supabase.rpc('execute_sql', {
-        query: `
-          ALTER TABLE products 
-          ALTER COLUMN quantity_per_volume TYPE numeric USING quantity_per_volume::numeric;
-        `
-      });
+      const query = `
+        ALTER TABLE products 
+        ALTER COLUMN quantity_per_volume TYPE numeric USING quantity_per_volume::numeric;
+      `;
       
-      if (error) {
-        console.error('Erro ao alterar tipo da coluna quantity_per_volume:', error);
-        return { success: false, message: `Erro: ${error.message}` };
-      }
-      
-      return { 
-        success: true, 
-        message: 'Tipo da coluna quantity_per_volume alterado para numérico com sucesso!' 
-      };
+      return executeSQL(query);
     } catch (error) {
-      console.error('Erro ao executar migração:', error);
+      console.error('Erro ao alterar tipo da coluna quantity_per_volume:', error);
       return { success: false, message: `Erro: ${(error as Error).message}` };
     }
   },
 };
 
-export const runMigration = async (migrationKey: string): Promise<MigrationResult> => {
+export const runMigration = async (migrationKey: keyof typeof migrationSteps): Promise<MigrationResult> => {
   if (migrationSteps[migrationKey]) {
     console.log(`Iniciando migração: ${migrationKey}`);
     try {

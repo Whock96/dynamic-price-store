@@ -47,9 +47,11 @@ export const useSupabaseData = <T extends Record<string, any>>(
     setError(null);
 
     try {
-      const { error: createError } = await supabase
+      const { data: createdRecord, error: createError } = await supabase
         .from(tableName)
-        .insert([record]);
+        .insert([record])
+        .select()
+        .single();
 
       if (createError) {
         setError(createError);
@@ -57,10 +59,10 @@ export const useSupabaseData = <T extends Record<string, any>>(
       }
 
       await fetchData();
-      return true;
+      return createdRecord as T;
     } catch (e) {
       setError(e as Error);
-      return false;
+      return false as any;
     } finally {
       setIsLoading(false);
     }
@@ -71,10 +73,12 @@ export const useSupabaseData = <T extends Record<string, any>>(
       // Para depurar o problema de conversão de números
       console.log(`Atualizando registro em ${tableName}:`, data);
       
-      const { error } = await supabase
+      const { data: updatedRecord, error } = await supabase
         .from(tableName)
         .update(data)
-        .eq('id', id);
+        .eq('id', id)
+        .select()
+        .single();
 
       if (error) {
         console.error(`Error updating record in ${tableName}:`, error);
@@ -82,7 +86,7 @@ export const useSupabaseData = <T extends Record<string, any>>(
       }
 
       await fetchData();
-      return true;
+      return updatedRecord as T;
     } catch (error) {
       console.error(`Error updating record in ${tableName}:`, error);
       throw error;
@@ -114,6 +118,22 @@ export const useSupabaseData = <T extends Record<string, any>>(
     }
   };
 
+  const getRecordById = async (id: string) => {
+    try {
+      const { data: record, error } = await supabase
+        .from(tableName)
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      return record as T;
+    } catch (error) {
+      console.error(`Error getting record from ${tableName}:`, error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -126,6 +146,7 @@ export const useSupabaseData = <T extends Record<string, any>>(
     fetchData,
     createRecord,
     updateRecord,
-    deleteRecord
+    deleteRecord,
+    getRecordById
   };
 };

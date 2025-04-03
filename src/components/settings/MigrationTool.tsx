@@ -6,7 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Database, ArrowUpCircle, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { useCustomers } from '@/context/CustomerContext';
 import { useProducts } from '@/context/ProductContext';
-import { migrateCustomersToSupabase, migrateCategoriesToSupabase, migrateProductsToSupabase } from '@/utils/supabase-migration';
+import { migrateCustomersToSupabase, migrateCategoriesToSupabase, migrateProductsToSupabase } from '@/utils/migration-helpers';
 import { toast } from 'sonner';
 
 const MigrationTool = () => {
