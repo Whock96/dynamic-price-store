@@ -38,6 +38,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const fetchOrders = async () => {
     setIsLoading(true);
     try {
+      console.info("Fetching all orders from Supabase...");
       // Fetch orders with customer details
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
@@ -54,7 +55,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return;
       }
       
-      console.log("Fetched orders:", ordersData);
+      console.info("Fetched orders:", ordersData);
       
       // Process each order to fetch items and applied discounts
       const processedOrders = await Promise.all(ordersData.map(async (order) => {
@@ -106,7 +107,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }));
       
       setOrders(processedOrders);
-      console.log(`Loaded ${processedOrders.length} orders from Supabase`);
+      console.info(`Loaded ${processedOrders.length} orders from Supabase`);
     } catch (error) {
       console.error('Error loading orders from Supabase:', error);
       toast.error('Erro ao carregar pedidos');

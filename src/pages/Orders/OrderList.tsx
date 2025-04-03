@@ -28,16 +28,11 @@ import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { Order } from '@/types/types';
 import { useNavigate } from 'react-router-dom';
-import { supabase, Tables } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Skeleton } from "@/components/ui/skeleton";
-import { supabaseOrderToAppOrder } from '@/utils/adapters';
 import { useOrders } from '@/context/OrderContext';
-
-// Define custom type that includes joined tables
-interface OrderWithCustomer extends Tables<'orders'> {
-  customers: Tables<'customers'>;
-}
+import { useOrderManagement } from '@/hooks/use-order-management';
 
 const OrderList = () => {
   const navigate = useNavigate();
@@ -45,14 +40,15 @@ const OrderList = () => {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   
-  // Use the orders context instead of local state
-  const { orders, isLoading, fetchOrders, deleteOrder } = useOrders();
+  // Use the orders context 
+  const { orders, isLoading, deleteOrder } = useOrders();
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
 
+  // Quando o componente for montado, buscar os pedidos através do contexto
   useEffect(() => {
-    // Fetch orders through the context
-    fetchOrders();
-  }, [fetchOrders]);
+    // Não precisamos chamar fetchOrders() aqui, pois já é chamado
+    // automaticamente quando o OrderContext é inicializado
+  }, []);
 
   useEffect(() => {
     if (searchTerm.trim() === '') {
