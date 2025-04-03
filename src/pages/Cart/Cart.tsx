@@ -201,8 +201,7 @@ const Cart = () => {
   const getIPIRate = () => {
     if (!withIPI || !applyDiscounts) return 0;
     
-    const ipiOption = discountOptions.find(opt => opt.id === '5');
-    const ipiRate = ipiOption ? ipiOption.value : 10;
+    const ipiRate = settings ? settings.ipiRate : 10;
     
     if (isDiscountOptionSelected('2')) {
       return ipiRate * halfInvoicePercentage / 100;
@@ -874,12 +873,12 @@ const Cart = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">
-                      IPI {applyDiscounts && (
-                        <span className="text-red-600">(+10%)</span>
+                      IPI {applyDiscounts && settings && (
+                        <span className="text-red-600">(+{settings.ipiRate}%)</span>
                       )}
                       {isDiscountOptionSelected('2') && applyDiscounts && (
                         <span className="text-red-600 ml-1">
-                          (Ajustado: +{(10 * halfInvoicePercentage / 100).toFixed(2)}%)
+                          (Ajustado: +{effectiveIPIRate.toFixed(2)}%)
                         </span>
                       )}
                     </p>

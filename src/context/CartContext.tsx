@@ -187,19 +187,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const standardRate = settings.ipiRate / 100;
     
-    if (isDiscountOptionSelected('2')) {
-      const adjustedRate = standardRate * (halfInvoicePercentage / 100);
+    return items.reduce((total, item) => {
+      const totalUnits = calculateTotalUnits(item);
       
-      const discountedSubtotal = items.reduce((total, item) => 
-        total + (item.finalPrice * item.quantity), 0);
-        
-      return adjustedRate * discountedSubtotal;
-    }
-    
-    const discountedSubtotal = items.reduce((total, item) => 
-      total + (item.finalPrice * item.quantity), 0);
+      let adjustedRate = standardRate;
+      if (isDiscountOptionSelected('2')) {
+        adjustedRate = standardRate * (halfInvoicePercentage / 100);
+      }
       
-    return standardRate * discountedSubtotal;
+      return total + (item.finalPrice * adjustedRate * totalUnits);
+    }, 0);
   };
 
   const recalculateCart = () => {
