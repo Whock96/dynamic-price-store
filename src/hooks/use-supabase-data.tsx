@@ -1,12 +1,12 @@
+
 import { useState, useEffect } from 'react';
-import { useSupabaseClient } from '@supabase/auth-helpers-react';
+import { supabase } from "@/integrations/supabase/client";
 
 export const useSupabaseData = <T extends Record<string, any>>(
   tableName: string,
   initialFilters?: { column: string; value: any }[],
   orderBy?: { column: string; ascending?: boolean }
 ) => {
-  const supabase = useSupabaseClient();
   const [data, setData] = useState<T[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
