@@ -76,11 +76,10 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     createRecord,
     updateRecord,
     deleteRecord,
-    getRecordById,
+    getRecordById: getSupabaseCustomerById,
     fetchData: refreshData
-  } = useSupabaseData<SupabaseCustomer>('customers', undefined, { 
-    column: 'company_name', 
-    ascending: true 
+  } = useSupabaseData<SupabaseCustomer>('customers', {
+    orderBy: { column: 'company_name', ascending: true }
   });
 
   // Convert Supabase customers to our frontend model
@@ -108,7 +107,7 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       
       if (createdCustomer) {
         await refreshCustomers();
-        return supabaseToCustomer(createdCustomer as SupabaseCustomer);
+        return supabaseToCustomer(createdCustomer);
       }
       return null;
     } catch (error) {
@@ -126,7 +125,7 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       
       if (updatedCustomer) {
         await refreshCustomers();
-        return supabaseToCustomer(updatedCustomer as SupabaseCustomer);
+        return supabaseToCustomer(updatedCustomer);
       }
       return null;
     } catch (error) {
@@ -143,7 +142,7 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (result) {
         await refreshCustomers();
       }
-      return result as boolean;
+      return result;
     } catch (error) {
       console.error('Error deleting customer:', error);
       toast.error('Erro ao excluir cliente');

@@ -1,152 +1,164 @@
 
-import { useState, useEffect } from 'react';
-import { supabase, Tables } from "@/integrations/supabase/client";
-import { Database } from "@/integrations/supabase/types";
+import { useState, useEffect, useCallback } from 'react';
+import { supabase, Tables } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { Database } from '@/integrations/supabase/types';
 
-// Define a type for the valid table names
-type TableNames = keyof Database['public']['Tables'];
+// Define the table names as a type from the Supabase schema
+type TableName = keyof Database['public']['Tables'];
 
-export const useSupabaseData = <T extends Record<string, any>>(
-  tableName: string,
-  initialFilters?: { column: string; value: any }[],
-  orderBy?: { column: string; ascending?: boolean }
-) => {
-  const [data, setData] = useState<T[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+// Hook genérico para operações CRUD com o Supabase
+export function useSupabaseData<T extends Record<string, any>>(
+  tableName: string, 
+  options: {
+    initialData?: T[],
+    select?: string,
+    orderBy?: { column: string, ascending: boolean },
+    joinTable?: string,
+    filterKey?: string,
+    filterValue?: string | number,
+  } = {}
+) {
+  const [data, setData] = useState<T[]>(options.initialData || []);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchData = async () => {
+  // Fetch data from Supabase
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Use type assertion to handle the dynamic table name
-      let query = supabase.from(tableName as any).select('*');
+      // Use type assertion to tell TypeScript this is a valid table name
+      let query = supabase.from(tableName as any).select(options.select || '*');
 
-      if (initialFilters) {
-        initialFilters.forEach(({ column, value }) => {
-          query = query.eq(column, value);
-        });
+      // Add join table if needed
+      if (options.joinTable) {
+        query = query.select(`*, ${options.joinTable}(*)`) as any;
       }
 
-      if (orderBy) {
-        query = query.order(orderBy.column, { ascending: orderBy.ascending });
+      // Add filtering if needed
+      if (options.filterKey && options.filterValue !== undefined) {
+        query = query.eq(options.filterKey, options.filterValue);
       }
 
-      const { data: responseData, error: fetchError } = await query;
-
-      if (fetchError) {
-        setError(fetchError);
-      } else if (responseData) {
-        // Use type assertion to avoid type conflicts
-        setData(responseData as unknown as T[]);
+      // Add ordering if needed
+      if (options.orderBy) {
+        query = query.order(options.orderBy.column, { ascending: options.orderBy.ascending });
       }
-    } catch (e) {
-      setError(e as Error);
+
+      const { data: responseData, error: responseError } = await query;
+
+      if (responseError) {
+        throw responseError;
+      }
+
+      // Use type assertion to convert the response data
+      setData(responseData as unknown as T[]);
+      return responseData as unknown as T[];
+    } catch (err) {
+      const error = err as Error;
+      setError(error);
+      console.error(`Error fetching data from ${tableName}:`, error);
+      toast.error(`Erro ao carregar dados: ${error.message}`);
+      return null;
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [tableName, options.select, options.filterKey, options.filterValue, options.joinTable, options.orderBy]);
 
-  const createRecord = async (record: Omit<T, 'id'>) => {
-    setIsLoading(true);
-    setError(null);
-
+  // Create a new record
+  const createRecord = async (record: Omit<T, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      const { data: createdRecord, error: createError } = await supabase
+      const { data: createdData, error: createError } = await supabase
         .from(tableName as any)
-        .insert([record as any])
-        .select()
-        .single();
+        .insert(record as any)
+        .select();
 
-      if (createError) {
-        setError(createError);
-        throw createError;
-      }
+      if (createError) throw createError;
 
-      await fetchData();
-      // Use proper type conversion with unknown as intermediate step
-      return (createdRecord as unknown) as T;
-    } catch (e) {
-      setError(e as Error);
-      return null as any;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const updateRecord = async (id: string, data: Partial<T>) => {
-    try {
-      // Para depurar o problema de conversão de números
-      console.log(`Atualizando registro em ${tableName}:`, data);
+      // Refetch to get the full data with any joins
+      fetchData();
       
-      const { data: updatedRecord, error } = await supabase
-        .from(tableName as any)
-        .update(data as any)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error(`Error updating record in ${tableName}:`, error);
-        throw error;
-      }
-
-      await fetchData();
-      // Use proper type conversion with unknown as intermediate step
-      return (updatedRecord as unknown) as T;
-    } catch (error) {
-      console.error(`Error updating record in ${tableName}:`, error);
-      throw error;
+      toast.success('Registro criado com sucesso');
+      return createdData?.[0] as unknown as T;
+    } catch (err) {
+      const error = err as Error;
+      console.error(`Error creating record in ${tableName}:`, error);
+      toast.error(`Erro ao criar registro: ${error.message}`);
+      return null;
     }
   };
 
-  const deleteRecord = async (id: string) => {
-    setIsLoading(true);
-    setError(null);
+  // Update an existing record
+  const updateRecord = async (id: string, record: Partial<T>) => {
+    try {
+      // Add updated_at timestamp
+      const recordWithTimestamp = {
+        ...record,
+        updated_at: new Date().toISOString()
+      };
 
+      const { data: updatedData, error: updateError } = await supabase
+        .from(tableName as any)
+        .update(recordWithTimestamp as any)
+        .eq('id', id)
+        .select();
+
+      if (updateError) throw updateError;
+
+      // Optimistically update local state
+      setData(prevData => 
+        prevData.map(item => 
+          (item as any).id === id ? { ...item, ...record } : item
+        )
+      );
+
+      toast.success('Registro atualizado com sucesso');
+      return updatedData?.[0] as unknown as T;
+    } catch (err) {
+      const error = err as Error;
+      console.error(`Error updating record in ${tableName}:`, error);
+      toast.error(`Erro ao atualizar registro: ${error.message}`);
+      return null;
+    }
+  };
+
+  // Delete a record
+  const deleteRecord = async (id: string) => {
     try {
       const { error: deleteError } = await supabase
         .from(tableName as any)
         .delete()
         .eq('id', id);
 
-      if (deleteError) {
-        setError(deleteError);
-        return false;
-      }
+      if (deleteError) throw deleteError;
 
-      await fetchData();
+      // Optimistically update local state
+      setData(prevData => 
+        prevData.filter(item => (item as any).id !== id)
+      );
+
+      toast.success('Registro excluído com sucesso');
       return true;
-    } catch (e) {
-      setError(e as Error);
+    } catch (err) {
+      const error = err as Error;
+      console.error(`Error deleting record from ${tableName}:`, error);
+      toast.error(`Erro ao excluir registro: ${error.message}`);
       return false;
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const getRecordById = async (id: string) => {
-    try {
-      const { data: record, error } = await supabase
-        .from(tableName as any)
-        .select('*')
-        .eq('id', id)
-        .single();
+  // Get a record by ID
+  const getRecordById = useCallback((id: string) => {
+    return data.find(item => (item as any).id === id);
+  }, [data]);
 
-      if (error) throw error;
-      // Use proper type conversion with unknown as intermediate step
-      return (record as unknown) as T;
-    } catch (error) {
-      console.error(`Error getting record from ${tableName}:`, error);
-      return null;
-    }
-  };
-
+  // Initial data fetch
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [options.filterKey, options.filterValue]);
 
   return {
     data,
@@ -158,4 +170,4 @@ export const useSupabaseData = <T extends Record<string, any>>(
     deleteRecord,
     getRecordById
   };
-};
+}

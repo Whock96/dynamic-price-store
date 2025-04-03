@@ -247,7 +247,7 @@ const ProductManagement = () => {
     } else {
       setFormData(prev => ({
         ...prev,
-        [name]: name === 'list_price' || name === 'weight' || name === 'quantity' || name === 'quantity_per_volume' || name === 'mva'
+        [name]: name === 'list_price' || name === 'weight' || name === 'quantity' || name === 'quantity_per_volume'
           ? parseFloat(value) || 0 
           : value
       }));
@@ -288,17 +288,15 @@ const ProductManagement = () => {
       
       const productData = {
         ...formData,
-        image_url: imageUrl,
+        image_url: imageUrl
       };
-
-      console.log("Enviando produto para salvar:", productData);
 
       if (isEditMode && formData.id) {
         const { id, ...updateData } = productData;
         await updateProduct(id, updateData);
         toast.success(`Produto "${formData.name}" atualizado com sucesso`);
       } else {
-        await createProduct(productData as any);
+        await createProduct(productData);
         toast.success(`Produto "${formData.name}" adicionado com sucesso`);
       }
       
@@ -613,7 +611,7 @@ const ProductManagement = () => {
                   name="quantity_per_volume"
                   type="number"
                   min="0"
-                  step="0.1"
+                  step="1"
                   value={formData.quantity_per_volume}
                   onChange={handleInputChange}
                 />

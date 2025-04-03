@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -24,12 +25,14 @@ const ProductDetail = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [cartActions, setCartActions] = useState<{ addItem: Function } | null>(null);
   
+  // Fetch the specific product using Supabase
   const { 
     data: products, 
     isLoading: productsLoading,
     error: productsError 
   } = useSupabaseData<Product>('products');
   
+  // Get categories and subcategories
   const { 
     data: categories,
     isLoading: categoriesLoading
@@ -40,6 +43,7 @@ const ProductDetail = () => {
     isLoading: subcategoriesLoading
   } = useSupabaseData('subcategories');
   
+  // Safely try to get cart context
   useEffect(() => {
     try {
       const cartContext = useCart();
@@ -49,6 +53,7 @@ const ProductDetail = () => {
     }
   }, []);
   
+  // Find the product when products are loaded
   useEffect(() => {
     if (!productsLoading && products.length > 0 && id) {
       const foundProduct = products.find(p => p.id === id);
@@ -57,6 +62,7 @@ const ProductDetail = () => {
     }
   }, [id, products, productsLoading]);
   
+  // Helper functions to get category and subcategory names
   const getCategoryName = (categoryId: string | null) => {
     if (!categoryId) return 'Sem categoria';
     const category = categories.find(cat => cat.id === categoryId);
@@ -69,6 +75,7 @@ const ProductDetail = () => {
     return subcategory ? subcategory.name : 'Sem subcategoria';
   };
   
+  // If there's an error or product not found, go back to products page
   useEffect(() => {
     if (!isLoading && !product) {
       toast.error("Produto não encontrado");
@@ -91,6 +98,7 @@ const ProductDetail = () => {
     'https://via.placeholder.com/500/0CAB77',
   ];
   
+  // Safely handle cart operations
   const handleAddToCart = () => {
     try {
       if (cartActions) {
@@ -119,12 +127,13 @@ const ProductDetail = () => {
     }
   };
   
+  // Product specifications - Fixed by providing default values for material and color
   const specifications = [
     { name: "Material", value: "PVC" }, // Default value since material doesn't exist in Product type
     { name: "Cor", value: "Branco" }, // Default value since color doesn't exist in Product type
     { name: "Dimensões", value: `${product.width || 0} × ${product.height || 0} × ${product.length || 0} mm` },
     { name: "Volume Cúbico", value: `${product.cubic_volume || 0} m³` },
-    { name: "Quantidade por Volume", value: `${product.quantity_per_volume || 1}` },
+    { name: "Quantidade por Volume", value: `${product.quantity_per_volume || 1} un.` },
     { name: "Peso", value: `${product.weight || 0} kg` },
     { name: "Código do Produto", value: product.id },
     { name: "Categoria", value: getCategoryName(product.category_id) },
