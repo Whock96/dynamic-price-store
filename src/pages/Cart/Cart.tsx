@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -23,6 +24,7 @@ import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useCart } from '../../context/CartContext';
 import { useCustomers } from '../../context/CustomerContext';
+import { useDiscountSettings } from '@/hooks/use-discount-settings';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/client';
@@ -57,6 +59,7 @@ const Cart = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { customers } = useCustomers();
+  const { settings } = useDiscountSettings();
   const searchParams = new URLSearchParams(location.search);
   const productParam = searchParams.get('product');
   const customerParam = searchParams.get('customer');
