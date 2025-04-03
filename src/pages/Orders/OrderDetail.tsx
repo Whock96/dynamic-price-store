@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   ArrowLeft, Edit, Printer, Truck, Package, 
-  Calendar, User, Phone, Mail, MapPin, Receipt, ShoppingCart
+  Calendar, User, Phone, Mail, MapPin, Receipt, ShoppingCart, RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,38 +16,89 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useOrders } from '@/context/OrderContext';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
-import PrintableOrder from '@/components/orders/PrintableOrder';
+import { useOrderManagement } from '@/hooks/use-order-management';
+import { Order } from '@/types/types';
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { getOrderById } = useOrders();
-  const [order, setOrder] = useState<any>(null);
+  const { getOrderById, refreshOrders } = useOrders();
+  const { fetchOrderById, isLoading: isFetchingOrder } = useOrderManagement();
+  const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [failedContextLoad, setFailedContextLoad] = useState(false);
 
-  useEffect(() => {
-    if (id) {
-      console.log(`Fetching order with ID: ${id}`);
-      const fetchedOrder = getOrderById(id);
-      console.log(`Fetched order:`, fetchedOrder);
+  const loadOrder = async () => {
+    if (!id) {
+      toast.error("ID do pedido não encontrado");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    console.log(`[OrderDetail] Loading order with ID: ${id}`);
+    
+    // Try to get the order from context first
+    const contextOrder = getOrderById(id);
+    
+    if (contextOrder) {
+      console.log(`[OrderDetail] Order found in context:`, contextOrder);
+      setOrder(contextOrder);
+      setFailedContextLoad(false);
+      setLoading(false);
+      return;
+    }
+    
+    // If not found in context, fetch directly from Supabase
+    console.log(`[OrderDetail] Order not found in context, fetching from Supabase...`);
+    setFailedContextLoad(true);
+    
+    try {
+      const supabaseOrder = await fetchOrderById(id);
       
-      if (fetchedOrder) {
-        setOrder(fetchedOrder);
+      if (supabaseOrder) {
+        console.log(`[OrderDetail] Order fetched from Supabase:`, supabaseOrder);
+        setOrder(supabaseOrder);
       } else {
-        console.error(`Order with ID ${id} not found`);
+        console.error(`[OrderDetail] Order not found in Supabase`);
         toast.error("Pedido não encontrado");
       }
-      
+    } catch (error) {
+      console.error(`[OrderDetail] Error fetching order:`, error);
+      toast.error("Erro ao carregar o pedido");
+    } finally {
       setLoading(false);
     }
-  }, [id, getOrderById]);
+  };
+
+  useEffect(() => {
+    loadOrder();
+  }, [id]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      // Refresh all orders in context first
+      await refreshOrders();
+      
+      // Then reload this specific order
+      await loadOrder();
+      
+      toast.success("Dados do pedido atualizados");
+    } catch (error) {
+      toast.error("Erro ao atualizar os dados do pedido");
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -56,6 +108,8 @@ const OrderDetail = () => {
   };
 
   const handlePrintOrder = () => {
+    if (!order) return;
+    
     // Open in new window
     const printWindow = window.open('', '_blank');
     if (printWindow) {
@@ -63,7 +117,7 @@ const OrderDetail = () => {
         <!DOCTYPE html>
         <html>
         <head>
-          <title>Pedido #${order.orderNumber || '1'} - Impressão</title>
+          <title>Pedido #${order.orderNumber || '—'} - Impressão</title>
           <style>
             body { font-family: Arial, sans-serif; }
             @media print {
@@ -106,7 +160,7 @@ const OrderDetail = () => {
         iframe.onload = function() {
           const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
           if (iframeDoc) {
-            printWindow.document.title = `Pedido #${order.orderNumber || '1'} - Impressão`;
+            printWindow.document.title = `Pedido #${order.orderNumber || '—'} - Impressão`;
             
             // Add component markup directly
             const companyInfo = JSON.parse(localStorage.getItem('ferplas-company-info') || '{}');
@@ -121,7 +175,7 @@ const OrderDetail = () => {
     }
   };
   
-  const renderPrintableOrderHTML = (order: any, companyInfo: any) => {
+  const renderPrintableOrderHTML = (order: Order, companyInfo: any) => {
     // Determine invoice type text based on fullInvoice flag
     const invoiceTypeText = order.fullInvoice ? 'Nota Cheia' : 'Meia Nota';
     
@@ -155,7 +209,7 @@ const OrderDetail = () => {
         <!-- Order title -->
         <div style="text-align: center; margin-bottom: 8px;">
           <h1 style="font-size: 16px; font-weight: bold; border: 1px solid #ddd; display: inline-block; padding: 4px 12px; margin: 4px 0;">
-            PEDIDO #${order.orderNumber || '1'}
+            PEDIDO #${order.orderNumber || '—'}
           </h1>
           <p style="font-size: 10px; margin: 2px 0;">
             Emitido em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
@@ -166,11 +220,11 @@ const OrderDetail = () => {
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
           <div style="border: 1px solid #ddd; border-radius: 4px; padding: 8px;">
             <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Cliente</h2>
-            <p style="font-weight: 600; margin: 2px 0;">${order.customer.companyName}</p>
-            <p style="margin: 2px 0;">CNPJ/CPF: ${order.customer.document}</p>
-            <p style="margin: 2px 0;">${order.customer.street}, ${order.customer.number} ${order.customer.complement ? `- ${order.customer.complement}` : ''}</p>
-            <p style="margin: 2px 0;">${order.customer.city}/${order.customer.state} - ${order.customer.zipCode}</p>
-            <p style="margin: 2px 0;">Tel: ${order.customer.phone}</p>
+            <p style="font-weight: 600; margin: 2px 0;">${order.customer?.companyName || 'Cliente não especificado'}</p>
+            <p style="margin: 2px 0;">CNPJ/CPF: ${order.customer?.document || '—'}</p>
+            <p style="margin: 2px 0;">${order.customer?.street || ''}, ${order.customer?.number || ''} ${order.customer?.complement ? `- ${order.customer?.complement}` : ''}</p>
+            <p style="margin: 2px 0;">${order.customer?.city || ''}/${order.customer?.state || ''} - ${order.customer?.zipCode || ''}</p>
+            <p style="margin: 2px 0;">Tel: ${order.customer?.phone || '—'}</p>
           </div>
           
           <div style="border: 1px solid #ddd; border-radius: 4px; padding: 8px;">
@@ -206,11 +260,11 @@ const OrderDetail = () => {
               </tr>
             </thead>
             <tbody>
-              ${(order.items || []).map((item: any, index: number) => `
+              ${(order.items || []).map((item, index) => `
                 <tr>
-                  <td style="border: 1px solid #ddd; padding: 3px;">${item?.product?.name || item?.productName || `Produto ${index + 1}`}</td>
+                  <td style="border: 1px solid #ddd; padding: 3px;">${item?.product?.name || `Produto ${index + 1}`}</td>
                   <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">
-                    ${formatCurrency(item?.listPrice || item?.product?.listPrice || 0)}
+                    ${formatCurrency(item?.product?.listPrice || 0)}
                   </td>
                   <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${item?.discount || 0}%</td>
                   <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.finalPrice || 0)}</td>
@@ -240,7 +294,7 @@ const OrderDetail = () => {
             <table style="width: 100%;">
               <tr>
                 <td style="padding: 2px 0;">Subtotal:</td>
-                <td style="padding: 2px 0; text-align: right; font-weight: 500;">${formatCurrency(order.subtotal)}</td>
+                <td style="padding: 2px 0; text-align: right; font-weight: 500;">${formatCurrency(order.subtotal || 0)}</td>
               </tr>
               <tr>
                 <td style="padding: 2px 0;">Descontos:</td>
@@ -262,18 +316,24 @@ const OrderDetail = () => {
                   <td style="padding: 2px 0; text-align: right; font-weight: 500;">${formatCurrency(order.deliveryFee)}</td>
                 </tr>
               ` : ''}
+              ${order.withIPI && order.ipiValue > 0 ? `
+                <tr>
+                  <td style="padding: 2px 0;">IPI:</td>
+                  <td style="padding: 2px 0; text-align: right; font-weight: 500;">${formatCurrency(order.ipiValue || 0)}</td>
+                </tr>
+              ` : ''}
               <tr style="border-top: 1px solid #ddd;">
                 <td style="padding: 3px 0; font-weight: bold;">Total:</td>
-                <td style="padding: 3px 0; text-align: right; font-weight: bold;">${formatCurrency(order.total)}</td>
+                <td style="padding: 3px 0; text-align: right; font-weight: bold;">${formatCurrency(order.total || 0)}</td>
               </tr>
             </table>
           </div>
         </div>
         
-        ${order.notes ? `
+        ${order.notes || order.observations ? `
           <div style="margin-bottom: 8px;">
             <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Observações</h2>
-            <p style="border: 1px solid #ddd; padding: 4px; background-color: #f9f9f9; margin: 0;">${order.notes}</p>
+            <p style="border: 1px solid #ddd; padding: 4px; background-color: #f9f9f9; margin: 0;">${order.notes || order.observations || ''}</p>
           </div>
         ` : ''}
         
@@ -282,10 +342,6 @@ const OrderDetail = () => {
         </div>
       </div>
     `;
-  };
-
-  const getStatusBadge = (status: string) => {
-    return <OrderStatusBadge status={status as any} />;
   };
 
   if (loading) {
@@ -301,33 +357,46 @@ const OrderDetail = () => {
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold text-gray-700">Pedido não encontrado</h2>
         <p className="text-gray-500 mt-2">O pedido que você está procurando não existe ou foi removido.</p>
-        <Button 
-          className="mt-6"
-          onClick={() => navigate('/orders')}
-        >
-          Voltar para lista de pedidos
-        </Button>
+        <div className="flex justify-center space-x-4 mt-6">
+          <Button 
+            onClick={() => navigate('/orders')}
+            variant="outline"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar para lista de pedidos
+          </Button>
+          {failedContextLoad && (
+            <Button 
+              onClick={handleRefresh}
+              className="bg-ferplas-500 hover:bg-ferplas-600"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              Tentar novamente
+            </Button>
+          )}
+        </div>
       </div>
     );
   }
 
-  const orderNumber = order.orderNumber ? order.orderNumber : 1;
+  const orderNumber = order.orderNumber ? order.orderNumber : '—';
 
   const totalDiscount = order.totalDiscount || 0;
-  const appliedDiscounts = order.discountOptions || [];
+  const appliedDiscounts = order.appliedDiscounts || [];
   const items = order.items || [];
   const shipping = order.shipping || 'delivery';
   const notes = order.observations || order.notes || '';
-  const fullInvoice = order.fullInvoice || false;
-  const taxSubstitution = order.taxSubstitution || false;
+  const fullInvoice = order.fullInvoice !== undefined ? order.fullInvoice : true;
+  const taxSubstitution = order.taxSubstitution !== undefined ? order.taxSubstitution : false;
   const paymentMethod = order.paymentMethod || 'cash';
   const paymentTerms = order.paymentTerms || '';
   const deliveryLocation = order.deliveryLocation || null;
   const deliveryFee = order.deliveryFee || 0;
   const halfInvoicePercentage = order.halfInvoicePercentage || 50;
-  const withIPI = order.withIPI || false;
+  const withIPI = order.withIPI !== undefined ? order.withIPI : false;
   const ipiValue = order.ipiValue || 0;
   
+  // Calculate tax substitution value if applicable
   const taxSubstitutionValue = taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
 
   return (
@@ -345,7 +414,7 @@ const OrderDetail = () => {
           <div>
             <div className="flex items-center">
               <h1 className="text-3xl font-bold tracking-tight">Pedido #{orderNumber}</h1>
-              <div className="ml-4">{getStatusBadge(order.status)}</div>
+              <div className="ml-4"><OrderStatusBadge status={order.status} /></div>
             </div>
             <p className="text-muted-foreground">
               Criado em {format(new Date(order.createdAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
@@ -353,6 +422,15 @@ const OrderDetail = () => {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
+          
           {user?.role === 'administrator' && order.status !== 'canceled' && (
             <Button 
               className="bg-ferplas-500 hover:bg-ferplas-600 button-transition"
@@ -362,6 +440,7 @@ const OrderDetail = () => {
               Editar Pedido
             </Button>
           )}
+          
           <Button 
             variant="outline" 
             onClick={handlePrintOrder}
@@ -380,8 +459,8 @@ const OrderDetail = () => {
           <div className="space-y-4">
             <div>
               <h3 className="text-sm font-medium text-gray-500">Empresa</h3>
-              <p className="text-lg font-semibold">{order.customer.companyName}</p>
-              <p className="text-sm text-gray-500">CNPJ/CPF: {order.customer.document}</p>
+              <p className="text-lg font-semibold">{order.customer?.companyName || "Cliente não especificado"}</p>
+              <p className="text-sm text-gray-500">CNPJ/CPF: {order.customer?.document || "—"}</p>
             </div>
             
             <Separator />
@@ -392,11 +471,11 @@ const OrderDetail = () => {
                 Endereço
               </h3>
               <p className="text-md">
-                {order.customer.street}, {order.customer.number}
-                {order.customer.complement && ` - ${order.customer.complement}`}
+                {order.customer?.street || "—"}, {order.customer?.number || "—"}
+                {order.customer?.complement && ` - ${order.customer?.complement}`}
               </p>
               <p className="text-md">
-                {order.customer.city}/{order.customer.state} - {order.customer.zipCode}
+                {order.customer?.city || "—"}/{order.customer?.state || "—"} - {order.customer?.zipCode || "—"}
               </p>
             </div>
             
@@ -408,7 +487,7 @@ const OrderDetail = () => {
                   <Phone className="h-4 w-4 mr-1 text-gray-400" />
                   Telefone
                 </h3>
-                <p className="text-md">{order.customer.phone}</p>
+                <p className="text-md">{order.customer?.phone || "—"}</p>
               </div>
               
               <div>
@@ -416,18 +495,20 @@ const OrderDetail = () => {
                   <Mail className="h-4 w-4 mr-1 text-gray-400" />
                   Email
                 </h3>
-                <p className="text-md">{order.customer.email}</p>
+                <p className="text-md">{order.customer?.email || "—"}</p>
               </div>
             </div>
             
-            <Button 
-              variant="outline" 
-              className="w-full"
-              onClick={() => navigate(`/customers/${order.customer.id}`)}
-            >
-              <User className="mr-2 h-4 w-4" />
-              Ver Detalhes do Cliente
-            </Button>
+            {order.customer?.id && (
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => navigate(`/customers/${order.customer.id}`)}
+              >
+                <User className="mr-2 h-4 w-4" />
+                Ver Detalhes do Cliente
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -467,7 +548,7 @@ const OrderDetail = () => {
                 </div>
               )}
               
-              {order.status === 'delivered' && (
+              {order.status === 'completed' && (
                 <div className="flex items-start">
                   <div className="min-w-8 min-h-8 rounded-full bg-ferplas-100 flex items-center justify-center mr-3">
                     <Truck className="h-4 w-4 text-ferplas-600" />
@@ -508,7 +589,7 @@ const OrderDetail = () => {
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Subtotal:</span>
-                <span>{formatCurrency(order.subtotal)}</span>
+                <span>{formatCurrency(order.subtotal || 0)}</span>
               </div>
               <div className="flex justify-between text-sm text-red-600">
                 <span>Descontos:</span>
@@ -535,7 +616,7 @@ const OrderDetail = () => {
               <Separator className="my-2" />
               <div className="flex justify-between font-medium text-lg">
                 <span>Total:</span>
-                <span className="text-ferplas-600">{formatCurrency(order.total)}</span>
+                <span className="text-ferplas-600">{formatCurrency(order.total || 0)}</span>
               </div>
             </div>
 
@@ -596,18 +677,24 @@ const OrderDetail = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((item: any, index: number) => (
+              {items.length > 0 ? items.map((item, index) => (
                 <TableRow key={item?.id || `item-${index}`}>
                   <TableCell className="font-medium">
-                    {item?.product?.name || item?.productName || `Produto ${index + 1}`}
+                    {item?.product?.name || `Produto ${index + 1}`}
                   </TableCell>
-                  <TableCell>{formatCurrency(item?.listPrice || item?.product?.listPrice || 0)}</TableCell>
+                  <TableCell>{formatCurrency(item?.product?.listPrice || 0)}</TableCell>
                   <TableCell>{item?.discount || 0}%</TableCell>
                   <TableCell>{formatCurrency(item?.finalPrice || 0)}</TableCell>
                   <TableCell>{item?.quantity || 0}</TableCell>
                   <TableCell>{formatCurrency(item?.subtotal || 0)}</TableCell>
                 </TableRow>
-              ))}
+              )) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center">
+                    Nenhum item encontrado para este pedido.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
           
@@ -630,8 +717,8 @@ const OrderDetail = () => {
         <CardContent>
           <div className="space-y-3">
             {appliedDiscounts && appliedDiscounts.length > 0 ? (
-              appliedDiscounts.map((discount: any, index: number) => (
-                <div key={index} className="flex items-center justify-between">
+              appliedDiscounts.map((discount, index) => (
+                <div key={discount.id || index} className="flex items-center justify-between">
                   <div className="flex items-center">
                     <div className={`w-8 h-8 rounded-full ${discount.type === 'discount' ? 'bg-green-100' : 'bg-red-100'} flex items-center justify-center mr-3`}>
                       <span className={`${discount.type === 'discount' ? 'text-green-600' : 'text-red-600'} font-bold`}>

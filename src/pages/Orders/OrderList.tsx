@@ -1,11 +1,10 @@
 
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Plus, FileText, Edit3, Trash2, Search, Printer } from 'lucide-react';
+import { Plus, FileText, Edit3, Trash2, Search, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { 
   Table, 
   TableBody, 
@@ -26,67 +25,29 @@ import {
 } from '@/components/ui/alert-dialog';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import { formatCurrency, formatDate } from '@/utils/formatters';
-import { Order } from '@/types/types';
-import { useNavigate } from 'react-router-dom';
-import { supabase, Tables } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Skeleton } from "@/components/ui/skeleton";
-import { supabaseOrderToAppOrder } from '@/utils/adapters';
-
-// Define custom type that includes joined tables
-interface OrderWithCustomer extends Tables<'orders'> {
-  customers: Tables<'customers'>;
-}
+import { useOrders } from '@/context/OrderContext';
 
 const OrderList = () => {
   const navigate = useNavigate();
-  const [orders, setOrders] = useState<OrderWithCustomer[]>([]);
-  const [filteredOrders, setFilteredOrders] = useState<OrderWithCustomer[]>([]);
+  const { orders, deleteOrder, isLoading, refreshOrders } = useOrders();
+  const [filteredOrders, setFilteredOrders] = useState(orders);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Update filtered orders when orders change or when search term changes
   useEffect(() => {
-    fetchOrders();
-  }, []);
-
-  const fetchOrders = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          customers(*)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data) {
-        console.log("Fetched orders:", data);
-        setOrders(data as OrderWithCustomer[]);
-        setFilteredOrders(data as OrderWithCustomer[]);
-      }
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-      toast.error('Erro ao carregar pedidos');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
+    console.log(`[OrderList] Filtering ${orders.length} orders with search term: "${searchTerm}"`);
     if (searchTerm.trim() === '') {
       setFilteredOrders(orders);
     } else {
       const lowercasedSearch = searchTerm.toLowerCase();
       const filtered = orders.filter(order => {
-        const customerName = order.customers?.company_name?.toLowerCase() || '';
-        const orderNumber = String(order.order_number);
+        const customerName = order.customer?.companyName?.toLowerCase() || '';
+        const orderNumber = String(order.orderNumber || '');
         
         return customerName.includes(lowercasedSearch) || 
                orderNumber.includes(lowercasedSearch);
@@ -99,16 +60,7 @@ const OrderList = () => {
     if (!selectedOrderId) return;
     
     try {
-      const { error } = await supabase
-        .from('orders')
-        .delete()
-        .eq('id', selectedOrderId);
-      
-      if (error) throw error;
-      
-      toast.success('Pedido excluído com sucesso');
-      setOrders(orders.filter(order => order.id !== selectedOrderId));
-      setFilteredOrders(filteredOrders.filter(order => order.id !== selectedOrderId));
+      await deleteOrder(selectedOrderId);
     } catch (error) {
       console.error('Error deleting order:', error);
       toast.error('Erro ao excluir pedido');
@@ -123,14 +75,37 @@ const OrderList = () => {
     setIsAlertOpen(true);
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshOrders();
+      toast.success('Lista de pedidos atualizada');
+    } catch (error) {
+      toast.error('Erro ao atualizar lista de pedidos');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   return (
     <>
       <div className="flex flex-col space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Pedidos</h1>
-          <Button onClick={() => navigate('/cart')} className="bg-ferplas-500 hover:bg-ferplas-600">
-            <Plus className="mr-2 h-4 w-4" /> Novo Pedido
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleRefresh} 
+              disabled={isRefreshing} 
+              className="mr-2"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
+            <Button onClick={() => navigate('/cart')} className="bg-ferplas-500 hover:bg-ferplas-600">
+              <Plus className="mr-2 h-4 w-4" /> Novo Pedido
+            </Button>
+          </div>
         </div>
 
         <Card>
@@ -174,12 +149,12 @@ const OrderList = () => {
                     {filteredOrders.length > 0 ? (
                       filteredOrders.map((order) => (
                         <TableRow key={order.id}>
-                          <TableCell className="font-medium">#{order.order_number}</TableCell>
-                          <TableCell>{order.customers?.company_name || "Cliente desconhecido"}</TableCell>
-                          <TableCell>{formatDate(new Date(order.created_at))}</TableCell>
+                          <TableCell className="font-medium">#{order.orderNumber || '—'}</TableCell>
+                          <TableCell>{order.customer?.companyName || "Cliente desconhecido"}</TableCell>
+                          <TableCell>{formatDate(new Date(order.createdAt))}</TableCell>
                           <TableCell>{formatCurrency(order.total)}</TableCell>
                           <TableCell>
-                            <OrderStatusBadge status={order.status as any} />
+                            <OrderStatusBadge status={order.status} />
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
@@ -187,6 +162,7 @@ const OrderList = () => {
                                 variant="outline" 
                                 size="icon"
                                 onClick={() => navigate(`/orders/${order.id}`)}
+                                title="Ver detalhes"
                               >
                                 <FileText className="h-4 w-4" />
                               </Button>
@@ -194,6 +170,7 @@ const OrderList = () => {
                                 variant="outline" 
                                 size="icon"
                                 onClick={() => navigate(`/orders/${order.id}/edit`)}
+                                title="Editar pedido"
                               >
                                 <Edit3 className="h-4 w-4" />
                               </Button>
@@ -202,6 +179,7 @@ const OrderList = () => {
                                 size="icon"
                                 onClick={() => confirmDelete(order.id)}
                                 className="text-red-500 hover:bg-red-50"
+                                title="Excluir pedido"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -212,7 +190,7 @@ const OrderList = () => {
                     ) : (
                       <TableRow>
                         <TableCell colSpan={6} className="h-24 text-center">
-                          Nenhum pedido encontrado.
+                          {searchTerm ? 'Nenhum pedido encontrado para essa busca.' : 'Nenhum pedido encontrado.'}
                         </TableCell>
                       </TableRow>
                     )}
