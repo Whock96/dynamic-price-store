@@ -5,10 +5,10 @@ import { cn } from "@/lib/utils"
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
   ({ className, type, ...props }, ref) => {
-    // Verifica se é um campo número e atualiza a formatação para facilitar a entrada de decimais
+    // Properly type the inputProps to match React's input attributes
     const inputProps = type === "number" ? 
       {
-        inputMode: "decimal", 
+        inputMode: "numeric" as const, 
         step: props.step || "any", 
         ...props 
       } : 
@@ -30,3 +30,4 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
 Input.displayName = "Input"
 
 export { Input }
+
