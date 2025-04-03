@@ -1,153 +1,163 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
-import { useDiscountSettings } from '@/hooks/use-discount-settings';
-import { CartItem, Product, Customer } from '@/types/types';
-import { useAuth } from './AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { useOrders } from './OrderContext';
+import { useCustomers } from './CustomerContext';
+import { useDiscountSettings } from '../hooks/use-discount-settings';
 
-// Define o tipo do contexto do carrinho
 interface CartContextType {
   items: CartItem[];
   customer: Customer | null;
-  setCustomer: (customer: Customer | null) => void;
-  addItem: (product: Product, quantity: number, discount?: number) => void;
-  removeItem: (productId: string) => void;
-  updateItemQuantity: (productId: string, quantity: number) => void;
-  updateItemDiscount: (productId: string, discount: number) => void;
-  clearCart: () => void;
-  subtotal: number;
-  total: number;
-  totalItems: number;
-  totalUnits: number;
-  applyDiscounts: boolean;
-  setApplyDiscounts: (apply: boolean) => void;
-  selectedDiscounts: string[];
-  toggleDiscount: (id: string) => void;
-  isDiscountOptionSelected: (id: string) => boolean;
-  totalDiscount: number;
-  taxSubstitutionValue: number;
-  ipiValue: number;
-  deliveryFee: number;
-  setDeliveryFee: (fee: number) => void;
-  shipping: 'delivery' | 'pickup';
-  setShipping: (type: 'delivery' | 'pickup') => void;
+  discountOptions: DiscountOption[];
+  selectedDiscountOptions: string[];
   deliveryLocation: 'capital' | 'interior' | null;
-  setDeliveryLocation: (location: 'capital' | 'interior' | null) => void;
-  notes: string;
-  setNotes: (notes: string) => void;
-  fullInvoice: boolean; 
-  setFullInvoice: (fullInvoice: boolean) => void;
   halfInvoicePercentage: number;
-  setHalfInvoicePercentage: (percentage: number) => void;
-  taxSubstitution: boolean;
-  setTaxSubstitution: (taxSubstitution: boolean) => void;
-  withIPI: boolean;
-  setWithIPI: (withIPI: boolean) => void;
-  paymentMethod: 'cash' | 'credit';
-  setPaymentMethod: (method: 'cash' | 'credit') => void;
-  paymentTerms: string;
-  setPaymentTerms: (terms: string) => void;
-  finalizeOrder: () => Promise<boolean>;
-  isSubmitting: boolean;
-  observations: string;
-  setObservations: (observations: string) => void;
-  // Add these to match Cart.tsx usage
-  toggleApplyDiscounts: (value: boolean) => void;
   halfInvoiceType: 'quantity' | 'price';
+  observations: string;
+  paymentTerms: string;
+  totalItems: number;
+  subtotal: number;
+  totalDiscount: number;
+  total: number;
+  deliveryFee: number;
+  applyDiscounts: boolean;
+  withIPI: boolean;
+  setCustomer: (customer: Customer | null) => void;
+  addItem: (product: Product, quantity: number) => void;
+  removeItem: (id: string) => void;
+  updateItemQuantity: (id: string, quantity: number) => void;
+  updateItemDiscount: (id: string, discount: number) => void;
+  toggleDiscountOption: (id: string) => void;
+  setDeliveryLocation: (location: 'capital' | 'interior' | null) => void;
+  setHalfInvoicePercentage: (percentage: number) => void;
   setHalfInvoiceType: (type: 'quantity' | 'price') => void;
-  toggleIPI: (value: boolean) => void;
+  setObservations: (text: string) => void;
+  setPaymentTerms: (terms: string) => void;
+  clearCart: () => void;
+  sendOrder: () => Promise<void>;
+  isDiscountOptionSelected: (id: string) => boolean;
+  toggleApplyDiscounts: () => void;
+  calculateTaxSubstitutionValue: () => number;
+  toggleIPI: () => void;
+  calculateIPIValue: () => number;
+  calculateItemTaxSubstitutionValue: (item: CartItem) => number;
 }
 
-// Criando o contexto
-export const CartContext = createContext<CartContextType | undefined>(undefined);
+const CartContext = createContext<CartContextType | undefined>(undefined);
 
-// Provedor de contexto do carrinho
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { addOrder } = useOrders();
+  const { customers } = useCustomers();
+  const { settings } = useDiscountSettings();
+  
   const [items, setItems] = useState<CartItem[]>([]);
   const [customer, setCustomer] = useState<Customer | null>(null);
-  const [applyDiscounts, setApplyDiscounts] = useState(true);
-  const [selectedDiscounts, setSelectedDiscounts] = useState<string[]>([]);
-  const [deliveryFee, setDeliveryFee] = useState(0);
-  const [shipping, setShipping] = useState<'delivery' | 'pickup'>('delivery');
+  const [discountOptions, setDiscountOptions] = useState<DiscountOption[]>([]);
+  const [selectedDiscountOptions, setSelectedDiscountOptions] = useState<string[]>([]);
   const [deliveryLocation, setDeliveryLocation] = useState<'capital' | 'interior' | null>(null);
-  const [notes, setNotes] = useState('');
-  const [observations, setObservations] = useState('');
-  const [fullInvoice, setFullInvoice] = useState(true);
-  const [halfInvoicePercentage, setHalfInvoicePercentage] = useState(50);
+  const [halfInvoicePercentage, setHalfInvoicePercentage] = useState<number>(50);
   const [halfInvoiceType, setHalfInvoiceType] = useState<'quantity' | 'price'>('quantity');
-  const [taxSubstitution, setTaxSubstitution] = useState(false);
-  const [withIPI, setWithIPI] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit'>('cash');
-  const [paymentTerms, setPaymentTerms] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const { user } = useAuth();
-  const { settings } = useDiscountSettings();
+  const [observations, setObservations] = useState<string>('');
+  const [paymentTerms, setPaymentTerms] = useState<string>('');
+  const [applyDiscounts, setApplyDiscounts] = useState<boolean>(true);
+  const [withIPI, setWithIPI] = useState<boolean>(false);
 
-  const calculateTotalUnits = (item: CartItem) => {
-    const quantityPerVolume = item.product.quantityPerVolume || 1;
-    return item.quantity * quantityPerVolume;
+  useEffect(() => {
+    if (settings) {
+      const updatedDiscountOptions: DiscountOption[] = [
+        {
+          id: '1',
+          name: 'Retirada',
+          description: 'Desconto para retirada na loja',
+          value: settings.pickup,
+          type: 'discount',
+          isActive: true,
+        },
+        {
+          id: '2',
+          name: 'Meia nota',
+          description: 'Desconto para meia nota fiscal',
+          value: settings.halfInvoice,
+          type: 'discount',
+          isActive: true,
+        },
+        {
+          id: '3',
+          name: 'Substituição tributária',
+          description: 'Acréscimo para substituição tributária',
+          value: settings.taxSubstitution,
+          type: 'surcharge',
+          isActive: true,
+        },
+        {
+          id: '4',
+          name: 'A Vista',
+          description: 'Desconto para pagamento à vista',
+          value: settings.cashPayment,
+          type: 'discount',
+          isActive: true,
+        }
+      ];
+      
+      setDiscountOptions(updatedDiscountOptions);
+    }
+  }, [settings]);
+
+  const calculateTotalUnits = (item: CartItem): number => {
+    return item.quantity * (item.product.quantityPerVolume || 1);
   };
 
-  // Calcula o subtotal de todos os itens
-  const calculateSubtotal = () => {
-    return items.reduce((total, item) => {
-      const totalUnits = calculateTotalUnits(item);
-      return total + (item.finalPrice * totalUnits);
-    }, 0);
-  };
-  
-  const subtotal = calculateSubtotal();
-
-  // Verifica se uma opção de desconto está selecionada
   const isDiscountOptionSelected = (id: string) => {
-    return selectedDiscounts.includes(id);
+    return selectedDiscountOptions.includes(id);
   };
 
-  // Alterna uma opção de desconto
-  const toggleDiscount = (id: string) => {
-    setSelectedDiscounts(prev => {
-      if (prev.includes(id)) {
-        return prev.filter(item => item !== id);
-      } else {
-        return [...prev, id];
-      }
-    });
-  };
+  const totalItems = items.reduce((total, item) => total + item.quantity, 0);
+  
+  const subtotal = items.reduce((total, item) => {
+    const totalUnits = calculateTotalUnits(item);
+    return total + (item.product.listPrice * totalUnits);
+  }, 0);
 
-  // Calcula o valor total de desconto
-  const calculateTotalDiscount = () => {
+  const getNetDiscountPercentage = () => {
     if (!applyDiscounts) return 0;
     
-    let discountAmount = 0;
+    let discountPercentage = 0;
     
-    // Aplica os descontos selecionados
-    selectedDiscounts.forEach(id => {
-      // Here we need to check for settings.pickup, settings.cashPayment, etc.
-      // instead of using find() which is not available on DiscountSettings type
-      if (id === '1' && settings) { // Pickup discount
-        discountAmount += subtotal * (settings.pickup / 100);
-      } else if (id === '4' && settings) { // Cash payment discount
-        discountAmount += subtotal * (settings.cashPayment / 100);
-      } else if (id === '2' && settings) { // Half invoice discount
-        discountAmount += subtotal * (settings.halfInvoice / 100);
+    selectedDiscountOptions.forEach(id => {
+      const option = discountOptions.find(opt => opt.id === id);
+      if (!option) return;
+
+      if (option.id === '3') return;
+      
+      if (option.type === 'discount') {
+        discountPercentage += option.value;
       }
     });
     
-    // Limitamos o desconto para não ultrapassar o subtotal
-    return Math.min(discountAmount, subtotal);
+    return discountPercentage;
   };
-  
-  const totalDiscount = calculateTotalDiscount();
-  
-  // Calcula a substituição tributária
-  const calculateTaxSubstitutionValue = () => {
-    // Apenas se a opção de substituição tributária estiver ativada
-    if (!taxSubstitution) return 0;
+
+  const getTaxSubstitutionRate = () => {
+    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
     
-    // Verifica se o desconto de substituição tributária está selecionado
-    if (!isDiscountOptionSelected('3') || !applyDiscounts || !settings) return 0;
+    const taxOption = discountOptions.find(opt => opt.id === '3');
+    if (!taxOption) return 0;
+    
+    if (isDiscountOptionSelected('2')) {
+      return taxOption.value * (halfInvoicePercentage / 100);
+    }
+    
+    return taxOption.value;
+  };
+
+  const deliveryFee = settings && deliveryLocation === 'capital' 
+    ? settings.deliveryFees.capital 
+    : deliveryLocation === 'interior' && settings 
+      ? settings.deliveryFees.interior 
+      : 0;
+
+  const calculateTaxSubstitutionValue = () => {
+    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
     
     return items.reduce((total, item) => {
       const unitTaxValue = calculateItemTaxSubstitutionValue(item);
@@ -156,20 +166,19 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, 0);
   };
 
-  // Calcula a substituição tributária para um item
   const calculateItemTaxSubstitutionValue = (item: CartItem) => {
-    // Apenas se a opção de substituição tributária estiver ativada
-    if (!taxSubstitution) return 0;
+    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
     
-    if (!isDiscountOptionSelected('3') || !applyDiscounts || !settings) return 0;
+    const taxOption = discountOptions.find(opt => opt.id === '3');
+    if (!taxOption) return 0;
     
-    const icmsStRate = settings.taxSubstitution / 100;
+    const icmsStRate = taxOption.value / 100;
     const mva = (item.product.mva ?? 39) / 100;
     const basePrice = item.finalPrice;
     
     let taxValue = basePrice * mva * icmsStRate;
     
-    if (!fullInvoice && halfInvoicePercentage > 0) {
+    if (isDiscountOptionSelected('2')) {
       taxValue = taxValue * (halfInvoicePercentage / 100);
     }
     
@@ -179,264 +188,356 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const calculateIPIValue = () => {
     if (!withIPI || !applyDiscounts || !settings) return 0;
     
-    if (!isDiscountOptionSelected('4')) return 0;
+    const standardRate = settings.ipiRate / 100;
     
-    // IPI é calculado sobre o subtotal
-    return subtotal * (settings.ipiRate / 100);
+    return items.reduce((total, item) => {
+      const totalUnits = calculateTotalUnits(item);
+      
+      let adjustedRate = standardRate;
+      if (isDiscountOptionSelected('2')) {
+        adjustedRate = standardRate * (halfInvoicePercentage / 100);
+      }
+      
+      return total + (item.finalPrice * adjustedRate * totalUnits);
+    }, 0);
   };
-  
+
+  const recalculateCart = () => {
+    const discountPercentage = getNetDiscountPercentage();
+    
+    const updatedItems = items.map(item => {
+      let itemDiscount = item.discount || 0;
+      let netDiscount = applyDiscounts ? itemDiscount + discountPercentage : itemDiscount;
+      
+      let finalPrice = item.product.listPrice * (1 - (netDiscount / 100));
+      const totalUnits = calculateTotalUnits(item);
+      
+      const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('3') ? 
+        calculateItemTaxSubstitutionValue(item) : 0;
+      
+      const subtotal = (finalPrice + taxValuePerUnit) * totalUnits;
+      
+      return {
+        ...item,
+        finalPrice,
+        subtotal
+      };
+    });
+    
+    setItems(updatedItems);
+  };
+
+  useEffect(() => {
+    recalculateCart();
+  }, [selectedDiscountOptions, applyDiscounts, halfInvoicePercentage, discountOptions]);
+
+  useEffect(() => {
+    if (customer) {
+      setItems(prevItems => 
+        prevItems.map(item => {
+          const finalPrice = item.product.listPrice * (1 - customer.defaultDiscount / 100);
+          
+          const taxValue = applyDiscounts && isDiscountOptionSelected('3') ? 
+            calculateItemTaxSubstitutionValue({...item, finalPrice}) : 0;
+          
+          const totalUnits = calculateTotalUnits(item);
+          
+          const subtotal = (finalPrice + taxValue) * totalUnits;
+          
+          return {
+            ...item,
+            discount: customer.defaultDiscount,
+            finalPrice,
+            subtotal
+          };
+        })
+      );
+    } else {
+      setItems(prevItems => 
+        prevItems.map(item => {
+          const finalPrice = item.product.listPrice;
+          
+          const taxValue = applyDiscounts && isDiscountOptionSelected('3') ? 
+            calculateItemTaxSubstitutionValue({...item, finalPrice}) : 0;
+          
+          const totalUnits = calculateTotalUnits(item);
+          
+          const subtotal = (finalPrice + taxValue) * totalUnits;
+          
+          return {
+            ...item,
+            discount: 0,
+            finalPrice,
+            subtotal
+          };
+        })
+      );
+    }
+  }, [customer, discountOptions]);
+
+  useEffect(() => {
+    if (settings) {
+      recalculateCart();
+    }
+  }, [settings]);
+
+  const totalDiscount = items.reduce((total, item) => {
+    const totalUnits = calculateTotalUnits(item);
+    const fullPrice = item.product.listPrice * totalUnits;
+    const discountValue = fullPrice - (item.finalPrice * totalUnits);
+    return total + discountValue;
+  }, 0);
+
   const taxSubstitutionValue = calculateTaxSubstitutionValue();
   const ipiValue = calculateIPIValue();
   
-  // Calcula o total geral
-  const total = subtotal - totalDiscount + taxSubstitutionValue + ipiValue + deliveryFee;
-  
-  // Total de itens no carrinho
-  const totalItems = items.reduce((acc, item) => acc + item.quantity, 0);
-  
-  // Total de unidades (considera quantidade por volume)
-  const totalUnits = items.reduce((acc, item) => {
-    const quantityPerVolume = item.product.quantityPerVolume || 1;
-    return acc + (item.quantity * quantityPerVolume);
-  }, 0);
-  
-  // Recalcula o carrinho (aplicando descontos selecionados)
-  const recalculateCart = () => {
-    setItems(prevItems => prevItems.map(item => {
-      const discount = item.discount;
-      const originalPrice = item.product.listPrice;
-      const finalPrice = originalPrice * (1 - discount / 100);
-      
-      return {
-        ...item,
-        finalPrice,
-      };
-    }));
-  };
-  
-  // Monitora mudanças nas opções de desconto selecionadas
-  useEffect(() => {
-    recalculateCart();
-  }, [selectedDiscounts, applyDiscounts, taxSubstitution, fullInvoice, halfInvoicePercentage, withIPI]);
-  
-  // Toggle apply discounts function for Cart.tsx compatibility
-  const toggleApplyDiscounts = (value: boolean) => {
-    setApplyDiscounts(value);
-  };
-  
-  // Toggle IPI function for Cart.tsx compatibility
-  const toggleIPI = (value: boolean) => {
-    setWithIPI(value);
+  const total = items.reduce((total, item) => total + item.subtotal, 0) + deliveryFee + ipiValue;
+
+  const toggleApplyDiscounts = () => {
+    setApplyDiscounts(prev => !prev);
   };
 
-  // Adiciona um item ao carrinho
-  const addItem = (product: Product, quantity: number, discount = 0) => {
-    // Verifica se o produto já existe no carrinho
-    const existingItem = items.find(item => item.product.id === product.id);
-    
-    if (existingItem) {
-      // Se já existe, atualiza a quantidade
-      updateItemQuantity(product.id, existingItem.quantity + quantity);
-      toast.success(`${product.name} - Quantidade atualizada para ${existingItem.quantity + quantity}`);
-    } else {
-      // Se não existe, adiciona novo item
-      const finalPrice = product.listPrice * (1 - discount / 100);
-      
-      // Adiciona o novo item
-      setItems([
-        ...items, 
-        {
-          id: product.id,
-          productId: product.id, // Add productId to match CartItem type
-          product,
-          quantity,
-          discount,
-          finalPrice,
-          subtotal: finalPrice * (product.quantityPerVolume || 1) * quantity
-        }
-      ]);
-      
-      toast.success(`${quantity} ${product.name} adicionado ao carrinho`);
-    }
+  const toggleIPI = () => {
+    setWithIPI(prev => !prev);
   };
-  
-  // Remove um item do carrinho
-  const removeItem = (productId: string) => {
-    setItems(items.filter(item => item.product.id !== productId));
-    toast.info('Produto removido do carrinho');
-  };
-  
-  // Atualiza a quantidade de um item
-  const updateItemQuantity = (productId: string, newQuantity: number) => {
-    if (newQuantity <= 0) {
-      removeItem(productId);
+
+  const addItem = (product: Product, quantity: number) => {
+    if (!product || !product.id) {
+      toast.error("Produto inválido");
       return;
     }
     
-    setItems(prevItems => prevItems.map(item => {
-      if (item.product.id !== productId) {
-        return item;
-      }
+    console.log("Adicionando produto ao carrinho:", product);
+    
+    const existingItemIndex = items.findIndex(item => item.productId === product.id);
+    
+    if (existingItemIndex >= 0) {
+      const newItems = [...items];
+      const existingItem = newItems[existingItemIndex];
+      const newQuantity = existingItem.quantity + quantity;
+      const totalUnits = newQuantity * (existingItem.product.quantityPerVolume || 1);
       
-      // Atualiza a quantidade e o subtotal
-      const finalPrice = item.product.listPrice * (1 - item.discount / 100);
-      const totalUnits = newQuantity * (item.product.quantityPerVolume || 1);
+      const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('3') ? 
+        calculateItemTaxSubstitutionValue({...existingItem, quantity: newQuantity}) : 0;
       
-      return {
-        ...item,
+      const subtotal = (existingItem.finalPrice + taxValuePerUnit) * totalUnits;
+      
+      newItems[existingItemIndex] = {
+        ...existingItem,
         quantity: newQuantity,
-        finalPrice,
-        subtotal: finalPrice * totalUnits
+        subtotal
       };
-    }));
+      
+      setItems(newItems);
+      toast.success(`Quantidade de ${product.name} atualizada no carrinho`);
+    } else {
+      const listPrice = Number(product.listPrice) || 0;
+      const initialDiscount = customer ? Number(customer.defaultDiscount) || 0 : 0;
+      const discountPercentage = getNetDiscountPercentage();
+      const combinedDiscount = initialDiscount + discountPercentage;
+      
+      const finalPrice = listPrice * (1 - combinedDiscount / 100);
+      const totalUnits = quantity * (product.quantityPerVolume || 1);
+      
+      const tempItem: CartItem = {
+        id: '',
+        productId: product.id,
+        product,
+        quantity,
+        discount: initialDiscount,
+        finalPrice,
+        subtotal: 0
+      };
+      
+      const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('3') ? 
+        calculateItemTaxSubstitutionValue(tempItem) : 0;
+      
+      const subtotal = (finalPrice + taxValuePerUnit) * totalUnits;
+      
+      console.log("Valores calculados:", {
+        listPrice,
+        initialDiscount,
+        discountPercentage,
+        combinedDiscount,
+        finalPrice,
+        taxValuePerUnit,
+        subtotal,
+        quantityPerVolume: product.quantityPerVolume || 1,
+        totalUnits
+      });
+      
+      const newItem: CartItem = {
+        id: Date.now().toString(),
+        productId: product.id,
+        product: { ...product },
+        quantity,
+        discount: initialDiscount,
+        finalPrice,
+        subtotal
+      };
+      
+      setItems(prevItems => [...prevItems, newItem]);
+      toast.success(`${product.name} adicionado ao carrinho`);
+    }
   };
-  
-  // Atualiza o desconto de um item
-  const updateItemDiscount = (productId: string, discount: number) => {
+
+  const removeItem = (id: string) => {
+    const itemToRemove = items.find(item => item.id === id);
+    if (itemToRemove) {
+      setItems(prevItems => prevItems.filter(item => item.id !== id));
+      toast.info(`${itemToRemove.product.name} removido do carrinho`);
+    }
+  };
+
+  const updateItemQuantity = (id: string, quantity: number) => {
+    if (quantity < 1) return;
+    
     setItems(prevItems => prevItems.map(item => {
-      if (item.product.id !== productId) {
-        return item;
+      if (item.id === id) {
+        const totalUnits = quantity * (item.product.quantityPerVolume || 1);
+        
+        const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('3') ? 
+          calculateItemTaxSubstitutionValue({...item, quantity}) : 0;
+        
+        const subtotal = (item.finalPrice + taxValuePerUnit) * totalUnits;
+        
+        return { 
+          ...item, 
+          quantity, 
+          subtotal
+        };
       }
-      
-      // Limita o desconto entre 0 e 100%
-      const appliedDiscount = Math.min(Math.max(discount, 0), 100);
-      
-      // Recalcula o preço final e subtotal
-      const finalPrice = item.product.listPrice * (1 - appliedDiscount / 100);
-      const totalUnits = calculateTotalUnits(item);
-      
-      return {
-        ...item,
-        discount: appliedDiscount,
-        finalPrice,
-        subtotal: finalPrice * totalUnits
-      };
+      return item;
     }));
   };
-  
-  // Limpa o carrinho
+
+  const updateItemDiscount = (id: string, discount: number) => {
+    if (discount < 0) return;
+    
+    let appliedDiscount = discount;
+    
+    if (customer && discount > customer.maxDiscount) {
+      toast.warning(`Desconto limitado a ${customer.maxDiscount}% para o cliente ${customer.companyName}`);
+      appliedDiscount = customer.maxDiscount;
+    }
+    
+    const discountPercentage = getNetDiscountPercentage();
+    
+    setItems(prevItems => prevItems.map(item => {
+      if (item.id === id) {
+        const combinedDiscount = appliedDiscount + discountPercentage;
+        
+        const finalPrice = item.product.listPrice * (1 - combinedDiscount / 100);
+        const totalUnits = item.quantity * (item.product.quantityPerVolume || 1);
+        
+        const updatedItem = {...item, finalPrice, discount: appliedDiscount};
+        
+        const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('3') ? 
+          calculateItemTaxSubstitutionValue(updatedItem) : 0;
+        
+        const subtotal = (finalPrice + taxValuePerUnit) * totalUnits;
+        
+        return {
+          ...item,
+          discount: appliedDiscount,
+          finalPrice,
+          subtotal
+        };
+      }
+      return item;
+    }));
+  };
+
+  const toggleDiscountOption = (id: string) => {
+    setSelectedDiscountOptions(prev => {
+      if (prev.includes(id)) {
+        if (id === '1') {
+          setDeliveryLocation(null);
+        }
+        if (id === '2') {
+          setHalfInvoicePercentage(50);
+          setHalfInvoiceType('quantity');
+        }
+        if (id === '4') {
+          setPaymentTerms('');
+        }
+        return prev.filter(optId => optId !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+  };
+
   const clearCart = () => {
     setItems([]);
-    setSelectedDiscounts([]);
-    setDeliveryFee(0);
-    setShipping('delivery');
-    setDeliveryLocation(null);
-    setNotes('');
-    setObservations('');
-    setFullInvoice(true);
-    setHalfInvoicePercentage(50);
-    setHalfInvoiceType('quantity');
-    setTaxSubstitution(false);
-    setWithIPI(false);
-    setPaymentMethod('cash');
-    setPaymentTerms('');
     setCustomer(null);
+    setSelectedDiscountOptions([]);
+    setDeliveryLocation(null);
+    setHalfInvoicePercentage(50);
+    setObservations('');
+    setPaymentTerms('');
+    setWithIPI(false);
+    toast.info('Carrinho limpo');
   };
-  
-  // Atualiza o carrinho quando as propriedades de entrega ou faturamento são alteradas
-  useEffect(() => {
-    if (shipping === 'pickup') {
-      setDeliveryFee(0);
-      setDeliveryLocation(null);
-    }
-  }, [shipping]);
-  
-  // Finaliza o pedido
-  const finalizeOrder = async (): Promise<boolean> => {
+
+  const sendOrder = async () => {
     if (!customer) {
-      toast.error('Por favor, selecione um cliente');
-      return false;
+      toast.error('Selecione um cliente para continuar');
+      return Promise.reject('No customer selected');
     }
     
     if (items.length === 0) {
-      toast.error('Seu carrinho está vazio');
-      return false;
+      toast.error('Adicione produtos ao carrinho para continuar');
+      return Promise.reject('Cart is empty');
     }
     
-    setIsSubmitting(true);
-    
     try {
-      // Preparar dados do pedido para enviar ao banco de dados
-      const orderData = {
-        customer_id: customer.id,
-        user_id: user?.id || 'anonymous',
-        status: 'pending',
-        shipping,
-        full_invoice: fullInvoice,
-        tax_substitution: taxSubstitution,
-        payment_method: paymentMethod,
-        payment_terms: paymentTerms || null,
-        notes: notes || '',
-        observations: observations || '',
-        delivery_location: deliveryLocation || null,
-        half_invoice_percentage: halfInvoicePercentage || null,
-        half_invoice_type: halfInvoiceType || 'quantity',
-        delivery_fee: deliveryFee || 0,
+      const shippingValue: 'pickup' | 'delivery' = isDiscountOptionSelected('1') ? 'pickup' : 'delivery';
+      
+      const paymentMethodValue: 'cash' | 'credit' = isDiscountOptionSelected('4') ? 'cash' : 'credit';
+      
+      const orderData: Partial<Order> = {
+        customer,
+        customerId: customer.id,
+        items,
+        appliedDiscounts: selectedDiscountOptions.map(id => 
+          discountOptions.find(opt => opt.id === id)
+        ) as DiscountOption[],
+        deliveryLocation,
+        deliveryFee,
+        halfInvoicePercentage: isDiscountOptionSelected('2') ? halfInvoicePercentage : undefined,
+        halfInvoiceType: isDiscountOptionSelected('2') ? halfInvoiceType : undefined,
+        observations,
         subtotal,
-        total_discount: totalDiscount,
-        total
+        totalDiscount,
+        total,
+        shipping: shippingValue,
+        paymentMethod: paymentMethodValue,
+        paymentTerms: !isDiscountOptionSelected('4') ? paymentTerms : undefined,
+        fullInvoice: !isDiscountOptionSelected('2'),
+        taxSubstitution: isDiscountOptionSelected('3'),
+        withIPI,
+        ipiValue: withIPI ? ipiValue : undefined,
+        status: 'pending',
+        notes: observations
       };
       
-      console.log('Criando pedido com os dados:', orderData);
+      console.log('Sending order:', orderData);
       
-      // Criar o pedido no banco de dados
-      const { data: orderResponse, error: orderError } = await supabase
-        .from('orders')
-        .insert(orderData)
-        .select()
-        .single();
-        
-      if (orderError) throw orderError;
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      console.log('Pedido criado:', orderResponse);
+      console.log(`Sending order email to ${customer.email} and vendas@ferplas.ind.br`);
       
-      // Criar os itens do pedido
-      const orderItems = items.map(item => ({
-        order_id: orderResponse.id,
-        product_id: item.product.id,
-        quantity: item.quantity,
-        discount: item.discount || 0,
-        final_price: item.finalPrice,
-        subtotal: item.subtotal
-      }));
+      addOrder(orderData);
       
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
-        
-      if (itemsError) throw itemsError;
-      
-      // Adicionar descontos aplicados ao pedido
-      if (selectedDiscounts.length > 0 && applyDiscounts) {
-        // Create order discounts without relying on settings.filter
-        const orderDiscounts = selectedDiscounts.map(discountId => ({
-          order_id: orderResponse.id,
-          discount_id: discountId
-        }));
-        
-        if (orderDiscounts.length > 0) {
-          const { error: discountsError } = await supabase
-            .from('order_discounts')
-            .insert(orderDiscounts);
-            
-          if (discountsError) {
-            console.error('Erro ao inserir descontos:', discountsError);
-            // Não vamos lançar erro aqui para não impedir a finalização do pedido
-            // mas vamos registrar no console para depuração
-          }
-        }
-      }
-      
-      toast.success(`Pedido #${orderResponse.order_number} criado com sucesso!`);
+      toast.success('Pedido enviado com sucesso!');
       clearCart();
-      return true;
       
+      return Promise.resolve();
     } catch (error) {
-      console.error('Erro ao finalizar pedido:', error);
-      toast.error('Erro ao finalizar pedido. Por favor, tente novamente.');
-      return false;
-    } finally {
-      setIsSubmitting(false);
+      console.error('Error sending order:', error);
+      toast.error('Erro ao enviar pedido. Tente novamente.');
+      return Promise.reject(error);
     }
   };
 
@@ -444,52 +545,39 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <CartContext.Provider value={{
       items,
       customer,
+      discountOptions,
+      selectedDiscountOptions,
+      deliveryLocation,
+      halfInvoicePercentage,
+      halfInvoiceType,
+      observations,
+      paymentTerms,
+      totalItems,
+      subtotal,
+      totalDiscount,
+      total,
+      deliveryFee,
+      applyDiscounts,
+      withIPI,
       setCustomer,
       addItem,
       removeItem,
       updateItemQuantity,
       updateItemDiscount,
-      clearCart,
-      subtotal,
-      total,
-      totalItems,
-      totalUnits,
-      applyDiscounts,
-      setApplyDiscounts,
-      toggleApplyDiscounts,
-      selectedDiscounts,
-      toggleDiscount,
-      isDiscountOptionSelected,
-      totalDiscount,
-      taxSubstitutionValue,
-      ipiValue,
-      deliveryFee,
-      setDeliveryFee,
-      shipping,
-      setShipping,
-      deliveryLocation,
+      toggleDiscountOption,
       setDeliveryLocation,
-      notes,
-      setNotes,
-      fullInvoice,
-      setFullInvoice,
-      halfInvoicePercentage,
       setHalfInvoicePercentage,
-      halfInvoiceType,
       setHalfInvoiceType,
-      taxSubstitution,
-      setTaxSubstitution,
-      withIPI,
-      setWithIPI,
-      toggleIPI,
-      paymentMethod,
-      setPaymentMethod,
-      paymentTerms,
+      setObservations,
       setPaymentTerms,
-      finalizeOrder,
-      isSubmitting,
-      observations,
-      setObservations
+      clearCart,
+      sendOrder,
+      isDiscountOptionSelected,
+      toggleApplyDiscounts,
+      calculateTaxSubstitutionValue,
+      toggleIPI,
+      calculateIPIValue,
+      calculateItemTaxSubstitutionValue
     }}>
       {children}
     </CartContext.Provider>

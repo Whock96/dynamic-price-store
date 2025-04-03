@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -31,7 +32,6 @@ import { supabase, Tables } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabaseOrderToAppOrder } from '@/utils/adapters';
-import { useOrders } from '@/context/OrderContext';
 
 // Define custom type that includes joined tables
 interface OrderWithCustomer extends Tables<'orders'> {
@@ -40,7 +40,6 @@ interface OrderWithCustomer extends Tables<'orders'> {
 
 const OrderList = () => {
   const navigate = useNavigate();
-  const { orders: contextOrders, isLoading: isContextLoading } = useOrders();
   const [orders, setOrders] = useState<OrderWithCustomer[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<OrderWithCustomer[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -49,11 +48,10 @@ const OrderList = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Forçar uma nova busca dos pedidos ao carregar a página
-    fetchOrdersDirectly();
+    fetchOrders();
   }, []);
 
-  const fetchOrdersDirectly = async () => {
+  const fetchOrders = async () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
@@ -125,50 +123,6 @@ const OrderList = () => {
     setIsAlertOpen(true);
   };
 
-  const handleViewOrder = async (id: string) => {
-    try {
-      // Verificar se o pedido existe e seus itens antes de navegar
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          customers(*)
-        `)
-        .eq('id', id)
-        .single();
-      
-      if (orderError) {
-        throw orderError;
-      }
-      
-      if (!orderData) {
-        toast.error('Pedido não encontrado');
-        return;
-      }
-      
-      // Buscar os itens do pedido
-      const { data: itemsData } = await supabase
-        .from('order_items')
-        .select(`
-          *,
-          products(*)
-        `)
-        .eq('order_id', id);
-        
-      // Buscar os descontos aplicados
-      const { data: discountData } = await supabase
-        .from('order_discounts')
-        .select('discount_id')
-        .eq('order_id', id);
-        
-      // Só agora navegar para a página de detalhes
-      navigate(`/orders/${id}`);
-    } catch (error) {
-      console.error(`Error fetching order ${id}:`, error);
-      toast.error('Erro ao buscar detalhes do pedido');
-    }
-  };
-
   return (
     <>
       <div className="flex flex-col space-y-6">
@@ -232,7 +186,7 @@ const OrderList = () => {
                               <Button 
                                 variant="outline" 
                                 size="icon"
-                                onClick={() => handleViewOrder(order.id)}
+                                onClick={() => navigate(`/orders/${order.id}`)}
                               >
                                 <FileText className="h-4 w-4" />
                               </Button>

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Order, CartItem } from '@/types/types';
 import { format } from 'date-fns';
@@ -20,7 +19,6 @@ interface OrderContextType {
   clearAllOrders: () => void;
   deleteOrder: (orderId: string) => void;
   isLoading: boolean;
-  fetchOrders: () => Promise<void>; // Add fetchOrders to the interface
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
@@ -54,8 +52,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return;
       }
       
-      console.log("Fetched orders:", ordersData);
-      
       // Process each order to fetch items and applied discounts
       const processedOrders = await Promise.all(ordersData.map(async (order) => {
         // Fetch order items with product details
@@ -67,15 +63,11 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           `)
           .eq('order_id', order.id);
           
-        console.log(`Fetched items for order ${order.id}:`, itemsData);
-          
         // Fetch discount options applied to this order
         const { data: discountData } = await supabase
           .from('order_discounts')
           .select('discount_id')
           .eq('order_id', order.id);
-          
-        console.log(`Fetched discounts for order ${order.id}:`, discountData);
           
         // Fetch full discount details if there are any applied discounts
         let discounts = [];
@@ -96,8 +88,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               isActive: d.is_active,
             }));
           }
-          
-          console.log(`Processed discounts for order ${order.id}:`, discounts);
         }
         
         // Use adapter to convert Supabase order to app Order
@@ -332,8 +322,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       getOrderById, 
       clearAllOrders,
       deleteOrder,
-      isLoading,
-      fetchOrders
+      isLoading
     }}>
       {children}
     </OrderContext.Provider>
