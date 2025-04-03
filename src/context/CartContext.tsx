@@ -1,7 +1,8 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useDiscountSettings } from '@/hooks/use-discount-settings';
-import { CartItem, Product, DiscountOption, Customer } from '@/types/types';
+import { CartItem, Product, Customer } from '@/types/types';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -51,6 +52,11 @@ interface CartContextType {
   isSubmitting: boolean;
   observations: string;
   setObservations: (observations: string) => void;
+  // Add these to match Cart.tsx usage
+  toggleApplyDiscounts: (value: boolean) => void;
+  halfInvoiceType: 'quantity' | 'price';
+  setHalfInvoiceType: (type: 'quantity' | 'price') => void;
+  toggleIPI: (value: boolean) => void;
 }
 
 // Criando o contexto
@@ -69,6 +75,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [observations, setObservations] = useState('');
   const [fullInvoice, setFullInvoice] = useState(true);
   const [halfInvoicePercentage, setHalfInvoicePercentage] = useState(50);
+  const [halfInvoiceType, setHalfInvoiceType] = useState<'quantity' | 'price'>('quantity');
   const [taxSubstitution, setTaxSubstitution] = useState(false);
   const [withIPI, setWithIPI] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit'>('cash');
@@ -117,15 +124,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     // Aplica os descontos selecionados
     selectedDiscounts.forEach(id => {
-      const discountOption = settings.find(opt => opt.id === id);
-      if (!discountOption) return;
-      
-      if (discountOption.type === 'discount') {
-        // Desconto em porcentagem
-        discountAmount += subtotal * (discountOption.value / 100);
-      } else if (discountOption.type === 'surcharge') {
-        // Acréscimo em porcentagem (desconto negativo)
-        discountAmount -= subtotal * (discountOption.value / 100);
+      // Here we need to check for settings.pickup, settings.cashPayment, etc.
+      // instead of using find() which is not available on DiscountSettings type
+      if (id === '1' && settings) { // Pickup discount
+        discountAmount += subtotal * (settings.pickup / 100);
+      } else if (id === '4' && settings) { // Cash payment discount
+        discountAmount += subtotal * (settings.cashPayment / 100);
+      } else if (id === '2' && settings) { // Half invoice discount
+        discountAmount += subtotal * (settings.halfInvoice / 100);
       }
     });
     
@@ -141,9 +147,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!taxSubstitution) return 0;
     
     // Verifica se o desconto de substituição tributária está selecionado
-    // Obs: Isso é específico para a regra de negócio do cliente
-    const taxOption = settings.find(opt => opt.id === '3');
-    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
+    if (!isDiscountOptionSelected('3') || !applyDiscounts || !settings) return 0;
     
     return items.reduce((total, item) => {
       const unitTaxValue = calculateItemTaxSubstitutionValue(item);
@@ -157,10 +161,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Apenas se a opção de substituição tributária estiver ativada
     if (!taxSubstitution) return 0;
     
-    const taxOption = settings.find(opt => opt.id === '3');
-    if (!taxOption) return 0;
+    if (!isDiscountOptionSelected('3') || !applyDiscounts || !settings) return 0;
     
-    const icmsStRate = taxOption.value / 100;
+    const icmsStRate = settings.taxSubstitution / 100;
     const mva = (item.product.mva ?? 39) / 100;
     const basePrice = item.finalPrice;
     
@@ -174,13 +177,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const calculateIPIValue = () => {
-    if (!withIPI) return 0;
+    if (!withIPI || !applyDiscounts || !settings) return 0;
     
-    const ipiOption = settings.find(opt => opt.id === '4');
-    if (!ipiOption || !isDiscountOptionSelected('4') || !applyDiscounts) return 0;
+    if (!isDiscountOptionSelected('4')) return 0;
     
     // IPI é calculado sobre o subtotal
-    return subtotal * (ipiOption.value / 100);
+    return subtotal * (settings.ipiRate / 100);
   };
   
   const taxSubstitutionValue = calculateTaxSubstitutionValue();
@@ -204,17 +206,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const discount = item.discount;
       const originalPrice = item.product.listPrice;
       const finalPrice = originalPrice * (1 - discount / 100);
-      const totalUnits = calculateTotalUnits(item);
-      
-      const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('3') ? 
-        calculateItemTaxSubstitutionValue(item) : 0;
-      
-      const subtotal = (finalPrice + taxValuePerUnit) * totalUnits;
       
       return {
         ...item,
         finalPrice,
-        subtotal
       };
     }));
   };
@@ -224,6 +219,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     recalculateCart();
   }, [selectedDiscounts, applyDiscounts, taxSubstitution, fullInvoice, halfInvoicePercentage, withIPI]);
   
+  // Toggle apply discounts function for Cart.tsx compatibility
+  const toggleApplyDiscounts = (value: boolean) => {
+    setApplyDiscounts(value);
+  };
+  
+  // Toggle IPI function for Cart.tsx compatibility
+  const toggleIPI = (value: boolean) => {
+    setWithIPI(value);
+  };
+
   // Adiciona um item ao carrinho
   const addItem = (product: Product, quantity: number, discount = 0) => {
     // Verifica se o produto já existe no carrinho
@@ -236,24 +241,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else {
       // Se não existe, adiciona novo item
       const finalPrice = product.listPrice * (1 - discount / 100);
-      const totalUnits = quantity * (product.quantityPerVolume || 1);
-      
-      // Calcula substituição tributária se aplicável
-      const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('3') && taxSubstitution ?
-        product.listPrice * ((product.mva ?? 39) / 100) * 0.078 : 0;
-      
-      const subtotal = (finalPrice + taxValuePerUnit) * totalUnits;
       
       // Adiciona o novo item
       setItems([
         ...items, 
         {
+          id: product.id, // Ensure id exists for CartItem
           product,
           quantity,
           discount,
           finalPrice,
-          listPrice: product.listPrice,
-          subtotal
+          subtotal: finalPrice * (product.quantityPerVolume || 1) * quantity
         }
       ]);
       
@@ -280,19 +278,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       // Atualiza a quantidade e o subtotal
-      const existingItem = { ...item, quantity: newQuantity };
-      const finalPrice = existingItem.product.listPrice * (1 - existingItem.discount / 100);
-      const totalUnits = newQuantity * (existingItem.product.quantityPerVolume || 1);
-      
-      const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('3') ? 
-        calculateItemTaxSubstitutionValue({...existingItem, quantity: newQuantity}) : 0;
-      
-      const subtotal = (existingItem.finalPrice + taxValuePerUnit) * totalUnits;
+      const finalPrice = item.product.listPrice * (1 - item.discount / 100);
+      const totalUnits = newQuantity * (item.product.quantityPerVolume || 1);
       
       return {
-        ...existingItem,
+        ...item,
+        quantity: newQuantity,
         finalPrice,
-        subtotal
+        subtotal: finalPrice * totalUnits
       };
     }));
   };
@@ -311,22 +304,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const finalPrice = item.product.listPrice * (1 - appliedDiscount / 100);
       const totalUnits = calculateTotalUnits(item);
       
-      const tempItem = {
-        ...item,
-        discount: appliedDiscount,
-        finalPrice
-      };
-      
-      const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('3') ? 
-        calculateItemTaxSubstitutionValue(tempItem) : 0;
-      
-      const subtotal = (finalPrice + taxValuePerUnit) * totalUnits;
-      
       return {
         ...item,
         discount: appliedDiscount,
         finalPrice,
-        subtotal
+        subtotal: finalPrice * totalUnits
       };
     }));
   };
@@ -342,6 +324,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setObservations('');
     setFullInvoice(true);
     setHalfInvoicePercentage(50);
+    setHalfInvoiceType('quantity');
     setTaxSubstitution(false);
     setWithIPI(false);
     setPaymentMethod('cash');
@@ -356,58 +339,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setDeliveryLocation(null);
     }
   }, [shipping]);
-  
-  // Atualiza os itens quando a quantidade muda
-  const handleQuantityChange = (productId: string, quantity: number) => {
-    if (quantity <= 0) {
-      removeItem(productId);
-      return;
-    }
-    
-    setItems(prevItems => prevItems.map(item => {
-      if (item.product.id === productId) {
-        const totalUnits = quantity * (item.product.quantityPerVolume || 1);
-        
-        const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('3') ? 
-          calculateItemTaxSubstitutionValue({...item, quantity}) : 0;
-        
-        const subtotal = (item.finalPrice + taxValuePerUnit) * totalUnits;
-        
-        return {
-          ...item,
-          quantity,
-          subtotal
-        };
-      }
-      return item;
-    }));
-  };
-  
-  // Atualiza os itens quando o desconto muda
-  const handleDiscountChange = (productId: string, discount: number) => {
-    setItems(prevItems => prevItems.map(item => {
-      if (item.product.id === productId) {
-        const appliedDiscount = Math.min(Math.max(discount, 0), 100);
-        const finalPrice = item.product.listPrice * (1 - appliedDiscount / 100);
-        const totalUnits = calculateTotalUnits(item);
-        
-        const updatedItem = {...item, finalPrice, discount: appliedDiscount};
-        
-        const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('3') ? 
-          calculateItemTaxSubstitutionValue(updatedItem) : 0;
-        
-        const subtotal = (finalPrice + taxValuePerUnit) * totalUnits;
-        
-        return {
-          ...item,
-          discount: appliedDiscount,
-          finalPrice,
-          subtotal
-        };
-      }
-      return item;
-    }));
-  };
   
   // Finaliza o pedido
   const finalizeOrder = async (): Promise<boolean> => {
@@ -438,6 +369,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         observations: observations || '',
         delivery_location: deliveryLocation || null,
         half_invoice_percentage: halfInvoicePercentage || null,
+        half_invoice_type: halfInvoiceType || 'quantity',
         delivery_fee: deliveryFee || 0,
         subtotal,
         total_discount: totalDiscount,
@@ -475,22 +407,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Adicionar descontos aplicados ao pedido
       if (selectedDiscounts.length > 0 && applyDiscounts) {
-        // Convertemos os IDs de string para UUID antes de inserir
-        // Aqui estava o problema principal, os IDs estavam como '2' e '3' em vez de UUIDs
-        // Precisamos usar os UUIDs corretos dos descontos do banco de dados
+        // Create order discounts without relying on settings.filter
+        const orderDiscounts = selectedDiscounts.map(discountId => ({
+          order_id: orderResponse.id,
+          discount_id: discountId
+        }));
         
-        // Obter os UUIDs dos descontos selecionados a partir dos settings
-        const selectedDiscountUUIDs = settings
-          .filter(discount => selectedDiscounts.includes(discount.id))
-          .map(discount => ({
-            order_id: orderResponse.id,
-            discount_id: discount.id
-          }));
-        
-        if (selectedDiscountUUIDs.length > 0) {
+        if (orderDiscounts.length > 0) {
           const { error: discountsError } = await supabase
             .from('order_discounts')
-            .insert(selectedDiscountUUIDs);
+            .insert(orderDiscounts);
             
           if (discountsError) {
             console.error('Erro ao inserir descontos:', discountsError);
@@ -529,6 +455,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       totalUnits,
       applyDiscounts,
       setApplyDiscounts,
+      toggleApplyDiscounts,
       selectedDiscounts,
       toggleDiscount,
       isDiscountOptionSelected,
@@ -547,10 +474,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setFullInvoice,
       halfInvoicePercentage,
       setHalfInvoicePercentage,
+      halfInvoiceType,
+      setHalfInvoiceType,
       taxSubstitution,
       setTaxSubstitution,
       withIPI,
       setWithIPI,
+      toggleIPI,
       paymentMethod,
       setPaymentMethod,
       paymentTerms,

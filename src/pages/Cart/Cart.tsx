@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -21,7 +20,6 @@ import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useCart } from '../../context/CartContext';
 import { useCustomers } from '../../context/CustomerContext';
 import { useDiscountSettings } from '@/hooks/use-discount-settings';
@@ -66,17 +64,16 @@ const Cart = () => {
   
   const { 
     items, customer, setCustomer, addItem, removeItem, updateItemQuantity,
-    updateItemDiscount, discountOptions, toggleDiscountOption, isDiscountOptionSelected,
-    deliveryLocation, setDeliveryLocation, halfInvoicePercentage, setHalfInvoicePercentage,
-    halfInvoiceType, setHalfInvoiceType,
-    observations, setObservations, totalItems, subtotal, totalDiscount, total, sendOrder, clearCart, 
-    deliveryFee, applyDiscounts, toggleApplyDiscounts, paymentTerms, setPaymentTerms,
-    calculateTaxSubstitutionValue, withIPI, toggleIPI, calculateIPIValue, calculateItemTaxSubstitutionValue
+    updateItemDiscount, totalItems, subtotal, totalDiscount, total, clearCart, 
+    deliveryFee, applyDiscounts, toggleApplyDiscounts, selectedDiscounts, toggleDiscount,
+    isDiscountOptionSelected, paymentTerms, setPaymentTerms, deliveryLocation, 
+    setDeliveryLocation, halfInvoicePercentage, setHalfInvoicePercentage,
+    halfInvoiceType, setHalfInvoiceType, observations, setObservations, 
+    taxSubstitutionValue, withIPI, toggleIPI, ipiValue, finalizeOrder, isSubmitting
   } = useCart();
   
   const [customerSearch, setCustomerSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [products, setProducts] = useState<SupabaseProduct[]>([]);
@@ -171,40 +168,34 @@ const Cart = () => {
       return;
     }
     
-    setIsSubmitting(true);
-    
     try {
-      await sendOrder();
-      navigate('/orders');
+      const success = await finalizeOrder();
+      if (success) {
+        navigate('/orders');
+      }
     } catch (error) {
       console.error('Error submitting order:', error);
-    } finally {
-      setIsSubmitting(false);
     }
   };
   
-  const taxSubstitutionValue = calculateTaxSubstitutionValue();
-  const ipiValue = calculateIPIValue();
-  
   const getTaxSubstitutionRate = () => {
-    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
+    if (!isDiscountOptionSelected('3') || !applyDiscounts || !settings) return 0;
     
-    const taxOption = discountOptions.find(opt => opt.id === '3');
-    if (!taxOption) return 0;
+    const taxRate = settings.taxSubstitution || 0;
     
     if (isDiscountOptionSelected('2')) {
-      return taxOption.value * halfInvoicePercentage / 100;
+      return taxRate * halfInvoicePercentage / 100;
     }
     
-    return taxOption.value;
+    return taxRate;
   };
   
   const effectiveTaxRate = getTaxSubstitutionRate();
   
   const getIPIRate = () => {
-    if (!withIPI || !applyDiscounts) return 0;
+    if (!withIPI || !applyDiscounts || !settings) return 0;
     
-    const ipiRate = settings ? settings.ipiRate : 10;
+    const ipiRate = settings.ipiRate || 10;
     
     if (isDiscountOptionSelected('2')) {
       return ipiRate * halfInvoicePercentage / 100;
@@ -540,8 +531,6 @@ const Cart = () => {
                   <TableBody>
                     {items.map(item => {
                       const totalUnits = calculateTotalUnits(item);
-                      const taxValue = isDiscountOptionSelected('3') && applyDiscounts ? 
-                        calculateItemTaxSubstitutionValue(item) : 0;
                       
                       return (
                         <TableRow key={item.id}>
@@ -553,14 +542,14 @@ const Cart = () => {
                               min="0"
                               max="100"
                               value={item.discount}
-                              onChange={(e) => updateItemDiscount(item.id, Number(e.target.value))}
+                              onChange={(e) => updateItemDiscount(item.product.id, Number(e.target.value))}
                               className="w-20 h-8 text-center"
                             />
                           </TableCell>
                           <TableCell>{formatCurrency(item.finalPrice)}</TableCell>
                           <TableCell>
-                            {isDiscountOptionSelected('3') && applyDiscounts ? 
-                              formatCurrency(taxValue) : 
+                            {taxSubstitutionValue ? 
+                              formatCurrency(taxSubstitutionValue) : 
                               formatCurrency(0)
                             }
                           </TableCell>
@@ -569,7 +558,7 @@ const Cart = () => {
                               <Button
                                 variant="outline"
                                 size="icon"
-                                onClick={() => updateItemQuantity(item.id, item.quantity - 1)}
+                                onClick={() => updateItemQuantity(item.product.id, item.quantity - 1)}
                                 className="h-8 w-8"
                                 disabled={item.quantity <= 1}
                               >
@@ -579,13 +568,13 @@ const Cart = () => {
                                 type="number"
                                 min="1"
                                 value={item.quantity}
-                                onChange={(e) => updateItemQuantity(item.id, Number(e.target.value) || 1)}
+                                onChange={(e) => updateItemQuantity(item.product.id, Number(e.target.value) || 1)}
                                 className="w-14 h-8 mx-1 text-center"
                               />
                               <Button
                                 variant="outline"
                                 size="icon"
-                                onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
+                                onClick={() => updateItemQuantity(item.product.id, item.quantity + 1)}
                                 className="h-8 w-8"
                               >
                                 +
@@ -605,7 +594,7 @@ const Cart = () => {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => removeItem(item.id)}
+                              onClick={() => removeItem(item.product.id)}
                               className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -653,166 +642,154 @@ const Cart = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {discountOptions.length > 0 ? (
+              {settings ? (
                 <>
                   {/* Opção de Retirada */}
-                  {discountOptions.filter(option => option.id === '1').map(option => (
-                    <div key={option.id} className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">
-                            {option.name} {applyDiscounts && (
-                              <span className={option.type === 'discount' ? 'text-green-600' : 'text-red-600'}>
-                                {option.type === 'discount' ? '(-' : '(+'}{option.value}%)
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-sm text-gray-500">{option.description}</p>
-                        </div>
-                        <Switch
-                          checked={isDiscountOptionSelected(option.id)}
-                          onCheckedChange={() => toggleDiscountOption(option.id)}
-                        />
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">
+                          Retirada no local {applyDiscounts && (
+                            <span className='text-green-600'>(-{settings.pickup}%)</span>
+                          )}
+                        </p>
+                        <p className="text-sm text-gray-500">Desconto para clientes que retiram no local</p>
                       </div>
-                      
-                      {option.id === '1' && !isDiscountOptionSelected(option.id) && (
-                        <div className="ml-6 p-3 border-l-2 border-ferplas-100 bg-gray-50 rounded-md">
-                          <div className="flex items-center mb-1">
-                            <MapPin className="h-4 w-4 text-ferplas-500 mr-1" />
-                            <span className="text-sm font-medium text-gray-700">Local de entrega:</span>
-                          </div>
-                          <RadioGroup 
-                            value={deliveryLocation || ''} 
-                            onValueChange={(value) => setDeliveryLocation(value as 'capital' | 'interior')}
-                            className="flex space-x-4 mt-1"
-                          >
-                            <div className="flex items-center space-x-2">
-                              <RadioGroupItem value="capital" id="capital" />
-                              <Label htmlFor="capital" className="text-sm">Capital</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <RadioGroupItem value="interior" id="interior" />
-                              <Label htmlFor="interior" className="text-sm">Interior</Label>
-                            </div>
-                          </RadioGroup>
-                        </div>
-                      )}
+                      <Switch
+                        checked={isDiscountOptionSelected('1')}
+                        onCheckedChange={() => toggleDiscount('1')}
+                      />
                     </div>
-                  ))}
+                    
+                    {isDiscountOptionSelected('1') && (
+                      <div className="ml-6 p-3 border-l-2 border-ferplas-100 bg-gray-50 rounded-md">
+                        <div className="flex items-center mb-1">
+                          <MapPin className="h-4 w-4 text-ferplas-500 mr-1" />
+                          <span className="text-sm font-medium text-gray-700">Local de entrega:</span>
+                        </div>
+                        <RadioGroup 
+                          value={deliveryLocation || ''} 
+                          onValueChange={(value) => setDeliveryLocation(value as 'capital' | 'interior')}
+                          className="flex space-x-4 mt-1"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="capital" id="capital" />
+                            <Label htmlFor="capital" className="text-sm">Capital</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="interior" id="interior" />
+                            <Label htmlFor="interior" className="text-sm">Interior</Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Opção A Vista */}
-                  {discountOptions.filter(option => option.id === '4').map(option => (
-                    <div key={option.id} className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">
-                            {option.name} {applyDiscounts && (
-                              <span className={option.type === 'discount' ? 'text-green-600' : 'text-red-600'}>
-                                {option.type === 'discount' ? '(-' : '(+'}{option.value}%)
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-sm text-gray-500">{option.description}</p>
-                        </div>
-                        <Switch
-                          checked={isDiscountOptionSelected(option.id)}
-                          onCheckedChange={() => toggleDiscountOption(option.id)}
-                        />
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">
+                          Pagamento à vista {applyDiscounts && (
+                            <span className='text-green-600'>(-{settings.cashPayment}%)</span>
+                          )}
+                        </p>
+                        <p className="text-sm text-gray-500">Desconto para pagamento à vista</p>
                       </div>
-
-                      {option.id === '4' && !isDiscountOptionSelected(option.id) && (
-                        <div className="ml-6 p-3 border-l-2 border-ferplas-100 bg-gray-50 rounded-md">
-                          <div className="flex items-center mb-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-ferplas-500 mr-1"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
-                            <span className="text-sm font-medium text-gray-700">Prazo de pagamento:</span>
-                          </div>
-                          <Input
-                            type="text"
-                            placeholder="Ex: 30/60/90 ou 28 DDL"
-                            value={paymentTerms}
-                            onChange={(e) => setPaymentTerms(e.target.value)}
-                            className="w-full"
-                          />
-                          <p className="text-xs text-gray-500 mt-1">Informe o prazo de pagamento combinado com o cliente</p>
-                        </div>
-                      )}
+                      <Switch
+                        checked={isDiscountOptionSelected('4')}
+                        onCheckedChange={() => toggleDiscount('4')}
+                      />
                     </div>
-                  ))}
+
+                    {isDiscountOptionSelected('4') && (
+                      <div className="ml-6 p-3 border-l-2 border-ferplas-100 bg-gray-50 rounded-md">
+                        <div className="flex items-center mb-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-ferplas-500 mr-1"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+                          <span className="text-sm font-medium text-gray-700">Prazo de pagamento:</span>
+                        </div>
+                        <Input
+                          type="text"
+                          placeholder="Ex: 30/60/90 ou 28 DDL"
+                          value={paymentTerms}
+                          onChange={(e) => setPaymentTerms(e.target.value)}
+                          className="w-full"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Informe o prazo de pagamento combinado com o cliente</p>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Opção Meia Nota */}
-                  {discountOptions.filter(option => option.id === '2').map(option => (
-                    <div key={option.id} className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">
-                            {option.name} {applyDiscounts && (
-                              <span className={option.type === 'discount' ? 'text-green-600' : 'text-red-600'}>
-                                {option.type === 'discount' ? '(-' : '(+'}{option.value}%)
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-sm text-gray-500">{option.description}</p>
-                        </div>
-                        <Switch
-                          checked={isDiscountOptionSelected(option.id)}
-                          onCheckedChange={() => toggleDiscountOption(option.id)}
-                        />
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">
+                          Emitir meia nota {applyDiscounts && (
+                            <span className='text-green-600'>(-{settings.halfInvoice}%)</span>
+                          )}
+                        </p>
+                        <p className="text-sm text-gray-500">Emitir nota fiscal com valor reduzido</p>
                       </div>
-                      
-                      {option.id === '2' && isDiscountOptionSelected(option.id) && (
-                        <div className="ml-6 p-3 border-l-2 border-ferplas-100 bg-gray-50 rounded-md space-y-4">
-                          <div className="flex items-center mb-2">
-                            <Percent className="h-4 w-4 text-ferplas-500 mr-1" />
-                            <span className="text-sm font-medium text-gray-700">Percentual da nota: {halfInvoicePercentage}%</span>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            <Slider
-                              value={[halfInvoicePercentage]}
-                              min={0}
-                              max={100}
-                              step={1}
-                              onValueChange={(value) => setHalfInvoicePercentage(value[0])}
-                              className="w-full"
-                            />
-                            <Input
-                              type="number"
-                              value={halfInvoicePercentage}
-                              onChange={(e) => {
-                                const val = Number(e.target.value);
-                                if (val >= 0 && val <= 100) {
-                                  setHalfInvoicePercentage(val);
-                                }
-                              }}
-                              className="w-20"
-                              min={0}
-                              max={100}
-                            />
-                          </div>
-                          
-                          <div className="flex flex-col space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Tipo de aplicação:</label>
-                            <Select 
-                              value={halfInvoiceType}
-                              onValueChange={(value: 'quantity' | 'price') => setHalfInvoiceType(value)}
-                            >
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Selecione o tipo" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="quantity">Na quantidade</SelectItem>
-                                <SelectItem value="price">No preço</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {halfInvoiceType === 'quantity' 
-                                ? 'A nota fiscal será emitida com quantidade reduzida mantendo o preço original' 
-                                : 'A nota fiscal será emitida com preço reduzido mantendo a quantidade original'}
-                            </p>
-                          </div>
+                      <Switch
+                        checked={isDiscountOptionSelected('2')}
+                        onCheckedChange={() => toggleDiscount('2')}
+                      />
+                    </div>
+                    
+                    {isDiscountOptionSelected('2') && (
+                      <div className="ml-6 p-3 border-l-2 border-ferplas-100 bg-gray-50 rounded-md space-y-4">
+                        <div className="flex items-center mb-2">
+                          <Percent className="h-4 w-4 text-ferplas-500 mr-1" />
+                          <span className="text-sm font-medium text-gray-700">Percentual da nota: {halfInvoicePercentage}%</span>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <Slider
+                            value={[halfInvoicePercentage]}
+                            min={0}
+                            max={100}
+                            step={1}
+                            onValueChange={(value) => setHalfInvoicePercentage(value[0])}
+                            className="w-full"
+                          />
+                          <Input
+                            type="number"
+                            value={halfInvoicePercentage}
+                            onChange={(e) => {
+                              const val = Number(e.target.value);
+                              if (val >= 0 && val <= 100) {
+                                setHalfInvoicePercentage(val);
+                              }
+                            }}
+                            className="w-20"
+                            min={0}
+                            max={100}
+                          />
+                        </div>
+                        
+                        <div className="flex flex-col space-y-2">
+                          <label className="text-sm font-medium text-gray-700">Tipo de aplicação:</label>
+                          <Select 
+                            value={halfInvoiceType}
+                            onValueChange={(value: 'quantity' | 'price') => setHalfInvoiceType(value)}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Selecione o tipo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="quantity">Na quantidade</SelectItem>
+                              <SelectItem value="price">No preço</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {halfInvoiceType === 'quantity' 
+                              ? 'A nota fiscal será emitida com quantidade reduzida mantendo o preço original' 
+                              : 'A nota fiscal será emitida com preço reduzido mantendo a quantidade original'}
+                          </p>
                         </div>
                       )}
                     </div>
-                  ))}
+                  </div>
                 </>
               ) : (
                 <div className="text-center py-4">
@@ -845,133 +822,4 @@ const Cart = () => {
           <CardContent>
             <div className="space-y-4">
               {/* Opção de Substituição Tributária */}
-              {discountOptions.filter(option => option.id === '3').map(option => (
-                <div key={option.id} className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">
-                        ICMS Substituição tributária {applyDiscounts && (
-                          <span className="text-red-600">(+{option.value}%)</span>
-                        )}
-                        {option.id === '3' && isDiscountOptionSelected('2') && applyDiscounts && (
-                          <span className="text-red-600 ml-1">
-                            (Ajustado: +{(option.value * halfInvoicePercentage / 100).toFixed(2)}%)
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Acréscimo do ICMS por substituição tributária (calculado com MVA de cada produto)
-                      </p>
-                    </div>
-                    <Switch
-                      checked={isDiscountOptionSelected(option.id)}
-                      onCheckedChange={() => toggleDiscountOption(option.id)}
-                    />
-                  </div>
-                </div>
-              ))}
-
-              {/* Opção de IPI */}
-              <div className="space-y-3 pt-2 border-t border-gray-100">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">
-                      IPI {applyDiscounts && settings && (
-                        <span className="text-red-600">(+{settings.ipiRate}%)</span>
-                      )}
-                      {isDiscountOptionSelected('2') && applyDiscounts && (
-                        <span className="text-red-600 ml-1">
-                          (Ajustado: +{effectiveIPIRate.toFixed(2)}%)
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-sm text-gray-500">Acréscimo de Imposto sobre Produtos Industrializados</p>
-                  </div>
-                  <Switch
-                    checked={withIPI}
-                    onCheckedChange={toggleIPI}
-                  />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-medium">Observações do Pedido</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Textarea
-              placeholder="Digite aqui observações importantes sobre este pedido, como instruções de entrega, detalhes específicos ou outras informações relevantes..."
-              className="min-h-[120px] resize-y"
-              value={observations}
-              onChange={(e) => setObservations(e.target.value)}
-            />
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-medium">Resumo do Pedido</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Subtotal:</span>
-                <span>{formatCurrency(subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-sm text-red-600">
-                <span>Descontos:</span>
-                <span>-{formatCurrency(totalDiscount)}</span>
-              </div>
-              {isDiscountOptionSelected('3') && applyDiscounts && taxSubstitutionValue > 0 && (
-                <div className="flex justify-between text-sm text-orange-600">
-                  <span>ICMS Substituição Tributária ({effectiveTaxRate.toFixed(2)}% ICMS-ST):</span>
-                  <span>+{formatCurrency(taxSubstitutionValue)}</span>
-                </div>
-              )}
-              {withIPI && applyDiscounts && ipiValue > 0 && (
-                <div className="flex justify-between text-sm text-orange-600">
-                  <span>IPI ({effectiveIPIRate.toFixed(2)}%):</span>
-                  <span>+{formatCurrency(ipiValue)}</span>
-                </div>
-              )}
-              {deliveryLocation && (
-                <div className="flex justify-between text-sm text-amber-600">
-                  <span>Taxa de entrega ({deliveryLocation === 'capital' ? 'Capital' : 'Interior'}):</span>
-                  <span>{formatCurrency(deliveryFee)}</span>
-                </div>
-              )}
-              <Separator className="my-2" />
-              <div className="flex justify-between font-medium text-lg">
-                <span>Total:</span>
-                <span className="text-ferplas-600">{formatCurrency(total)}</span>
-              </div>
-            </div>
-            
-            <Button 
-              className="w-full bg-ferplas-500 hover:bg-ferplas-600 button-transition py-6"
-              onClick={handleSubmitOrder}
-              disabled={isSubmitting || items.length === 0 || !customer}
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Enviando...
-                </>
-              ) : (
-                <>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 h-5 w-5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
-                  Finalizar Pedido
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-};
-
-export default Cart;
+              <div className="space-
