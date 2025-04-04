@@ -89,6 +89,8 @@ export function useSupabaseData<T extends Record<string, any>>(
   // Create a new record
   const createRecord = async (record: Omit<T, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      console.log('Creating record:', record);
+      
       // Ensure the record has the correct shape expected by Supabase
       const recordToCreate: any = { ...record };
       
@@ -107,18 +109,34 @@ export function useSupabaseData<T extends Record<string, any>>(
         delete recordToCreate.updatedAt;
       }
       
-      // If ID is provided, use it; otherwise, let Supabase generate one
-      if (!recordToCreate.id) {
-        delete recordToCreate.id; // Remove empty ID so Supabase will generate one
+      // Ensure current timestamps are set
+      if (!recordToCreate.created_at) {
+        recordToCreate.created_at = new Date().toISOString();
       }
+      
+      if (!recordToCreate.updated_at) {
+        recordToCreate.updated_at = new Date().toISOString();
+      }
+      
+      // Never send an empty ID, let Supabase generate one
+      if (recordToCreate.id === undefined || recordToCreate.id === null || recordToCreate.id === '') {
+        delete recordToCreate.id;
+      }
+      
+      console.log('Prepared record to create:', recordToCreate);
 
       const { data: createdData, error: createError } = await supabase
         .from(tableName)
         .insert(recordToCreate)
         .select();
 
-      if (createError) throw createError;
+      if (createError) {
+        console.error('Supabase error details:', createError);
+        throw createError;
+      }
 
+      console.log('Created data:', createdData);
+      
       // Refetch to get the full data with any joins
       fetchData();
       
@@ -135,6 +153,8 @@ export function useSupabaseData<T extends Record<string, any>>(
   // Update an existing record
   const updateRecord = async (id: string, record: Partial<T>) => {
     try {
+      console.log('Updating record:', id, record);
+      
       // Convert between camelCase and snake_case if needed
       const recordToUpdate: any = { ...record };
       
@@ -148,13 +168,20 @@ export function useSupabaseData<T extends Record<string, any>>(
         recordToUpdate.updated_at = new Date().toISOString();
       }
 
+      console.log('Prepared record to update:', recordToUpdate);
+
       const { data: updatedData, error: updateError } = await supabase
         .from(tableName)
         .update(recordToUpdate)
         .eq('id', id)
         .select();
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Supabase error details:', updateError);
+        throw updateError;
+      }
+
+      console.log('Updated data:', updatedData);
 
       // Optimistically update local state
       setData(prevData => 

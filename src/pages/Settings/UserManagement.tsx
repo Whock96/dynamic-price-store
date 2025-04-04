@@ -193,6 +193,8 @@ const UserManagement = () => {
   };
 
   const handleSaveUser = async () => {
+    console.log('Form data before validation:', formData);
+    
     if (!formData.username || !formData.name || !formData.userTypeId) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
@@ -218,9 +220,12 @@ const UserManagement = () => {
         .from('users')
         .select('id')
         .eq('username', formData.username)
-        .neq('id', isEditMode ? formData.id : '');
+        .neq('id', isEditMode ? formData.id : '00000000-0000-0000-0000-000000000000');
       
-      if (checkError) throw checkError;
+      if (checkError) {
+        console.error('Error checking username:', checkError);
+        throw checkError;
+      }
       
       if (existingUsers && existingUsers.length > 0) {
         toast.error('Este nome de usuário já está em uso');
@@ -241,17 +246,21 @@ const UserManagement = () => {
           updateData.password = formData.password;
         }
         
+        console.log('Update data:', updateData);
         await updateUser(formData.id, updateData);
         toast.success(`Usuário "${formData.name}" atualizado com sucesso`);
       } else {
-        await createUser({
+        const userData = {
           name: formData.name,
           username: formData.username,
           email: formData.email || null,
           password: formData.password,
           user_type_id: formData.userTypeId,
           is_active: formData.isActive,
-        });
+        };
+        
+        console.log('User data to create:', userData);
+        await createUser(userData);
         
         toast.success(`Usuário "${formData.name}" adicionado com sucesso`);
       }
@@ -300,12 +309,16 @@ const UserManagement = () => {
     
     switch (userType.toLowerCase()) {
       case 'administrator':
+      case 'administrador':
         return <Badge className="bg-red-100 text-red-800 border-red-200">Administrador</Badge>;
       case 'salesperson':
+      case 'vendedor':
         return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Vendedor</Badge>;
       case 'billing':
+      case 'faturamento':
         return <Badge className="bg-green-100 text-green-800 border-green-200">Faturamento</Badge>;
       case 'inventory':
+      case 'estoque':
         return <Badge className="bg-purple-100 text-purple-800 border-purple-200">Estoque</Badge>;
       default:
         return <Badge className="bg-gray-100 text-gray-800 border-gray-200">{userType}</Badge>;
@@ -407,7 +420,7 @@ const UserManagement = () => {
                       )}
                     </TableCell>
                     <TableCell>
-                      {new Date(user.created_at).toLocaleDateString('pt-BR', {
+                      {user.created_at && new Date(user.created_at).toLocaleDateString('pt-BR', {
                         day: '2-digit',
                         month: '2-digit',
                         year: 'numeric'
