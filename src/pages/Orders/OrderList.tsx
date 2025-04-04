@@ -37,6 +37,7 @@ import { useOrders } from '@/context/OrderContext';
 // Define custom type that includes joined tables
 interface OrderWithCustomer extends Tables<'orders'> {
   customers: Tables<'customers'>;
+  users?: Tables<'users'>;
 }
 
 const OrderList = () => {
@@ -68,7 +69,8 @@ const OrderList = () => {
         .from('orders')
         .select(`
           *,
-          customers(*)
+          customers(*),
+          users(name)
         `)
         .order('created_at', { ascending: false });
 
@@ -118,7 +120,17 @@ const OrderList = () => {
           }
           
           // Use adapter to convert Supabase order to app Order
-          return supabaseOrderToAppOrder(order, itemsData || [], discounts);
+          const appOrder = supabaseOrderToAppOrder(order, itemsData || [], discounts);
+          
+          // Add salesperson name if available from the joined user table
+          if (order.users && order.users.name) {
+            appOrder.user = {
+              ...appOrder.user,
+              name: order.users.name
+            };
+          }
+          
+          return appOrder;
         }));
         
         setOrders(processedOrders);
@@ -139,9 +151,11 @@ const OrderList = () => {
       const filtered = orders.filter(order => {
         const customerName = order.customer?.companyName?.toLowerCase() || '';
         const orderNumber = String(order.orderNumber);
+        const salesPersonName = order.user?.name?.toLowerCase() || '';
         
         return customerName.includes(lowercasedSearch) || 
-               orderNumber.includes(lowercasedSearch);
+               orderNumber.includes(lowercasedSearch) ||
+               salesPersonName.includes(lowercasedSearch);
       });
       setFilteredOrders(filtered);
     }
@@ -209,6 +223,7 @@ const OrderList = () => {
                     <TableRow>
                       <TableHead className="w-[80px]">Número</TableHead>
                       <TableHead>Cliente</TableHead>
+                      <TableHead>Vendedor</TableHead>
                       <TableHead>Data</TableHead>
                       <TableHead>Valor</TableHead>
                       <TableHead>Status</TableHead>
@@ -221,6 +236,7 @@ const OrderList = () => {
                         <TableRow key={order.id}>
                           <TableCell className="font-medium">#{order.orderNumber}</TableCell>
                           <TableCell>{order.customer?.companyName || "Cliente desconhecido"}</TableCell>
+                          <TableCell>{order.user?.name || "Não informado"}</TableCell>
                           <TableCell>{formatDate(new Date(order.createdAt))}</TableCell>
                           <TableCell>{formatCurrency(order.total)}</TableCell>
                           <TableCell>
@@ -267,7 +283,7 @@ const OrderList = () => {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
+                        <TableCell colSpan={7} className="h-24 text-center">
                           Nenhum pedido encontrado.
                         </TableCell>
                       </TableRow>

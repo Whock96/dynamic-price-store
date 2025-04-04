@@ -42,7 +42,8 @@ export function useOrderData(orderId: string | undefined) {
         .from('orders')
         .select(`
           *,
-          customers(*)
+          customers(*),
+          users(name)
         `)
         .eq('id', orderId)
         .single();
@@ -87,6 +88,14 @@ export function useOrderData(orderId: string | undefined) {
       
       // Use adapter to convert Supabase order to app Order
       const processedOrder = supabaseOrderToAppOrder(orderData, itemsData || [], discounts);
+      
+      // Add salesperson name if available
+      if (orderData.users && orderData.users.name) {
+        processedOrder.user = {
+          ...processedOrder.user,
+          name: orderData.users.name
+        };
+      }
       
       console.log("Fetched order from Supabase:", processedOrder);
       setOrder(processedOrder);
