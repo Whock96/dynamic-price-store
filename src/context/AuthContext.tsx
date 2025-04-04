@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../integrations/supabase/client';
+import { supabase, UserRow, UserTypeRow, PermissionRow } from '../integrations/supabase/client';
 import { toast } from 'sonner';
 
 export interface Permission {
@@ -170,7 +170,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserData = async (userId: string): Promise<User | null> => {
     try {
-      // Fetch the user with their user type
+      // Fetch the user
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select(`
@@ -186,8 +186,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (userError) throw userError;
-
       if (!userData) return null;
+
+      // Cast to our known type
+      const user = userData as unknown as UserRow;
 
       // Fetch the user type with permissions
       const { data: userTypeData, error: userTypeError } = await supabase
@@ -197,41 +199,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name, 
           description
         `)
-        .eq('id', userData.user_type_id)
+        .eq('id', user.user_type_id)
         .single();
 
       if (userTypeError) throw userTypeError;
+      
+      // Cast to our known type
+      const userType = userTypeData as unknown as UserTypeRow;
 
       // Fetch permissions for this user type
       const { data: permissionsData, error: permissionsError } = await supabase
         .from('user_type_permissions')
         .select(`
-          permissions (
+          permissions:permission_id (
             id,
             name,
             description,
             code
           )
         `)
-        .eq('user_type_id', userTypeData.id);
+        .eq('user_type_id', userType.id);
 
       if (permissionsError) throw permissionsError;
 
-      // Extract permissions from the nested structure
-      const permissions = permissionsData.map(item => item.permissions);
+      // Extract permissions from the nested data
+      const permissions: Permission[] = permissionsData.map((item: any) => item.permissions);
 
       // Build the complete user object
       const fullUser: User = {
-        id: userData.id,
-        username: userData.username,
-        name: userData.name,
-        email: userData.email || '',
-        isActive: userData.is_active,
-        createdAt: new Date(userData.created_at),
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        email: user.email || '',
+        isActive: user.is_active,
+        createdAt: new Date(user.created_at),
         userType: {
-          id: userTypeData.id,
-          name: userTypeData.name,
-          description: userTypeData.description || '',
+          id: userType.id,
+          name: userType.name,
+          description: userType.description || '',
           permissions: permissions
         }
       };
@@ -290,15 +295,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
       
       if (error) throw new Error('Usuário não encontrado ou inativo');
+
+      // Cast to our known type
+      const user = data as unknown as UserRow;
       
       // In a real application, you would use a proper password verification method
       // For this example, we're using a direct comparison for simplicity
-      if (data.password !== '$2a$10$mLK.rrdlvx9DCFb6Eck1t.TlltnGulepXnov3bBp5T2TloO1MYj52') {
+      if (user.password !== '$2a$10$mLK.rrdlvx9DCFb6Eck1t.TlltnGulepXnov3bBp5T2TloO1MYj52') {
         throw new Error('Senha incorreta');
       }
       
       // Fetch full user data
-      const userData = await fetchUserData(data.id);
+      const userData = await fetchUserData(user.id);
       
       if (!userData) {
         throw new Error('Erro ao obter dados do usuário');

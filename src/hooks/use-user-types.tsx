@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, UserTypeRow, PermissionRow } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Permission, UserType } from '@/context/AuthContext';
 
@@ -38,15 +38,24 @@ export function useUserTypes() {
 
       if (mappingsError) throw mappingsError;
 
+      // Cast to our known types
+      const typedUserTypes = userTypesData as unknown as UserTypeRow[];
+      const typedPermissions = permissionsData as unknown as PermissionRow[];
+      const typedMappings = mappingsData as unknown as {
+        id: string;
+        user_type_id: string;
+        permission_id: string;
+      }[];
+
       // Process the data to create UserType objects with their permissions
-      const processedUserTypes: UserType[] = userTypesData.map(userType => {
+      const processedUserTypes: UserType[] = typedUserTypes.map(userType => {
         // Find all permission IDs for this user type
-        const userTypePermissionIds = mappingsData
+        const userTypePermissionIds = typedMappings
           .filter(mapping => mapping.user_type_id === userType.id)
           .map(mapping => mapping.permission_id);
 
         // Find the full permission objects for these IDs
-        const userTypePermissions = permissionsData
+        const userTypePermissions = typedPermissions
           .filter(permission => userTypePermissionIds.includes(permission.id))
           .map(permission => ({
             id: permission.id,
@@ -64,7 +73,7 @@ export function useUserTypes() {
       });
 
       setUserTypes(processedUserTypes);
-      setPermissions(permissionsData.map(p => ({
+      setPermissions(typedPermissions.map(p => ({
         id: p.id,
         name: p.name,
         description: p.description || '',

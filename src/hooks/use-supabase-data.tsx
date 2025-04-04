@@ -30,7 +30,7 @@ export function useSupabaseData<T extends Record<string, any>>(
 
     try {
       // Use type assertion to tell TypeScript this is a valid table name
-      let query = supabase.from(tableName as any).select(options.select || '*');
+      let query = supabase.from(tableName).select(options.select || '*');
 
       // Add join table if needed
       if (options.joinTable) {
@@ -71,7 +71,7 @@ export function useSupabaseData<T extends Record<string, any>>(
   const createRecord = async (record: Omit<T, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const { data: createdData, error: createError } = await supabase
-        .from(tableName as any)
+        .from(tableName)
         .insert(record as any)
         .select();
 
@@ -100,7 +100,7 @@ export function useSupabaseData<T extends Record<string, any>>(
       };
 
       const { data: updatedData, error: updateError } = await supabase
-        .from(tableName as any)
+        .from(tableName)
         .update(recordWithTimestamp as any)
         .eq('id', id)
         .select();
@@ -128,7 +128,7 @@ export function useSupabaseData<T extends Record<string, any>>(
   const deleteRecord = async (id: string) => {
     try {
       const { error: deleteError } = await supabase
-        .from(tableName as any)
+        .from(tableName)
         .delete()
         .eq('id', id);
 

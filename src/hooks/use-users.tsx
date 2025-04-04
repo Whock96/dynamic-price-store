@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, UserRow, UserTypeRow } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { User, UserType } from '@/context/AuthContext';
 
@@ -44,7 +44,7 @@ export function useUsers() {
         .from('user_type_permissions')
         .select(`
           user_type_id,
-          permissions (
+          permissions:permission_id (
             id,
             name,
             description,
@@ -54,11 +54,22 @@ export function useUsers() {
 
       if (permissionsError) throw permissionsError;
 
+      // Cast to our known types
+      const typedUsers = usersData as unknown as UserRow[];
+      const typedUserTypes = userTypesData as unknown as UserTypeRow[];
+
+      // Group permissions by user type ID
+      const permissionsByUserType: Record<string, any[]> = {};
+      userTypePermissions.forEach((utp: any) => {
+        if (!permissionsByUserType[utp.user_type_id]) {
+          permissionsByUserType[utp.user_type_id] = [];
+        }
+        permissionsByUserType[utp.user_type_id].push(utp.permissions);
+      });
+
       // Process user types with their permissions
-      const processedUserTypes = userTypesData.map(userType => {
-        const permissions = userTypePermissions
-          .filter(utp => utp.user_type_id === userType.id)
-          .map(utp => utp.permissions);
+      const processedUserTypes = typedUserTypes.map(userType => {
+        const permissions = permissionsByUserType[userType.id] || [];
 
         return {
           id: userType.id,
@@ -71,7 +82,7 @@ export function useUsers() {
       setUserTypes(processedUserTypes);
 
       // Process users with their user types
-      const processedUsers = usersData.map(user => {
+      const processedUsers = typedUsers.map(user => {
         const userType = processedUserTypes.find(ut => ut.id === user.user_type_id) || {
           id: '',
           name: 'Desconhecido',
