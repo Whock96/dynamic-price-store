@@ -1,4 +1,3 @@
-
 import { Tables } from "@/integrations/supabase/client";
 import { Product, Order, CartItem, DiscountOption, Customer } from "@/types/types";
 
@@ -102,9 +101,15 @@ export const supabaseOrderToAppOrder = (
       id: order.user_id,
       name: 'Usuário do Sistema',
       username: '',
-      role: userRole,
+      userType: {
+        id: '',
+        name: 'Default',
+        description: 'Default user type',
+        permissions: []
+      },
       permissions: [],
       email: '',
+      isActive: true,
       createdAt: new Date(),
     },
     items: formattedItems,

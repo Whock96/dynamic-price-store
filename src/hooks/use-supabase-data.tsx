@@ -33,6 +33,7 @@ export function useSupabaseData<T extends Record<string, any>>(
 
       // Add join table if needed
       if (options.joinTable) {
+        // Use a type assertion to avoid the infinite type instantiation
         query = query.select(`*, ${options.joinTable}(*)`) as any;
       }
 
