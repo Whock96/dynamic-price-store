@@ -299,11 +299,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Tipo de usuário não encontrado');
       }
       
+      // Make sure we're using the 'administrator' role if needed
+      // This handles the case of users who had the old 'administrador' role
+      let userTypeName = data.user_type.name;
+      if (userTypeName === 'administrador') {
+        userTypeName = 'administrator';
+        
+        // Update the user's role in the database to fix the issue
+        try {
+          // Find the administrator user type
+          const { data: adminTypes } = await supabase
+            .from('user_types')
+            .select('*')
+            .eq('name', 'administrator')
+            .limit(1);
+            
+          if (adminTypes && adminTypes.length > 0) {
+            // Update the user's user_type_id to the administrator type
+            await supabase
+              .from('users')
+              .update({ user_type_id: adminTypes[0].id })
+              .eq('id', data.id);
+          }
+        } catch (updateErr) {
+          console.error("Error updating user role:", updateErr);
+          // Continue with login even if this fails
+        }
+      }
+      
       // Fetch permissions for this user
       const permissions = await fetchUserTypePermissions(data.user_type.id);
       
       // Ensure the role is one of the allowed values
-      const userRole = data.user_type.name as 'administrator' | 'salesperson' | 'billing' | 'inventory';
+      const userRole = userTypeName as 'administrator' | 'salesperson' | 'billing' | 'inventory';
       
       // Create user object
       const userObj: UserType = {

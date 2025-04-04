@@ -54,11 +54,11 @@ export function useSupabaseData<T extends Record<string, any>>(
         query = query.eq(options.filterKey, options.filterValue);
       }
 
-      // Add active filtering if needed - check if the column exists in the table first
+      // Add active filtering if needed - check if the table has this column
       if (options.isActive !== undefined) {
-        // Only apply is_active filter for tables that have it
-        // For user_types, we need to check both is_active and createdAt/updatedAt field formats
-        if (tableName !== 'permissions') {
+        // Only apply is_active filter for tables that actually have this column
+        // user_types table doesn't have an is_active column
+        if (tableName !== 'permissions' && tableName !== 'user_types') {
           query = query.eq('is_active', options.isActive);
         }
       }
