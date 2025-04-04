@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -53,6 +52,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
 import { useSupabaseData } from '@/hooks/use-supabase-data';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UserData {
   id: string;
@@ -97,7 +97,6 @@ const UserManagement = () => {
     isActive: true,
   });
 
-  // Usando useSupabaseData para buscar usuários com informações de tipo
   const { 
     data: users, 
     isLoading: isLoadingUsers, 
@@ -113,16 +112,14 @@ const UserManagement = () => {
     orderBy: { column: 'name', ascending: true }
   });
 
-  // Buscando apenas tipos de usuário ativos
   const { 
     data: userTypes, 
     isLoading: isLoadingUserTypes 
   } = useSupabaseData<UserTypeOption>('user_types', {
     orderBy: { column: 'name', ascending: true },
-    isActive: true // Apenas tipos ativos
+    isActive: true
   });
 
-  // Verify admin access
   useEffect(() => {
     if (!hasPermission('users_manage')) {
       toast.error('Você não tem permissão para acessar esta página');
@@ -135,8 +132,6 @@ const UserManagement = () => {
       setIsEditMode(true);
       setSelectedUser(user);
       
-      // Se o tipo de usuário não estiver mais disponível (foi excluído/inativado)
-      // vamos verificar isso e mostrar uma mensagem
       const userTypeExists = userTypes.some(type => type.id === user.user_type_id);
       
       if (!userTypeExists) {
@@ -200,7 +195,6 @@ const UserManagement = () => {
   };
 
   const handleSaveUser = async () => {
-    // Validação básica
     if (!formData.username || !formData.name || !formData.userTypeId) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
@@ -216,14 +210,12 @@ const UserManagement = () => {
       return;
     }
 
-    // Verificar se o tipo de usuário selecionado existe
     if (!userTypes.some(type => type.id === formData.userTypeId)) {
       toast.error('O tipo de usuário selecionado não existe ou foi inativado');
       return;
     }
 
     try {
-      // Check for duplicate username
       const { data: existingUsers, error: checkError } = await supabase
         .from('users')
         .select('id')
@@ -238,7 +230,6 @@ const UserManagement = () => {
       }
       
       if (isEditMode) {
-        // Update existing user
         const updateData: any = {
           name: formData.name,
           username: formData.username,
@@ -248,7 +239,6 @@ const UserManagement = () => {
           updated_at: new Date().toISOString()
         };
         
-        // Only update password if provided
         if (formData.password) {
           updateData.password = formData.password;
         }
@@ -256,7 +246,6 @@ const UserManagement = () => {
         await updateUser(formData.id, updateData);
         toast.success(`Usuário "${formData.name}" atualizado com sucesso`);
       } else {
-        // Create new user
         await createUser({
           name: formData.name,
           username: formData.username,
@@ -269,7 +258,6 @@ const UserManagement = () => {
         toast.success(`Usuário "${formData.name}" adicionado com sucesso`);
       }
       
-      // Refresh user list
       fetchUsers();
       handleCloseDialog();
     } catch (err) {
@@ -293,7 +281,6 @@ const UserManagement = () => {
     }
   };
 
-  // Filter users based on search query and role filter
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -305,9 +292,8 @@ const UserManagement = () => {
     return matchesSearch && matchesRole;
   });
 
-  // Get unique user types for filter
   const uniqueUserTypes = [...new Set(users
-    .filter(user => user.user_type) // Filtrar usuários que tem tipo definido
+    .filter(user => user.user_type)
     .map(user => user.user_type?.name)
     .filter(Boolean))];
 
@@ -487,7 +473,6 @@ const UserManagement = () => {
         </CardContent>
       </Card>
 
-      {/* Dialog para adicionar/editar usuário */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>

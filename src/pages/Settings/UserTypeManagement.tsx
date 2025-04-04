@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -67,7 +66,6 @@ const UserTypeManagement = () => {
     isActive: true,
   });
 
-  // Usando useSupabaseData para buscar tipos de usuário
   const { 
     data: userTypes, 
     isLoading, 
@@ -79,7 +77,6 @@ const UserTypeManagement = () => {
     orderBy: { column: 'name', ascending: true }
   });
 
-  // Usando useSupabaseData para buscar permissões
   const {
     data: allPermissions,
     isLoading: isLoadingPermissions,
@@ -88,7 +85,6 @@ const UserTypeManagement = () => {
     orderBy: { column: 'name', ascending: true }
   });
 
-  // Verify admin access
   useEffect(() => {
     if (!hasPermission('user_types_manage')) {
       toast.error('Você não tem permissão para acessar esta página');
@@ -99,7 +95,6 @@ const UserTypeManagement = () => {
 
   const fetchUserTypePermissions = async (userTypeId: string) => {
     try {
-      // Get permission IDs linked to this user type
       const { data: permLinks, error: permLinksError } = await supabase
         .from('user_type_permissions')
         .select('permission_id')
@@ -108,10 +103,8 @@ const UserTypeManagement = () => {
       if (permLinksError) throw permLinksError;
       
       if (permLinks) {
-        // Create a set of granted permission IDs for quick lookup
         const grantedPermissionIds = new Set(permLinks.map(p => p.permission_id));
         
-        // Mark permissions as granted based on the links
         const updatedPermissions = allPermissions.map(p => ({
           ...p,
           isGranted: grantedPermissionIds.has(p.id)
@@ -134,7 +127,7 @@ const UserTypeManagement = () => {
         id: userType.id,
         name: userType.name,
         description: userType.description,
-        isActive: userType.is_active !== false, // Se não for explicitamente false, considere como true
+        isActive: userType.is_active !== false,
       });
     } else {
       setIsEditMode(false);
@@ -189,27 +182,26 @@ const UserTypeManagement = () => {
 
     try {
       if (isEditMode) {
-        // Update existing user type
         await updateUserType(userTypeFormData.id, {
           name: userTypeFormData.name,
           description: userTypeFormData.description,
           is_active: userTypeFormData.isActive,
-          updated_at: new Date().toISOString()
+          updatedAt: new Date()
         });
         
         toast.success(`Tipo de usuário "${userTypeFormData.name}" atualizado com sucesso`);
       } else {
-        // Create new user type
         await createUserType({
           name: userTypeFormData.name,
           description: userTypeFormData.description,
-          is_active: userTypeFormData.isActive
+          is_active: userTypeFormData.isActive,
+          createdAt: new Date(),
+          updatedAt: new Date()
         });
         
         toast.success(`Tipo de usuário "${userTypeFormData.name}" criado com sucesso`);
       }
       
-      // Refresh user types list
       fetchUserTypes();
       setIsUserTypeDialogOpen(false);
     } catch (err) {
@@ -222,7 +214,6 @@ const UserTypeManagement = () => {
     if (!selectedUserType) return;
     
     try {
-      // Get current permissions
       const { data: currentPerms, error: fetchError } = await supabase
         .from('user_type_permissions')
         .select('permission_id')
@@ -231,7 +222,6 @@ const UserTypeManagement = () => {
       if (fetchError) throw fetchError;
       
       if (currentPerms) {
-        // Find permissions to add and remove
         const currentPermIds = new Set(currentPerms.map(p => p.permission_id));
         const selectedPermIds = new Set(selectedPermissions.filter(p => p.isGranted).map(p => p.id));
         
@@ -244,7 +234,6 @@ const UserTypeManagement = () => {
           
         const toRemove = [...currentPermIds].filter(id => !selectedPermIds.has(id));
         
-        // Add new permissions
         if (toAdd.length > 0) {
           const { error: addError } = await supabase
             .from('user_type_permissions')
@@ -253,7 +242,6 @@ const UserTypeManagement = () => {
           if (addError) throw addError;
         }
         
-        // Remove permissions
         for (const permId of toRemove) {
           const { error: removeError } = await supabase
             .from('user_type_permissions')
@@ -275,7 +263,6 @@ const UserTypeManagement = () => {
 
   const handleDeleteUserType = async (userTypeId: string) => {
     try {
-      // Check if user type is being used by any users
       const { data: users, error: usersError } = await supabase
         .from('users')
         .select('id')
@@ -289,7 +276,6 @@ const UserTypeManagement = () => {
         return;
       }
       
-      // Delete permissions links first
       const { error: permDeleteError } = await supabase
         .from('user_type_permissions')
         .delete()
@@ -297,7 +283,6 @@ const UserTypeManagement = () => {
         
       if (permDeleteError) throw permDeleteError;
       
-      // Delete user type
       await deleteUserType(userTypeId);
       
       toast.success('Tipo de usuário removido com sucesso');
@@ -312,7 +297,7 @@ const UserTypeManagement = () => {
     try {
       await updateUserType(userTypeId, {
         is_active: newStatus,
-        updated_at: new Date().toISOString()
+        updatedAt: new Date()
       });
       
       toast.success(`Tipo de usuário ${newStatus ? 'ativado' : 'inativado'} com sucesso`);
@@ -323,13 +308,11 @@ const UserTypeManagement = () => {
     }
   };
 
-  // Filter user types based on search query
   const filteredUserTypes = userTypes.filter(userType => {
     return userType.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
            userType.description.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
-  // Group permissions by category using the name format "Category > Permission"
   const groupPermissions = () => {
     const grouped: Record<string, Permission[]> = {};
     
@@ -523,7 +506,6 @@ const UserTypeManagement = () => {
         </CardContent>
       </Card>
 
-      {/* Dialog for adding/editing user type */}
       <Dialog open={isUserTypeDialogOpen} onOpenChange={setIsUserTypeDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -585,7 +567,6 @@ const UserTypeManagement = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog for managing permissions */}
       <Dialog open={isPermissionsDialogOpen} onOpenChange={setIsPermissionsDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
