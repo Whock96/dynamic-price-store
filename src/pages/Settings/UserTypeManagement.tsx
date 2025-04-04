@@ -1,9 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Shield, Search, Plus, Edit, Trash2, ArrowLeft, Save,
-  Check, X, Users
+  Check, X, Users, Eye, EyeOff, FolderOpen, LayoutDashboard,
+  ShoppingCart, Package, Settings, UsersRound, Percent, Tag,
+  Building2, FileEdit
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,12 +40,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
 import { UserType, Permission } from '@/types/types';
 import { useSupabaseData } from '@/hooks/use-supabase-data';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDate } from '@/utils/formatters';
+import PermissionCheckbox from '@/components/permissions/PermissionCheckbox';
 
 interface UserTypeWithDates extends UserType {
   createdAt: Date;
@@ -54,6 +62,73 @@ interface UserTypeWithDates extends UserType {
   created_at?: string;
   updated_at?: string;
 }
+
+// Define page groups with their associated permissions
+const PAGE_GROUPS = [
+  {
+    id: 'dashboard',
+    name: 'Dashboard',
+    icon: <LayoutDashboard className="h-5 w-5 mr-2" />,
+    description: 'Página inicial do sistema',
+    permissions: [
+      { code: 'dashboard_access', name: 'Dashboard', description: 'Acesso à página inicial' }
+    ]
+  },
+  {
+    id: 'products',
+    name: 'Produtos',
+    icon: <Package className="h-5 w-5 mr-2" />,
+    description: 'Gerenciamento de produtos',
+    permissions: [
+      { code: 'products_view', name: 'Visualizar Produtos', description: 'Ver lista de produtos' },
+      { code: 'products_manage', name: 'Gerenciar Produtos', description: 'Adicionar, editar e excluir produtos' }
+    ]
+  },
+  {
+    id: 'customers',
+    name: 'Clientes',
+    icon: <UsersRound className="h-5 w-5 mr-2" />,
+    description: 'Gerenciamento de clientes',
+    permissions: [
+      { code: 'customers_view', name: 'Visualizar Clientes', description: 'Ver lista de clientes' },
+      { code: 'customers_manage', name: 'Gerenciar Clientes', description: 'Adicionar, editar e excluir clientes' }
+    ]
+  },
+  {
+    id: 'orders',
+    name: 'Pedidos',
+    icon: <FileEdit className="h-5 w-5 mr-2" />,
+    description: 'Gerenciamento de pedidos',
+    permissions: [
+      { code: 'orders_view', name: 'Visualizar Pedidos', description: 'Ver lista e detalhes de pedidos' },
+      { code: 'orders_manage', name: 'Gerenciar Pedidos', description: 'Criar e atualizar pedidos' }
+    ]
+  },
+  {
+    id: 'cart',
+    name: 'Carrinho',
+    icon: <ShoppingCart className="h-5 w-5 mr-2" />,
+    description: 'Acesso ao carrinho de compras',
+    permissions: [
+      { code: 'orders_manage', name: 'Gerenciar Carrinho', description: 'Acesso ao carrinho e criação de pedidos' }
+    ]
+  },
+  {
+    id: 'settings',
+    name: 'Configurações',
+    icon: <Settings className="h-5 w-5 mr-2" />,
+    description: 'Configurações do sistema',
+    permissions: [
+      { code: 'settings_view', name: 'Acessar Configurações', description: 'Acesso à página de configurações' },
+      { code: 'settings_manage', name: 'Gerenciar Configurações', description: 'Alterar configurações da empresa' },
+      { code: 'categories_manage', name: 'Gerenciar Categorias', description: 'Configurar categorias de produtos' },
+      { code: 'discounts_manage', name: 'Gerenciar Descontos', description: 'Configurar opções de desconto' },
+      { code: 'users_view', name: 'Visualizar Usuários', description: 'Ver lista de usuários' },
+      { code: 'users_manage', name: 'Gerenciar Usuários', description: 'Adicionar, editar e excluir usuários' },
+      { code: 'user_types_manage', name: 'Gerenciar Tipos de Usuário', description: 'Configurar tipos de usuário e permissões' }
+    ]
+  }
+];
 
 const UserTypeManagement = () => {
   const navigate = useNavigate();
@@ -82,9 +157,7 @@ const UserTypeManagement = () => {
     orderBy: { column: 'name', ascending: true }
   });
 
-  // Process userTypes to ensure dates are properly converted
   const userTypes = userTypesRaw.map(userType => {
-    // Convert snake_case to camelCase and ensure Date objects
     return {
       ...userType,
       createdAt: userType.createdAt || (userType.created_at ? new Date(userType.created_at) : new Date()),
@@ -180,6 +253,33 @@ const UserTypeManagement = () => {
           : permission
       )
     );
+  };
+
+  const handleToggleGroupPermissions = (groupPermissions: { code: string }[], enabled: boolean) => {
+    const permissionCodes = new Set(groupPermissions.map(p => p.code));
+    
+    setSelectedPermissions(prev =>
+      prev.map(permission => ({
+        ...permission,
+        isGranted: permissionCodes.has(permission.code || '') 
+          ? enabled 
+          : permission.isGranted
+      }))
+    );
+  };
+
+  const isGroupFullyGranted = (groupPermissions: { code: string }[]) => {
+    const codes = new Set(groupPermissions.map(p => p.code));
+    return selectedPermissions
+      .filter(p => codes.has(p.code || ''))
+      .every(p => p.isGranted);
+  };
+
+  const isGroupPartiallyGranted = (groupPermissions: { code: string }[]) => {
+    const codes = new Set(groupPermissions.map(p => p.code));
+    const relevantPerms = selectedPermissions.filter(p => codes.has(p.code || ''));
+    const grantedCount = relevantPerms.filter(p => p.isGranted).length;
+    return grantedCount > 0 && grantedCount < relevantPerms.length;
   };
 
   const handleToggleActive = () => {
@@ -325,27 +425,14 @@ const UserTypeManagement = () => {
            (userType.description || '').toLowerCase().includes(searchQuery.toLowerCase());
   });
 
-  const groupPermissions = () => {
-    const grouped: Record<string, Permission[]> = {};
-    
-    selectedPermissions.forEach(permission => {
-      const nameParts = permission.name.includes(' > ') 
-        ? permission.name.split(' > ') 
-        : ['Geral', permission.name];
-      
-      const category = nameParts[0];
-      
-      if (!grouped[category]) {
-        grouped[category] = [];
-      }
-      
-      grouped[category].push(permission);
-    });
-    
-    return grouped;
+  const findPermissionByCode = (code: string) => {
+    return selectedPermissions.find(p => p.code === code);
   };
 
-  const groupedPermissions = groupPermissions();
+  const isPermissionGranted = (code: string) => {
+    const permission = findPermissionByCode(code);
+    return permission?.isGranted || false;
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -576,39 +663,89 @@ const UserTypeManagement = () => {
       </Dialog>
 
       <Dialog open={isPermissionsDialogOpen} onOpenChange={setIsPermissionsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Permissões de Acesso</DialogTitle>
             <DialogDescription>
-              Defina quais funcionalidades o tipo de usuário {selectedUserType?.name} terá acesso.
+              Selecione quais páginas o tipo de usuário <span className="font-medium">{selectedUserType?.name}</span> terá acesso.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-6">
-            {Object.entries(groupedPermissions).map(([category, permissions]) => (
-              <div key={category} className="space-y-3">
-                <h3 className="text-lg font-medium">{category}</h3>
-                <Separator />
-                
-                <div className="space-y-3">
-                  {permissions.map(permission => (
-                    <div key={permission.id} className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{permission.name.includes(' > ') 
-                          ? permission.name.split(' > ')[1] 
-                          : permission.name}
-                        </p>
-                        <p className="text-sm text-gray-500">{permission.description}</p>
-                      </div>
-                      <Switch
-                        checked={permission.isGranted}
-                        onCheckedChange={() => handleTogglePermission(permission.id)}
-                      />
-                    </div>
-                  ))}
-                </div>
+          <div className="space-y-4">
+            {isLoadingPermissions ? (
+              <div className="flex justify-center py-6">
+                <div className="w-8 h-8 border-4 border-ferplas-500 border-t-transparent rounded-full animate-spin"></div>
               </div>
-            ))}
+            ) : (
+              <Accordion type="multiple" className="w-full">
+                {PAGE_GROUPS.map((group) => {
+                  const isFullyEnabled = isGroupFullyGranted(group.permissions);
+                  const isPartiallyEnabled = isGroupPartiallyGranted(group.permissions);
+                  
+                  return (
+                    <AccordionItem value={group.id} key={group.id} className="border border-gray-200 rounded-md mb-3 overflow-hidden">
+                      <div className="flex items-center px-4 py-2 bg-gray-50">
+                        <div className="flex-1">
+                          <AccordionTrigger className="py-0 [&[data-state=open]>svg]:rotate-180">
+                            <div className="flex items-center">
+                              {group.icon}
+                              <span className="font-medium">{group.name}</span>
+                            </div>
+                          </AccordionTrigger>
+                        </div>
+                        <div className="flex items-center space-x-2 mr-2">
+                          {isFullyEnabled ? (
+                            <Badge className="bg-green-100 text-green-800 flex items-center gap-1">
+                              <Eye className="h-3 w-3" /> Acesso Total
+                            </Badge>
+                          ) : isPartiallyEnabled ? (
+                            <Badge variant="outline" className="text-amber-600 flex items-center gap-1">
+                              <Eye className="h-3 w-3" /> Acesso Parcial
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-gray-500 flex items-center gap-1">
+                              <EyeOff className="h-3 w-3" /> Sem Acesso
+                            </Badge>
+                          )}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleGroupPermissions(group.permissions, !isFullyEnabled);
+                            }}
+                            className="h-8"
+                          >
+                            {isFullyEnabled ? 'Desativar Tudo' : 'Ativar Tudo'}
+                          </Button>
+                        </div>
+                      </div>
+                      <AccordionContent className="pt-2 pb-0">
+                        <div className="px-4 pb-4 divide-y divide-gray-100">
+                          {group.permissions.map((permission) => {
+                            const perm = findPermissionByCode(permission.code);
+                            if (!perm) return null;
+                            
+                            return (
+                              <PermissionCheckbox
+                                key={perm.id}
+                                id={perm.id}
+                                label={permission.name}
+                                description={permission.description}
+                                checked={perm.isGranted || false}
+                                onCheckedChange={() => handleTogglePermission(perm.id)}
+                                className="py-3"
+                              />
+                            );
+                          })}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+            )}
           </div>
           
           <DialogFooter>
