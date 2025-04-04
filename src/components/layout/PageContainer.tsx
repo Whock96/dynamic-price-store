@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface PageContainerProps {
   children: React.ReactNode;
@@ -15,8 +16,9 @@ const PageContainer: React.FC<PageContainerProps> = ({
   children, 
   requireAuth = true 
 }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, checkAccess } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -37,10 +39,21 @@ const PageContainer: React.FC<PageContainerProps> = ({
   }, []);
 
   useEffect(() => {
-    if (!loading && requireAuth && !user) {
-      navigate('/login');
+    if (!loading) {
+      // If authentication is required and user is not logged in, redirect to login
+      if (requireAuth && !user) {
+        navigate('/login');
+        return;
+      }
+
+      // If user is logged in but doesn't have permission to access this page
+      if (user && requireAuth && !checkAccess(location.pathname)) {
+        // Redirect to dashboard or show access denied
+        toast.error('Você não tem permissão para acessar esta página');
+        navigate('/dashboard');
+      }
     }
-  }, [user, loading, navigate, requireAuth]);
+  }, [user, loading, navigate, requireAuth, location.pathname, checkAccess]);
 
   if (loading || !mounted) {
     return (

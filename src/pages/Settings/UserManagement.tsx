@@ -8,10 +8,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import {
   Table,
   TableBody,
@@ -34,7 +32,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Tabs,
@@ -54,145 +51,105 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from '../../context/AuthContext';
-import { MENU_ITEMS } from '../../context/AuthContext';
 import { toast } from 'sonner';
-import { User, Permission } from '@/types/types';
+import { supabase } from '@/integrations/supabase/client';
 
-// Mock data para usuários
-const MOCK_USERS: User[] = [
-  {
-    id: 'user-1',
-    username: 'admin',
-    name: 'Administrador',
-    role: 'administrator',
-    permissions: [],
-    email: 'admin@ferplas.ind.br',
-    createdAt: new Date(2023, 0, 15)
-  },
-  {
-    id: 'user-2',
-    username: 'joao',
-    name: 'João Silva',
-    role: 'salesperson',
-    permissions: [],
-    email: 'joao@ferplas.ind.br',
-    createdAt: new Date(2023, 2, 10)
-  },
-  {
-    id: 'user-3',
-    username: 'maria',
-    name: 'Maria Oliveira',
-    role: 'salesperson',
-    permissions: [],
-    email: 'maria@ferplas.ind.br',
-    createdAt: new Date(2023, 4, 22)
-  },
-  {
-    id: 'user-4',
-    username: 'carlos',
-    name: 'Carlos Santos',
-    role: 'employee',
-    permissions: [],
-    email: 'carlos@ferplas.ind.br',
-    createdAt: new Date(2023, 6, 8)
-  },
-];
+interface UserData {
+  id: string;
+  username: string;
+  name: string;
+  email: string | null;
+  password?: string;
+  user_type_id: string;
+  user_type?: {
+    id: string;
+    name: string;
+    description: string | null;
+  };
+  created_at: string;
+  is_active: boolean;
+}
 
-// Mock permissions baseadas nos menus disponíveis
-const generatePermissions = (menuItems: any[]): Permission[] => {
-  const permissions: Permission[] = [];
-  
-  menuItems.forEach(item => {
-    permissions.push({
-      id: `perm-${item.id}`,
-      name: item.name,
-      description: `Acesso ao menu ${item.name}`,
-      isGranted: true
-    });
-    
-    if (item.submenus && item.submenus.length > 0) {
-      item.submenus.forEach((submenu: any) => {
-        permissions.push({
-          id: `perm-${submenu.id}`,
-          name: `${item.name} > ${submenu.name}`,
-          description: `Acesso ao submenu ${submenu.name} dentro de ${item.name}`,
-          isGranted: true
-        });
-      });
-    }
-  });
-  
-  return permissions;
-};
-
-// Adicionar permissões aos usuários mock
-const enrichUsersWithPermissions = (users: User[], menuItems: any[]): User[] => {
-  const allPermissions = generatePermissions(menuItems);
-  
-  return users.map(user => {
-    const userPermissions = allPermissions.map(perm => ({
-      ...perm,
-      isGranted: user.role === 'administrator' ? true : 
-                user.role === 'salesperson' ? !perm.name.includes('Configurações') : 
-                !perm.name.includes('Configurações') && !perm.name.includes('Pedidos')
-    }));
-    
-    return {
-      ...user,
-      permissions: userPermissions
-    };
-  });
-};
+interface UserTypeOption {
+  id: string;
+  name: string;
+  description: string | null;
+}
 
 const UserManagement = () => {
   const navigate = useNavigate();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, hasPermission } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [userTypes, setUserTypes] = useState<UserTypeOption[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [selectedTab, setSelectedTab] = useState('basic');
   const [formData, setFormData] = useState({
     id: '',
     username: '',
     name: '',
-    role: 'employee',
+    userTypeId: '',
     email: '',
     password: '',
     confirmPassword: '',
+    isActive: true,
   });
-  const [userPermissions, setUserPermissions] = useState<Permission[]>([]);
 
-  // Verificar se o usuário atual é administrador
+  // Verify admin access
   useEffect(() => {
-    if (currentUser?.role !== 'administrator') {
+    if (!hasPermission('users_manage')) {
       toast.error('Você não tem permissão para acessar esta página');
       navigate('/dashboard');
+      return;
     }
-  }, [currentUser, navigate]);
-
-  // Inicializar dados de usuários com permissões
-  useEffect(() => {
-    const enrichedUsers = enrichUsersWithPermissions(MOCK_USERS, MENU_ITEMS);
-    setUsers(enrichedUsers);
-  }, []);
-
-  // Filtrar usuários com base na pesquisa e papel
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = 
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    
-    return matchesSearch && matchesRole;
-  });
+    fetchUsers();
+    fetchUserTypes();
+  }, [navigate, hasPermission]);
 
-  const handleOpenDialog = (user?: User) => {
+  const fetchUsers = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select(`
+          *,
+          user_type:user_types(*)
+        `)
+        .order('name');
+        
+      if (error) throw error;
+      
+      setUsers(data || []);
+    } catch (err) {
+      console.error('Error fetching users:', err);
+      toast.error('Erro ao carregar usuários');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchUserTypes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_types')
+        .select('*')
+        .order('name');
+        
+      if (error) throw error;
+      
+      setUserTypes(data || []);
+    } catch (err) {
+      console.error('Error fetching user types:', err);
+      toast.error('Erro ao carregar tipos de usuário');
+    }
+  };
+
+  const handleOpenDialog = (user?: UserData) => {
     if (user) {
       setIsEditMode(true);
       setSelectedUser(user);
@@ -200,33 +157,29 @@ const UserManagement = () => {
         id: user.id,
         username: user.username,
         name: user.name,
-        role: user.role,
-        email: user.email,
+        userTypeId: user.user_type_id,
+        email: user.email || '',
         password: '',
         confirmPassword: '',
+        isActive: user.is_active,
       });
     } else {
       setIsEditMode(false);
       setSelectedUser(null);
       setFormData({
-        id: `user-${Date.now()}`,
+        id: '',
         username: '',
         name: '',
-        role: 'employee',
+        userTypeId: userTypes.length > 0 ? userTypes[0].id : '',
         email: '',
         password: '',
         confirmPassword: '',
+        isActive: true,
       });
     }
     
     setIsDialogOpen(true);
     setSelectedTab('basic');
-  };
-
-  const handleOpenPermissionsDialog = (user: User) => {
-    setSelectedUser(user);
-    setUserPermissions([...user.permissions]);
-    setIsPermissionsDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
@@ -241,6 +194,14 @@ const UserManagement = () => {
     }));
   };
 
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: checked
+    }));
+  };
+
   const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({
       ...prev,
@@ -248,40 +209,15 @@ const UserManagement = () => {
     }));
   };
 
-  const handleTogglePermission = (permissionId: string) => {
-    setUserPermissions(prev =>
-      prev.map(permission =>
-        permission.id === permissionId
-          ? { ...permission, isGranted: !permission.isGranted }
-          : permission
-      )
-    );
-  };
-
-  const handleSavePermissions = () => {
-    if (!selectedUser) return;
-    
-    setUsers(prev =>
-      prev.map(user =>
-        user.id === selectedUser.id
-          ? { ...user, permissions: userPermissions }
-          : user
-      )
-    );
-    
-    setIsPermissionsDialogOpen(false);
-    toast.success(`Permissões de ${selectedUser.name} atualizadas com sucesso`);
-  };
-
-  const handleSaveUser = () => {
+  const handleSaveUser = async () => {
     // Validação básica
-    if (!formData.username || !formData.name || !formData.email) {
+    if (!formData.username || !formData.name || !formData.userTypeId) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
 
-    if (!isEditMode && (!formData.password || formData.password.length < 6)) {
-      toast.error('A senha deve ter pelo menos 6 caracteres');
+    if (!isEditMode && (!formData.password || formData.password.length < 4)) {
+      toast.error('A senha deve ter pelo menos 4 caracteres');
       return;
     }
 
@@ -290,100 +226,123 @@ const UserManagement = () => {
       return;
     }
 
-    // Verificar se o username já existe
-    const usernameExists = users.some(u => u.username === formData.username && u.id !== formData.id);
-    if (usernameExists) {
-      toast.error('Este nome de usuário já está em uso');
-      return;
-    }
-
-    // Verificar se o email já existe
-    const emailExists = users.some(u => u.email === formData.email && u.id !== formData.id);
-    if (emailExists) {
-      toast.error('Este email já está em uso');
-      return;
-    }
-
-    if (isEditMode) {
-      // Atualizar usuário existente
-      setUsers(prev => prev.map(u => u.id === formData.id ? {
-        ...u,
-        username: formData.username,
-        name: formData.name,
-        role: formData.role as 'administrator' | 'salesperson' | 'employee',
-        email: formData.email,
-      } : u));
-      toast.success(`Usuário "${formData.name}" atualizado com sucesso`);
-    } else {
-      // Adicionar novo usuário
-      const allPermissions = generatePermissions(MENU_ITEMS);
-      const newUserPermissions = allPermissions.map(perm => ({
-        ...perm,
-        isGranted: formData.role === 'administrator' ? true : 
-                  formData.role === 'salesperson' ? !perm.name.includes('Configurações') : 
-                  !perm.name.includes('Configurações') && !perm.name.includes('Pedidos')
-      }));
+    try {
+      // Check for duplicate username
+      const { data: existingUsers, error: checkError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('username', formData.username)
+        .neq('id', isEditMode ? formData.id : '');
       
-      const newUser: User = {
-        id: formData.id,
-        username: formData.username,
-        name: formData.name,
-        role: formData.role as 'administrator' | 'salesperson' | 'employee',
-        permissions: newUserPermissions,
-        email: formData.email,
-        createdAt: new Date()
-      };
+      if (checkError) throw checkError;
       
-      setUsers(prev => [...prev, newUser]);
-      toast.success(`Usuário "${formData.name}" adicionado com sucesso`);
+      if (existingUsers && existingUsers.length > 0) {
+        toast.error('Este nome de usuário já está em uso');
+        return;
+      }
+      
+      if (isEditMode) {
+        // Update existing user
+        const updateData: any = {
+          name: formData.name,
+          username: formData.username,
+          email: formData.email || null,
+          user_type_id: formData.userTypeId,
+          is_active: formData.isActive,
+          updated_at: new Date().toISOString()
+        };
+        
+        // Only update password if provided
+        if (formData.password) {
+          updateData.password = formData.password;
+        }
+        
+        const { error } = await supabase
+          .from('users')
+          .update(updateData)
+          .eq('id', formData.id);
+          
+        if (error) throw error;
+        
+        toast.success(`Usuário "${formData.name}" atualizado com sucesso`);
+      } else {
+        // Create new user
+        const { error } = await supabase
+          .from('users')
+          .insert({
+            name: formData.name,
+            username: formData.username,
+            email: formData.email || null,
+            password: formData.password,
+            user_type_id: formData.userTypeId,
+            is_active: formData.isActive
+          });
+          
+        if (error) throw error;
+        
+        toast.success(`Usuário "${formData.name}" adicionado com sucesso`);
+      }
+      
+      // Refresh user list
+      fetchUsers();
+      handleCloseDialog();
+    } catch (err) {
+      console.error('Error saving user:', err);
+      toast.error('Erro ao salvar usuário');
     }
-    
-    handleCloseDialog();
   };
 
-  const handleDeleteUser = (userId: string) => {
-    // Não permitir excluir o próprio usuário
+  const handleDeleteUser = async (userId: string) => {
     if (userId === currentUser?.id) {
       toast.error('Você não pode excluir seu próprio usuário');
       return;
     }
     
-    setUsers(prev => prev.filter(u => u.id !== userId));
-    toast.success('Usuário removido com sucesso');
+    try {
+      const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', userId);
+        
+      if (error) throw error;
+      
+      toast.success('Usuário removido com sucesso');
+      fetchUsers();
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      toast.error('Erro ao excluir usuário');
+    }
   };
 
-  const getRoleBadge = (role: string) => {
-    switch (role) {
+  // Filter users based on search query and role filter
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = 
+      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (user.email && user.email.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    const matchesRole = roleFilter === 'all' || (user.user_type && user.user_type.name === roleFilter);
+    
+    return matchesSearch && matchesRole;
+  });
+
+  // Get unique user types for filter
+  const uniqueUserTypes = [...new Set(users.map(user => user.user_type?.name).filter(Boolean))];
+
+  const getUserTypeBadge = (userType: string) => {
+    switch (userType) {
       case 'administrator':
         return <Badge className="bg-red-100 text-red-800 border-red-200">Administrador</Badge>;
       case 'salesperson':
         return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Vendedor</Badge>;
-      case 'employee':
-        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Funcionário</Badge>;
+      case 'billing':
+        return <Badge className="bg-green-100 text-green-800 border-green-200">Faturamento</Badge>;
+      case 'inventory':
+        return <Badge className="bg-purple-100 text-purple-800 border-purple-200">Estoque</Badge>;
       default:
-        return <Badge>Desconhecido</Badge>;
+        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">{userType}</Badge>;
     }
   };
-
-  // Agrupar permissões por categoria para exibição mais organizada
-  const groupPermissionsByCategory = (permissions: Permission[]) => {
-    const categories: Record<string, Permission[]> = {};
-    
-    permissions.forEach(permission => {
-      const parts = permission.name.split(' > ');
-      const category = parts[0];
-      
-      if (!categories[category]) {
-        categories[category] = [];
-      }
-      
-      categories[category].push(permission);
-    });
-    
-    return categories;
-  };
-
-  const groupedPermissions = groupPermissionsByCategory(userPermissions);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -400,7 +359,7 @@ const UserManagement = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Gerenciar Usuários</h1>
             <p className="text-muted-foreground">
-              Adicione, edite e defina permissões de acesso para usuários
+              Adicione, edite e gerencie usuários do sistema
             </p>
           </div>
         </div>
@@ -434,9 +393,9 @@ const UserManagement = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os tipos</SelectItem>
-                <SelectItem value="administrator">Administradores</SelectItem>
-                <SelectItem value="salesperson">Vendedores</SelectItem>
-                <SelectItem value="employee">Funcionários</SelectItem>
+                {uniqueUserTypes.map(type => (
+                  <SelectItem key={type} value={type}>{type}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -445,88 +404,96 @@ const UserManagement = () => {
 
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Username</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Data de Cadastro</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map(user => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.name}</TableCell>
-                  <TableCell>{user.username}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>{getRoleBadge(user.role)}</TableCell>
-                  <TableCell>
-                    {user.createdAt.toLocaleDateString('pt-BR', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric'
-                    })}
-                  </TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="h-8 px-2 text-ferplas-600"
-                      onClick={() => handleOpenPermissionsDialog(user)}
-                    >
-                      <Shield className="h-4 w-4 mr-1" />
-                      Permissões
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="h-8 px-2 text-amber-600"
-                      onClick={() => handleOpenDialog(user)}
-                    >
-                      <Edit className="h-4 w-4 mr-1" />
-                      Editar
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="h-8 px-2 text-red-600"
-                          disabled={user.id === currentUser?.id}
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Excluir
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Remover usuário?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esta ação irá remover permanentemente o usuário "{user.name}" do sistema. 
-                            Esta ação não pode ser desfeita.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction 
-                            className="bg-red-600 hover:bg-red-700"
-                            onClick={() => handleDeleteUser(user.id)}
-                          >
-                            Remover
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </TableCell>
+          {isLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="flex flex-col items-center justify-center">
+                <div className="w-12 h-12 border-4 border-ferplas-500 border-t-transparent rounded-full animate-spin"></div>
+                <p className="mt-4 text-muted-foreground">Carregando usuários...</p>
+              </div>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Username</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Data de Cadastro</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.map(user => (
+                  <TableRow key={user.id}>
+                    <TableCell className="font-medium">{user.name}</TableCell>
+                    <TableCell>{user.username}</TableCell>
+                    <TableCell>{user.email || '-'}</TableCell>
+                    <TableCell>{user.user_type ? getUserTypeBadge(user.user_type.name) : '-'}</TableCell>
+                    <TableCell>
+                      {user.is_active ? (
+                        <Badge className="bg-green-100 text-green-800">Ativo</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-gray-500">Inativo</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {new Date(user.created_at).toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                      })}
+                    </TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="h-8 px-2 text-amber-600"
+                        onClick={() => handleOpenDialog(user)}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Editar
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="h-8 px-2 text-red-600"
+                            disabled={user.id === currentUser?.id}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Excluir
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remover usuário?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta ação irá remover permanentemente o usuário "{user.name}" do sistema. 
+                              Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction 
+                              className="bg-red-600 hover:bg-red-700"
+                              onClick={() => handleDeleteUser(user.id)}
+                            >
+                              Remover
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
           
-          {filteredUsers.length === 0 && (
+          {!isLoading && filteredUsers.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Users className="h-12 w-12 text-gray-300 mb-4" />
               <h2 className="text-xl font-medium text-gray-600">Nenhum usuário encontrado</h2>
@@ -582,7 +549,7 @@ const UserManagement = () => {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="email">Email*</Label>
+                    <Label htmlFor="email">Email</Label>
                     <Input
                       id="email"
                       name="email"
@@ -594,21 +561,37 @@ const UserManagement = () => {
                   </div>
                   
                   <div>
-                    <Label htmlFor="role">Tipo de Usuário*</Label>
+                    <Label htmlFor="userTypeId">Tipo de Usuário*</Label>
                     <Select 
-                      value={formData.role} 
-                      onValueChange={(value) => handleSelectChange('role', value)}
+                      value={formData.userTypeId} 
+                      onValueChange={(value) => handleSelectChange('userTypeId', value)}
                     >
-                      <SelectTrigger id="role">
+                      <SelectTrigger id="userTypeId">
                         <SelectValue placeholder="Selecione um tipo" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="administrator">Administrador</SelectItem>
-                        <SelectItem value="salesperson">Vendedor</SelectItem>
-                        <SelectItem value="employee">Funcionário</SelectItem>
+                        {userTypes.map(type => (
+                          <SelectItem key={type.id} value={type.id}>
+                            {type.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="isActive"
+                    name="isActive"
+                    checked={formData.isActive}
+                    onChange={handleCheckboxChange}
+                    className="h-4 w-4 rounded border-gray-300 text-ferplas-600 focus:ring-ferplas-500"
+                  />
+                  <Label htmlFor="isActive" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Usuário ativo
+                  </Label>
                 </div>
                 
                 {!isEditMode && (
@@ -644,9 +627,9 @@ const UserManagement = () => {
             <TabsContent value="security" className="mt-4">
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="newPassword">Nova Senha</Label>
+                  <Label htmlFor="password">Nova Senha</Label>
                   <Input
-                    id="newPassword"
+                    id="password"
                     name="password"
                     type="password"
                     value={formData.password}
@@ -656,15 +639,29 @@ const UserManagement = () => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="confirmNewPassword">Confirmar Nova Senha</Label>
+                  <Label htmlFor="confirmPassword">Confirmar Nova Senha</Label>
                   <Input
-                    id="confirmNewPassword"
+                    id="confirmPassword"
                     name="confirmPassword"
                     type="password"
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
                     placeholder="Confirmar nova senha"
                   />
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="isActive"
+                    name="isActive"
+                    checked={formData.isActive}
+                    onChange={handleCheckboxChange}
+                    className="h-4 w-4 rounded border-gray-300 text-ferplas-600 focus:ring-ferplas-500"
+                  />
+                  <Label htmlFor="isActive" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Usuário ativo
+                  </Label>
                 </div>
               </div>
             </TabsContent>
@@ -677,52 +674,6 @@ const UserManagement = () => {
             <Button onClick={handleSaveUser} className="bg-ferplas-500 hover:bg-ferplas-600">
               <Save className="mr-2 h-4 w-4" />
               {isEditMode ? 'Salvar Alterações' : 'Adicionar Usuário'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog para gerenciar permissões */}
-      <Dialog open={isPermissionsDialogOpen} onOpenChange={setIsPermissionsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Permissões de Acesso</DialogTitle>
-            <DialogDescription>
-              Defina quais funcionalidades o usuário {selectedUser?.name} terá acesso.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-6">
-            {Object.entries(groupedPermissions).map(([category, permissions]) => (
-              <div key={category} className="space-y-3">
-                <h3 className="text-lg font-medium">{category}</h3>
-                <Separator />
-                
-                <div className="space-y-3">
-                  {permissions.map(permission => (
-                    <div key={permission.id} className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{permission.name}</p>
-                        <p className="text-sm text-gray-500">{permission.description}</p>
-                      </div>
-                      <Switch
-                        checked={permission.isGranted}
-                        onCheckedChange={() => handleTogglePermission(permission.id)}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsPermissionsDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSavePermissions} className="bg-ferplas-500 hover:bg-ferplas-600">
-              <Save className="mr-2 h-4 w-4" />
-              Salvar Permissões
             </Button>
           </DialogFooter>
         </DialogContent>

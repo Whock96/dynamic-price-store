@@ -2,7 +2,7 @@ export interface User {
   id: string;
   username: string;
   name: string;
-  role: 'administrator' | 'salesperson' | 'employee';
+  role: 'administrator' | 'salesperson' | 'billing' | 'inventory' | 'employee';
   permissions: Permission[];
   email: string;
   createdAt: Date;
@@ -13,6 +13,16 @@ export interface Permission {
   name: string;
   description: string;
   isGranted: boolean;
+  code?: string;
+}
+
+export interface UserType {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: Date;
+  updatedAt: Date;
+  permissions?: Permission[];
 }
 
 export interface Product {
