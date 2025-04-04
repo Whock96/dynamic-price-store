@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -131,7 +130,6 @@ const UserManagement = () => {
       setIsEditMode(true);
       setSelectedUser(user);
       
-      // Check if the user's type is still active
       const userTypeExists = userTypes.some(type => type.id === user.user_type_id);
       
       if (!userTypeExists) {
@@ -216,7 +214,6 @@ const UserManagement = () => {
     }
 
     try {
-      // First validate the username is unique
       const { data: existingUsers, error: checkError } = await supabase
         .from('users')
         .select('id')
@@ -231,7 +228,6 @@ const UserManagement = () => {
       }
       
       if (isEditMode) {
-        // Update existing user
         const updateData: any = {
           name: formData.name,
           username: formData.username,
@@ -241,7 +237,6 @@ const UserManagement = () => {
           updated_at: new Date().toISOString()
         };
         
-        // Only include password if it was provided
         if (formData.password) {
           updateData.password = formData.password;
         }
@@ -249,26 +244,18 @@ const UserManagement = () => {
         await updateUser(formData.id, updateData);
         toast.success(`Usuário "${formData.name}" atualizado com sucesso`);
       } else {
-        // Generate a random UUID for the user if id is empty
-        const newUserId = crypto.randomUUID();
-        
-        // Create new user with generated ID
         await createUser({
-          id: newUserId, // Explicitly set the ID
           name: formData.name,
           username: formData.username,
           email: formData.email || null,
           password: formData.password,
           user_type_id: formData.userTypeId,
           is_active: formData.isActive,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
         });
         
         toast.success(`Usuário "${formData.name}" adicionado com sucesso`);
       }
       
-      // Refresh user list and close dialog
       fetchUsers();
       handleCloseDialog();
     } catch (err) {
@@ -292,7 +279,6 @@ const UserManagement = () => {
     }
   };
 
-  // Filter users based on search query and role filter
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -304,13 +290,11 @@ const UserManagement = () => {
     return matchesSearch && matchesRole;
   });
 
-  // Get unique user types for filter dropdown
   const uniqueUserTypes = [...new Set(users
     .filter(user => user.user_type)
     .map(user => user.user_type?.name)
     .filter(Boolean))];
 
-  // Format user type as badge
   const getUserTypeBadge = (userType?: string) => {
     if (!userType) return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Não definido</Badge>;
     
