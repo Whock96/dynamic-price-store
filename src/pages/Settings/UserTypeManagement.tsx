@@ -43,16 +43,21 @@ import { toast } from 'sonner';
 import { UserType, Permission } from '@/types/types';
 import { supabase } from '@/integrations/supabase/client';
 
+interface UserTypeWithDates extends UserType {
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 const UserTypeManagement = () => {
   const navigate = useNavigate();
   const { user: currentUser, hasPermission } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [userTypes, setUserTypes] = useState<UserType[]>([]);
+  const [userTypes, setUserTypes] = useState<UserTypeWithDates[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUserTypeDialogOpen, setIsUserTypeDialogOpen] = useState(false);
   const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [selectedUserType, setSelectedUserType] = useState<UserType | null>(null);
+  const [selectedUserType, setSelectedUserType] = useState<UserTypeWithDates | null>(null);
   const [allPermissions, setAllPermissions] = useState<Permission[]>([]);
   const [selectedPermissions, setSelectedPermissions] = useState<Permission[]>([]);
   const [userTypeFormData, setUserTypeFormData] = useState({
@@ -89,7 +94,7 @@ const UserTypeManagement = () => {
         description: type.description || '',
         createdAt: new Date(type.created_at),
         updatedAt: new Date(type.updated_at)
-      }));
+      })) as UserTypeWithDates[];
       
       setUserTypes(formattedData);
     } catch (err) {
@@ -109,15 +114,17 @@ const UserTypeManagement = () => {
         
       if (error) throw error;
       
-      const formattedPermissions = data.map(perm => ({
-        id: perm.id,
-        name: perm.name,
-        description: perm.description || '',
-        code: perm.code,
-        isGranted: false
-      }));
-      
-      setAllPermissions(formattedPermissions);
+      if (data) {
+        const formattedPermissions = data.map(perm => ({
+          id: perm.id,
+          name: perm.name,
+          description: perm.description || '',
+          code: perm.code,
+          isGranted: false
+        }));
+        
+        setAllPermissions(formattedPermissions);
+      }
     } catch (err) {
       console.error('Error fetching permissions:', err);
       toast.error('Erro ao carregar permissões');
@@ -134,16 +141,18 @@ const UserTypeManagement = () => {
         
       if (permLinksError) throw permLinksError;
       
-      // Create a set of granted permission IDs for quick lookup
-      const grantedPermissionIds = new Set(permLinks.map(p => p.permission_id));
-      
-      // Mark permissions as granted based on the links
-      const updatedPermissions = allPermissions.map(p => ({
-        ...p,
-        isGranted: grantedPermissionIds.has(p.id)
-      }));
-      
-      setSelectedPermissions(updatedPermissions);
+      if (permLinks) {
+        // Create a set of granted permission IDs for quick lookup
+        const grantedPermissionIds = new Set(permLinks.map(p => p.permission_id));
+        
+        // Mark permissions as granted based on the links
+        const updatedPermissions = allPermissions.map(p => ({
+          ...p,
+          isGranted: grantedPermissionIds.has(p.id)
+        }));
+        
+        setSelectedPermissions(updatedPermissions);
+      }
     } catch (err) {
       console.error('Error fetching user type permissions:', err);
       toast.error('Erro ao carregar permissões do tipo de usuário');
@@ -151,7 +160,7 @@ const UserTypeManagement = () => {
     }
   };
 
-  const handleOpenUserTypeDialog = (userType?: UserType) => {
+  const handleOpenUserTypeDialog = (userType?: UserTypeWithDates) => {
     if (userType) {
       setIsEditMode(true);
       setSelectedUserType(userType);
@@ -173,7 +182,7 @@ const UserTypeManagement = () => {
     setIsUserTypeDialogOpen(true);
   };
 
-  const handleOpenPermissionsDialog = async (userType: UserType) => {
+  const handleOpenPermissionsDialog = async (userType: UserTypeWithDates) => {
     setSelectedUserType(userType);
     await fetchUserTypePermissions(userType.id);
     setIsPermissionsDialogOpen(true);
@@ -254,37 +263,39 @@ const UserTypeManagement = () => {
         
       if (fetchError) throw fetchError;
       
-      // Find permissions to add and remove
-      const currentPermIds = new Set(currentPerms.map(p => p.permission_id));
-      const selectedPermIds = new Set(selectedPermissions.filter(p => p.isGranted).map(p => p.id));
-      
-      const toAdd = selectedPermissions
-        .filter(p => p.isGranted && !currentPermIds.has(p.id))
-        .map(p => ({
-          user_type_id: selectedUserType.id,
-          permission_id: p.id
-        }));
+      if (currentPerms) {
+        // Find permissions to add and remove
+        const currentPermIds = new Set(currentPerms.map(p => p.permission_id));
+        const selectedPermIds = new Set(selectedPermissions.filter(p => p.isGranted).map(p => p.id));
         
-      const toRemove = [...currentPermIds].filter(id => !selectedPermIds.has(id));
-      
-      // Add new permissions
-      if (toAdd.length > 0) {
-        const { error: addError } = await supabase
-          .from('user_type_permissions')
-          .insert(toAdd);
+        const toAdd = selectedPermissions
+          .filter(p => p.isGranted && !currentPermIds.has(p.id))
+          .map(p => ({
+            user_type_id: selectedUserType.id,
+            permission_id: p.id
+          }));
           
-        if (addError) throw addError;
-      }
-      
-      // Remove permissions
-      for (const permId of toRemove) {
-        const { error: removeError } = await supabase
-          .from('user_type_permissions')
-          .delete()
-          .eq('user_type_id', selectedUserType.id)
-          .eq('permission_id', permId);
-          
-        if (removeError) throw removeError;
+        const toRemove = [...currentPermIds].filter(id => !selectedPermIds.has(id));
+        
+        // Add new permissions
+        if (toAdd.length > 0) {
+          const { error: addError } = await supabase
+            .from('user_type_permissions')
+            .insert(toAdd);
+            
+          if (addError) throw addError;
+        }
+        
+        // Remove permissions
+        for (const permId of toRemove) {
+          const { error: removeError } = await supabase
+            .from('user_type_permissions')
+            .delete()
+            .eq('user_type_id', selectedUserType.id)
+            .eq('permission_id', permId);
+            
+          if (removeError) throw removeError;
+        }
       }
       
       toast.success(`Permissões do tipo "${selectedUserType.name}" atualizadas com sucesso`);

@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User as UserType, MenuItem, Permission } from '../types/types';
 import { supabase } from '@/integrations/supabase/client';
+import { useSupabaseData } from '@/hooks/use-supabase-data';
 
 interface AuthContextType {
   user: UserType | null;
@@ -186,7 +187,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserTypePermissions = async (userTypeId: string): Promise<Permission[]> => {
     try {
-      // Get permissions associated with this user type
+      // Get permissions associated with this user type using direct queries
       const { data: permissionsData, error: permissionsError } = await supabase
         .from('user_type_permissions')
         .select('permission_id')
@@ -226,7 +227,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       
-      // Get user with user type information
+      // Get user with user type information using direct query
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*, user_type:user_types(*)')
@@ -260,6 +261,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserTypes = async () => {
     try {
+      // Use direct query to Supabase instead of abstracted hook
       const { data, error } = await supabase
         .from('user_types')
         .select('*')

@@ -124,7 +124,9 @@ const UserManagement = () => {
         
       if (error) throw error;
       
-      setUsers(data || []);
+      if (data) {
+        setUsers(data as UserData[]);
+      }
     } catch (err) {
       console.error('Error fetching users:', err);
       toast.error('Erro ao carregar usuários');
@@ -142,7 +144,9 @@ const UserManagement = () => {
         
       if (error) throw error;
       
-      setUserTypes(data || []);
+      if (data) {
+        setUserTypes(data as UserTypeOption[]);
+      }
     } catch (err) {
       console.error('Error fetching user types:', err);
       toast.error('Erro ao carregar tipos de usuário');

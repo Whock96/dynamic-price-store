@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   username: string;
@@ -20,8 +21,8 @@ export interface UserType {
   id: string;
   name: string;
   description: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
   permissions?: Permission[];
 }
 
