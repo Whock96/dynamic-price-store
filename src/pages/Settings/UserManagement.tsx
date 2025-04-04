@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -132,6 +133,7 @@ const UserManagement = () => {
       setIsEditMode(true);
       setSelectedUser(user);
       
+      // Check if the user's type is still active
       const userTypeExists = userTypes.some(type => type.id === user.user_type_id);
       
       if (!userTypeExists) {
@@ -142,7 +144,7 @@ const UserManagement = () => {
         id: user.id,
         username: user.username,
         name: user.name,
-        userTypeId: userTypeExists ? user.user_type_id : (userTypes.length > 0 ? userTypes[0].id : ''),
+        userTypeId: userTypeExists ? user.user_type_id : (userTypes.length > 0 ? userTypes[0].id : 'no_type'),
         email: user.email || '',
         password: '',
         confirmPassword: '',
@@ -155,7 +157,7 @@ const UserManagement = () => {
         id: '',
         username: '',
         name: '',
-        userTypeId: userTypes.length > 0 ? userTypes[0].id : '',
+        userTypeId: userTypes.length > 0 ? userTypes[0].id : 'no_type',
         email: '',
         password: '',
         confirmPassword: '',
@@ -364,7 +366,7 @@ const UserManagement = () => {
               <SelectContent>
                 <SelectItem value="all">Todos os tipos</SelectItem>
                 {uniqueUserTypes.map(type => (
-                  <SelectItem key={type} value={type}>{type}</SelectItem>
+                  type ? <SelectItem key={type} value={type}>{type}</SelectItem> : null
                 ))}
               </SelectContent>
             </Select>
@@ -546,7 +548,7 @@ const UserManagement = () => {
                             </SelectItem>
                           ))
                         ) : (
-                          <SelectItem disabled value="">
+                          <SelectItem value="no_type">
                             Nenhum tipo de usuário disponível
                           </SelectItem>
                         )}

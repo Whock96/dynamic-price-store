@@ -28,7 +28,7 @@ export function useSupabaseData<T extends Record<string, any>>(
     joinTable?: string,
     filterKey?: string,
     filterValue?: string | number,
-    isActive?: boolean, // Novo parâmetro para filtrar por is_active
+    isActive?: boolean, // Filter by is_active
   } = {}
 ) {
   const [data, setData] = useState<T[]>(options.initialData || []);
@@ -54,9 +54,13 @@ export function useSupabaseData<T extends Record<string, any>>(
         query = query.eq(options.filterKey, options.filterValue);
       }
 
-      // Add active filtering if needed
-      if (options.isActive !== undefined && tableName !== 'permissions') {
-        query = query.eq('is_active', options.isActive);
+      // Add active filtering if needed - check if the column exists in the table first
+      if (options.isActive !== undefined) {
+        // Only apply is_active filter for tables that have it
+        // For user_types, we need to check both is_active and createdAt/updatedAt field formats
+        if (tableName !== 'permissions') {
+          query = query.eq('is_active', options.isActive);
+        }
       }
 
       // Add ordering if needed
@@ -108,15 +112,22 @@ export function useSupabaseData<T extends Record<string, any>>(
   // Update an existing record
   const updateRecord = async (id: string, record: Partial<T>) => {
     try {
-      // Add updated_at timestamp
-      const recordWithTimestamp = {
-        ...record,
-        updated_at: new Date().toISOString()
-      };
+      // Convert between updatedAt and updated_at if needed
+      const recordToUpdate: any = { ...record };
+      
+      // Ensure we're using the right field based on the table format
+      if (tableName === 'user_types' && recordToUpdate.updatedAt && !recordToUpdate.updated_at) {
+        recordToUpdate.updated_at = recordToUpdate.updatedAt instanceof Date 
+          ? recordToUpdate.updatedAt.toISOString() 
+          : recordToUpdate.updatedAt;
+        delete recordToUpdate.updatedAt;
+      } else if (tableName !== 'user_types' && !recordToUpdate.updated_at) {
+        recordToUpdate.updated_at = new Date().toISOString();
+      }
 
       const { data: updatedData, error: updateError } = await supabase
         .from(tableName)
-        .update(recordWithTimestamp as any)
+        .update(recordToUpdate)
         .eq('id', id)
         .select();
 
