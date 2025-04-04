@@ -1,4 +1,3 @@
-
 import { Tables } from "@/integrations/supabase/client";
 import { Product, Order, CartItem, DiscountOption, Customer } from "@/types/types";
 
@@ -88,6 +87,9 @@ export const supabaseOrderToAppOrder = (
     finalPrice: Number(item.final_price),
     subtotal: Number(item.subtotal),
   }));
+
+  // Ensure user.role is always one of the allowed values
+  const userRole: 'administrator' | 'salesperson' | 'employee' = 'salesperson';
 
   return {
     id: order.id,

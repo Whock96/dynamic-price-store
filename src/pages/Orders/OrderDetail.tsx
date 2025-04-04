@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Edit, FileText, Printer, Loader2, AlertTriangle } from 'lucide-react';
@@ -14,9 +13,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
-import { useOrderData } from '@/hooks/use-order-data';
+import { useOrder } from '@/context/OrderContext';
 import { Order } from '@/types/types';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -25,15 +24,33 @@ import { ptBR } from 'date-fns/locale';
 const OrderDetail = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const { order, fetchOrder } = useOrder();
   const { user: currentUser, hasPermission } = useAuth();
-  const { order, isLoading, error, fetchOrderData } = useOrderData(id);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!id) {
-      toast.error('ID do pedido não especificado.');
-      navigate('/orders');
-    }
-  }, [id, navigate]);
+    const loadOrder = async () => {
+      if (!id) {
+        toast.error('ID do pedido não especificado.');
+        navigate('/orders');
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        await fetchOrder(id);
+      } catch (err: any) {
+        setError(err.message || 'Erro ao carregar detalhes do pedido.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadOrder();
+  }, [id, fetchOrder, navigate]);
 
   if (isLoading) {
     return (
@@ -48,7 +65,7 @@ const OrderDetail = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
         <AlertTriangle className="h-6 w-6 text-red-500 mb-2" />
-        <p className="text-red-500">{error.message}</p>
+        <p className="text-red-500">{error}</p>
         <Button variant="outline" onClick={() => navigate('/orders')}>
           Voltar para a lista de pedidos
         </Button>
@@ -56,7 +73,7 @@ const OrderDetail = () => {
     );
   }
 
-  if (!order) {
+  if (!order.data) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
         <AlertTriangle className="h-6 w-6 text-yellow-500 mb-2" />
@@ -85,11 +102,11 @@ const OrderDetail = () => {
     }
   };
 
-  const formatDateCustom = (date: Date) => {
+  const formatDate = (date: Date) => {
     return format(date, "dd 'de' MMMM 'de' yyyy, HH:mm", { locale: ptBR });
   };
 
-  const orderDate = new Date(order.createdAt);
+  const orderDate = new Date(order.data.createdAt);
 
   return (
     <div className="container mx-auto py-10 animate-fade-in">
@@ -98,7 +115,7 @@ const OrderDetail = () => {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Voltar
         </Button>
-        {currentUser?.id !== order.userId && hasPermission('orders.edit') && (
+        {currentUser?.id !== order.data.userId && hasPermission('orders.edit') && (
           <Button variant="outline" onClick={() => navigate(`/orders/${id}/edit`)}>
             <Edit className="mr-2 h-4 w-4" />
             Editar Pedido
@@ -110,9 +127,9 @@ const OrderDetail = () => {
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle>Detalhes do Pedido #{order.orderNumber}</CardTitle>
+              <CardTitle>Detalhes do Pedido #{order.data.orderNumber}</CardTitle>
               <CardDescription>
-                Visualizando detalhes do pedido realizado em {formatDateCustom(orderDate)}
+                Visualizando detalhes do pedido realizado em {formatDate(orderDate)}
               </CardDescription>
             </div>
             <div className="space-x-2">
@@ -132,43 +149,43 @@ const OrderDetail = () => {
             <div>
               <h3 className="text-lg font-semibold">Informações do Cliente</h3>
               <p>
-                <strong>Cliente:</strong> {order.customer.companyName}
+                <strong>Cliente:</strong> {order.data.customer.companyName}
               </p>
               <p>
-                <strong>CNPJ:</strong> {order.customer.document}
+                <strong>CNPJ:</strong> {order.data.customer.document}
               </p>
               <p>
-                <strong>Email:</strong> {order.customer.email || 'Não informado'}
+                <strong>Email:</strong> {order.data.customer.email || 'Não informado'}
               </p>
               <p>
-                <strong>Telefone:</strong> {order.customer.phone || 'Não informado'}
+                <strong>Telefone:</strong> {order.data.customer.phone || 'Não informado'}
               </p>
             </div>
             <div>
               <h3 className="text-lg font-semibold">Informações do Pedido</h3>
               <p>
-                <strong>Status:</strong> {getStatusBadge(order.status)}
+                <strong>Status:</strong> {getStatusBadge(order.data.status)}
               </p>
               <p>
-                <strong>Vendedor:</strong> {order.user.name}
+                <strong>Vendedor:</strong> {order.data.user.name}
               </p>
               <p>
-                <strong>Data do Pedido:</strong> {formatDateCustom(orderDate)}
+                <strong>Data do Pedido:</strong> {formatDate(orderDate)}
               </p>
               <p>
-                <strong>Forma de Pagamento:</strong> {order.paymentMethod}
+                <strong>Forma de Pagamento:</strong> {order.data.paymentMethod}
               </p>
-              {order.paymentTerms && (
+              {order.data.paymentTerms && (
                 <p>
-                  <strong>Condições de Pagamento:</strong> {order.paymentTerms}
+                  <strong>Condições de Pagamento:</strong> {order.data.paymentTerms}
                 </p>
               )}
               <p>
-                <strong>Entrega:</strong> {order.shipping === 'delivery' ? 'Entrega' : 'Retirada'}
+                <strong>Entrega:</strong> {order.data.shipping === 'delivery' ? 'Entrega' : 'Retirada'}
               </p>
-              {order.shipping === 'delivery' && (
+              {order.data.shipping === 'delivery' && (
                 <p>
-                  <strong>Local de Entrega:</strong> {order.deliveryLocation === 'capital' ? 'Capital' : 'Interior'}
+                  <strong>Local de Entrega:</strong> {order.data.deliveryLocation === 'capital' ? 'Capital' : 'Interior'}
                 </p>
               )}
             </div>
@@ -189,7 +206,7 @@ const OrderDetail = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {order.items.map((item) => (
+                {order.data.items.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>{item.product.name}</TableCell>
                     <TableCell>{item.quantity}</TableCell>
@@ -207,23 +224,23 @@ const OrderDetail = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <h3 className="text-lg font-semibold">Observações</h3>
-              <p>{order.notes || 'Nenhuma observação.'}</p>
+              <p>{order.data.notes || 'Nenhuma observação.'}</p>
             </div>
             <div>
               <h3 className="text-lg font-semibold">Resumo do Pedido</h3>
               <p>
-                <strong>Subtotal:</strong> {formatCurrency(order.subtotal)}
+                <strong>Subtotal:</strong> {formatCurrency(order.data.subtotal)}
               </p>
               <p>
-                <strong>Desconto Total:</strong> {formatCurrency(order.totalDiscount)}
+                <strong>Desconto Total:</strong> {formatCurrency(order.data.totalDiscount)}
               </p>
-              {order.deliveryFee && (
+              {order.data.deliveryFee && (
                 <p>
-                  <strong>Taxa de Entrega:</strong> {formatCurrency(order.deliveryFee)}
+                  <strong>Taxa de Entrega:</strong> {formatCurrency(order.data.deliveryFee)}
                 </p>
               )}
               <p>
-                <strong>Total:</strong> {formatCurrency(order.total)}
+                <strong>Total:</strong> {formatCurrency(order.data.total)}
               </p>
             </div>
           </div>
