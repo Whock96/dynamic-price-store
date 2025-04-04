@@ -52,7 +52,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { useSupabaseData } from '@/hooks/use-supabase-data';
 
 interface UserData {
   id: string;
@@ -74,6 +74,7 @@ interface UserTypeOption {
   id: string;
   name: string;
   description: string | null;
+  is_active?: boolean;
 }
 
 const UserManagement = () => {
@@ -81,9 +82,6 @@ const UserManagement = () => {
   const { user: currentUser, hasPermission } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
-  const [users, setUsers] = useState<UserData[]>([]);
-  const [userTypes, setUserTypes] = useState<UserTypeOption[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
@@ -99,69 +97,57 @@ const UserManagement = () => {
     isActive: true,
   });
 
+  // Usando useSupabaseData para buscar usuários com informações de tipo
+  const { 
+    data: users, 
+    isLoading: isLoadingUsers, 
+    fetchData: fetchUsers,
+    createRecord: createUser,
+    updateRecord: updateUser,
+    deleteRecord: deleteUser
+  } = useSupabaseData<UserData>('users', {
+    select: `
+      *,
+      user_type:user_types(*)
+    `,
+    orderBy: { column: 'name', ascending: true }
+  });
+
+  // Buscando apenas tipos de usuário ativos
+  const { 
+    data: userTypes, 
+    isLoading: isLoadingUserTypes 
+  } = useSupabaseData<UserTypeOption>('user_types', {
+    orderBy: { column: 'name', ascending: true },
+    isActive: true // Apenas tipos ativos
+  });
+
   // Verify admin access
   useEffect(() => {
     if (!hasPermission('users_manage')) {
       toast.error('Você não tem permissão para acessar esta página');
       navigate('/dashboard');
-      return;
     }
-    
-    fetchUsers();
-    fetchUserTypes();
   }, [navigate, hasPermission]);
-
-  const fetchUsers = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select(`
-          *,
-          user_type:user_types(*)
-        `)
-        .order('name');
-        
-      if (error) throw error;
-      
-      if (data) {
-        setUsers(data as UserData[]);
-      }
-    } catch (err) {
-      console.error('Error fetching users:', err);
-      toast.error('Erro ao carregar usuários');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchUserTypes = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('user_types')
-        .select('*')
-        .order('name');
-        
-      if (error) throw error;
-      
-      if (data) {
-        setUserTypes(data as UserTypeOption[]);
-      }
-    } catch (err) {
-      console.error('Error fetching user types:', err);
-      toast.error('Erro ao carregar tipos de usuário');
-    }
-  };
 
   const handleOpenDialog = (user?: UserData) => {
     if (user) {
       setIsEditMode(true);
       setSelectedUser(user);
+      
+      // Se o tipo de usuário não estiver mais disponível (foi excluído/inativado)
+      // vamos verificar isso e mostrar uma mensagem
+      const userTypeExists = userTypes.some(type => type.id === user.user_type_id);
+      
+      if (!userTypeExists) {
+        toast.warning(`O tipo de usuário atual não está mais disponível. Por favor, selecione um novo tipo.`);
+      }
+      
       setFormData({
         id: user.id,
         username: user.username,
         name: user.name,
-        userTypeId: user.user_type_id,
+        userTypeId: userTypeExists ? user.user_type_id : (userTypes.length > 0 ? userTypes[0].id : ''),
         email: user.email || '',
         password: '',
         confirmPassword: '',
@@ -230,6 +216,12 @@ const UserManagement = () => {
       return;
     }
 
+    // Verificar se o tipo de usuário selecionado existe
+    if (!userTypes.some(type => type.id === formData.userTypeId)) {
+      toast.error('O tipo de usuário selecionado não existe ou foi inativado');
+      return;
+    }
+
     try {
       // Check for duplicate username
       const { data: existingUsers, error: checkError } = await supabase
@@ -261,28 +253,18 @@ const UserManagement = () => {
           updateData.password = formData.password;
         }
         
-        const { error } = await supabase
-          .from('users')
-          .update(updateData)
-          .eq('id', formData.id);
-          
-        if (error) throw error;
-        
+        await updateUser(formData.id, updateData);
         toast.success(`Usuário "${formData.name}" atualizado com sucesso`);
       } else {
         // Create new user
-        const { error } = await supabase
-          .from('users')
-          .insert({
-            name: formData.name,
-            username: formData.username,
-            email: formData.email || null,
-            password: formData.password,
-            user_type_id: formData.userTypeId,
-            is_active: formData.isActive
-          });
-          
-        if (error) throw error;
+        await createUser({
+          name: formData.name,
+          username: formData.username,
+          email: formData.email || null,
+          password: formData.password,
+          user_type_id: formData.userTypeId,
+          is_active: formData.isActive
+        });
         
         toast.success(`Usuário "${formData.name}" adicionado com sucesso`);
       }
@@ -303,15 +285,8 @@ const UserManagement = () => {
     }
     
     try {
-      const { error } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', userId);
-        
-      if (error) throw error;
-      
+      await deleteUser(userId);
       toast.success('Usuário removido com sucesso');
-      fetchUsers();
     } catch (err) {
       console.error('Error deleting user:', err);
       toast.error('Erro ao excluir usuário');
@@ -331,10 +306,15 @@ const UserManagement = () => {
   });
 
   // Get unique user types for filter
-  const uniqueUserTypes = [...new Set(users.map(user => user.user_type?.name).filter(Boolean))];
+  const uniqueUserTypes = [...new Set(users
+    .filter(user => user.user_type) // Filtrar usuários que tem tipo definido
+    .map(user => user.user_type?.name)
+    .filter(Boolean))];
 
-  const getUserTypeBadge = (userType: string) => {
-    switch (userType) {
+  const getUserTypeBadge = (userType?: string) => {
+    if (!userType) return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Não definido</Badge>;
+    
+    switch (userType.toLowerCase()) {
       case 'administrator':
         return <Badge className="bg-red-100 text-red-800 border-red-200">Administrador</Badge>;
       case 'salesperson':
@@ -408,7 +388,7 @@ const UserManagement = () => {
 
       <Card>
         <CardContent className="p-0">
-          {isLoading ? (
+          {isLoadingUsers ? (
             <div className="flex justify-center items-center py-12">
               <div className="flex flex-col items-center justify-center">
                 <div className="w-12 h-12 border-4 border-ferplas-500 border-t-transparent rounded-full animate-spin"></div>
@@ -434,7 +414,7 @@ const UserManagement = () => {
                     <TableCell className="font-medium">{user.name}</TableCell>
                     <TableCell>{user.username}</TableCell>
                     <TableCell>{user.email || '-'}</TableCell>
-                    <TableCell>{user.user_type ? getUserTypeBadge(user.user_type.name) : '-'}</TableCell>
+                    <TableCell>{user.user_type ? getUserTypeBadge(user.user_type.name) : getUserTypeBadge()}</TableCell>
                     <TableCell>
                       {user.is_active ? (
                         <Badge className="bg-green-100 text-green-800">Ativo</Badge>
@@ -497,7 +477,7 @@ const UserManagement = () => {
             </Table>
           )}
           
-          {!isLoading && filteredUsers.length === 0 && (
+          {!isLoadingUsers && filteredUsers.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Users className="h-12 w-12 text-gray-300 mb-4" />
               <h2 className="text-xl font-medium text-gray-600">Nenhum usuário encontrado</h2>
@@ -574,13 +554,24 @@ const UserManagement = () => {
                         <SelectValue placeholder="Selecione um tipo" />
                       </SelectTrigger>
                       <SelectContent>
-                        {userTypes.map(type => (
-                          <SelectItem key={type.id} value={type.id}>
-                            {type.name}
+                        {userTypes.length > 0 ? (
+                          userTypes.map(type => (
+                            <SelectItem key={type.id} value={type.id}>
+                              {type.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem disabled value="">
+                            Nenhum tipo de usuário disponível
                           </SelectItem>
-                        ))}
+                        )}
                       </SelectContent>
                     </Select>
+                    {userTypes.length === 0 && (
+                      <p className="text-sm text-red-500 mt-1">
+                        Nenhum tipo de usuário ativo encontrado. Adicione um tipo primeiro.
+                      </p>
+                    )}
                   </div>
                 </div>
                 

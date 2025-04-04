@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -10,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -40,29 +42,50 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
 import { UserType, Permission } from '@/types/types';
+import { useSupabaseData } from '@/hooks/use-supabase-data';
 import { supabase } from '@/integrations/supabase/client';
 
 interface UserTypeWithDates extends UserType {
   createdAt: Date;
   updatedAt: Date;
+  is_active?: boolean;
 }
 
 const UserTypeManagement = () => {
   const navigate = useNavigate();
   const { user: currentUser, hasPermission } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [userTypes, setUserTypes] = useState<UserTypeWithDates[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isUserTypeDialogOpen, setIsUserTypeDialogOpen] = useState(false);
   const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedUserType, setSelectedUserType] = useState<UserTypeWithDates | null>(null);
-  const [allPermissions, setAllPermissions] = useState<Permission[]>([]);
   const [selectedPermissions, setSelectedPermissions] = useState<Permission[]>([]);
   const [userTypeFormData, setUserTypeFormData] = useState({
     id: '',
     name: '',
     description: '',
+    isActive: true,
+  });
+
+  // Usando useSupabaseData para buscar tipos de usuário
+  const { 
+    data: userTypes, 
+    isLoading, 
+    fetchData: fetchUserTypes,
+    createRecord: createUserType,
+    updateRecord: updateUserType,
+    deleteRecord: deleteUserType
+  } = useSupabaseData<UserTypeWithDates>('user_types', {
+    orderBy: { column: 'name', ascending: true }
+  });
+
+  // Usando useSupabaseData para buscar permissões
+  const {
+    data: allPermissions,
+    isLoading: isLoadingPermissions,
+    fetchData: fetchAllPermissions
+  } = useSupabaseData<Permission>('permissions', {
+    orderBy: { column: 'name', ascending: true }
   });
 
   // Verify admin access
@@ -72,70 +95,7 @@ const UserTypeManagement = () => {
       navigate('/dashboard');
       return;
     }
-    
-    fetchUserTypes();
-    fetchAllPermissions();
   }, [navigate, hasPermission]);
-
-  const fetchUserTypes = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('user_types')
-        .select('*')
-        .order('name');
-        
-      if (error) throw error;
-      
-      const formattedData = data.map(type => ({
-        id: type.id,
-        name: type.name,
-        description: type.description || '',
-        createdAt: new Date(type.created_at),
-        updatedAt: new Date(type.updated_at)
-      })) as UserTypeWithDates[];
-      
-      // Remove duplicate user types (keeping only administrator, salesperson, billing, inventory)
-      // This ensures only the standard roles are shown
-      const standardRoles = ['administrator', 'salesperson', 'billing', 'inventory'];
-      const filteredData = formattedData.filter(type => 
-        standardRoles.includes(type.name.toLowerCase())
-      );
-      
-      setUserTypes(filteredData);
-    } catch (err) {
-      console.error('Error fetching user types:', err);
-      toast.error('Erro ao carregar tipos de usuário');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchAllPermissions = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('permissions')
-        .select('*')
-        .order('name');
-        
-      if (error) throw error;
-      
-      if (data) {
-        const formattedPermissions = data.map(perm => ({
-          id: perm.id,
-          name: perm.name,
-          description: perm.description || '',
-          code: perm.code,
-          isGranted: false
-        }));
-        
-        setAllPermissions(formattedPermissions);
-      }
-    } catch (err) {
-      console.error('Error fetching permissions:', err);
-      toast.error('Erro ao carregar permissões');
-    }
-  };
 
   const fetchUserTypePermissions = async (userTypeId: string) => {
     try {
@@ -174,6 +134,7 @@ const UserTypeManagement = () => {
         id: userType.id,
         name: userType.name,
         description: userType.description,
+        isActive: userType.is_active !== false, // Se não for explicitamente false, considere como true
       });
     } else {
       setIsEditMode(false);
@@ -182,6 +143,7 @@ const UserTypeManagement = () => {
         id: '',
         name: '',
         description: '',
+        isActive: true,
       });
     }
     
@@ -212,6 +174,13 @@ const UserTypeManagement = () => {
     );
   };
 
+  const handleToggleActive = () => {
+    setUserTypeFormData(prev => ({
+      ...prev,
+      isActive: !prev.isActive
+    }));
+  };
+
   const handleSaveUserType = async () => {
     if (!userTypeFormData.name.trim()) {
       toast.error('O nome do tipo de usuário é obrigatório');
@@ -221,29 +190,21 @@ const UserTypeManagement = () => {
     try {
       if (isEditMode) {
         // Update existing user type
-        const { error } = await supabase
-          .from('user_types')
-          .update({
-            name: userTypeFormData.name,
-            description: userTypeFormData.description,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', userTypeFormData.id);
-          
-        if (error) throw error;
+        await updateUserType(userTypeFormData.id, {
+          name: userTypeFormData.name,
+          description: userTypeFormData.description,
+          is_active: userTypeFormData.isActive,
+          updated_at: new Date().toISOString()
+        });
         
         toast.success(`Tipo de usuário "${userTypeFormData.name}" atualizado com sucesso`);
       } else {
         // Create new user type
-        const { data, error } = await supabase
-          .from('user_types')
-          .insert({
-            name: userTypeFormData.name,
-            description: userTypeFormData.description,
-          })
-          .select();
-          
-        if (error) throw error;
+        await createUserType({
+          name: userTypeFormData.name,
+          description: userTypeFormData.description,
+          is_active: userTypeFormData.isActive
+        });
         
         toast.success(`Tipo de usuário "${userTypeFormData.name}" criado com sucesso`);
       }
@@ -324,7 +285,7 @@ const UserTypeManagement = () => {
       if (usersError) throw usersError;
       
       if (users && users.length > 0) {
-        toast.error('Este tipo de usuário está em uso e não pode ser excluído');
+        toast.error('Este tipo de usuário está em uso e não pode ser excluído. Considere inativar o tipo em vez de removê-lo.');
         return;
       }
       
@@ -337,18 +298,28 @@ const UserTypeManagement = () => {
       if (permDeleteError) throw permDeleteError;
       
       // Delete user type
-      const { error: deleteError } = await supabase
-        .from('user_types')
-        .delete()
-        .eq('id', userTypeId);
-        
-      if (deleteError) throw deleteError;
+      await deleteUserType(userTypeId);
       
       toast.success('Tipo de usuário removido com sucesso');
       fetchUserTypes();
     } catch (err) {
       console.error('Error deleting user type:', err);
       toast.error('Erro ao excluir tipo de usuário');
+    }
+  };
+
+  const handleInactivateUserType = async (userTypeId: string, newStatus: boolean) => {
+    try {
+      await updateUserType(userTypeId, {
+        is_active: newStatus,
+        updated_at: new Date().toISOString()
+      });
+      
+      toast.success(`Tipo de usuário ${newStatus ? 'ativado' : 'inativado'} com sucesso`);
+      fetchUserTypes();
+    } catch (err) {
+      console.error('Error updating user type status:', err);
+      toast.error(`Erro ao ${newStatus ? 'ativar' : 'inativar'} tipo de usuário`);
     }
   };
 
@@ -441,15 +412,23 @@ const UserTypeManagement = () => {
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Descrição</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Data de Cadastro</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredUserTypes.map(userType => (
-                  <TableRow key={userType.id}>
+                  <TableRow key={userType.id} className={!userType.is_active ? "opacity-60" : ""}>
                     <TableCell className="font-medium">{userType.name}</TableCell>
                     <TableCell>{userType.description}</TableCell>
+                    <TableCell>
+                      {userType.is_active !== false ? (
+                        <Badge className="bg-green-100 text-green-800">Ativo</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-gray-500">Inativo</Badge>
+                      )}
+                    </TableCell>
                     <TableCell>
                       {userType.createdAt.toLocaleDateString('pt-BR', {
                         day: '2-digit',
@@ -476,6 +455,27 @@ const UserTypeManagement = () => {
                         <Edit className="h-4 w-4 mr-1" />
                         Editar
                       </Button>
+                      {userType.is_active !== false ? (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="h-8 px-2 text-gray-600"
+                          onClick={() => handleInactivateUserType(userType.id, false)}
+                        >
+                          <X className="h-4 w-4 mr-1" />
+                          Inativar
+                        </Button>
+                      ) : (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="h-8 px-2 text-green-600"
+                          onClick={() => handleInactivateUserType(userType.id, true)}
+                        >
+                          <Check className="h-4 w-4 mr-1" />
+                          Ativar
+                        </Button>
+                      )}
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button 
@@ -492,7 +492,7 @@ const UserTypeManagement = () => {
                             <AlertDialogTitle>Remover tipo de usuário?</AlertDialogTitle>
                             <AlertDialogDescription>
                               Esta ação irá remover permanentemente o tipo de usuário "{userType.name}" do sistema. 
-                              Esta ação não pode ser desfeita.
+                              Esta ação não pode ser desfeita. Considere inativar o tipo em vez de removê-lo.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -555,6 +555,20 @@ const UserTypeManagement = () => {
                 value={userTypeFormData.description}
                 onChange={handleInputChange}
                 placeholder="Ex: Acesso às funcionalidades de vendas"
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Label htmlFor="isActive">Status:</Label>
+                <span className="text-sm">
+                  {userTypeFormData.isActive ? 'Ativo' : 'Inativo'}
+                </span>
+              </div>
+              <Switch
+                id="isActive"
+                checked={userTypeFormData.isActive}
+                onCheckedChange={handleToggleActive}
               />
             </div>
           </div>

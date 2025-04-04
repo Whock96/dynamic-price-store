@@ -28,6 +28,7 @@ export function useSupabaseData<T extends Record<string, any>>(
     joinTable?: string,
     filterKey?: string,
     filterValue?: string | number,
+    isActive?: boolean, // Novo parâmetro para filtrar por is_active
   } = {}
 ) {
   const [data, setData] = useState<T[]>(options.initialData || []);
@@ -53,6 +54,11 @@ export function useSupabaseData<T extends Record<string, any>>(
         query = query.eq(options.filterKey, options.filterValue);
       }
 
+      // Add active filtering if needed
+      if (options.isActive !== undefined && tableName !== 'permissions') {
+        query = query.eq('is_active', options.isActive);
+      }
+
       // Add ordering if needed
       if (options.orderBy) {
         query = query.order(options.orderBy.column, { ascending: options.orderBy.ascending });
@@ -74,7 +80,7 @@ export function useSupabaseData<T extends Record<string, any>>(
     } finally {
       setIsLoading(false);
     }
-  }, [tableName, options.select, options.filterKey, options.filterValue, options.joinTable, options.orderBy]);
+  }, [tableName, options.select, options.filterKey, options.filterValue, options.joinTable, options.orderBy, options.isActive]);
 
   // Create a new record
   const createRecord = async (record: Omit<T, 'id' | 'created_at' | 'updated_at'>) => {
@@ -167,7 +173,7 @@ export function useSupabaseData<T extends Record<string, any>>(
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [options.filterKey, options.filterValue]);
+  }, [options.filterKey, options.filterValue, options.isActive]);
 
   return {
     data,
