@@ -44,11 +44,15 @@ import { toast } from 'sonner';
 import { UserType, Permission } from '@/types/types';
 import { useSupabaseData } from '@/hooks/use-supabase-data';
 import { supabase } from '@/integrations/supabase/client';
+import { formatDate } from '@/utils/formatters';
 
 interface UserTypeWithDates extends UserType {
   createdAt: Date;
   updatedAt: Date;
   is_active?: boolean;
+  // Add Supabase snake_case formats for compatibility
+  created_at?: string;
+  updated_at?: string;
 }
 
 const UserTypeManagement = () => {
@@ -68,7 +72,7 @@ const UserTypeManagement = () => {
   });
 
   const { 
-    data: userTypes, 
+    data: userTypesRaw, 
     isLoading, 
     fetchData: fetchUserTypes,
     createRecord: createUserType,
@@ -76,6 +80,16 @@ const UserTypeManagement = () => {
     deleteRecord: deleteUserType
   } = useSupabaseData<UserTypeWithDates>('user_types', {
     orderBy: { column: 'name', ascending: true }
+  });
+
+  // Process userTypes to ensure dates are properly converted
+  const userTypes = userTypesRaw.map(userType => {
+    // Convert snake_case to camelCase and ensure Date objects
+    return {
+      ...userType,
+      createdAt: userType.createdAt || (userType.created_at ? new Date(userType.created_at) : new Date()),
+      updatedAt: userType.updatedAt || (userType.updated_at ? new Date(userType.updated_at) : new Date()),
+    };
   });
 
   const {
@@ -127,7 +141,7 @@ const UserTypeManagement = () => {
       setUserTypeFormData({
         id: userType.id,
         name: userType.name,
-        description: userType.description,
+        description: userType.description || '',
         isActive: userType.is_active !== false,
       });
     } else {
@@ -186,7 +200,6 @@ const UserTypeManagement = () => {
         await updateUserType(userTypeFormData.id, {
           name: userTypeFormData.name,
           description: userTypeFormData.description,
-          is_active: userTypeFormData.isActive,
           updatedAt: new Date()
         });
         
@@ -195,7 +208,6 @@ const UserTypeManagement = () => {
         await createUserType({
           name: userTypeFormData.name,
           description: userTypeFormData.description,
-          is_active: userTypeFormData.isActive,
           createdAt: new Date(),
           updatedAt: new Date()
         });
@@ -297,7 +309,6 @@ const UserTypeManagement = () => {
   const handleInactivateUserType = async (userTypeId: string, newStatus: boolean) => {
     try {
       await updateUserType(userTypeId, {
-        is_active: newStatus,
         updatedAt: new Date()
       });
       
@@ -311,7 +322,7 @@ const UserTypeManagement = () => {
 
   const filteredUserTypes = userTypes.filter(userType => {
     return userType.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-           userType.description.toLowerCase().includes(searchQuery.toLowerCase());
+           (userType.description || '').toLowerCase().includes(searchQuery.toLowerCase());
   });
 
   const groupPermissions = () => {
@@ -403,7 +414,7 @@ const UserTypeManagement = () => {
               </TableHeader>
               <TableBody>
                 {filteredUserTypes.map(userType => (
-                  <TableRow key={userType.id} className={!userType.is_active ? "opacity-60" : ""}>
+                  <TableRow key={userType.id} className={userType.is_active === false ? "opacity-60" : ""}>
                     <TableCell className="font-medium">{userType.name}</TableCell>
                     <TableCell>{userType.description}</TableCell>
                     <TableCell>
@@ -414,11 +425,7 @@ const UserTypeManagement = () => {
                       )}
                     </TableCell>
                     <TableCell>
-                      {userType.createdAt.toLocaleDateString('pt-BR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric'
-                      })}
+                      {formatDate(userType.createdAt)}
                     </TableCell>
                     <TableCell className="text-right space-x-2">
                       <Button 
