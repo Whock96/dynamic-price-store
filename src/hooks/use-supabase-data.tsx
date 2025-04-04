@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-// Expand allowed table names to include all tables
+// Define the table names explicitly without recursive types
 type TableName = 
   | 'products' 
   | 'customers' 
@@ -61,9 +61,9 @@ export function useSupabaseData<T extends Record<string, any>>(
 
       if (responseError) throw responseError;
 
-      // Type assertion to handle various table types
-      setData(responseData as unknown as T[]);
-      return responseData as unknown as T[];
+      // Type assertion without recursive definitions
+      setData(responseData as T[]);
+      return responseData as T[];
     } catch (err) {
       const error = err as Error;
       setError(error);
@@ -89,7 +89,7 @@ export function useSupabaseData<T extends Record<string, any>>(
       fetchData();
       
       toast.success('Registro criado com sucesso');
-      return createdData?.[0] as unknown as T;
+      return createdData?.[0] as T;
     } catch (err) {
       const error = err as Error;
       console.error(`Error creating record in ${tableName}:`, error);
@@ -123,7 +123,7 @@ export function useSupabaseData<T extends Record<string, any>>(
       );
 
       toast.success('Registro atualizado com sucesso');
-      return updatedData?.[0] as unknown as T;
+      return updatedData?.[0] as T;
     } catch (err) {
       const error = err as Error;
       console.error(`Error updating record in ${tableName}:`, error);

@@ -1,3 +1,4 @@
+
 import { Tables } from "@/integrations/supabase/client";
 import { Product, Order, CartItem, DiscountOption, Customer, User } from "@/types/types";
 
@@ -89,7 +90,7 @@ export const supabaseOrderToAppOrder = (
   }));
 
   // Ensure user.role is always one of the allowed values
-  const userRole: 'administrator' | 'salesperson' | 'employee' = 'salesperson';
+  const userRole: 'administrator' | 'salesperson' | 'billing' | 'inventory' = 'salesperson';
 
   return {
     id: order.id,
@@ -105,6 +106,7 @@ export const supabaseOrderToAppOrder = (
       permissions: [],
       email: '',
       createdAt: new Date(),
+      userTypeId: '' // Ensure userTypeId is provided with a default empty string
     },
     items: formattedItems,
     appliedDiscounts: discounts,
@@ -139,6 +141,6 @@ export const adaptUserData = (userData: any): User => {
     permissions: userData.permissions || [],
     email: userData.email || '',
     createdAt: new Date(userData.created_at || userData.createdAt),
-    userTypeId: userData.user_type_id || userData.userTypeId
+    userTypeId: userData.user_type_id || userData.userTypeId || '' // Ensure userTypeId is always provided
   };
 };
