@@ -89,9 +89,32 @@ export function useSupabaseData<T extends Record<string, any>>(
   // Create a new record
   const createRecord = async (record: Omit<T, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      // Ensure the record has the correct shape expected by Supabase
+      const recordToCreate: any = { ...record };
+      
+      // Convert camelCase to snake_case if needed
+      if (recordToCreate.createdAt !== undefined && recordToCreate.created_at === undefined) {
+        recordToCreate.created_at = recordToCreate.createdAt instanceof Date 
+          ? recordToCreate.createdAt.toISOString() 
+          : recordToCreate.createdAt;
+        delete recordToCreate.createdAt;
+      }
+      
+      if (recordToCreate.updatedAt !== undefined && recordToCreate.updated_at === undefined) {
+        recordToCreate.updated_at = recordToCreate.updatedAt instanceof Date 
+          ? recordToCreate.updatedAt.toISOString() 
+          : recordToCreate.updatedAt;
+        delete recordToCreate.updatedAt;
+      }
+      
+      // If ID is provided, use it; otherwise, let Supabase generate one
+      if (!recordToCreate.id) {
+        delete recordToCreate.id; // Remove empty ID so Supabase will generate one
+      }
+
       const { data: createdData, error: createError } = await supabase
         .from(tableName)
-        .insert(record as any)
+        .insert(recordToCreate)
         .select();
 
       if (createError) throw createError;
@@ -112,16 +135,16 @@ export function useSupabaseData<T extends Record<string, any>>(
   // Update an existing record
   const updateRecord = async (id: string, record: Partial<T>) => {
     try {
-      // Convert between updatedAt and updated_at if needed
+      // Convert between camelCase and snake_case if needed
       const recordToUpdate: any = { ...record };
       
       // Ensure we're using the right field based on the table format
-      if (tableName === 'user_types' && recordToUpdate.updatedAt && !recordToUpdate.updated_at) {
+      if (recordToUpdate.updatedAt !== undefined && recordToUpdate.updated_at === undefined) {
         recordToUpdate.updated_at = recordToUpdate.updatedAt instanceof Date 
           ? recordToUpdate.updatedAt.toISOString() 
           : recordToUpdate.updatedAt;
         delete recordToUpdate.updatedAt;
-      } else if (tableName !== 'user_types' && !recordToUpdate.updated_at) {
+      } else if (recordToUpdate.updated_at === undefined) {
         recordToUpdate.updated_at = new Date().toISOString();
       }
 
