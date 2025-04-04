@@ -59,14 +59,12 @@ const CategoryManagement = () => {
     description: '',
   });
 
-  // Check if user has permission to access this page
   useEffect(() => {
     if (!hasPermission('settings.categories')) {
       navigate('/dashboard');
     }
   }, [hasPermission, navigate]);
 
-  // Filter categories based on search query
   const filteredCategories = categories.filter(category => 
     category.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (category.description?.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -109,7 +107,12 @@ const CategoryManagement = () => {
     if (isEditMode && selectedCategoryId) {
       success = await updateCategory(selectedCategoryId, formData);
     } else {
-      success = await createCategory(formData);
+      const categoryData = {
+        name: formData.name,
+        description: formData.description || '',
+        subcategories: []
+      };
+      success = await createCategory(categoryData);
     }
 
     if (success) {
@@ -250,7 +253,6 @@ const CategoryManagement = () => {
         </CardContent>
       </Card>
 
-      {/* Dialog para adicionar/editar categoria */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>

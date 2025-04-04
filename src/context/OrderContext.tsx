@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Order, CartItem } from '@/types/types';
 import { format } from 'date-fns';
@@ -379,3 +378,5 @@ export const useOrders = () => {
   }
   return context;
 };
+
+export const useOrder = useOrders;

@@ -4,12 +4,12 @@ import { supabase, Tables } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
 
-// Define the table names as a type from the Supabase schema
+// Define the table names as a union type from the Supabase schema
 type TableName = keyof Database['public']['Tables'];
 
-// Hook genérico para operações CRUD com o Supabase
+// Hook for CRUD operations with Supabase
 export function useSupabaseData<T extends Record<string, any>>(
-  tableName: string, 
+  tableName: TableName, 
   options: {
     initialData?: T[],
     select?: string,
@@ -29,7 +29,6 @@ export function useSupabaseData<T extends Record<string, any>>(
     setError(null);
 
     try {
-      // Use type assertion to tell TypeScript this is a valid table name
       let query = supabase.from(tableName).select(options.select || '*');
 
       // Add join table if needed

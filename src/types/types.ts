@@ -1,18 +1,28 @@
+
 export interface User {
   id: string;
   username: string;
   name: string;
-  role: 'administrator' | 'salesperson' | 'employee';
+  userType: UserType;
   permissions: Permission[];
   email: string;
+  isActive: boolean;
   createdAt: Date;
+}
+
+export interface UserType {
+  id: string;
+  name: string;
+  description: string;
+  permissions: Permission[];
 }
 
 export interface Permission {
   id: string;
   name: string;
   description: string;
-  isGranted: boolean;
+  code: string;
+  isGranted?: boolean;
 }
 
 export interface Product {
@@ -41,7 +51,7 @@ export interface Category {
   id: string;
   name: string;
   description: string;
-  subcategories: Subcategory[];
+  subcategories?: Subcategory[];
 }
 
 export interface Subcategory {
