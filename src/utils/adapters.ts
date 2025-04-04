@@ -1,6 +1,5 @@
-
 import { Tables } from "@/integrations/supabase/client";
-import { Product, Order, CartItem, DiscountOption, Customer } from "@/types/types";
+import { Product, Order, CartItem, DiscountOption, Customer, User } from "@/types/types";
 
 /**
  * Converts a Supabase product record to our application's Product interface
@@ -127,5 +126,19 @@ export const supabaseOrderToAppOrder = (
     deliveryFee: Number(order.delivery_fee) || 0,
     withIPI: Boolean(order.with_ipi) || false,
     ipiValue: Number(order.ipi_value) || 0,
+  };
+};
+
+// Adaptar o formato dos dados do usuário enviados pelo backend
+export const adaptUserData = (userData: any): User => {
+  return {
+    id: userData.id,
+    name: userData.name,
+    username: userData.username,
+    role: userData.role || 'salesperson',
+    permissions: userData.permissions || [],
+    email: userData.email || '',
+    createdAt: new Date(userData.created_at || userData.createdAt),
+    userTypeId: userData.user_type_id || userData.userTypeId
   };
 };

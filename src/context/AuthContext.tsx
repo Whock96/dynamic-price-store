@@ -2,7 +2,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User as UserType, MenuItem, Permission } from '../types/types';
 import { supabase } from '@/integrations/supabase/client';
-import { useSupabaseData } from '@/hooks/use-supabase-data';
 
 interface AuthContextType {
   user: UserType | null;
@@ -188,19 +187,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchUserTypePermissions = async (userTypeId: string): Promise<Permission[]> => {
     try {
       // Get permissions associated with this user type using direct queries
-      const { data: permissionsData, error: permissionsError } = await supabase
+      const { data: permLinks, error: permLinksError } = await supabase
         .from('user_type_permissions')
         .select('permission_id')
         .eq('user_type_id', userTypeId);
         
-      if (permissionsError) throw permissionsError;
+      if (permLinksError) throw permLinksError;
       
-      if (!permissionsData || permissionsData.length === 0) {
+      if (!permLinks || permLinks.length === 0) {
         return [];
       }
       
       // Get the actual permission details
-      const permissionIds = permissionsData.map(p => p.permission_id);
+      const permissionIds = permLinks.map(p => p.permission_id);
       const { data: permissions, error: permsError } = await supabase
         .from('permissions')
         .select('*')
@@ -243,10 +242,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Fetch permissions for this user type
       const permissions = await fetchUserTypePermissions(userData.user_type.id);
       
+      // Ensure the role is one of the allowed values
+      const userRole = userData.user_type.name as 'administrator' | 'salesperson' | 'billing' | 'inventory';
+      
       // Update user in state and localStorage
       const updatedUser: UserType = {
         ...user,
-        role: userData.user_type.name,
+        role: userRole,
         permissions: permissions,
       };
       
@@ -300,15 +302,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Fetch permissions for this user
       const permissions = await fetchUserTypePermissions(data.user_type.id);
       
+      // Ensure the role is one of the allowed values
+      const userRole = data.user_type.name as 'administrator' | 'salesperson' | 'billing' | 'inventory';
+      
       // Create user object
       const userObj: UserType = {
         id: data.id,
         username: data.username,
         name: data.name,
-        role: data.user_type.name,
+        role: userRole,
         permissions: permissions,
         email: data.email || '',
-        createdAt: new Date(data.created_at)
+        createdAt: new Date(data.created_at),
+        userTypeId: data.user_type.id
       };
       
       setUser(userObj);

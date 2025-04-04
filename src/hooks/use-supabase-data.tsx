@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -61,8 +62,8 @@ export function useSupabaseData<T extends Record<string, any>>(
       if (responseError) throw responseError;
 
       // Type assertion to handle various table types
-      setData(responseData as T[]);
-      return responseData as T[];
+      setData(responseData as unknown as T[]);
+      return responseData as unknown as T[];
     } catch (err) {
       const error = err as Error;
       setError(error);

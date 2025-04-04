@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -96,7 +95,14 @@ const UserTypeManagement = () => {
         updatedAt: new Date(type.updated_at)
       })) as UserTypeWithDates[];
       
-      setUserTypes(formattedData);
+      // Remove duplicate user types (keeping only administrator, salesperson, billing, inventory)
+      // This ensures only the standard roles are shown
+      const standardRoles = ['administrator', 'salesperson', 'billing', 'inventory'];
+      const filteredData = formattedData.filter(type => 
+        standardRoles.includes(type.name.toLowerCase())
+      );
+      
+      setUserTypes(filteredData);
     } catch (err) {
       console.error('Error fetching user types:', err);
       toast.error('Erro ao carregar tipos de usuário');

@@ -2,11 +2,11 @@ export interface User {
   id: string;
   username: string;
   name: string;
-  role: 'administrator' | 'salesperson' | 'billing' | 'inventory' | 'employee';
+  role: 'administrator' | 'salesperson' | 'billing' | 'inventory';
   permissions: Permission[];
   email: string;
   createdAt: Date;
-  userTypeId: string; // Add this to match database structure
+  userTypeId: string;
 }
 
 export interface Permission {
