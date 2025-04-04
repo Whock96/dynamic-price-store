@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth, MENU_ITEMS } from '../../context/AuthContext';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import { cn } from '@/lib/utils';
@@ -15,8 +15,9 @@ const PageContainer: React.FC<PageContainerProps> = ({
   children, 
   requireAuth = true 
 }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, hasPermission } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -36,11 +37,44 @@ const PageContainer: React.FC<PageContainerProps> = ({
     };
   }, []);
 
+  // Redirect logic
   useEffect(() => {
-    if (!loading && requireAuth && !user) {
-      navigate('/login');
+    if (!loading) {
+      // If authentication is required but user is not logged in
+      if (requireAuth && !user) {
+        navigate('/login');
+        return;
+      }
+
+      // If user is authenticated, check page permissions
+      if (user) {
+        // Find the menu item that corresponds to the current path
+        const findMenuItemByPath = (items: typeof MENU_ITEMS, path: string) => {
+          for (const item of items) {
+            if (item.path === path) {
+              return item;
+            }
+            if (item.submenus) {
+              for (const submenu of item.submenus) {
+                if (submenu.path === path) {
+                  return submenu;
+                }
+              }
+            }
+          }
+          return null;
+        };
+
+        const currentPath = '/' + location.pathname.split('/')[1]; // Get base path
+        const menuItem = findMenuItemByPath(MENU_ITEMS, currentPath);
+
+        // If a menu item is found for this path and the user doesn't have permission
+        if (menuItem && !hasPermission(menuItem.permissionCode)) {
+          navigate('/dashboard');
+        }
+      }
     }
-  }, [user, loading, navigate, requireAuth]);
+  }, [user, loading, navigate, requireAuth, location.pathname, hasPermission]);
 
   if (loading || !mounted) {
     return (

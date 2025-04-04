@@ -22,6 +22,7 @@ import OrderDetail from "./pages/Orders/OrderDetail";
 import OrderUpdate from "./pages/Orders/OrderUpdate";
 import ProductManagement from "./pages/Settings/ProductManagement";
 import UserManagement from "./pages/Settings/UserManagement";
+import UserTypesManagement from "./pages/Settings/UserTypesManagement";
 import CategoryManagement from "./pages/Settings/CategoryManagement";
 import DiscountManagement from "./pages/Settings/DiscountManagement";
 import CompanySettings from "./pages/Settings/CompanySettings";
@@ -70,6 +71,7 @@ const App = () => (
                       <Route path="/settings" element={<PageContainer><Settings /></PageContainer>} />
                       <Route path="/settings/products" element={<PageContainer><ProductManagement /></PageContainer>} />
                       <Route path="/settings/users" element={<PageContainer><UserManagement /></PageContainer>} />
+                      <Route path="/settings/user-types" element={<PageContainer><UserTypesManagement /></PageContainer>} />
                       <Route path="/settings/categories" element={<PageContainer><CategoryManagement /></PageContainer>} />
                       <Route path="/settings/discounts" element={<PageContainer><DiscountManagement /></PageContainer>} />
                       <Route path="/settings/company" element={<PageContainer><CompanySettings /></PageContainer>} />
