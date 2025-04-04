@@ -1,3 +1,4 @@
+
 import { Tables } from "@/integrations/supabase/client";
 import { Product, Order, CartItem, DiscountOption, Customer } from "@/types/types";
 
