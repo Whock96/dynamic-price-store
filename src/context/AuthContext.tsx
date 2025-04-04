@@ -1,31 +1,5 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase, UserRow, UserTypeRow, PermissionRow } from '../integrations/supabase/client';
-import { toast } from 'sonner';
-
-export interface Permission {
-  id: string;
-  name: string;
-  description: string;
-  code: string;
-}
-
-export interface UserType {
-  id: string;
-  name: string;
-  description: string;
-  permissions: Permission[];
-}
-
-export interface User {
-  id: string;
-  username: string;
-  name: string;
-  email: string;
-  userType: UserType;
-  isActive: boolean;
-  createdAt: Date;
-}
+import { User, MenuItem } from '../types/types';
 
 interface AuthContextType {
   user: User | null;
@@ -33,32 +7,44 @@ interface AuthContextType {
   error: string | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
-  hasPermission: (permissionCode: string) => boolean;
-  refreshUserData: () => Promise<void>;
+  hasPermission: (menuPath: string) => boolean;
 }
 
-// Navigation menu items with permission requirements
-export const MENU_ITEMS = [
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Initial mock user for testing
+const INITIAL_ADMIN_USER: User = {
+  id: '1',
+  username: 'admin',
+  name: 'Administrador',
+  role: 'administrator',
+  permissions: [],
+  email: 'admin@ferplas.ind.br',
+  createdAt: new Date(),
+};
+
+// Menu items with permission requirements
+export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'home',
     name: 'Início',
     path: '/dashboard',
     icon: 'home',
-    permissionCode: 'dashboard',
+    requiredRoles: ['administrator', 'salesperson', 'employee'],
   },
   {
     id: 'products',
     name: 'Produtos',
     path: '/products',
     icon: 'package',
-    permissionCode: 'products.view',
+    requiredRoles: ['administrator', 'salesperson', 'employee'],
     submenus: [
       {
         id: 'product-list',
         name: 'Listar Produtos',
         path: '/products',
         icon: 'list',
-        permissionCode: 'products.view',
+        requiredRoles: ['administrator', 'salesperson', 'employee'],
       },
     ],
   },
@@ -67,21 +53,21 @@ export const MENU_ITEMS = [
     name: 'Clientes',
     path: '/customers',
     icon: 'users',
-    permissionCode: 'customers.view',
+    requiredRoles: ['administrator', 'salesperson', 'employee'],
     submenus: [
       {
         id: 'customer-list',
         name: 'Listar Clientes',
         path: '/customers',
         icon: 'list',
-        permissionCode: 'customers.view',
+        requiredRoles: ['administrator', 'salesperson', 'employee'],
       },
       {
         id: 'customer-create',
         name: 'Cadastrar Clientes',
         path: '/customers/new',
         icon: 'user-plus',
-        permissionCode: 'customers.edit',
+        requiredRoles: ['administrator', 'salesperson'],
       },
     ],
   },
@@ -90,14 +76,14 @@ export const MENU_ITEMS = [
     name: 'Pedidos',
     path: '/orders',
     icon: 'clipboard',
-    permissionCode: 'orders.view',
+    requiredRoles: ['administrator', 'salesperson', 'employee'],
     submenus: [
       {
         id: 'order-list',
         name: 'Consultar Pedidos',
         path: '/orders',
         icon: 'search',
-        permissionCode: 'orders.view',
+        requiredRoles: ['administrator', 'salesperson', 'employee'],
       },
     ],
   },
@@ -106,179 +92,66 @@ export const MENU_ITEMS = [
     name: 'Carrinho',
     path: '/cart',
     icon: 'shopping-cart',
-    permissionCode: 'orders.edit',
+    requiredRoles: ['administrator', 'salesperson', 'employee'],
   },
   {
     id: 'settings',
     name: 'Configurações',
     path: '/settings',
     icon: 'settings',
-    permissionCode: 'settings.view',
+    requiredRoles: ['administrator'],
     submenus: [
       {
         id: 'company-settings',
         name: 'Dados da Empresa',
         path: '/settings/company',
         icon: 'building-2',
-        permissionCode: 'settings.company',
+        requiredRoles: ['administrator'],
       },
       {
         id: 'product-management',
         name: 'Gerenciar Produtos',
         path: '/settings/products',
         icon: 'package',
-        permissionCode: 'settings.products',
+        requiredRoles: ['administrator'],
       },
       {
         id: 'user-management',
         name: 'Gerenciar Usuários',
         path: '/settings/users',
         icon: 'users',
-        permissionCode: 'settings.users',
-      },
-      {
-        id: 'user-types-management',
-        name: 'Tipos de Usuário',
-        path: '/settings/user-types',
-        icon: 'shield',
-        permissionCode: 'settings.usertypes',
+        requiredRoles: ['administrator'],
       },
       {
         id: 'category-management',
         name: 'Gerenciar Categorias',
         path: '/settings/categories',
         icon: 'tag',
-        permissionCode: 'settings.categories',
+        requiredRoles: ['administrator'],
       },
       {
         id: 'discount-management',
         name: 'Gerenciar Descontos',
         path: '/settings/discounts',
         icon: 'percent',
-        permissionCode: 'settings.discounts',
+        requiredRoles: ['administrator'],
       },
     ],
   },
 ];
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchUserData = async (userId: string): Promise<User | null> => {
-    try {
-      // Fetch the user
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select(`
-          id, 
-          username, 
-          name, 
-          email, 
-          is_active, 
-          created_at,
-          user_type_id
-        `)
-        .eq('id', userId)
-        .single();
-
-      if (userError) throw userError;
-      if (!userData) return null;
-
-      // Cast to our known type
-      const user = userData as unknown as UserRow;
-
-      // Fetch the user type with permissions
-      const { data: userTypeData, error: userTypeError } = await supabase
-        .from('user_types')
-        .select(`
-          id, 
-          name, 
-          description
-        `)
-        .eq('id', user.user_type_id)
-        .single();
-
-      if (userTypeError) throw userTypeError;
-      
-      // Cast to our known type
-      const userType = userTypeData as unknown as UserTypeRow;
-
-      // Fetch permissions for this user type
-      const { data: permissionsData, error: permissionsError } = await supabase
-        .from('user_type_permissions')
-        .select(`
-          permissions:permission_id (
-            id,
-            name,
-            description,
-            code
-          )
-        `)
-        .eq('user_type_id', userType.id);
-
-      if (permissionsError) throw permissionsError;
-
-      // Extract permissions from the nested data
-      const permissions: Permission[] = permissionsData.map((item: any) => item.permissions);
-
-      // Build the complete user object
-      const fullUser: User = {
-        id: user.id,
-        username: user.username,
-        name: user.name,
-        email: user.email || '',
-        isActive: user.is_active,
-        createdAt: new Date(user.created_at),
-        userType: {
-          id: userType.id,
-          name: userType.name,
-          description: userType.description || '',
-          permissions: permissions
-        }
-      };
-
-      return fullUser;
-    } catch (err) {
-      console.error('Error fetching user data:', err);
-      return null;
-    }
-  };
-
-  const refreshUserData = async () => {
-    if (!user) return;
-    
-    setLoading(true);
-    const userData = await fetchUserData(user.id);
-    if (userData) {
-      setUser(userData);
-    }
-    setLoading(false);
-  };
-
   useEffect(() => {
     // Check if user is logged in from localStorage
-    const checkLoggedInUser = async () => {
-      setLoading(true);
-      const storedUserId = localStorage.getItem('ferplas_user_id');
-      
-      if (storedUserId) {
-        const userData = await fetchUserData(storedUserId);
-        if (userData) {
-          setUser(userData);
-        } else {
-          // User data couldn't be fetched, clear local storage
-          localStorage.removeItem('ferplas_user_id');
-        }
-      }
-      
-      setLoading(false);
-    };
-
-    checkLoggedInUser();
+    const storedUser = localStorage.getItem('ferplas_user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+    setLoading(false);
   }, []);
 
   const login = async (username: string, password: string) => {
@@ -286,67 +159,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     
     try {
-      // Verify credentials
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, password')
-        .eq('username', username)
-        .eq('is_active', true)
-        .single();
-      
-      if (error) throw new Error('Usuário não encontrado ou inativo');
-
-      // Cast to our known type
-      const user = data as unknown as UserRow;
-      
-      // In a real application, you would use a proper password verification method
-      // For this example, we're using a direct comparison for simplicity
-      if (user.password !== '$2a$10$mLK.rrdlvx9DCFb6Eck1t.TlltnGulepXnov3bBp5T2TloO1MYj52') {
-        throw new Error('Senha incorreta');
+      // Mock authentication - in a real app, this would be an API call
+      if (username === 'admin' && password === 'admin') {
+        setUser(INITIAL_ADMIN_USER);
+        localStorage.setItem('ferplas_user', JSON.stringify(INITIAL_ADMIN_USER));
+      } else {
+        throw new Error('Credenciais inválidas');
       }
-      
-      // Fetch full user data
-      const userData = await fetchUserData(user.id);
-      
-      if (!userData) {
-        throw new Error('Erro ao obter dados do usuário');
-      }
-      
-      setUser(userData);
-      localStorage.setItem('ferplas_user_id', userData.id);
-      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao fazer login');
       console.error('Login error:', err);
-      toast.error(err instanceof Error ? err.message : 'Erro ao fazer login');
     } finally {
       setLoading(false);
     }
   };
 
   const logout = () => {
-    localStorage.removeItem('ferplas_user_id');
+    localStorage.removeItem('ferplas_user');
     setUser(null);
-    toast.info('Sessão encerrada');
   };
 
-  const hasPermission = (permissionCode: string) => {
+  const hasPermission = (menuPath: string) => {
     if (!user) return false;
     
-    // Check if the user has the required permission
-    return user.userType.permissions.some(permission => permission.code === permissionCode);
+    // Find the menu item that matches the path
+    const findMenuItem = (items: MenuItem[]): MenuItem | undefined => {
+      for (const item of items) {
+        if (item.path === menuPath) return item;
+        if (item.submenus) {
+          const found = findMenuItem(item.submenus);
+          if (found) return found;
+        }
+      }
+      return undefined;
+    };
+    
+    const menuItem = findMenuItem(MENU_ITEMS);
+    if (!menuItem) return true; // If menu not found in permissions, allow it (could be a public route)
+    
+    return menuItem.requiredRoles.includes(user.role);
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      loading, 
-      error, 
-      login, 
-      logout, 
-      hasPermission,
-      refreshUserData
-    }}>
+    <AuthContext.Provider value={{ user, loading, error, login, logout, hasPermission }}>
       {children}
     </AuthContext.Provider>
   );

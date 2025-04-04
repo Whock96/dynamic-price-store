@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Order, CartItem } from '@/types/types';
 import { format } from 'date-fns';
@@ -7,6 +8,7 @@ import { toast } from 'sonner';
 import { supabase, Tables } from '@/integrations/supabase/client';
 import { supabaseOrderToAppOrder } from '@/utils/adapters';
 
+// Define a type that maps database order to our frontend order type
 type SupabaseOrder = Tables<'orders'>;
 
 interface OrderContextType {
@@ -18,12 +20,6 @@ interface OrderContextType {
   clearAllOrders: () => void;
   deleteOrder: (orderId: string) => void;
   isLoading: boolean;
-  order: {
-    data: Order | null;
-    isLoading: boolean;
-    error: Error | null;
-  };
-  fetchOrder: (id: string) => Promise<void>;
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
@@ -32,23 +28,16 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [order, setOrder] = useState<{
-    data: Order | null;
-    isLoading: boolean;
-    error: Error | null;
-  }>({
-    data: null,
-    isLoading: false,
-    error: null
-  });
-
+  
+  // Load orders from Supabase on initial render
   useEffect(() => {
     fetchOrders();
   }, []);
-
+  
   const fetchOrders = async () => {
     setIsLoading(true);
     try {
+      // Fetch orders with customer details
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select(`
@@ -56,17 +45,19 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           customers(*)
         `)
         .order('created_at', { ascending: false });
-
+        
       if (ordersError) throw ordersError;
-
+      
       if (!ordersData) {
         setOrders([]);
         return;
       }
-
+      
       console.log("Fetched orders data:", ordersData);
-
+      
+      // Process each order to fetch items and applied discounts
       const processedOrders = await Promise.all(ordersData.map(async (order) => {
+        // Fetch order items with product details
         const { data: itemsData } = await supabase
           .from('order_items')
           .select(`
@@ -74,12 +65,14 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             products(*)
           `)
           .eq('order_id', order.id);
-
+          
+        // Fetch discount options applied to this order
         const { data: discountData } = await supabase
           .from('order_discounts')
           .select('discount_id')
           .eq('order_id', order.id);
-
+          
+        // Fetch full discount details if there are any applied discounts
         let discounts = [];
         if (discountData && discountData.length > 0) {
           const discountIds = discountData.map(d => d.discount_id);
@@ -87,7 +80,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             .from('discount_options')
             .select('*')
             .in('id', discountIds);
-
+            
           if (discountDetails) {
             discounts = discountDetails.map(d => ({
               id: d.id,
@@ -99,12 +92,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             }));
           }
         }
-
+        
+        // Use adapter to convert Supabase order to app Order
         const processedOrder = supabaseOrderToAppOrder(order, itemsData || [], discounts);
-
+        
         return processedOrder;
       }));
-
+      
       setOrders(processedOrders);
       console.log(`Loaded ${processedOrders.length} orders from Supabase`);
     } catch (error) {
@@ -115,12 +109,14 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  // Clear all orders from state and database
   const clearAllOrders = async () => {
     try {
+      // This is a dangerous operation and should have additional safeguards
       const { error } = await supabase.from('orders').delete().neq('id', 'placeholder');
-
+      
       if (error) throw error;
-
+      
       setOrders([]);
       toast.success('Todos os pedidos foram excluídos com sucesso!');
     } catch (error) {
@@ -129,12 +125,15 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  // Delete a specific order by ID
   const deleteOrder = async (orderId: string) => {
     try {
+      // Delete the order from Supabase
       const { error } = await supabase.from('orders').delete().eq('id', orderId);
-
+      
       if (error) throw error;
-
+      
+      // Update local state if successful
       setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
       toast.success(`Pedido excluído com sucesso!`);
     } catch (error) {
@@ -148,10 +147,11 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       toast.error('Cliente não selecionado');
       return;
     }
-
+    
     try {
       console.log("Adding new order:", newOrder);
-
+      
+      // First, insert the order into Supabase
       const orderInsert = {
         customer_id: newOrder.customer.id,
         user_id: user?.id || 'anonymous',
@@ -172,26 +172,27 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         with_ipi: newOrder.withIPI || false,
         ipi_value: newOrder.ipiValue || 0
       };
-
+      
       console.log("Order data being inserted:", orderInsert);
-
+      
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert(orderInsert)
         .select()
         .single();
-
+        
       if (orderError) {
         console.error("Order insert error:", orderError);
         throw orderError;
       }
-
+      
       if (!orderData) {
         throw new Error('Erro ao criar pedido: No data returned');
       }
-
+      
       console.log("Order created successfully:", orderData);
-
+      
+      // Now insert the order items
       if (newOrder.items && newOrder.items.length > 0) {
         const orderItems = newOrder.items.map(item => ({
           order_id: orderData.id,
@@ -201,43 +202,45 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           final_price: item.finalPrice,
           subtotal: item.subtotal
         }));
-
+        
         console.log("Inserting order items:", orderItems);
-
+        
         const { error: itemsError } = await supabase
           .from('order_items')
           .insert(orderItems);
-
+          
         if (itemsError) {
           console.error("Order items insert error:", itemsError);
           throw itemsError;
         }
-
+        
         console.log("Order items inserted successfully");
       }
-
+      
+      // Insert order discounts if any
       if (newOrder.appliedDiscounts && newOrder.appliedDiscounts.length > 0) {
         const orderDiscounts = newOrder.appliedDiscounts.map(discount => ({
           order_id: orderData.id,
           discount_id: discount.id
         }));
-
+        
         console.log("Inserting order discounts:", orderDiscounts);
-
+        
         const { error: discountsError } = await supabase
           .from('order_discounts')
           .insert(orderDiscounts);
-
+          
         if (discountsError) {
           console.error("Order discounts insert error:", discountsError);
           throw discountsError;
         }
-
+        
         console.log("Order discounts inserted successfully");
       }
-
+      
+      // Refetch orders to get the complete order with all relationships
       await fetchOrders();
-
+      
       toast.success(`Pedido #${orderData.order_number} criado com sucesso!`);
       return orderData.id;
     } catch (error: any) {
@@ -250,7 +253,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const updateOrderStatus = async (orderId: string, status: Order['status']) => {
     try {
       console.log(`Updating order ${orderId} status to ${status}`);
-
+      
+      // Update the order status in Supabase
       const { error } = await supabase
         .from('orders')
         .update({ 
@@ -258,12 +262,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           updated_at: new Date().toISOString()
         })
         .eq('id', orderId);
-
+      
       if (error) {
         console.error("Order status update error:", error);
         throw error;
       }
-
+      
+      // Update local state
       setOrders(prevOrders =>
         prevOrders.map(order =>
           order.id === orderId
@@ -271,22 +276,24 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             : order
         )
       );
-
+      
       toast.success(`Status do pedido atualizado para ${status}`);
     } catch (error: any) {
       console.error('Error updating order status:', error);
       toast.error(`Erro ao atualizar status do pedido: ${error.message || 'Erro desconhecido'}`);
     }
   };
-
+  
   const updateOrder = async (orderId: string, orderData: Partial<Order>) => {
     try {
       console.log(`Updating order ${orderId} with data:`, orderData);
-
+      
+      // Create plain object with properties matching Supabase column names
       const supabaseOrderData: Record<string, any> = {
         updated_at: new Date().toISOString()
       };
-
+      
+      // Map frontend properties to database column names
       if (orderData.status !== undefined) supabaseOrderData.status = orderData.status;
       if (orderData.shipping !== undefined) supabaseOrderData.shipping = orderData.shipping;
       if (orderData.fullInvoice !== undefined) supabaseOrderData.full_invoice = orderData.fullInvoice;
@@ -300,19 +307,21 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (orderData.deliveryFee !== undefined) supabaseOrderData.delivery_fee = orderData.deliveryFee;
       if (orderData.withIPI !== undefined) supabaseOrderData.with_ipi = orderData.withIPI;
       if (orderData.ipiValue !== undefined) supabaseOrderData.ipi_value = orderData.ipiValue;
-
+      
       console.log("Supabase order data for update:", supabaseOrderData);
-
+      
+      // Update the order in Supabase
       const { error } = await supabase
         .from('orders')
         .update(supabaseOrderData)
         .eq('id', orderId);
-
+      
       if (error) {
         console.error("Order update error:", error);
         throw error;
       }
-
+      
+      // Update local state
       setOrders(prevOrders =>
         prevOrders.map(order =>
           order.id === orderId
@@ -324,7 +333,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             : order
         )
       );
-
+      
       toast.success(`Pedido atualizado com sucesso!`);
     } catch (error: any) {
       console.error('Error updating order:', error);
@@ -335,92 +344,16 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const getOrderById = (id: string) => {
     console.log(`Fetching order with ID: ${id}`);
     console.log(`Current orders in state:`, orders.map(o => ({ id: o.id, number: o.orderNumber })));
-
+    
     const foundOrder = orders.find(order => order.id === id);
-
+    
     if (!foundOrder) {
       console.error(`Order with ID ${id} not found in state`);
       return undefined;
     }
-
+    
     console.log(`Found order:`, foundOrder);
     return foundOrder;
-  };
-
-  const fetchOrder = async (id: string) => {
-    setOrder(prev => ({ ...prev, isLoading: true, error: null }));
-
-    try {
-      const existingOrder = orders.find(o => o.id === id);
-      if (existingOrder) {
-        setOrder({
-          data: existingOrder,
-          isLoading: false,
-          error: null
-        });
-        return;
-      }
-
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          customers(*)
-        `)
-        .eq('id', id)
-        .single();
-
-      if (orderError) throw orderError;
-
-      const { data: itemsData } = await supabase
-        .from('order_items')
-        .select(`
-          *,
-          products(*)
-        `)
-        .eq('order_id', id);
-
-      const { data: discountData } = await supabase
-        .from('order_discounts')
-        .select('discount_id')
-        .eq('order_id', id);
-
-      let discounts = [];
-      if (discountData && discountData.length > 0) {
-        const discountIds = discountData.map(d => d.discount_id);
-        const { data: discountDetails } = await supabase
-          .from('discount_options')
-          .select('*')
-          .in('id', discountIds);
-
-        if (discountDetails) {
-          discounts = discountDetails.map(d => ({
-            id: d.id,
-            name: d.name,
-            description: d.description || '',
-            value: d.value,
-            type: d.type as 'discount' | 'surcharge',
-            isActive: d.is_active,
-          }));
-        }
-      }
-
-      const processedOrder = supabaseOrderToAppOrder(orderData, itemsData || [], discounts);
-
-      setOrder({
-        data: processedOrder,
-        isLoading: false,
-        error: null
-      });
-    } catch (err) {
-      const error = err as Error;
-      setOrder(prev => ({
-        ...prev,
-        isLoading: false,
-        error
-      }));
-      console.error(`Error fetching order ${id}:`, error);
-    }
   };
 
   return (
@@ -432,9 +365,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       getOrderById, 
       clearAllOrders,
       deleteOrder,
-      isLoading,
-      order,
-      fetchOrder
+      isLoading
     }}>
       {children}
     </OrderContext.Provider>
@@ -448,5 +379,3 @@ export const useOrders = () => {
   }
   return context;
 };
-
-export const useOrder = useOrders;

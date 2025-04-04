@@ -1,18 +1,21 @@
 
 /**
- * Format a number as currency (BRL)
+ * Formats a number as currency in Brazilian Real (BRL)
  */
-export function formatCurrency(value: number): string {
+export const formatCurrency = (value: number | null | undefined) => {
+  // Ensure value is a valid number
+  const safeValue = Number(value) || 0;
+  
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
-  }).format(value);
-}
+  }).format(safeValue);
+};
 
 /**
- * Format a date to Brazilian format (DD/MM/YYYY)
+ * Formats a date as DD/MM/YYYY in Brazilian Portuguese format
  */
-export function formatDate(date: Date | string): string {
+export const formatDate = (date: Date | string | null | undefined) => {
   if (!date) return '';
   
   try {
@@ -22,4 +25,4 @@ export function formatDate(date: Date | string): string {
     console.error('Error formatting date:', error);
     return '';
   }
-}
+};

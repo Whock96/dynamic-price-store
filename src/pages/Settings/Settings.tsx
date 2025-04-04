@@ -2,65 +2,46 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings as SettingsIcon, User, Package, Tags, Percent, Building, Database, Shield } from 'lucide-react';
+import { Settings as SettingsIcon, User, Package, Tags, Percent, Building, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import MigrationTool from '@/components/settings/MigrationTool';
-import { useAuth } from '@/context/AuthContext';
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { hasPermission } = useAuth();
 
   const settingsLinks = [
     { 
       icon: <User className="h-5 w-5" />,
       title: 'Usuários',
       description: 'Gerenciar usuários e permissões',
-      path: '/settings/users',
-      permission: 'settings.users'
-    },
-    { 
-      icon: <Shield className="h-5 w-5" />,
-      title: 'Tipos de Usuário',
-      description: 'Configurar tipos de usuário e permissões',
-      path: '/settings/user-types',
-      permission: 'settings.usertypes'
+      path: '/settings/users'
     },
     { 
       icon: <Package className="h-5 w-5" />,
       title: 'Produtos',
       description: 'Configurar produtos e preços',
-      path: '/settings/products',
-      permission: 'settings.products'
+      path: '/settings/products'
     },
     { 
       icon: <Tags className="h-5 w-5" />,
       title: 'Categorias',
       description: 'Gerenciar categorias e subcategorias',
-      path: '/settings/categories',
-      permission: 'settings.categories'
+      path: '/settings/categories'
     },
     { 
       icon: <Percent className="h-5 w-5" />,
       title: 'Descontos',
       description: 'Configurar opções de desconto',
-      path: '/settings/discounts',
-      permission: 'settings.discounts'
+      path: '/settings/discounts'
     },
     { 
       icon: <Building className="h-5 w-5" />,
       title: 'Empresa',
       description: 'Configurações da empresa',
-      path: '/settings/company',
-      permission: 'settings.company'
+      path: '/settings/company'
     },
   ];
-
-  // Filter settings links based on user permissions
-  const filteredSettingsLinks = settingsLinks.filter(link => 
-    hasPermission(link.permission)
-  );
 
   return (
     <div className="space-y-6">
@@ -77,7 +58,7 @@ const Settings = () => {
         
         <TabsContent value="general" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredSettingsLinks.map((link, index) => (
+            {settingsLinks.map((link, index) => (
               <Card key={index} className="cursor-pointer transition-all hover:shadow-md" onClick={() => navigate(link.path)}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-lg font-medium">{link.title}</CardTitle>
@@ -89,14 +70,6 @@ const Settings = () => {
               </Card>
             ))}
           </div>
-          
-          {filteredSettingsLinks.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <SettingsIcon className="h-12 w-12 text-gray-300 mb-4" />
-              <h2 className="text-xl font-medium text-gray-600">Nenhuma configuração disponível</h2>
-              <p className="text-gray-500 mt-1">Você não tem permissão para acessar as configurações do sistema.</p>
-            </div>
-          )}
         </TabsContent>
         
         <TabsContent value="database">

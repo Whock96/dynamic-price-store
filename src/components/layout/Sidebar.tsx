@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home, ShoppingCart, Users, Package, Clipboard, Settings, 
-  ChevronRight, List, UserPlus, Search, Edit, Menu, Building2, LogOut, Shield
+  ChevronRight, List, UserPlus, Search, Edit, Menu, Building2, LogOut
 } from 'lucide-react';
 import { useAuth, MENU_ITEMS } from '../../context/AuthContext';
 import { cn } from '@/lib/utils';
@@ -72,7 +72,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
       case 'search': return <Search size={20} />;
       case 'edit': return <Edit size={20} />;
       case 'building-2': return <Building2 size={20} />;
-      case 'shield': return <Shield size={20} />;
       default: return <Home size={20} />;
     }
   };
@@ -106,7 +105,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
 
         <nav className="flex-1 space-y-1 px-2 overflow-y-auto">
           {MENU_ITEMS
-            .filter(item => hasPermission(item.permissionCode))
+            .filter(item => 
+              hasPermission(item.path) && 
+              item.name !== "Atualizar Pedidos"
+            )
             .map((item) => (
               <div key={item.id} className="relative">
                 <button
@@ -146,31 +148,29 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
                 
                 {isExpanded && item.submenus && expandedMenu === item.id && (
                   <div className="pl-10 mt-1 space-y-1 animate-accordion-down">
-                    {item.submenus
-                      .filter(submenu => hasPermission(submenu.permissionCode))
-                      .map((submenu) => (
-                        <button
-                          key={submenu.id}
-                          onClick={() => handleNavigate(submenu.path)}
-                          className={cn(
-                            "w-full flex items-center py-2 px-2 rounded-md transition-colors duration-200",
-                            isActive(submenu.path) 
-                              ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                          )}
-                        >
-                          <div className="flex items-center justify-center w-5 h-5">
-                            {getIcon(submenu.icon)}
-                          </div>
-                          <span className="ml-2 text-sm">{submenu.name}</span>
-                        </button>
-                      ))}
+                    {item.submenus.filter(submenu => hasPermission(submenu.path)).map((submenu) => (
+                      <button
+                        key={submenu.id}
+                        onClick={() => handleNavigate(submenu.path)}
+                        className={cn(
+                          "w-full flex items-center py-2 px-2 rounded-md transition-colors duration-200",
+                          isActive(submenu.path) 
+                            ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                            : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        )}
+                      >
+                        <div className="flex items-center justify-center w-5 h-5">
+                          {getIcon(submenu.icon)}
+                        </div>
+                        <span className="ml-2 text-sm">{submenu.name}</span>
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
             ))}
 
-          {/* Botão de Sair */}
+          {/* Botão de Sair - Movido para dentro da navegação principal */}
           <div className="relative mt-2">
             <button
               onClick={handleLogout}

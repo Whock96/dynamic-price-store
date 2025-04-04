@@ -102,15 +102,9 @@ export const supabaseOrderToAppOrder = (
       id: order.user_id,
       name: 'Usuário do Sistema',
       username: '',
-      userType: {
-        id: '',
-        name: 'Default',
-        description: 'Default user type',
-        permissions: []
-      },
+      role: userRole,
       permissions: [],
       email: '',
-      isActive: true,
       createdAt: new Date(),
     },
     items: formattedItems,

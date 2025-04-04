@@ -34,6 +34,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Tabs,
@@ -52,79 +53,184 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useAuth } from '@/context/AuthContext';
-import { useUsers } from '@/hooks/use-users';
+import { useAuth } from '../../context/AuthContext';
+import { MENU_ITEMS } from '../../context/AuthContext';
 import { toast } from 'sonner';
+import { User, Permission } from '@/types/types';
+
+// Mock data para usuários
+const MOCK_USERS: User[] = [
+  {
+    id: 'user-1',
+    username: 'admin',
+    name: 'Administrador',
+    role: 'administrator',
+    permissions: [],
+    email: 'admin@ferplas.ind.br',
+    createdAt: new Date(2023, 0, 15)
+  },
+  {
+    id: 'user-2',
+    username: 'joao',
+    name: 'João Silva',
+    role: 'salesperson',
+    permissions: [],
+    email: 'joao@ferplas.ind.br',
+    createdAt: new Date(2023, 2, 10)
+  },
+  {
+    id: 'user-3',
+    username: 'maria',
+    name: 'Maria Oliveira',
+    role: 'salesperson',
+    permissions: [],
+    email: 'maria@ferplas.ind.br',
+    createdAt: new Date(2023, 4, 22)
+  },
+  {
+    id: 'user-4',
+    username: 'carlos',
+    name: 'Carlos Santos',
+    role: 'employee',
+    permissions: [],
+    email: 'carlos@ferplas.ind.br',
+    createdAt: new Date(2023, 6, 8)
+  },
+];
+
+// Mock permissions baseadas nos menus disponíveis
+const generatePermissions = (menuItems: any[]): Permission[] => {
+  const permissions: Permission[] = [];
+  
+  menuItems.forEach(item => {
+    permissions.push({
+      id: `perm-${item.id}`,
+      name: item.name,
+      description: `Acesso ao menu ${item.name}`,
+      isGranted: true
+    });
+    
+    if (item.submenus && item.submenus.length > 0) {
+      item.submenus.forEach((submenu: any) => {
+        permissions.push({
+          id: `perm-${submenu.id}`,
+          name: `${item.name} > ${submenu.name}`,
+          description: `Acesso ao submenu ${submenu.name} dentro de ${item.name}`,
+          isGranted: true
+        });
+      });
+    }
+  });
+  
+  return permissions;
+};
+
+// Adicionar permissões aos usuários mock
+const enrichUsersWithPermissions = (users: User[], menuItems: any[]): User[] => {
+  const allPermissions = generatePermissions(menuItems);
+  
+  return users.map(user => {
+    const userPermissions = allPermissions.map(perm => ({
+      ...perm,
+      isGranted: user.role === 'administrator' ? true : 
+                user.role === 'salesperson' ? !perm.name.includes('Configurações') : 
+                !perm.name.includes('Configurações') && !perm.name.includes('Pedidos')
+    }));
+    
+    return {
+      ...user,
+      permissions: userPermissions
+    };
+  });
+};
 
 const UserManagement = () => {
   const navigate = useNavigate();
-  const { user: currentUser, hasPermission } = useAuth();
-  const { users, userTypes, isLoading, createUser, updateUser, deleteUser } = useUsers();
-  
+  const { user: currentUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [userTypeFilter, setUserTypeFilter] = useState('all');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [users, setUsers] = useState<User[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedTab, setSelectedTab] = useState('basic');
   const [formData, setFormData] = useState({
     id: '',
     username: '',
     name: '',
-    userTypeId: '',
+    role: 'employee',
     email: '',
     password: '',
     confirmPassword: '',
-    isActive: true
   });
+  const [userPermissions, setUserPermissions] = useState<Permission[]>([]);
 
-  // Check if user has permission to access this page
+  // Verificar se o usuário atual é administrador
   useEffect(() => {
-    if (!hasPermission('settings.users')) {
+    if (currentUser?.role !== 'administrator') {
+      toast.error('Você não tem permissão para acessar esta página');
       navigate('/dashboard');
     }
-  }, [hasPermission, navigate]);
+  }, [currentUser, navigate]);
 
-  // Filter users based on search query and user type filter
+  // Inicializar dados de usuários com permissões
+  useEffect(() => {
+    const enrichedUsers = enrichUsersWithPermissions(MOCK_USERS, MENU_ITEMS);
+    setUsers(enrichedUsers);
+  }, []);
+
+  // Filtrar usuários com base na pesquisa e papel
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (user.email && user.email.toLowerCase().includes(searchQuery.toLowerCase()));
+      user.email.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesUserType = userTypeFilter === 'all' || user.userType.id === userTypeFilter;
+    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
     
-    return matchesSearch && matchesUserType;
+    return matchesSearch && matchesRole;
   });
 
-  const handleOpenDialog = (user?: typeof users[0]) => {
+  const handleOpenDialog = (user?: User) => {
     if (user) {
       setIsEditMode(true);
+      setSelectedUser(user);
       setFormData({
         id: user.id,
         username: user.username,
         name: user.name,
-        userTypeId: user.userType.id,
-        email: user.email || '',
+        role: user.role,
+        email: user.email,
         password: '',
         confirmPassword: '',
-        isActive: user.isActive
       });
     } else {
       setIsEditMode(false);
+      setSelectedUser(null);
       setFormData({
-        id: '',
+        id: `user-${Date.now()}`,
         username: '',
         name: '',
-        userTypeId: userTypes.length > 0 ? userTypes[0].id : '',
+        role: 'employee',
         email: '',
         password: '',
         confirmPassword: '',
-        isActive: true
       });
     }
     
     setIsDialogOpen(true);
     setSelectedTab('basic');
+  };
+
+  const handleOpenPermissionsDialog = (user: User) => {
+    setSelectedUser(user);
+    setUserPermissions([...user.permissions]);
+    setIsPermissionsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -142,16 +248,34 @@ const UserManagement = () => {
     }));
   };
 
-  const handleToggleChange = (name: string, checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      [name]: checked
-    }));
+  const handleTogglePermission = (permissionId: string) => {
+    setUserPermissions(prev =>
+      prev.map(permission =>
+        permission.id === permissionId
+          ? { ...permission, isGranted: !permission.isGranted }
+          : permission
+      )
+    );
   };
 
-  const handleSaveUser = async () => {
+  const handleSavePermissions = () => {
+    if (!selectedUser) return;
+    
+    setUsers(prev =>
+      prev.map(user =>
+        user.id === selectedUser.id
+          ? { ...user, permissions: userPermissions }
+          : user
+      )
+    );
+    
+    setIsPermissionsDialogOpen(false);
+    toast.success(`Permissões de ${selectedUser.name} atualizadas com sucesso`);
+  };
+
+  const handleSaveUser = () => {
     // Validação básica
-    if (!formData.username || !formData.name || !formData.userTypeId) {
+    if (!formData.username || !formData.name || !formData.email) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
@@ -166,58 +290,100 @@ const UserManagement = () => {
       return;
     }
 
-    let success;
+    // Verificar se o username já existe
+    const usernameExists = users.some(u => u.username === formData.username && u.id !== formData.id);
+    if (usernameExists) {
+      toast.error('Este nome de usuário já está em uso');
+      return;
+    }
+
+    // Verificar se o email já existe
+    const emailExists = users.some(u => u.email === formData.email && u.id !== formData.id);
+    if (emailExists) {
+      toast.error('Este email já está em uso');
+      return;
+    }
+
     if (isEditMode) {
       // Atualizar usuário existente
-      success = await updateUser(
-        formData.id,
-        formData.username,
-        formData.name,
-        formData.email,
-        formData.userTypeId,
-        formData.isActive,
-        formData.password ? formData.password : undefined
-      );
+      setUsers(prev => prev.map(u => u.id === formData.id ? {
+        ...u,
+        username: formData.username,
+        name: formData.name,
+        role: formData.role as 'administrator' | 'salesperson' | 'employee',
+        email: formData.email,
+      } : u));
+      toast.success(`Usuário "${formData.name}" atualizado com sucesso`);
     } else {
       // Adicionar novo usuário
-      success = await createUser(
-        formData.username,
-        formData.password,
-        formData.name,
-        formData.email,
-        formData.userTypeId
-      );
+      const allPermissions = generatePermissions(MENU_ITEMS);
+      const newUserPermissions = allPermissions.map(perm => ({
+        ...perm,
+        isGranted: formData.role === 'administrator' ? true : 
+                  formData.role === 'salesperson' ? !perm.name.includes('Configurações') : 
+                  !perm.name.includes('Configurações') && !perm.name.includes('Pedidos')
+      }));
+      
+      const newUser: User = {
+        id: formData.id,
+        username: formData.username,
+        name: formData.name,
+        role: formData.role as 'administrator' | 'salesperson' | 'employee',
+        permissions: newUserPermissions,
+        email: formData.email,
+        createdAt: new Date()
+      };
+      
+      setUsers(prev => [...prev, newUser]);
+      toast.success(`Usuário "${formData.name}" adicionado com sucesso`);
     }
-
-    if (success) {
-      setIsDialogOpen(false);
-    }
+    
+    handleCloseDialog();
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    // Don't allow deleting the current user
+  const handleDeleteUser = (userId: string) => {
+    // Não permitir excluir o próprio usuário
     if (userId === currentUser?.id) {
       toast.error('Você não pode excluir seu próprio usuário');
       return;
     }
     
-    await deleteUser(userId);
+    setUsers(prev => prev.filter(u => u.id !== userId));
+    toast.success('Usuário removido com sucesso');
   };
 
-  const getUserTypeBadge = (userTypeName: string) => {
-    switch (userTypeName) {
-      case 'Administrador':
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case 'administrator':
         return <Badge className="bg-red-100 text-red-800 border-red-200">Administrador</Badge>;
-      case 'Vendedor':
+      case 'salesperson':
         return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Vendedor</Badge>;
-      case 'Faturamento':
-        return <Badge className="bg-amber-100 text-amber-800 border-amber-200">Faturamento</Badge>;
-      case 'Estoque':
-        return <Badge className="bg-green-100 text-green-800 border-green-200">Estoque</Badge>;
+      case 'employee':
+        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Funcionário</Badge>;
       default:
-        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">{userTypeName}</Badge>;
+        return <Badge>Desconhecido</Badge>;
     }
   };
+
+  // Agrupar permissões por categoria para exibição mais organizada
+  const groupPermissionsByCategory = (permissions: Permission[]) => {
+    const categories: Record<string, Permission[]> = {};
+    
+    permissions.forEach(permission => {
+      const parts = permission.name.split(' > ');
+      const category = parts[0];
+      
+      if (!categories[category]) {
+        categories[category] = [];
+      }
+      
+      categories[category].push(permission);
+    });
+    
+    return categories;
+  };
+
+  const groupedPermissions = groupPermissionsByCategory(userPermissions);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -234,7 +400,7 @@ const UserManagement = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Gerenciar Usuários</h1>
             <p className="text-muted-foreground">
-              Adicione, edite e gerencie usuários do sistema
+              Adicione, edite e defina permissões de acesso para usuários
             </p>
           </div>
         </div>
@@ -262,17 +428,15 @@ const UserManagement = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <Select value={userTypeFilter} onValueChange={setUserTypeFilter}>
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
               <SelectTrigger>
                 <SelectValue placeholder="Tipo de usuário" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os tipos</SelectItem>
-                {userTypes.map(userType => (
-                  <SelectItem key={userType.id} value={userType.id}>
-                    {userType.name}
-                  </SelectItem>
-                ))}
+                <SelectItem value="administrator">Administradores</SelectItem>
+                <SelectItem value="salesperson">Vendedores</SelectItem>
+                <SelectItem value="employee">Funcionários</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -288,103 +452,87 @@ const UserManagement = () => {
                 <TableHead>Username</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Tipo</TableHead>
-                <TableHead>Status</TableHead>
                 <TableHead>Data de Cadastro</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="w-8 h-8 border-4 border-ferplas-500 border-t-transparent rounded-full animate-spin"></div>
-                      <p className="mt-2 text-sm text-gray-500">Carregando usuários...</p>
-                    </div>
+              {filteredUsers.map(user => (
+                <TableRow key={user.id}>
+                  <TableCell className="font-medium">{user.name}</TableCell>
+                  <TableCell>{user.username}</TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell>{getRoleBadge(user.role)}</TableCell>
+                  <TableCell>
+                    {user.createdAt.toLocaleDateString('pt-BR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric'
+                    })}
                   </TableCell>
-                </TableRow>
-              ) : filteredUsers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
-                    <div className="flex flex-col items-center justify-center">
-                      <Users className="h-12 w-12 text-gray-300" />
-                      <p className="mt-2 text-lg font-medium text-gray-500">Nenhum usuário encontrado</p>
-                      <p className="text-sm text-gray-400">Tente ajustar seus filtros ou adicione um novo usuário</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredUsers.map(user => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.name}</TableCell>
-                    <TableCell>{user.username}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>{getUserTypeBadge(user.userType.name)}</TableCell>
-                    <TableCell>
-                      {user.isActive ? (
-                        <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200">
-                          Ativo
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200">
-                          Inativo
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {user.createdAt.toLocaleDateString('pt-BR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric'
-                      })}
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        className="h-8 px-2 text-amber-600"
-                        onClick={() => handleOpenDialog(user)}
-                      >
-                        <Edit className="h-4 w-4 mr-1" />
-                        Editar
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className="h-8 px-2 text-red-600"
-                            disabled={user.id === currentUser?.id}
+                  <TableCell className="text-right space-x-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="h-8 px-2 text-ferplas-600"
+                      onClick={() => handleOpenPermissionsDialog(user)}
+                    >
+                      <Shield className="h-4 w-4 mr-1" />
+                      Permissões
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="h-8 px-2 text-amber-600"
+                      onClick={() => handleOpenDialog(user)}
+                    >
+                      <Edit className="h-4 w-4 mr-1" />
+                      Editar
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="h-8 px-2 text-red-600"
+                          disabled={user.id === currentUser?.id}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Excluir
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Remover usuário?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta ação irá remover permanentemente o usuário "{user.name}" do sistema. 
+                            Esta ação não pode ser desfeita.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction 
+                            className="bg-red-600 hover:bg-red-700"
+                            onClick={() => handleDeleteUser(user.id)}
                           >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Excluir
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Remover usuário?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Esta ação irá remover permanentemente o usuário "{user.name}" do sistema. 
-                              Esta ação não pode ser desfeita.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction 
-                              className="bg-red-600 hover:bg-red-700"
-                              onClick={() => handleDeleteUser(user.id)}
-                            >
-                              Remover
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
+                            Remover
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
+          
+          {filteredUsers.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Users className="h-12 w-12 text-gray-300 mb-4" />
+              <h2 className="text-xl font-medium text-gray-600">Nenhum usuário encontrado</h2>
+              <p className="text-gray-500 mt-1">Tente ajustar seus filtros ou adicione um novo usuário.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -434,7 +582,7 @@ const UserManagement = () => {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">Email*</Label>
                     <Input
                       id="email"
                       name="email"
@@ -446,65 +594,49 @@ const UserManagement = () => {
                   </div>
                   
                   <div>
-                    <Label htmlFor="userTypeId">Tipo de Usuário*</Label>
+                    <Label htmlFor="role">Tipo de Usuário*</Label>
                     <Select 
-                      value={formData.userTypeId} 
-                      onValueChange={(value) => handleSelectChange('userTypeId', value)}
+                      value={formData.role} 
+                      onValueChange={(value) => handleSelectChange('role', value)}
                     >
-                      <SelectTrigger id="userTypeId">
+                      <SelectTrigger id="role">
                         <SelectValue placeholder="Selecione um tipo" />
                       </SelectTrigger>
                       <SelectContent>
-                        {userTypes.map(userType => (
-                          <SelectItem key={userType.id} value={userType.id}>
-                            {userType.name}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="administrator">Administrador</SelectItem>
+                        <SelectItem value="salesperson">Vendedor</SelectItem>
+                        <SelectItem value="employee">Funcionário</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 
-                {isEditMode && (
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="isActive"
-                      checked={formData.isActive}
-                      onCheckedChange={(checked) => handleToggleChange('isActive', checked)}
-                    />
-                    <Label htmlFor="isActive">Usuário ativo</Label>
-                  </div>
-                )}
-                
                 {!isEditMode && (
-                  <>
-                    <Separator />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="password">Senha*</Label>
-                        <Input
-                          id="password"
-                          name="password"
-                          type="password"
-                          value={formData.password}
-                          onChange={handleInputChange}
-                          placeholder="Digite a senha"
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor="confirmPassword">Confirmar Senha*</Label>
-                        <Input
-                          id="confirmPassword"
-                          name="confirmPassword"
-                          type="password"
-                          value={formData.confirmPassword}
-                          onChange={handleInputChange}
-                          placeholder="Confirme a senha"
-                        />
-                      </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="password">Senha*</Label>
+                      <Input
+                        id="password"
+                        name="password"
+                        type="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        placeholder="Senha"
+                      />
                     </div>
-                  </>
+                    
+                    <div>
+                      <Label htmlFor="confirmPassword">Confirmar Senha*</Label>
+                      <Input
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type="password"
+                        value={formData.confirmPassword}
+                        onChange={handleInputChange}
+                        placeholder="Confirmar senha"
+                      />
+                    </div>
+                  </div>
                 )}
               </div>
             </TabsContent>
@@ -512,9 +644,9 @@ const UserManagement = () => {
             <TabsContent value="security" className="mt-4">
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="password">Nova Senha</Label>
+                  <Label htmlFor="newPassword">Nova Senha</Label>
                   <Input
-                    id="password"
+                    id="newPassword"
                     name="password"
                     type="password"
                     value={formData.password}
@@ -524,37 +656,73 @@ const UserManagement = () => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="confirmPassword">Confirmar Nova Senha</Label>
+                  <Label htmlFor="confirmNewPassword">Confirmar Nova Senha</Label>
                   <Input
-                    id="confirmPassword"
+                    id="confirmNewPassword"
                     name="confirmPassword"
                     type="password"
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
-                    placeholder="Confirme a nova senha"
+                    placeholder="Confirmar nova senha"
                   />
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="isActive"
-                    checked={formData.isActive}
-                    onCheckedChange={(checked) => handleToggleChange('isActive', checked)}
-                  />
-                  <Label htmlFor="isActive">Usuário ativo</Label>
                 </div>
               </div>
             </TabsContent>
           </Tabs>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              <X className="mr-2 h-4 w-4" />
+            <Button variant="outline" onClick={handleCloseDialog}>
               Cancelar
             </Button>
             <Button onClick={handleSaveUser} className="bg-ferplas-500 hover:bg-ferplas-600">
               <Save className="mr-2 h-4 w-4" />
               {isEditMode ? 'Salvar Alterações' : 'Adicionar Usuário'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para gerenciar permissões */}
+      <Dialog open={isPermissionsDialogOpen} onOpenChange={setIsPermissionsDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Permissões de Acesso</DialogTitle>
+            <DialogDescription>
+              Defina quais funcionalidades o usuário {selectedUser?.name} terá acesso.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {Object.entries(groupedPermissions).map(([category, permissions]) => (
+              <div key={category} className="space-y-3">
+                <h3 className="text-lg font-medium">{category}</h3>
+                <Separator />
+                
+                <div className="space-y-3">
+                  {permissions.map(permission => (
+                    <div key={permission.id} className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{permission.name}</p>
+                        <p className="text-sm text-gray-500">{permission.description}</p>
+                      </div>
+                      <Switch
+                        checked={permission.isGranted}
+                        onCheckedChange={() => handleTogglePermission(permission.id)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPermissionsDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSavePermissions} className="bg-ferplas-500 hover:bg-ferplas-600">
+              <Save className="mr-2 h-4 w-4" />
+              Salvar Permissões
             </Button>
           </DialogFooter>
         </DialogContent>
