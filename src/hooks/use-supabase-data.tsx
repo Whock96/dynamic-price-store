@@ -7,6 +7,9 @@ import { Database } from '@/integrations/supabase/types';
 // Define the table names as a union type from the Supabase schema
 type TableName = keyof Database['public']['Tables'];
 
+// Define a more specific return type for the query to avoid infinite type instantiation
+type QueryResult<T> = T[] | null;
+
 // Hook for CRUD operations with Supabase
 export function useSupabaseData<T extends Record<string, any>>(
   tableName: TableName, 
@@ -29,11 +32,12 @@ export function useSupabaseData<T extends Record<string, any>>(
     setError(null);
 
     try {
-      let query = supabase.from(tableName).select(options.select || '*');
+      // Use type casting to avoid excessive type instantiation
+      let query = supabase.from(tableName as string).select(options.select || '*');
 
       // Add join table if needed
       if (options.joinTable) {
-        // Use a type assertion to avoid the infinite type instantiation
+        // Cast to any to avoid the infinite type instantiation
         query = query.select(`*, ${options.joinTable}(*)`) as any;
       }
 
@@ -53,9 +57,10 @@ export function useSupabaseData<T extends Record<string, any>>(
         throw responseError;
       }
 
-      // Use type assertion to convert the response data
-      setData(responseData as unknown as T[]);
-      return responseData as unknown as T[];
+      // Use explicit type assertion with a simpler type
+      const typedResponse = responseData as unknown as T[];
+      setData(typedResponse);
+      return typedResponse;
     } catch (err) {
       const error = err as Error;
       setError(error);
@@ -71,7 +76,7 @@ export function useSupabaseData<T extends Record<string, any>>(
   const createRecord = async (record: Omit<T, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const { data: createdData, error: createError } = await supabase
-        .from(tableName)
+        .from(tableName as string)
         .insert(record as any)
         .select();
 
@@ -100,7 +105,7 @@ export function useSupabaseData<T extends Record<string, any>>(
       };
 
       const { data: updatedData, error: updateError } = await supabase
-        .from(tableName)
+        .from(tableName as string)
         .update(recordWithTimestamp as any)
         .eq('id', id)
         .select();
@@ -128,7 +133,7 @@ export function useSupabaseData<T extends Record<string, any>>(
   const deleteRecord = async (id: string) => {
     try {
       const { error: deleteError } = await supabase
-        .from(tableName)
+        .from(tableName as string)
         .delete()
         .eq('id', id);
 
