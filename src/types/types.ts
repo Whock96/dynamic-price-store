@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   username: string;
@@ -7,6 +6,7 @@ export interface User {
   permissions: Permission[];
   email: string;
   createdAt: Date;
+  userTypeId: string; // Add this to match database structure
 }
 
 export interface Permission {

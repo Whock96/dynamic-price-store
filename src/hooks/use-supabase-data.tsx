@@ -1,10 +1,8 @@
-
 import { useState, useEffect, useCallback } from 'react';
-import { supabase, Tables } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Database } from '@/integrations/supabase/types';
 
-// Updated to include all tables we're using in the application
+// Expand allowed table names to include all tables
 type TableName = 
   | 'products' 
   | 'customers' 
@@ -15,13 +13,11 @@ type TableName =
   | 'order_discounts' 
   | 'order_items' 
   | 'subcategories'
-  // Additional tables for user management
   | 'users'
   | 'user_types'
   | 'permissions'
   | 'user_type_permissions';
 
-// Hook genérico para operações CRUD com o Supabase
 export function useSupabaseData<T extends Record<string, any>>(
   tableName: TableName, 
   options: {
@@ -37,7 +33,7 @@ export function useSupabaseData<T extends Record<string, any>>(
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  // Fetch data from Supabase
+  // Simplified fetch data to reduce type complexity
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -62,13 +58,11 @@ export function useSupabaseData<T extends Record<string, any>>(
 
       const { data: responseData, error: responseError } = await query;
 
-      if (responseError) {
-        throw responseError;
-      }
+      if (responseError) throw responseError;
 
-      // Use type assertion to convert the response data
-      setData(responseData as unknown as T[]);
-      return responseData as unknown as T[];
+      // Type assertion to handle various table types
+      setData(responseData as T[]);
+      return responseData as T[];
     } catch (err) {
       const error = err as Error;
       setError(error);
