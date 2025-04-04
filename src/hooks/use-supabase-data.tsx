@@ -34,17 +34,18 @@ export function useSupabaseData<T extends Record<string, any>>(
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  // Simplified fetch data to reduce type complexity
+  // Simplified fetch data function with explicit type casting
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      let query = supabase.from(tableName).select(options.select || '*');
+      // Use any type to avoid TypeScript recursion issues
+      let query: any = supabase.from(tableName).select(options.select || '*');
 
       // Add join table if needed
       if (options.joinTable) {
-        query = query.select(`*, ${options.joinTable}(*)`) as any;
+        query = query.select(`*, ${options.joinTable}(*)`);
       }
 
       // Add filtering if needed
@@ -61,7 +62,7 @@ export function useSupabaseData<T extends Record<string, any>>(
 
       if (responseError) throw responseError;
 
-      // Use double type assertion to avoid recursive type checking
+      // Use explicit type casting to avoid TypeScript recursion
       setData(responseData as unknown as T[]);
       return responseData as unknown as T[];
     } catch (err) {
@@ -69,7 +70,7 @@ export function useSupabaseData<T extends Record<string, any>>(
       setError(error);
       console.error(`Error fetching data from ${tableName}:`, error);
       toast.error(`Erro ao carregar dados: ${error.message}`);
-      return null;
+      return [] as T[];
     } finally {
       setIsLoading(false);
     }
