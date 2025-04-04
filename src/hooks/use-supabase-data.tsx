@@ -32,7 +32,7 @@ export function useSupabaseData<T extends Record<string, any>>(
     setError(null);
 
     try {
-      // Use a generic approach that avoids the type issues but maintains safety
+      // Cast to any to avoid type issues
       let query = supabase
         .from(tableName)
         .select(options.select || '*') as any;
@@ -59,7 +59,7 @@ export function useSupabaseData<T extends Record<string, any>>(
         throw responseError;
       }
 
-      // Use explicit type assertion with a simpler type
+      // Use explicit type assertion
       const typedResponse = responseData as unknown as T[];
       setData(typedResponse);
       return typedResponse;
