@@ -61,9 +61,9 @@ export function useSupabaseData<T extends Record<string, any>>(
 
       if (responseError) throw responseError;
 
-      // Type assertion without recursive definitions
-      setData(responseData as T[]);
-      return responseData as T[];
+      // Use double type assertion to avoid recursive type checking
+      setData(responseData as unknown as T[]);
+      return responseData as unknown as T[];
     } catch (err) {
       const error = err as Error;
       setError(error);
@@ -89,7 +89,7 @@ export function useSupabaseData<T extends Record<string, any>>(
       fetchData();
       
       toast.success('Registro criado com sucesso');
-      return createdData?.[0] as T;
+      return createdData?.[0] as unknown as T;
     } catch (err) {
       const error = err as Error;
       console.error(`Error creating record in ${tableName}:`, error);
@@ -123,7 +123,7 @@ export function useSupabaseData<T extends Record<string, any>>(
       );
 
       toast.success('Registro atualizado com sucesso');
-      return updatedData?.[0] as T;
+      return updatedData?.[0] as unknown as T;
     } catch (err) {
       const error = err as Error;
       console.error(`Error updating record in ${tableName}:`, error);
