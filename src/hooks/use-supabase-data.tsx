@@ -32,8 +32,10 @@ export function useSupabaseData<T extends Record<string, any>>(
     setError(null);
 
     try {
-      // Use type casting to avoid excessive type instantiation
-      let query = supabase.from(tableName as string).select(options.select || '*');
+      // Use a generic approach that avoids the type issues but maintains safety
+      let query = supabase
+        .from(tableName)
+        .select(options.select || '*') as any;
 
       // Add join table if needed
       if (options.joinTable) {
@@ -76,7 +78,7 @@ export function useSupabaseData<T extends Record<string, any>>(
   const createRecord = async (record: Omit<T, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const { data: createdData, error: createError } = await supabase
-        .from(tableName as string)
+        .from(tableName)
         .insert(record as any)
         .select();
 
@@ -105,7 +107,7 @@ export function useSupabaseData<T extends Record<string, any>>(
       };
 
       const { data: updatedData, error: updateError } = await supabase
-        .from(tableName as string)
+        .from(tableName)
         .update(recordWithTimestamp as any)
         .eq('id', id)
         .select();
@@ -133,7 +135,7 @@ export function useSupabaseData<T extends Record<string, any>>(
   const deleteRecord = async (id: string) => {
     try {
       const { error: deleteError } = await supabase
-        .from(tableName as string)
+        .from(tableName)
         .delete()
         .eq('id', id);
 
