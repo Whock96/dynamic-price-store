@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { PieChart, BarChart, Users, ShoppingCart, DollarSign, Package } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,11 +7,12 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { isLoading, dashboardData } = useDashboardData();
+  const { isLoading, error, dashboardData } = useDashboardData();
 
   // Format currency to BRL
   const formatCurrency = (value: number) => {
@@ -83,6 +85,15 @@ const Dashboard = () => {
           </Button>
         ))}
       </div>
+
+      {/* Error message if data loading failed */}
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>
+            Houve um erro ao carregar os dados do dashboard. Por favor, tente novamente mais tarde.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
