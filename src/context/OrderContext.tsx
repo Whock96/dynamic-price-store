@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Order, CartItem } from '@/types/types';
 import { format } from 'date-fns';
@@ -38,8 +39,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .from('orders')
         .select(`
           *,
-          customers(*),
-          users(name)
+          customers(*)
         `)
         .order('created_at', { ascending: false });
         
@@ -86,14 +86,27 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
         }
         
+        // Fetch user info separately since there's no direct relationship in Supabase
+        let userName = 'Usuário do Sistema';
+        if (order.user_id) {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('name')
+            .eq('id', order.user_id)
+            .single();
+            
+          if (userData && userData.name) {
+            userName = userData.name;
+          }
+        }
+        
         const processedOrder = supabaseOrderToAppOrder(order, itemsData || [], discounts);
         
-        if (order.users && order.users.name) {
-          processedOrder.user = {
-            ...processedOrder.user,
-            name: order.users.name
-          };
-        }
+        // Add user name manually
+        processedOrder.user = {
+          ...processedOrder.user,
+          name: userName
+        };
         
         return processedOrder;
       }));

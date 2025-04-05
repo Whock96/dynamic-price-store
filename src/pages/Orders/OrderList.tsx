@@ -37,7 +37,6 @@ import { useOrders } from '@/context/OrderContext';
 // Define custom type that includes joined tables
 interface OrderWithCustomer extends Tables<'orders'> {
   customers: Tables<'customers'>;
-  users?: Tables<'users'>;
 }
 
 const OrderList = () => {
@@ -69,8 +68,7 @@ const OrderList = () => {
         .from('orders')
         .select(`
           *,
-          customers(*),
-          users(name)
+          customers(*)
         `)
         .order('created_at', { ascending: false });
 
@@ -119,16 +117,28 @@ const OrderList = () => {
             }
           }
           
+          // Fetch user info separately since there's no direct relationship in Supabase
+          let userName = 'Usuário do Sistema';
+          if (order.user_id) {
+            const { data: userData } = await supabase
+              .from('users')
+              .select('name')
+              .eq('id', order.user_id)
+              .single();
+              
+            if (userData && userData.name) {
+              userName = userData.name;
+            }
+          }
+          
           // Use adapter to convert Supabase order to app Order
           const appOrder = supabaseOrderToAppOrder(order, itemsData || [], discounts);
           
-          // Add salesperson name if available from the joined user table
-          if (order.users && order.users.name) {
-            appOrder.user = {
-              ...appOrder.user,
-              name: order.users.name
-            };
-          }
+          // Add salesperson name
+          appOrder.user = {
+            ...appOrder.user,
+            name: userName
+          };
           
           return appOrder;
         }));
