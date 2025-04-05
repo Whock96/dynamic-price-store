@@ -5,7 +5,7 @@ import { useSalespersonFilter } from './use-salesperson-filter';
 import { toast } from 'sonner';
 
 export function useDashboardData() {
-  const { isSalespersonType, userId, applyUserFilter, applySalesPersonFilter } = useSalespersonFilter();
+  const { isSalespersonType, userId } = useSalespersonFilter();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [dashboardData, setDashboardData] = useState({
@@ -26,38 +26,41 @@ export function useDashboardData() {
       setError(null); // Reset error state
       
       try {
-        console.log("useDashboardData - Fetching data for user:", userId);
-        console.log("useDashboardData - Is specific salesperson type:", isSalespersonType);
+        console.log("useDashboardData - Fetching data, salesperson type:", isSalespersonType, "userId:", userId);
 
         // Get customer count with filtering for specific salesperson type
         let customerQuery = supabase.from('customers').select('*', { count: 'exact', head: true });
         
         // Only apply filter if user is specific salesperson type
         if (isSalespersonType && userId) {
-          console.log("useDashboardData - Applying sales_person_id filter for customers:", userId);
           customerQuery = customerQuery.eq('sales_person_id', userId);
-        } else {
-          console.log("useDashboardData - Not applying filter for customers, showing all");
         }
         
         const { count: customerCount, error: customerError } = await customerQuery;
         
-        if (customerError) throw customerError;
+        if (customerError) {
+          console.error("Customer query error:", customerError);
+          throw customerError;
+        }
+
+        console.log("useDashboardData - Customer count:", customerCount);
 
         // Get order count and total sales with filtering
         let ordersQuery = supabase.from('orders').select('*');
         
         // Only apply filter if user is specific salesperson type
         if (isSalespersonType && userId) {
-          console.log("useDashboardData - Applying user_id filter for orders:", userId);
           ordersQuery = ordersQuery.eq('user_id', userId);
-        } else {
-          console.log("useDashboardData - Not applying filter for orders, showing all");
         }
         
         const { data: orders, error: ordersError } = await ordersQuery;
         
-        if (ordersError) throw ordersError;
+        if (ordersError) {
+          console.error("Orders query error:", ordersError);
+          throw ordersError;
+        }
+        
+        console.log("useDashboardData - Orders retrieved:", orders?.length || 0);
         
         const totalSales = orders?.reduce((sum, order) => sum + (order.total || 0), 0) || 0;
         const orderCount = orders?.length || 0;
@@ -67,7 +70,12 @@ export function useDashboardData() {
           .from('products')
           .select('*', { count: 'exact', head: true });
           
-        if (productError) throw productError;
+        if (productError) {
+          console.error("Products query error:", productError);
+          throw productError;
+        }
+
+        console.log("useDashboardData - Product count:", productCount);
 
         // Get recent orders with customer info
         let recentOrdersQuery = supabase
@@ -85,23 +93,18 @@ export function useDashboardData() {
           
         // Only apply filter if user is specific salesperson type
         if (isSalespersonType && userId) {
-          console.log("useDashboardData - Applying user_id filter for recent orders:", userId);
           recentOrdersQuery = recentOrdersQuery.eq('user_id', userId);
-        } else {
-          console.log("useDashboardData - Not applying filter for recent orders, showing all");
         }
         
         const { data: recentOrders, error: recentOrdersError } = await recentOrdersQuery;
         
-        if (recentOrdersError) throw recentOrdersError;
+        if (recentOrdersError) {
+          console.error("Recent orders query error:", recentOrdersError);
+          throw recentOrdersError;
+        }
 
-        console.log("useDashboardData - Data fetched successfully:", {
-          customerCount,
-          orderCount,
-          totalSales,
-          recentOrdersCount: recentOrders?.length || 0
-        });
-
+        console.log("useDashboardData - Recent orders retrieved:", recentOrders?.length || 0);
+        
         if (isMounted) {
           setDashboardData({
             totalSales,
