@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -51,6 +52,9 @@ const OrderList = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [directFetchRequired, setDirectFetchRequired] = useState(false);
 
+  // Verificação para identificar se o usuário é do tipo vendedor específico
+  const isSalespersonType = currentUser?.userTypeId === 'c5ee0433-3faf-46a4-a516-be7261bfe575';
+
   // Use orders from context but fetch directly if needed
   useEffect(() => {
     if (!contextLoading && contextOrders.length > 0) {
@@ -61,11 +65,14 @@ const OrderList = () => {
         userName: o.user?.name 
       })));
       
-      // SOLUÇÃO AQUI - Implementando filtragem rigorosa para garantir que vendedores só vejam seus próprios pedidos
+      // Implementando filtragem rigorosa específica para o tipo de vendedor com UUID c5ee0433-3faf-46a4-a516-be7261bfe575
       let ordersToDisplay = [...contextOrders];
       
-      if (currentUser?.role === 'salesperson' && currentUser?.id) {
-        console.log("OrderList - Filtragem rigorosa para vendedor:", currentUser.id, "(tipo:", typeof currentUser.id, ")");
+      console.log("OrderList - Tipo de usuário do vendedor:", currentUser?.userTypeId);
+      console.log("OrderList - É vendedor específico:", isSalespersonType);
+      
+      if (isSalespersonType && currentUser?.id) {
+        console.log("OrderList - Filtragem RIGOROSA para vendedor ESPECÍFICO:", currentUser.id, "(tipo:", typeof currentUser.id, ")");
         console.log("Antes da filtragem:", ordersToDisplay.length, "pedidos");
         
         const currentUserIdStr = String(currentUser.id);
@@ -79,7 +86,25 @@ const OrderList = () => {
           return matches;
         });
         
-        console.log("Após filtragem rigorosa:", ordersToDisplay.length, "pedidos");
+        console.log("Após filtragem rigorosa para vendedor específico:", ordersToDisplay.length, "pedidos");
+      }
+      // Manter filtragem por role para compatibilidade
+      else if (currentUser?.role === 'salesperson' && currentUser?.id) {
+        console.log("OrderList - Filtragem padrão para vendedor (role):", currentUser.id, "(tipo:", typeof currentUser.id, ")");
+        console.log("Antes da filtragem:", ordersToDisplay.length, "pedidos");
+        
+        const currentUserIdStr = String(currentUser.id);
+        
+        ordersToDisplay = ordersToDisplay.filter(order => {
+          const orderUserIdStr = String(order.userId);
+          const matches = orderUserIdStr === currentUserIdStr;
+          
+          console.log(`OrderList - Comparando pedido #${order.orderNumber}: ID do vendedor ${orderUserIdStr} vs ID do usuário atual ${currentUserIdStr} = ${matches}`);
+          
+          return matches;
+        });
+        
+        console.log("Após filtragem padrão para vendedor:", ordersToDisplay.length, "pedidos");
       }
       
       setOrders(ordersToDisplay);
@@ -91,7 +116,7 @@ const OrderList = () => {
       console.log("Context has no orders, setting direct fetch required");
       setDirectFetchRequired(true);
     }
-  }, [contextOrders, contextLoading, currentUser]);
+  }, [contextOrders, contextLoading, currentUser, isSalespersonType]);
 
   // Only fetch directly when necessary and when context has finished loading
   useEffect(() => {
@@ -104,7 +129,7 @@ const OrderList = () => {
   const fetchOrders = async () => {
     setIsLoading(true);
     try {
-      // SOLUÇÃO AQUI - Garantindo que a consulta seja filtrada corretamente
+      // Garantindo que a consulta seja filtrada corretamente para vendedor específico ou role vendedor
       let query = supabase
         .from('orders')
         .select(`
@@ -112,9 +137,18 @@ const OrderList = () => {
           customers(*)
         `);
       
-      if (currentUser?.role === 'salesperson' && currentUser?.id) {
+      // Filtragem específica para o tipo de vendedor com UUID c5ee0433-3faf-46a4-a516-be7261bfe575
+      if (isSalespersonType && currentUser?.id) {
         const currentUserIdStr = String(currentUser.id);
-        console.log("OrderList - Filtrando consulta Supabase para vendedor:", currentUserIdStr);
+        console.log("OrderList - Filtrando consulta Supabase para vendedor ESPECÍFICO:", currentUserIdStr);
+        
+        // Garantindo que estamos usando string para o filtro
+        query = query.eq('user_id', currentUserIdStr);
+      }
+      // Filtragem por role para compatibilidade
+      else if (currentUser?.role === 'salesperson' && currentUser?.id) {
+        const currentUserIdStr = String(currentUser.id);
+        console.log("OrderList - Filtrando consulta Supabase para vendedor (role):", currentUserIdStr);
         
         // Garantindo que estamos usando string para o filtro
         query = query.eq('user_id', currentUserIdStr);
@@ -169,7 +203,7 @@ const OrderList = () => {
             }
           }
           
-          // SOLUÇÃO AQUI - Garantindo que o nome do usuário seja recuperado corretamente
+          // Garantindo que o nome do usuário seja recuperado corretamente
           let userName = null;
           if (order.user_id) {
             console.log("OrderList - Verificando ID de usuário:", order.user_id, "(tipo:", typeof order.user_id, ")");
@@ -225,20 +259,37 @@ const OrderList = () => {
         // Verificação adicional de filtragem - SOLUÇÃO AQUI
         let finalOrders = [...processedOrders];
         
-        if (currentUser?.role === 'salesperson' && currentUser?.id) {
+        // Filtragem adicional especificamente para vendedor com UUID c5ee0433-3faf-46a4-a516-be7261bfe575
+        if (isSalespersonType && currentUser?.id) {
           const currentUserIdStr = String(currentUser.id);
-          console.log("OrderList - Aplicando filtragem final para vendedor:", currentUserIdStr);
+          console.log("OrderList - Aplicando filtragem final para vendedor ESPECÍFICO:", currentUserIdStr);
           
           finalOrders = finalOrders.filter(order => {
             const orderUserIdStr = String(order.userId);
             const matches = orderUserIdStr === currentUserIdStr;
             
-            console.log(`OrderList - Filtragem final: pedido #${order.orderNumber}, userID ${orderUserIdStr} vs ${currentUserIdStr} = ${matches}`);
+            console.log(`OrderList - Filtragem final específica: pedido #${order.orderNumber}, userID ${orderUserIdStr} vs ${currentUserIdStr} = ${matches}`);
             
             return matches;
           });
           
-          console.log(`OrderList - Resultado final: ${finalOrders.length} de ${processedOrders.length} pedidos`);
+          console.log(`OrderList - Resultado final da filtragem específica: ${finalOrders.length} de ${processedOrders.length} pedidos`);
+        }
+        // Manter filtragem por role para compatibilidade
+        else if (currentUser?.role === 'salesperson' && currentUser?.id) {
+          const currentUserIdStr = String(currentUser.id);
+          console.log("OrderList - Aplicando filtragem final para vendedor (role):", currentUserIdStr);
+          
+          finalOrders = finalOrders.filter(order => {
+            const orderUserIdStr = String(order.userId);
+            const matches = orderUserIdStr === currentUserIdStr;
+            
+            console.log(`OrderList - Filtragem final padrão: pedido #${order.orderNumber}, userID ${orderUserIdStr} vs ${currentUserIdStr} = ${matches}`);
+            
+            return matches;
+          });
+          
+          console.log(`OrderList - Resultado final da filtragem padrão: ${finalOrders.length} de ${processedOrders.length} pedidos`);
         }
         
         setOrders(finalOrders);

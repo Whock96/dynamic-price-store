@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -16,6 +17,9 @@ export function useOrderData(orderId: string | undefined) {
   const [error, setError] = useState<Error | null>(null);
   const { getOrderById } = useOrders();
   const { user: currentUser } = useAuth();
+  
+  // Verificação para identificar se o usuário é do tipo vendedor específico
+  const isSalespersonType = currentUser?.userTypeId === 'c5ee0433-3faf-46a4-a516-be7261bfe575';
 
   const fetchOrderData = useCallback(async () => {
     if (!orderId) {
@@ -32,9 +36,22 @@ export function useOrderData(orderId: string | undefined) {
       if (contextOrder) {
         console.log("Found order in context:", contextOrder);
         
-        // Check if the current user is a salesperson and if this order belongs to them
-        // Always convert to string for comparison to avoid type issues
-        if (currentUser?.role === 'salesperson' && String(contextOrder.userId) !== String(currentUser.id)) {
+        // Verificação específica para o tipo de vendedor com UUID c5ee0433-3faf-46a4-a516-be7261bfe575
+        if (isSalespersonType && currentUser?.id) {
+          console.log("User is a specific salesperson type checking order permission");
+          
+          // Always convert to string for comparison to avoid type issues
+          if (String(contextOrder.userId) !== String(currentUser.id)) {
+            console.log("User is a specific salesperson type but this order belongs to another user");
+            console.log(`Order user ID: ${contextOrder.userId} (${typeof contextOrder.userId}) vs Current user ID: ${currentUser.id} (${typeof currentUser.id})`);
+            setError(new Error('Você não tem permissão para visualizar este pedido'));
+            setOrder(null);
+            setIsLoading(false);
+            return;
+          }
+        }
+        // Verificação por role para compatibilidade
+        else if (currentUser?.role === 'salesperson' && String(contextOrder.userId) !== String(currentUser.id)) {
           console.log("User is a salesperson but this order belongs to another salesperson");
           console.log(`Order user ID: ${contextOrder.userId} (${typeof contextOrder.userId}) vs Current user ID: ${currentUser.id} (${typeof currentUser.id})`);
           setError(new Error('Você não tem permissão para visualizar este pedido'));
@@ -51,7 +68,7 @@ export function useOrderData(orderId: string | undefined) {
 
       console.log("Order not found in context, fetching from Supabase");
       
-      // SOLUÇÃO AQUI - Garantir uso consistente de strings para IDs de usuário
+      // Garantir uso consistente de strings para IDs de usuário
       let query = supabase
         .from('orders')
         .select(`
@@ -60,10 +77,16 @@ export function useOrderData(orderId: string | undefined) {
         `)
         .eq('id', orderId);
       
-      // If the user is a salesperson, ensure they can only see their own orders
-      if (currentUser?.role === 'salesperson' && currentUser?.id) {
+      // Verificação específica para o tipo de vendedor com UUID c5ee0433-3faf-46a4-a516-be7261bfe575
+      if (isSalespersonType && currentUser?.id) {
         const currentUserIdStr = String(currentUser.id);
-        console.log("useOrderData - Restringindo acesso a pedidos para vendedor:", currentUserIdStr);
+        console.log("useOrderData - Restringindo acesso a pedidos para vendedor ESPECÍFICO:", currentUserIdStr);
+        query = query.eq('user_id', currentUserIdStr);
+      }
+      // Verificação por role para compatibilidade
+      else if (currentUser?.role === 'salesperson' && currentUser?.id) {
+        const currentUserIdStr = String(currentUser.id);
+        console.log("useOrderData - Restringindo acesso a pedidos para vendedor (role):", currentUserIdStr);
         query = query.eq('user_id', currentUserIdStr);
       }
       
@@ -72,7 +95,7 @@ export function useOrderData(orderId: string | undefined) {
       if (orderError) {
         if (orderError.code === 'PGRST116') {
           // This is the "no rows returned" error
-          if (currentUser?.role === 'salesperson') {
+          if (isSalespersonType || currentUser?.role === 'salesperson') {
             throw new Error('Você não tem permissão para visualizar este pedido');
           } else {
             throw new Error('Pedido não encontrado');
@@ -117,7 +140,7 @@ export function useOrderData(orderId: string | undefined) {
         }
       }
       
-      // SOLUÇÃO AQUI - Melhorando a verificação do usuário
+      // Melhorando a verificação do usuário
       let userName = null;
       
       if (orderData && orderData.user_id) {
@@ -160,9 +183,22 @@ export function useOrderData(orderId: string | undefined) {
       console.log("useOrderData - Processed order with user:", processedOrder.user);
       setOrder(processedOrder);
       
-      // Verificação final - SOLUÇÃO AQUI
-      // Se o usuário é um vendedor, verificar novamente se o pedido pertence a ele
-      if (currentUser?.role === 'salesperson' && currentUser?.id) {
+      // Verificação final
+      // Verificação específica para o tipo de vendedor com UUID c5ee0433-3faf-46a4-a516-be7261bfe575
+      if (isSalespersonType && currentUser?.id) {
+        const orderUserIdStr = String(orderData.user_id);
+        const currentUserIdStr = String(currentUser.id);
+        
+        if (orderUserIdStr !== currentUserIdStr) {
+          console.log(`useOrderData - BLOQUEANDO acesso: pedido pertence a ${orderUserIdStr}, não ao usuário atual ${currentUserIdStr}`);
+          setError(new Error('Você não tem permissão para visualizar este pedido'));
+          setOrder(null);
+          setIsLoading(false);
+          return;
+        }
+      }
+      // Verificação por role para compatibilidade
+      else if (currentUser?.role === 'salesperson' && currentUser?.id) {
         const orderUserIdStr = String(orderData.user_id);
         const currentUserIdStr = String(currentUser.id);
         
@@ -182,7 +218,7 @@ export function useOrderData(orderId: string | undefined) {
     } finally {
       setIsLoading(false);
     }
-  }, [orderId, getOrderById, currentUser]);
+  }, [orderId, getOrderById, currentUser, isSalespersonType]);
 
   useEffect(() => {
     fetchOrderData();

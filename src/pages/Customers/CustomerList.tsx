@@ -20,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useCustomers } from '@/context/CustomerContext';
 import { supabase } from '@/integrations/supabase/client';
 import { adaptUserData } from '@/utils/adapters';
@@ -38,6 +37,9 @@ const CustomerList = () => {
   const [hasRefreshed, setHasRefreshed] = useState(false);
   const [filteredCustomers, setFilteredCustomers] = useState<Array<any>>([]);
   const { user } = useAuth();
+
+  // Verificação para identificar se o usuário é do tipo vendedor específico
+  const isSalespersonType = user?.userTypeId === 'c5ee0433-3faf-46a4-a516-be7261bfe575';
 
   useEffect(() => {
     // Fetch salespeople from the database
@@ -85,15 +87,42 @@ const CustomerList = () => {
 
   useEffect(() => {
     // Filter customers based on search, city, and salesperson filters
-    // If user is a salesperson (role === 'salesperson'), only show their customers
+    // Se o usuário é do tipo vendedor específico (c5ee0433-3faf-46a4-a516-be7261bfe575),
+    // aplicamos a filtragem rigorosa
     let filtered = [...customers];
     
-    // Check if the current user is a salesperson
-    const isSalesperson = user?.role === 'salesperson';
+    console.log('CustomerList - Filtrando clientes. User:', user);
+    console.log('CustomerList - Tipo de usuário do vendedor:', user?.userTypeId);
+    console.log('CustomerList - É vendedor específico:', isSalespersonType);
     
-    if (isSalesperson && user?.id) {
+    // Verificação mais rigorosa para o tipo específico de vendedor
+    if (isSalespersonType && user?.id) {
+      console.log('CustomerList - Aplicando filtro rigoroso para vendedor com ID:', user.id);
+      
+      // Converter para string para garantir comparação consistente
+      const currentUserIdStr = String(user.id);
+      
+      // Filtrar para mostrar apenas clientes atribuídos a este vendedor
+      filtered = filtered.filter(customer => {
+        const customerSalesPersonIdStr = String(customer.salesPersonId);
+        const matches = customerSalesPersonIdStr === currentUserIdStr;
+        
+        console.log(`CustomerList - Comparando cliente ${customer.companyName}: ID do vendedor ${customerSalesPersonIdStr} vs ID do usuário atual ${currentUserIdStr} = ${matches}`);
+        
+        return matches;
+      });
+      
+      console.log(`CustomerList - Após filtragem rigorosa: ${filtered.length} de ${customers.length} clientes`);
+    } 
+    // Verificação padrão para usuários com role = salesperson (mantida para compatibilidade)
+    else if (user?.role === 'salesperson' && user?.id) {
+      console.log('CustomerList - Aplicando filtro padrão para vendedor (role):', user.id);
+      
       // Filter to only show customers assigned to this salesperson
-      filtered = filtered.filter(customer => customer.salesPersonId === user.id);
+      filtered = filtered.filter(customer => {
+        const matches = customer.salesPersonId === user.id;
+        return matches;
+      });
     }
     
     // Apply other filters
@@ -107,7 +136,7 @@ const CustomerList = () => {
     });
     
     setFilteredCustomers(filtered);
-  }, [customers, searchQuery, cityFilter, salesPersonFilter, user]);
+  }, [customers, searchQuery, cityFilter, salesPersonFilter, user, isSalespersonType]);
 
   const uniqueCities = Array.from(new Set(customers.map(c => c.city))).sort();
 

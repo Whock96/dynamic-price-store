@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Order, CartItem } from '@/types/types';
 import { format } from 'date-fns';
@@ -28,10 +27,14 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
+  const isSalespersonType = user?.userTypeId === 'c5ee0433-3faf-46a4-a516-be7261bfe575';
+  
   useEffect(() => {
     console.log("OrderContext - User changed, refetching orders:", user);
+    console.log("OrderContext - Tipo de usuário do vendedor:", user?.userTypeId);
+    console.log("OrderContext - É vendedor específico:", isSalespersonType);
     fetchOrders();
-  }, [user]);
+  }, [user, isSalespersonType]);
   
   const fetchOrders = async () => {
     setIsLoading(true);
@@ -43,15 +46,20 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           customers(*)
         `);
       
-      // Reforçando a filtragem para vendedores - SOLUÇÃO AQUI
-      if (user?.role === 'salesperson' && user?.id) {
-        console.log("OrderContext - Filtrando pedidos ESTRITAMENTE para vendedor:", user.id, "(tipo:", typeof user.id, ")");
+      if (isSalespersonType && user?.id) {
+        console.log("OrderContext - Filtrando pedidos ESTRITAMENTE para vendedor ESPECÍFICO:", user.id, "(tipo:", typeof user.id, ")");
         
-        // Convertemos o user.id para string para garantir consistência
         const userIdStr = String(user.id);
         console.log("OrderContext - ID do usuário convertido para string:", userIdStr);
         
-        // Aplicando filtro no Supabase
+        query = query.eq('user_id', userIdStr);
+      }
+      else if (user?.role === 'salesperson' && user?.id) {
+        console.log("OrderContext - Filtrando pedidos para vendedor (role):", user.id, "(tipo:", typeof user.id, ")");
+        
+        const userIdStr = String(user.id);
+        console.log("OrderContext - ID do usuário convertido para string:", userIdStr);
+        
         query = query.eq('user_id', userIdStr);
       }
       
@@ -105,7 +113,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (order.user_id) {
           console.log("OrderContext - Verificando ID de usuário do pedido:", order.user_id, "(tipo:", typeof order.user_id, ")");
 
-          // Reforçando a comparação entre strings
           if (user && String(user.id) === String(order.user_id)) {
             userName = user.name;
             console.log("OrderContext - Usando nome do usuário atual para o pedido:", userName);
@@ -137,7 +144,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           };
         }
         
-        // Anotando o ID do usuário do pedido para debugging
         console.log("OrderContext - Pedido processado para usuário:", {
           orderId: processedOrder.id,
           orderNumber: processedOrder.orderNumber,
@@ -148,12 +154,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return processedOrder;
       }));
       
-      // Verificação adicional - SOLUÇÃO AQUI
       let filteredOrders = [...processedOrders];
       
-      if (user?.role === 'salesperson' && user?.id) {
-        // Filtrando novamente aqui, no lado do cliente, para garantir
-        console.log("OrderContext - Filtrando novamente pedidos para vendedor após processamento");
+      if (isSalespersonType && user?.id) {
+        console.log("OrderContext - Filtrando novamente pedidos para vendedor ESPECÍFICO após processamento");
         
         const userIdStr = String(user.id);
         filteredOrders = filteredOrders.filter(order => {
@@ -165,7 +169,22 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           return matches;
         });
         
-        console.log(`OrderContext - Resultado da filtragem: ${filteredOrders.length} de ${processedOrders.length} pedidos`);
+        console.log(`OrderContext - Resultado da filtragem específica: ${filteredOrders.length} de ${processedOrders.length} pedidos`);
+      }
+      else if (user?.role === 'salesperson' && user?.id) {
+        console.log("OrderContext - Filtrando novamente pedidos para vendedor (role) após processamento");
+        
+        const userIdStr = String(user.id);
+        filteredOrders = filteredOrders.filter(order => {
+          const orderUserId = String(order.userId);
+          const matches = orderUserId === userIdStr;
+          
+          console.log(`OrderContext - Comparando: pedido ${order.orderNumber}, userID ${orderUserId} vs ${userIdStr} = ${matches}`);
+          
+          return matches;
+        });
+        
+        console.log(`OrderContext - Resultado da filtragem padrão: ${filteredOrders.length} de ${processedOrders.length} pedidos`);
       }
       
       setOrders(filteredOrders);
@@ -407,8 +426,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     console.log(`Fetching order with ID: ${id}`);
     console.log(`Current orders in state:`, orders.map(o => ({ id: o.id, number: o.orderNumber, user: o.user })));
     
-    // If user is a salesperson, make sure they can only get their own orders
-    if (user?.role === 'salesperson' && user?.id) {
+    if (isSalespersonType && user?.id) {
       const foundOrder = orders.find(order => order.id === id);
       
       if (!foundOrder) {
@@ -416,7 +434,22 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return undefined;
       }
       
-      // Convert both to strings for comparison
+      if (String(foundOrder.userId) !== String(user.id)) {
+        console.error(`Order with ID ${id} belongs to user ${foundOrder.userId}, not current user ${user.id}`);
+        return undefined;
+      }
+      
+      console.log(`Found order for specific salesperson type:`, foundOrder);
+      return foundOrder;
+    }
+    else if (user?.role === 'salesperson' && user?.id) {
+      const foundOrder = orders.find(order => order.id === id);
+      
+      if (!foundOrder) {
+        console.error(`Order with ID ${id} not found in state`);
+        return undefined;
+      }
+      
       if (String(foundOrder.userId) !== String(user.id)) {
         console.error(`Order with ID ${id} belongs to user ${foundOrder.userId}, not current user ${user.id}`);
         return undefined;
@@ -426,7 +459,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return foundOrder;
     }
     
-    // For non-salespeople, return any order
     const foundOrder = orders.find(order => order.id === id);
     
     if (!foundOrder) {
