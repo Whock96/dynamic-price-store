@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Shield, Search, Plus, Edit, Trash2, ArrowLeft, Save,
@@ -58,12 +58,10 @@ interface UserTypeWithDates extends UserType {
   createdAt: Date;
   updatedAt: Date;
   is_active?: boolean;
-  // Add Supabase snake_case formats for compatibility
   created_at?: string;
   updated_at?: string;
 }
 
-// Define page groups with their associated permissions
 const PAGE_GROUPS = [
   {
     id: 'dashboard',
@@ -146,6 +144,14 @@ const UserTypeManagement = () => {
     isActive: true,
   });
 
+  const userTypesOptions = useMemo(() => ({
+    orderBy: { column: 'name', ascending: true }
+  }), []);
+
+  const permissionsOptions = useMemo(() => ({
+    orderBy: { column: 'name', ascending: true }
+  }), []);
+
   const { 
     data: userTypesRaw, 
     isLoading, 
@@ -153,25 +159,23 @@ const UserTypeManagement = () => {
     createRecord: createUserType,
     updateRecord: updateUserType,
     deleteRecord: deleteUserType
-  } = useSupabaseData<UserTypeWithDates>('user_types', {
-    orderBy: { column: 'name', ascending: true }
-  });
+  } = useSupabaseData<UserTypeWithDates>('user_types', userTypesOptions);
 
-  const userTypes = userTypesRaw.map(userType => {
-    return {
-      ...userType,
-      createdAt: userType.createdAt || (userType.created_at ? new Date(userType.created_at) : new Date()),
-      updatedAt: userType.updatedAt || (userType.updated_at ? new Date(userType.updated_at) : new Date()),
-    };
-  });
+  const userTypes = useMemo(() => {
+    return userTypesRaw.map(userType => {
+      return {
+        ...userType,
+        createdAt: userType.createdAt || (userType.created_at ? new Date(userType.created_at) : new Date()),
+        updatedAt: userType.updatedAt || (userType.updated_at ? new Date(userType.updated_at) : new Date()),
+      };
+    });
+  }, [userTypesRaw]);
 
   const {
     data: allPermissions,
     isLoading: isLoadingPermissions,
     fetchData: fetchAllPermissions
-  } = useSupabaseData<Permission>('permissions', {
-    orderBy: { column: 'name', ascending: true }
-  });
+  } = useSupabaseData<Permission>('permissions', permissionsOptions);
 
   useEffect(() => {
     if (!hasPermission('user_types_manage')) {
@@ -420,10 +424,12 @@ const UserTypeManagement = () => {
     }
   };
 
-  const filteredUserTypes = userTypes.filter(userType => {
-    return userType.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-           (userType.description || '').toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  const filteredUserTypes = useMemo(() => {
+    return userTypes.filter(userType => {
+      return userType.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (userType.description || '').toLowerCase().includes(searchQuery.toLowerCase());
+    });
+  }, [userTypes, searchQuery]);
 
   const findPermissionByCode = (code: string) => {
     return selectedPermissions.find(p => p.code === code);

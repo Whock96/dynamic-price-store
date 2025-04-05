@@ -35,11 +35,13 @@ export function useSupabaseData<T extends Record<string, any>>(
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const previousOptionsRef = useRef(options);
+  const initialFetchRef = useRef(false);
 
   // Simplified fetch data function with explicit type casting
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    console.log(`Fetching data from ${tableName} table...`);
 
     try {
       // Use any type to avoid TypeScript recursion issues
@@ -73,6 +75,7 @@ export function useSupabaseData<T extends Record<string, any>>(
 
       if (responseError) throw responseError;
 
+      console.log(`Successfully fetched ${responseData.length} records from ${tableName}`);
       // Use explicit type casting to avoid TypeScript recursion
       setData(responseData as unknown as T[]);
       return responseData as unknown as T[];
@@ -304,7 +307,7 @@ export function useSupabaseData<T extends Record<string, any>>(
   }, [data]);
 
   // Função para verificar se as opções mudaram
-  const haveOptionsChanged = () => {
+  const haveOptionsChanged = useCallback(() => {
     const prev = previousOptionsRef.current;
     
     // Comparação simples das propriedades chave que afetam a consulta
@@ -316,27 +319,28 @@ export function useSupabaseData<T extends Record<string, any>>(
       options.select !== prev.select ||
       options.joinTable !== prev.joinTable
     );
-  };
+  }, [options]);
 
   // Initial data fetch
   useEffect(() => {
-    fetchData();
-    // Update the reference to the new options after fetching
-    previousOptionsRef.current = { ...options };
-    
-    // We only include tableName in the dependency array to prevent infinite loops
-    // Options are handled manually through the haveOptionsChanged check
-  }, [tableName, fetchData]);
-
-  // This separate effect handles option changes
-  useEffect(() => {
-    // Only fetch if options have actually changed
-    if (haveOptionsChanged()) {
+    // Only fetch if this is the first render or if the table name changes
+    if (!initialFetchRef.current || previousOptionsRef.current !== options) {
+      console.log(`Initial fetch for ${tableName} - initialFetchRef: ${initialFetchRef.current}`);
       fetchData();
-      // Update the reference to the new options
+      initialFetchRef.current = true;
+      previousOptionsRef.current = options;
+    }
+  }, [tableName, fetchData, options]);
+
+  // This separate effect handles significant option changes
+  useEffect(() => {
+    // Skip the initial render since the first effect handles it
+    if (initialFetchRef.current && haveOptionsChanged()) {
+      console.log(`Options changed for ${tableName}, re-fetching data`);
+      fetchData();
       previousOptionsRef.current = { ...options };
     }
-  }, [options.filterKey, options.filterValue, options.isActive, fetchData]);
+  }, [options.filterKey, options.filterValue, options.isActive, fetchData, tableName, haveOptionsChanged]);
 
   return {
     data,

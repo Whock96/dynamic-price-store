@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -96,6 +97,19 @@ const UserManagement = () => {
     isActive: true,
   });
 
+  // Use memoized options object to prevent unnecessary re-renders
+  const userQueryOptions = {
+    select: `
+      *,
+      user_type:user_types(*)
+    `,
+    orderBy: { column: 'name', ascending: true }
+  };
+
+  const userTypeQueryOptions = {
+    orderBy: { column: 'name', ascending: true }
+  };
+
   const { 
     data: users, 
     isLoading: isLoadingUsers, 
@@ -103,20 +117,12 @@ const UserManagement = () => {
     createRecord: createUser,
     updateRecord: updateUser,
     deleteRecord: deleteUser
-  } = useSupabaseData<UserData>('users', {
-    select: `
-      *,
-      user_type:user_types(*)
-    `,
-    orderBy: { column: 'name', ascending: true }
-  });
+  } = useSupabaseData<UserData>('users', userQueryOptions);
 
   const { 
     data: userTypes, 
     isLoading: isLoadingUserTypes 
-  } = useSupabaseData<UserTypeOption>('user_types', {
-    orderBy: { column: 'name', ascending: true }
-  });
+  } = useSupabaseData<UserTypeOption>('user_types', userTypeQueryOptions);
 
   useEffect(() => {
     if (!hasPermission('users_manage')) {
