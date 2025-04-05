@@ -75,7 +75,7 @@ type ProductFormData = {
 
 const ProductManagement = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -124,11 +124,18 @@ const ProductManagement = () => {
   } = useSupabaseData<Subcategory>('subcategories');
 
   useEffect(() => {
-    if (user?.role !== 'administrator') {
+    console.log("ProductManagement - User:", user);
+    console.log("ProductManagement - Has products_manage permission:", hasPermission('products_manage'));
+    
+    const isAdmin = user?.role?.toLowerCase() === 'administrator';
+    console.log("ProductManagement - User is administrator:", isAdmin);
+    
+    if (!isAdmin && !hasPermission('products_manage')) {
       toast.error('Você não tem permissão para acessar esta página');
       navigate('/dashboard');
+      return;
     }
-  }, [user, navigate]);
+  }, [user, navigate, hasPermission]);
 
   useEffect(() => {
     if (productsError) toast.error(`Erro ao carregar produtos: ${productsError.message}`);

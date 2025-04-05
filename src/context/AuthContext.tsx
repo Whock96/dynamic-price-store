@@ -242,15 +242,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Fetch permissions for this user type
       const permissions = await fetchUserTypePermissions(userData.user_type.id);
       
-      // Ensure the role is one of the allowed values
-      const userRole = userData.user_type.name as 'administrator' | 'salesperson' | 'billing' | 'inventory';
+      // Ensure the role is one of the allowed values - normalize to lowercase for case-insensitive comparison
+      let userRole = userData.user_type.name.toLowerCase();
+      
+      // Map 'administrador' (Portuguese) to 'administrator' (English) if needed
+      if (userRole === 'administrador') {
+        userRole = 'administrator';
+      }
       
       // Update user in state and localStorage
       const updatedUser: UserType = {
         ...user,
-        role: userRole,
+        role: userRole as 'administrator' | 'salesperson' | 'billing' | 'inventory',
         permissions: permissions,
       };
+      
+      console.log("Updated user role:", updatedUser.role);
+      console.log("User permissions:", permissions);
       
       setUser(updatedUser);
       localStorage.setItem('ferplas_user', JSON.stringify(updatedUser));
@@ -363,17 +371,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const hasPermission = (permissionCode: string) => {
     if (!user || !user.permissions) return false;
     
-    // Admin has all permissions
-    if (user.role === 'administrator') return true;
+    // Added more logging to diagnose permission issues
+    console.log(`Checking permission ${permissionCode} for user with role ${user.role}`);
     
-    return user.permissions.some(p => p.code === permissionCode && p.isGranted);
+    // Admin has all permissions - perform case-insensitive comparison
+    if (user.role.toLowerCase() === 'administrator') {
+      console.log("User is administrator - granting all permissions");
+      return true;
+    }
+    
+    // For other roles, check if they have the required permission
+    const hasPermAccess = user.permissions.some(p => p.code === permissionCode && p.isGranted);
+    console.log(`Permission ${permissionCode} access:`, hasPermAccess);
+    
+    return hasPermAccess;
   };
 
   const checkAccess = (menuPath: string) => {
     if (!user) return false;
     
-    // Admin has access to everything
-    if (user.role === 'administrator') return true;
+    // Added more logging to diagnose access control issues
+    console.log(`Checking access to ${menuPath} for user with role ${user.role}`);
+    
+    // Admin has access to everything - perform case-insensitive comparison
+    if (user.role.toLowerCase() === 'administrator') {
+      console.log("User is administrator - granting access to all paths");
+      return true;
+    }
     
     // For other roles, check if they have the required permission for this path
     for (const [permCode, paths] of Object.entries(PERMISSION_MENU_MAP)) {
@@ -389,6 +413,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       if (matchesPath && hasPermission(permCode)) {
+        console.log(`Access granted to ${menuPath} via permission ${permCode}`);
         return true;
       }
     }
@@ -404,6 +429,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return path === menuPath;
     });
     
+    console.log(`Path ${menuPath} is ${isPathMapped ? 'mapped' : 'not mapped'} in permission system`);
     return !isPathMapped;
   };
 

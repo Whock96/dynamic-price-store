@@ -23,7 +23,7 @@ export enum DialogType {
 
 const CategoryManagement = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const { 
     categories, 
     isLoading, 
@@ -57,7 +57,15 @@ const CategoryManagement = () => {
   });
 
   useEffect(() => {
-    if (user?.role !== 'administrator') {
+    // Added additional logging to debug permissions
+    console.log("CategoryManagement - User:", user);
+    console.log("CategoryManagement - Has categories_manage permission:", hasPermission('categories_manage'));
+    
+    // Verify the user role directly to ensure administrators always have access
+    const isAdmin = user?.role?.toLowerCase() === 'administrator';
+    console.log("CategoryManagement - User is administrator:", isAdmin);
+    
+    if (!isAdmin && !hasPermission('categories_manage')) {
       toast.error('Você não tem permissão para acessar esta página');
       navigate('/dashboard');
       return;
