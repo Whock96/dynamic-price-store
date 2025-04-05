@@ -29,17 +29,24 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [user]);
   
   const fetchOrders = async () => {
     setIsLoading(true);
     try {
-      const { data: ordersData, error: ordersError } = await supabase
+      let query = supabase
         .from('orders')
         .select(`
           *,
           customers(*)
-        `)
+        `);
+      
+      if (user?.role === 'salesperson' && user?.id) {
+        console.log("OrderContext - Filtering orders for salesperson:", user.id);
+        query = query.eq('user_id', user.id);
+      }
+      
+      const { data: ordersData, error: ordersError } = await query
         .order('created_at', { ascending: false });
         
       if (ordersError) throw ordersError;

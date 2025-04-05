@@ -32,6 +32,16 @@ export function useOrderData(orderId: string | undefined) {
       const contextOrder = getOrderById(orderId);
       if (contextOrder) {
         console.log("Found order in context:", contextOrder);
+        
+        // Check if the current user is a salesperson and if this order belongs to them
+        if (currentUser?.role === 'salesperson' && String(contextOrder.userId) !== String(currentUser.id)) {
+          console.log("User is a salesperson but this order belongs to another salesperson");
+          setError(new Error('Você não tem permissão para visualizar este pedido'));
+          setOrder(null);
+          setIsLoading(false);
+          return;
+        }
+        
         // Make sure we don't lose the user name that's already in the order
         setOrder(contextOrder);
         setIsLoading(false);
@@ -40,17 +50,34 @@ export function useOrderData(orderId: string | undefined) {
 
       console.log("Order not found in context, fetching from Supabase");
       
-      // If not found in context, fetch directly from Supabase
-      const { data: orderData, error: orderError } = await supabase
+      // Build the query to fetch the order
+      let query = supabase
         .from('orders')
         .select(`
           *,
           customers(*)
         `)
-        .eq('id', orderId)
-        .single();
+        .eq('id', orderId);
+      
+      // If the user is a salesperson, ensure they can only see their own orders
+      if (currentUser?.role === 'salesperson' && currentUser?.id) {
+        console.log("useOrderData - Restricting order access for salesperson:", currentUser.id);
+        query = query.eq('user_id', currentUser.id);
+      }
+      
+      const { data: orderData, error: orderError } = await query.single();
 
-      if (orderError) throw orderError;
+      if (orderError) {
+        if (orderError.code === 'PGRST116') {
+          // This is the "no rows returned" error
+          if (currentUser?.role === 'salesperson') {
+            throw new Error('Você não tem permissão para visualizar este pedido');
+          } else {
+            throw new Error('Pedido não encontrado');
+          }
+        }
+        throw orderError;
+      }
 
       // Fetch order items with product details
       const { data: itemsData } = await supabase
@@ -134,6 +161,7 @@ export function useOrderData(orderId: string | undefined) {
       const error = err as Error;
       setError(error);
       console.error(`Error fetching order ${orderId}:`, error);
+      toast.error(error.message || 'Erro ao carregar pedido');
     } finally {
       setIsLoading(false);
     }
