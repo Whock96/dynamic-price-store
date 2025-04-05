@@ -1,78 +1,16 @@
-
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { PieChart, BarChart, Users, ShoppingCart, DollarSign, Package } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useDashboardData } from '@/hooks/use-dashboard-data';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
-  const [dashboardData, setDashboardData] = useState({
-    totalSales: 0,
-    customerCount: 0,
-    orderCount: 0,
-    productCount: 0,
-    recentOrders: [] as any[]
-  });
-
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      setIsLoading(true);
-      try {
-        // Get customer count
-        const { count: customerCount } = await supabase
-          .from('customers')
-          .select('*', { count: 'exact', head: true });
-
-        // Get order count and total sales
-        const { data: orders, error: ordersError } = await supabase
-          .from('orders')
-          .select('*');
-        
-        if (ordersError) throw ordersError;
-        
-        const totalSales = orders?.reduce((sum, order) => sum + (order.total || 0), 0) || 0;
-        
-        // Get product count
-        const { count: productCount } = await supabase
-          .from('products')
-          .select('*', { count: 'exact', head: true });
-
-        // Get recent orders with customer info
-        const { data: recentOrders } = await supabase
-          .from('orders')
-          .select(`
-            id, 
-            order_number,
-            total,
-            created_at,
-            status,
-            customers:customer_id (company_name)
-          `)
-          .order('created_at', { ascending: false })
-          .limit(3);
-
-        setDashboardData({
-          totalSales,
-          customerCount: customerCount || 0,
-          orderCount: orders?.length || 0,
-          productCount: productCount || 0,
-          recentOrders: recentOrders || []
-        });
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchDashboardData();
-  }, []);
+  const { isLoading, dashboardData } = useDashboardData();
 
   // Format currency to BRL
   const formatCurrency = (value: number) => {
