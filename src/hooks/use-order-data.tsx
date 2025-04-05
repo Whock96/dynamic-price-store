@@ -51,7 +51,7 @@ export function useOrderData(orderId: string | undefined) {
 
       console.log("Order not found in context, fetching from Supabase");
       
-      // Build the query to fetch the order
+      // SOLUÇÃO AQUI - Garantir uso consistente de strings para IDs de usuário
       let query = supabase
         .from('orders')
         .select(`
@@ -62,8 +62,9 @@ export function useOrderData(orderId: string | undefined) {
       
       // If the user is a salesperson, ensure they can only see their own orders
       if (currentUser?.role === 'salesperson' && currentUser?.id) {
-        console.log("useOrderData - Restricting order access for salesperson:", currentUser.id);
-        query = query.eq('user_id', currentUser.id);
+        const currentUserIdStr = String(currentUser.id);
+        console.log("useOrderData - Restringindo acesso a pedidos para vendedor:", currentUserIdStr);
+        query = query.eq('user_id', currentUserIdStr);
       }
       
       const { data: orderData, error: orderError } = await query.single();
@@ -116,16 +117,17 @@ export function useOrderData(orderId: string | undefined) {
         }
       }
       
-      // Fetch user info separately and ensure we don't overwrite with default values
-      let userName = null; // Initialize as null instead of default value
+      // SOLUÇÃO AQUI - Melhorando a verificação do usuário
+      let userName = null;
       
       if (orderData && orderData.user_id) {
-        console.log("useOrderData - Checking user ID:", orderData.user_id);
+        const orderUserIdStr = String(orderData.user_id);
+        console.log("useOrderData - Verificando ID de usuário:", orderUserIdStr);
         
-        // First check if this is the current user's order
-        if (currentUser && String(currentUser.id) === String(orderData.user_id)) {
+        // Comparando strings para evitar problemas de tipo
+        if (currentUser && String(currentUser.id) === orderUserIdStr) {
           userName = currentUser.name;
-          console.log("useOrderData - Using current user's name:", userName);
+          console.log("useOrderData - Usando nome do usuário atual:", userName);
         } else {
           // If not the current user, fetch from the database
           const { data: userData } = await supabase
@@ -136,10 +138,9 @@ export function useOrderData(orderId: string | undefined) {
             
           if (userData && userData.name) {
             userName = userData.name;
-            console.log("useOrderData - Fetched user name from database:", userName);
+            console.log("useOrderData - Nome do usuário recuperado do BD:", userName);
           } else {
-            console.log("useOrderData - Could not find user name for ID:", orderData.user_id);
-            // Only use default if we truly couldn't find a name
+            console.log("useOrderData - Não foi possível encontrar nome de usuário para ID:", orderData.user_id);
             userName = 'Usuário do Sistema';
           }
         }
@@ -158,6 +159,21 @@ export function useOrderData(orderId: string | undefined) {
       
       console.log("useOrderData - Processed order with user:", processedOrder.user);
       setOrder(processedOrder);
+      
+      // Verificação final - SOLUÇÃO AQUI
+      // Se o usuário é um vendedor, verificar novamente se o pedido pertence a ele
+      if (currentUser?.role === 'salesperson' && currentUser?.id) {
+        const orderUserIdStr = String(orderData.user_id);
+        const currentUserIdStr = String(currentUser.id);
+        
+        if (orderUserIdStr !== currentUserIdStr) {
+          console.log(`useOrderData - BLOQUEANDO acesso: pedido pertence a ${orderUserIdStr}, não ao usuário atual ${currentUserIdStr}`);
+          setError(new Error('Você não tem permissão para visualizar este pedido'));
+          setOrder(null);
+          setIsLoading(false);
+          return;
+        }
+      }
     } catch (err) {
       const error = err as Error;
       setError(error);

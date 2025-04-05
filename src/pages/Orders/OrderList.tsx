@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -62,35 +61,33 @@ const OrderList = () => {
         userName: o.user?.name 
       })));
       
-      // Implement our own filtering here for extra safety
+      // SOLUÇÃO AQUI - Implementando filtragem rigorosa para garantir que vendedores só vejam seus próprios pedidos
       let ordersToDisplay = [...contextOrders];
       
-      // Only filter if the user is a salesperson
       if (currentUser?.role === 'salesperson' && currentUser?.id) {
-        console.log("OrderList - Additional filtering for salesperson:", currentUser.id);
-        console.log("Before filtering:", ordersToDisplay.length, "orders");
+        console.log("OrderList - Filtragem rigorosa para vendedor:", currentUser.id, "(tipo:", typeof currentUser.id, ")");
+        console.log("Antes da filtragem:", ordersToDisplay.length, "pedidos");
+        
+        const currentUserIdStr = String(currentUser.id);
         
         ordersToDisplay = ordersToDisplay.filter(order => {
-          // Convert both IDs to strings for comparison to avoid type issues
-          const orderUserId = String(order.userId);
-          const currentUserId = String(currentUser.id);
+          const orderUserIdStr = String(order.userId);
+          const matches = orderUserIdStr === currentUserIdStr;
           
-          console.log(`Comparing order user ID: ${orderUserId} with current user ID: ${currentUserId}`);
-          return orderUserId === currentUserId;
+          console.log(`OrderList - Comparando pedido #${order.orderNumber}: ID do vendedor ${orderUserIdStr} vs ID do usuário atual ${currentUserIdStr} = ${matches}`);
+          
+          return matches;
         });
         
-        console.log("After filtering:", ordersToDisplay.length, "orders");
+        console.log("Após filtragem rigorosa:", ordersToDisplay.length, "pedidos");
       }
       
       setOrders(ordersToDisplay);
       setIsLoading(false);
-      // We no longer need to fetch directly if context has orders
       setDirectFetchRequired(false);
     } else if (contextLoading) {
-      // Don't try to fetch yet, wait for context to finish loading
       console.log("Context is still loading, waiting...");
     } else {
-      // If context has finished loading but has no orders, fetch directly
       console.log("Context has no orders, setting direct fetch required");
       setDirectFetchRequired(true);
     }
@@ -107,7 +104,7 @@ const OrderList = () => {
   const fetchOrders = async () => {
     setIsLoading(true);
     try {
-      // If user is a salesperson, filter orders by user_id
+      // SOLUÇÃO AQUI - Garantindo que a consulta seja filtrada corretamente
       let query = supabase
         .from('orders')
         .select(`
@@ -115,13 +112,14 @@ const OrderList = () => {
           customers(*)
         `);
       
-      // Only filter if the user is a salesperson
       if (currentUser?.role === 'salesperson' && currentUser?.id) {
-        console.log("Filtering Supabase query for salesperson:", currentUser.id);
-        query = query.eq('user_id', currentUser.id);
+        const currentUserIdStr = String(currentUser.id);
+        console.log("OrderList - Filtrando consulta Supabase para vendedor:", currentUserIdStr);
+        
+        // Garantindo que estamos usando string para o filtro
+        query = query.eq('user_id', currentUserIdStr);
       }
       
-      // Add ordering regardless of user role
       query = query.order('created_at', { ascending: false });
       
       const { data, error } = await query;
@@ -131,7 +129,7 @@ const OrderList = () => {
       }
 
       if (data) {
-        console.log("Fetched orders directly:", data);
+        console.log("Pedidos recuperados diretamente:", data);
         
         // Process each order to fetch items and applied discounts
         const processedOrders = await Promise.all(data.map(async (order) => {
@@ -171,17 +169,19 @@ const OrderList = () => {
             }
           }
           
-          // Start with user name as null instead of default value
+          // SOLUÇÃO AQUI - Garantindo que o nome do usuário seja recuperado corretamente
           let userName = null;
           if (order.user_id) {
-            console.log("OrderList - Checking user ID:", order.user_id);
+            console.log("OrderList - Verificando ID de usuário:", order.user_id, "(tipo:", typeof order.user_id, ")");
             
-            // Check if it's the current user - use string comparison to avoid type issues
-            if (currentUser && String(currentUser.id) === String(order.user_id)) {
+            const orderUserIdStr = String(order.user_id);
+            const currentUserIdStr = currentUser ? String(currentUser.id) : '';
+            
+            // Comparando strings para evitar problemas de tipo
+            if (currentUser && currentUserIdStr === orderUserIdStr) {
               userName = currentUser.name;
-              console.log("OrderList - Using current user name:", userName);
+              console.log("OrderList - Usando nome do usuário atual:", userName);
             } else {
-              // If not the current user, fetch from database
               const { data: userData } = await supabase
                 .from('users')
                 .select('name')
@@ -190,15 +190,13 @@ const OrderList = () => {
                 
               if (userData && userData.name) {
                 userName = userData.name;
-                console.log("OrderList - Fetched user name from DB:", userName);
+                console.log("OrderList - Nome do usuário recuperado do BD:", userName);
               } else {
-                console.log("OrderList - Could not find user with ID:", order.user_id);
-                // Only use default if we truly couldn't find a name
+                console.log("OrderList - Não foi possível encontrar usuário com ID:", order.user_id);
                 userName = 'Usuário do Sistema';
               }
             }
           } else {
-            // If no user_id at all, then use default
             userName = 'Usuário do Sistema';
           }
           
@@ -213,17 +211,37 @@ const OrderList = () => {
             };
           }
           
-          console.log("OrderList - Processed order with user:", appOrder.user);
+          // Garantir que registramos informações completas para debugging
+          console.log("OrderList - Pedido processado:", {
+            id: order.id,
+            orderNumber: order.order_number,
+            userId: order.user_id,
+            userName
+          });
+          
           return appOrder;
         }));
         
-        console.log("Final processed orders with users:", processedOrders.map(o => ({
-          id: o.id,
-          userId: o.userId,
-          userName: o.user?.name
-        })));
+        // Verificação adicional de filtragem - SOLUÇÃO AQUI
+        let finalOrders = [...processedOrders];
         
-        setOrders(processedOrders);
+        if (currentUser?.role === 'salesperson' && currentUser?.id) {
+          const currentUserIdStr = String(currentUser.id);
+          console.log("OrderList - Aplicando filtragem final para vendedor:", currentUserIdStr);
+          
+          finalOrders = finalOrders.filter(order => {
+            const orderUserIdStr = String(order.userId);
+            const matches = orderUserIdStr === currentUserIdStr;
+            
+            console.log(`OrderList - Filtragem final: pedido #${order.orderNumber}, userID ${orderUserIdStr} vs ${currentUserIdStr} = ${matches}`);
+            
+            return matches;
+          });
+          
+          console.log(`OrderList - Resultado final: ${finalOrders.length} de ${processedOrders.length} pedidos`);
+        }
+        
+        setOrders(finalOrders);
       }
     } catch (error) {
       console.error('Error fetching orders:', error);

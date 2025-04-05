@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Order, CartItem } from '@/types/types';
 import { format } from 'date-fns';
@@ -42,9 +43,16 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           customers(*)
         `);
       
+      // Reforçando a filtragem para vendedores - SOLUÇÃO AQUI
       if (user?.role === 'salesperson' && user?.id) {
-        console.log("OrderContext - Filtering orders for salesperson:", user.id);
-        query = query.eq('user_id', user.id);
+        console.log("OrderContext - Filtrando pedidos ESTRITAMENTE para vendedor:", user.id, "(tipo:", typeof user.id, ")");
+        
+        // Convertemos o user.id para string para garantir consistência
+        const userIdStr = String(user.id);
+        console.log("OrderContext - ID do usuário convertido para string:", userIdStr);
+        
+        // Aplicando filtro no Supabase
+        query = query.eq('user_id', userIdStr);
       }
       
       const { data: ordersData, error: ordersError } = await query
@@ -57,7 +65,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return;
       }
       
-      console.log("OrderContext - Fetched orders data:", ordersData);
+      console.log("OrderContext - Dados brutos de pedidos do Supabase:", ordersData);
       
       const processedOrders = await Promise.all(ordersData.map(async (order) => {
         const { data: itemsData } = await supabase
@@ -95,11 +103,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
         let userName = null;
         if (order.user_id) {
-          console.log("OrderContext - Checking user ID:", order.user_id);
+          console.log("OrderContext - Verificando ID de usuário do pedido:", order.user_id, "(tipo:", typeof order.user_id, ")");
 
+          // Reforçando a comparação entre strings
           if (user && String(user.id) === String(order.user_id)) {
             userName = user.name;
-            console.log("OrderContext - Using current user's name for order:", userName);
+            console.log("OrderContext - Usando nome do usuário atual para o pedido:", userName);
           } else {
             const { data: userData } = await supabase
               .from('users')
@@ -109,9 +118,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               
             if (userData && userData.name) {
               userName = userData.name;
-              console.log("OrderContext - Fetched user name from DB for order:", userName);
+              console.log("OrderContext - Nome do usuário buscado do DB para o pedido:", userName);
             } else {
-              console.log("OrderContext - Could not find user for order with user_id:", order.user_id);
+              console.log("OrderContext - Não foi possível encontrar usuário para pedido com user_id:", order.user_id);
               userName = 'Usuário do Sistema';
             }
           }
@@ -128,12 +137,39 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           };
         }
         
-        console.log("OrderContext - Processed order with user:", processedOrder.user);
+        // Anotando o ID do usuário do pedido para debugging
+        console.log("OrderContext - Pedido processado para usuário:", {
+          orderId: processedOrder.id,
+          orderNumber: processedOrder.orderNumber,
+          userId: processedOrder.userId,
+          userName: processedOrder.user?.name
+        });
+        
         return processedOrder;
       }));
       
-      setOrders(processedOrders);
-      console.log(`Loaded ${processedOrders.length} orders from Supabase`);
+      // Verificação adicional - SOLUÇÃO AQUI
+      let filteredOrders = [...processedOrders];
+      
+      if (user?.role === 'salesperson' && user?.id) {
+        // Filtrando novamente aqui, no lado do cliente, para garantir
+        console.log("OrderContext - Filtrando novamente pedidos para vendedor após processamento");
+        
+        const userIdStr = String(user.id);
+        filteredOrders = filteredOrders.filter(order => {
+          const orderUserId = String(order.userId);
+          const matches = orderUserId === userIdStr;
+          
+          console.log(`OrderContext - Comparando: pedido ${order.orderNumber}, userID ${orderUserId} vs ${userIdStr} = ${matches}`);
+          
+          return matches;
+        });
+        
+        console.log(`OrderContext - Resultado da filtragem: ${filteredOrders.length} de ${processedOrders.length} pedidos`);
+      }
+      
+      setOrders(filteredOrders);
+      console.log(`Loaded ${filteredOrders.length} orders from Supabase`);
     } catch (error) {
       console.error('Error loading orders from Supabase:', error);
       toast.error('Erro ao carregar pedidos');
