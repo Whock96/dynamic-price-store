@@ -86,12 +86,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
         }
         
-        // Fetch user info separately since there's no direct relationship in Supabase
-        let userName = 'Usuário do Sistema';
+        // Fetch user info separately and don't set default values until we know we need them
+        let userName = null; // Start with null instead of default value
         if (order.user_id) {
           console.log("OrderContext - Checking user ID:", order.user_id);
 
-          // Check if this is the current user's order
+          // Check if this is the current user's order (using string comparison)
           if (user && String(user.id) === String(order.user_id)) {
             userName = user.name;
             console.log("OrderContext - Using current user's name for order:", userName);
@@ -108,17 +108,24 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               console.log("OrderContext - Fetched user name from DB for order:", userName);
             } else {
               console.log("OrderContext - Could not find user for order with user_id:", order.user_id);
+              // Only use default if we truly couldn't find a name
+              userName = 'Usuário do Sistema';
             }
           }
+        } else {
+          // If no user_id at all, then use default
+          userName = 'Usuário do Sistema';
         }
         
         const processedOrder = supabaseOrderToAppOrder(order, itemsData || [], discounts);
         
-        // Add user name manually
-        processedOrder.user = {
-          ...processedOrder.user,
-          name: userName
-        };
+        // Only set the user name if we actually found one
+        if (userName) {
+          processedOrder.user = {
+            ...processedOrder.user,
+            name: userName
+          };
+        }
         
         console.log("OrderContext - Processed order with user:", processedOrder.user);
         return processedOrder;
@@ -171,7 +178,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       console.log("Adding new order:", newOrder);
       
-      // Check if we have the current user's name to use
+      // Use current user name if available instead of default
       const userName = user?.name || 'Usuário do Sistema';
       console.log("Current user information:", user);
       

@@ -93,10 +93,10 @@ export const supabaseOrderToAppOrder = (
   const userRole: 'administrator' | 'salesperson' | 'billing' | 'inventory' = 'salesperson';
 
   // Create a properly formatted user object for the order
-  // The name will be set by the calling function
+  // Important: Don't put a default name here - let the calling function handle that
   const user: User = {
     id: order.user_id,
-    name: 'Usuário do Sistema', // Default value that should be overridden
+    name: '', // Don't set a default here, let the calling function handle this
     username: '',
     role: userRole,
     permissions: [],

@@ -50,6 +50,7 @@ const OrderList = () => {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [directFetchRequired, setDirectFetchRequired] = useState(false);
 
   // Use orders from context but fetch directly if needed
   useEffect(() => {
@@ -62,11 +63,25 @@ const OrderList = () => {
       })));
       setOrders(contextOrders);
       setIsLoading(false);
+      // We no longer need to fetch directly if context has orders
+      setDirectFetchRequired(false);
+    } else if (contextLoading) {
+      // Don't try to fetch yet, wait for context to finish loading
+      console.log("Context is still loading, waiting...");
     } else {
+      // If context has finished loading but has no orders, fetch directly
+      console.log("Context has no orders, setting direct fetch required");
+      setDirectFetchRequired(true);
+    }
+  }, [contextOrders, contextLoading]);
+
+  // Only fetch directly when necessary and when context has finished loading
+  useEffect(() => {
+    if (directFetchRequired && !contextLoading) {
       console.log("Fetching orders directly from Supabase");
       fetchOrders();
     }
-  }, [contextOrders, contextLoading]);
+  }, [directFetchRequired, contextLoading]);
 
   const fetchOrders = async () => {
     setIsLoading(true);
@@ -124,8 +139,8 @@ const OrderList = () => {
             }
           }
           
-          // Check if this is the current user's order
-          let userName = 'Usuário do Sistema';
+          // Start with user name as null instead of default value
+          let userName = null;
           if (order.user_id) {
             console.log("OrderList - Checking user ID:", order.user_id);
             
@@ -146,18 +161,25 @@ const OrderList = () => {
                 console.log("OrderList - Fetched user name from DB:", userName);
               } else {
                 console.log("OrderList - Could not find user with ID:", order.user_id);
+                // Only use default if we truly couldn't find a name
+                userName = 'Usuário do Sistema';
               }
             }
+          } else {
+            // If no user_id at all, then use default
+            userName = 'Usuário do Sistema';
           }
           
           // Use adapter to convert Supabase order to app Order
           const appOrder = supabaseOrderToAppOrder(order, itemsData || [], discounts);
           
-          // Add salesperson name
-          appOrder.user = {
-            ...appOrder.user,
-            name: userName
-          };
+          // Only add the user name if we actually found one
+          if (userName) {
+            appOrder.user = {
+              ...appOrder.user,
+              name: userName
+            };
+          }
           
           console.log("OrderList - Processed order with user:", appOrder.user);
           return appOrder;

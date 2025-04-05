@@ -32,6 +32,7 @@ export function useOrderData(orderId: string | undefined) {
       const contextOrder = getOrderById(orderId);
       if (contextOrder) {
         console.log("Found order in context:", contextOrder);
+        // Make sure we don't lose the user name that's already in the order
         setOrder(contextOrder);
         setIsLoading(false);
         return;
@@ -87,8 +88,8 @@ export function useOrderData(orderId: string | undefined) {
         }
       }
       
-      // Fetch user info separately
-      let userName = 'Usuário do Sistema';
+      // Fetch user info separately and ensure we don't overwrite with default values
+      let userName = null; // Initialize as null instead of default value
       
       if (orderData && orderData.user_id) {
         console.log("useOrderData - Checking user ID:", orderData.user_id);
@@ -110,6 +111,8 @@ export function useOrderData(orderId: string | undefined) {
             console.log("useOrderData - Fetched user name from database:", userName);
           } else {
             console.log("useOrderData - Could not find user name for ID:", orderData.user_id);
+            // Only use default if we truly couldn't find a name
+            userName = 'Usuário do Sistema';
           }
         }
       }
@@ -117,11 +120,13 @@ export function useOrderData(orderId: string | undefined) {
       // Use adapter to convert Supabase order to app Order
       const processedOrder = supabaseOrderToAppOrder(orderData, itemsData || [], discounts);
       
-      // Add salesperson name if available
-      processedOrder.user = {
-        ...processedOrder.user,
-        name: userName
-      };
+      // Only set the user name if we actually found one
+      if (userName) {
+        processedOrder.user = {
+          ...processedOrder.user,
+          name: userName
+        };
+      }
       
       console.log("useOrderData - Processed order with user:", processedOrder.user);
       setOrder(processedOrder);
