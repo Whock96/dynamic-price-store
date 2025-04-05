@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -61,8 +62,27 @@ const OrderList = () => {
         userName: o.user?.name 
       })));
       
-      // The orders from context should already be filtered for salespeople
-      setOrders(contextOrders);
+      // Implement our own filtering here for extra safety
+      let ordersToDisplay = [...contextOrders];
+      
+      // Only filter if the user is a salesperson
+      if (currentUser?.role === 'salesperson' && currentUser?.id) {
+        console.log("OrderList - Additional filtering for salesperson:", currentUser.id);
+        console.log("Before filtering:", ordersToDisplay.length, "orders");
+        
+        ordersToDisplay = ordersToDisplay.filter(order => {
+          // Convert both IDs to strings for comparison to avoid type issues
+          const orderUserId = String(order.userId);
+          const currentUserId = String(currentUser.id);
+          
+          console.log(`Comparing order user ID: ${orderUserId} with current user ID: ${currentUserId}`);
+          return orderUserId === currentUserId;
+        });
+        
+        console.log("After filtering:", ordersToDisplay.length, "orders");
+      }
+      
+      setOrders(ordersToDisplay);
       setIsLoading(false);
       // We no longer need to fetch directly if context has orders
       setDirectFetchRequired(false);

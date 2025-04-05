@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -34,8 +33,10 @@ export function useOrderData(orderId: string | undefined) {
         console.log("Found order in context:", contextOrder);
         
         // Check if the current user is a salesperson and if this order belongs to them
+        // Always convert to string for comparison to avoid type issues
         if (currentUser?.role === 'salesperson' && String(contextOrder.userId) !== String(currentUser.id)) {
           console.log("User is a salesperson but this order belongs to another salesperson");
+          console.log(`Order user ID: ${contextOrder.userId} (${typeof contextOrder.userId}) vs Current user ID: ${currentUser.id} (${typeof currentUser.id})`);
           setError(new Error('Você não tem permissão para visualizar este pedido'));
           setOrder(null);
           setIsLoading(false);

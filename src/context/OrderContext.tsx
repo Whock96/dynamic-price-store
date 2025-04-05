@@ -28,6 +28,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
+    console.log("OrderContext - User changed, refetching orders:", user);
     fetchOrders();
   }, [user]);
   
@@ -370,6 +371,26 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     console.log(`Fetching order with ID: ${id}`);
     console.log(`Current orders in state:`, orders.map(o => ({ id: o.id, number: o.orderNumber, user: o.user })));
     
+    // If user is a salesperson, make sure they can only get their own orders
+    if (user?.role === 'salesperson' && user?.id) {
+      const foundOrder = orders.find(order => order.id === id);
+      
+      if (!foundOrder) {
+        console.error(`Order with ID ${id} not found in state`);
+        return undefined;
+      }
+      
+      // Convert both to strings for comparison
+      if (String(foundOrder.userId) !== String(user.id)) {
+        console.error(`Order with ID ${id} belongs to user ${foundOrder.userId}, not current user ${user.id}`);
+        return undefined;
+      }
+      
+      console.log(`Found order for salesperson:`, foundOrder);
+      return foundOrder;
+    }
+    
+    // For non-salespeople, return any order
     const foundOrder = orders.find(order => order.id === id);
     
     if (!foundOrder) {
