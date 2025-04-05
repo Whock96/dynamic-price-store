@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Filter, Users, UserPlus } from 'lucide-react';
@@ -20,13 +21,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useCustomers } from '@/context/CustomerContext';
-
-// Mock data for salespeople
-const MOCK_SALESPEOPLE = [
-  { id: '1', name: 'João Silva' },
-  { id: '2', name: 'Maria Oliveira' },
-  { id: '3', name: 'Carlos Santos' },
-];
+import { supabase } from '@/integrations/supabase/client';
+import { adaptUserData } from '@/utils/adapters';
+import { User } from '@/types/types';
 
 const CustomerList = () => {
   const navigate = useNavigate();
@@ -34,11 +31,49 @@ const CustomerList = () => {
   const [cityFilter, setCityFilter] = useState('all');
   const [salesPersonFilter, setSalesPersonFilter] = useState('all');
   const { customers, isLoading, refreshCustomers } = useCustomers();
+  const [salespeople, setSalespeople] = useState<User[]>([]);
+  const [isLoadingSalespeople, setIsLoadingSalespeople] = useState(true);
 
   useEffect(() => {
+    // Fetch salespeople from the database
+    const fetchSalespeople = async () => {
+      setIsLoadingSalespeople(true);
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*, user_type:user_types(*)')
+          .eq('is_active', true);
+
+        if (error) {
+          throw error;
+        }
+
+        if (data) {
+          const formattedUsers = data.map(user => adaptUserData({
+            id: user.id,
+            name: user.name,
+            username: user.username,
+            role: user.user_type?.name || 'salesperson',
+            email: user.email || '',
+            created_at: user.created_at,
+            user_type_id: user.user_type_id
+          }));
+          
+          setSalespeople(formattedUsers);
+          console.log('Fetched salespeople for customer list:', formattedUsers);
+        }
+      } catch (error) {
+        console.error('Error fetching salespeople:', error);
+      } finally {
+        setIsLoadingSalespeople(false);
+      }
+    };
+
+    fetchSalespeople();
+    
     // Refresh customers when component mounts
     refreshCustomers();
-  }, []);
+  }, [refreshCustomers]);
 
   const filteredCustomers = customers.filter(customer => {
     const matchesSearch = customer.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -52,7 +87,7 @@ const CustomerList = () => {
   const uniqueCities = Array.from(new Set(customers.map(c => c.city))).sort();
 
   const getSalesPersonName = (id: string) => {
-    const salesPerson = MOCK_SALESPEOPLE.find(sp => sp.id === id);
+    const salesPerson = salespeople.find(sp => sp.id === id);
     return salesPerson ? salesPerson.name : 'Não atribuído';
   };
 
@@ -117,7 +152,7 @@ const CustomerList = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os vendedores</SelectItem>
-                {MOCK_SALESPEOPLE.map(salesPerson => (
+                {!isLoadingSalespeople && salespeople.map(salesPerson => (
                   <SelectItem key={salesPerson.id} value={salesPerson.id}>
                     {salesPerson.name}
                   </SelectItem>

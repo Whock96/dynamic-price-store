@@ -92,41 +92,41 @@ const CustomerForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    const fetchSalespeople = async () => {
-      setIsLoadingSalespeople(true);
-      try {
-        const { data, error } = await supabase
-          .from('users')
-          .select('*, user_type:user_types(*)')
-          .eq('is_active', true);
+  const fetchSalespeople = async () => {
+    setIsLoadingSalespeople(true);
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*, user_type:user_types(*)')
+        .eq('is_active', true);
 
-        if (error) {
-          throw error;
-        }
-
-        if (data) {
-          const formattedUsers = data.map(user => adaptUserData({
-            id: user.id,
-            name: user.name,
-            username: user.username,
-            role: user.user_type?.name || 'salesperson',
-            email: user.email || '',
-            created_at: user.created_at,
-            user_type_id: user.user_type_id
-          }));
-          
-          setSalespeople(formattedUsers);
-          console.log('Fetched salespeople:', formattedUsers);
-        }
-      } catch (error) {
-        console.error('Error fetching salespeople:', error);
-        toast.error('Erro ao carregar vendedores');
-      } finally {
-        setIsLoadingSalespeople(false);
+      if (error) {
+        throw error;
       }
-    };
 
+      if (data) {
+        const formattedUsers = data.map(user => adaptUserData({
+          id: user.id,
+          name: user.name,
+          username: user.username,
+          role: user.user_type?.name || 'salesperson',
+          email: user.email || '',
+          created_at: user.created_at,
+          user_type_id: user.user_type_id
+        }));
+        
+        setSalespeople(formattedUsers);
+        console.log('Fetched salespeople for form:', formattedUsers);
+      }
+    } catch (error) {
+      console.error('Error fetching salespeople:', error);
+      toast.error('Erro ao carregar vendedores');
+    } finally {
+      setIsLoadingSalespeople(false);
+    }
+  };
+
+  useEffect(() => {
     fetchSalespeople();
   }, []);
 
@@ -134,8 +134,15 @@ const CustomerForm = () => {
     if (isEditMode && id) {
       const customerData = getCustomerById(id);
       if (customerData) {
-        setFormData(customerData);
         console.log('Loaded customer with salesperson ID:', customerData.salesPersonId);
+        setFormData(customerData);
+        
+        const salesperson = salespeople.find(sp => sp.id === customerData.salesPersonId);
+        if (!salesperson) {
+          console.warn(`Salesperson with ID ${customerData.salesPersonId} not found in the list of salespeople`);
+        } else {
+          console.log('Found salesperson in list:', salesperson.name);
+        }
       } else {
         toast.error('Cliente não encontrado');
         navigate('/customers');
@@ -146,7 +153,7 @@ const CustomerForm = () => {
         id: `customer-${Date.now()}`,
       });
     }
-  }, [id, isEditMode, getCustomerById, navigate]);
+  }, [id, isEditMode, getCustomerById, navigate, salespeople]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
@@ -169,6 +176,16 @@ const CustomerForm = () => {
 
   const handleSelectChange = (name: string, value: string) => {
     console.log(`Changing ${name} to:`, value);
+    
+    if (name === 'salesPersonId') {
+      const selectedSalesperson = salespeople.find(sp => sp.id === value);
+      if (selectedSalesperson) {
+        console.log('Selected salesperson:', selectedSalesperson.name);
+      } else if (value) {
+        console.warn(`Salesperson with ID ${value} not found`);
+      }
+    }
+    
     setFormData(prev => ({ ...prev, [name]: value }));
     
     if (validationErrors[name]) {
@@ -245,13 +262,19 @@ const CustomerForm = () => {
     setIsSubmitting(true);
     console.log('Submitting form with data:', formData);
 
+    if (!formData.salesPersonId) {
+      console.warn('No salesPersonId is set before submission!');
+    }
+
     try {
+      const customerToSave = { ...formData };
+      
       if (isEditMode) {
-        const updated = await updateCustomer(formData.id, formData);
+        const updated = await updateCustomer(formData.id, customerToSave);
         console.log('Updated customer:', updated);
         toast.success('Cliente atualizado com sucesso');
       } else {
-        const added = await addCustomer(formData);
+        const added = await addCustomer(customerToSave);
         console.log('Added customer:', added);
         toast.success('Cliente cadastrado com sucesso');
       }
@@ -278,6 +301,12 @@ const CustomerForm = () => {
       setIsSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    if (formData.salesPersonId) {
+      console.log('Current formData.salesPersonId:', formData.salesPersonId);
+    }
+  }, [formData.salesPersonId]);
 
   return (
     <div className="space-y-6 animate-fade-in">

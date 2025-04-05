@@ -109,11 +109,40 @@ export function useSupabaseData<T extends Record<string, any>>(
         delete recordToCreate.updatedAt;
       }
       
-      // Handle specific field conversions based on table
-      if (tableName === 'customers' && recordToCreate.salesPersonId !== undefined) {
-        recordToCreate.sales_person_id = recordToCreate.salesPersonId;
-        delete recordToCreate.salesPersonId;
-        console.log('Converted salesPersonId to sales_person_id:', recordToCreate.sales_person_id);
+      // Handle field conversions for all tables that might have camelCase properties
+      if (tableName === 'customers') {
+        // Handle salesPersonId specifically
+        if (recordToCreate.salesPersonId !== undefined) {
+          recordToCreate.sales_person_id = recordToCreate.salesPersonId;
+          delete recordToCreate.salesPersonId;
+          console.log('Converted salesPersonId to sales_person_id:', recordToCreate.sales_person_id);
+        }
+        
+        // Handle other customer-specific conversions
+        if (recordToCreate.companyName !== undefined) {
+          recordToCreate.company_name = recordToCreate.companyName;
+          delete recordToCreate.companyName;
+        }
+        
+        if (recordToCreate.zipCode !== undefined) {
+          recordToCreate.zip_code = recordToCreate.zipCode;
+          delete recordToCreate.zipCode;
+        }
+        
+        if (recordToCreate.noNumber !== undefined) {
+          recordToCreate.no_number = recordToCreate.noNumber;
+          delete recordToCreate.noNumber;
+        }
+        
+        if (recordToCreate.defaultDiscount !== undefined) {
+          recordToCreate.default_discount = recordToCreate.defaultDiscount;
+          delete recordToCreate.defaultDiscount;
+        }
+        
+        if (recordToCreate.maxDiscount !== undefined) {
+          recordToCreate.max_discount = recordToCreate.maxDiscount;
+          delete recordToCreate.maxDiscount;
+        }
       }
       
       // Ensure current timestamps are set
@@ -165,11 +194,40 @@ export function useSupabaseData<T extends Record<string, any>>(
       // Convert between camelCase and snake_case if needed
       const recordToUpdate: any = { ...record };
       
-      // Handle specific field conversions based on table
-      if (tableName === 'customers' && recordToUpdate.salesPersonId !== undefined) {
-        recordToUpdate.sales_person_id = recordToUpdate.salesPersonId;
-        delete recordToUpdate.salesPersonId;
-        console.log('Converted salesPersonId to sales_person_id:', recordToUpdate.sales_person_id);
+      // Handle field conversions for all tables that might have camelCase properties
+      if (tableName === 'customers') {
+        // Handle salesPersonId specifically - this field is crucial for our issue
+        if (recordToUpdate.salesPersonId !== undefined) {
+          recordToUpdate.sales_person_id = recordToUpdate.salesPersonId;
+          delete recordToUpdate.salesPersonId;
+          console.log('Converted salesPersonId to sales_person_id:', recordToUpdate.sales_person_id);
+        }
+        
+        // Handle other customer-specific conversions
+        if (recordToUpdate.companyName !== undefined) {
+          recordToUpdate.company_name = recordToUpdate.companyName;
+          delete recordToUpdate.companyName;
+        }
+        
+        if (recordToUpdate.zipCode !== undefined) {
+          recordToUpdate.zip_code = recordToUpdate.zipCode;
+          delete recordToUpdate.zipCode;
+        }
+        
+        if (recordToUpdate.noNumber !== undefined) {
+          recordToUpdate.no_number = recordToUpdate.noNumber;
+          delete recordToUpdate.noNumber;
+        }
+        
+        if (recordToUpdate.defaultDiscount !== undefined) {
+          recordToUpdate.default_discount = recordToUpdate.defaultDiscount;
+          delete recordToUpdate.defaultDiscount;
+        }
+        
+        if (recordToUpdate.maxDiscount !== undefined) {
+          recordToUpdate.max_discount = recordToUpdate.maxDiscount;
+          delete recordToUpdate.maxDiscount;
+        }
       }
       
       // Ensure we're using the right field based on the table format

@@ -103,18 +103,23 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       console.log('Adding customer with data:', customerData);
       
-      // Add to Supabase
+      // Add to Supabase - Explicitly handle the salesPersonId to ensure it is properly saved
       const supabaseData = customerToSupabase(customerData);
       
-      // Ensure salesPersonId is properly set
+      // Ensure salesPersonId is explicitly set as sales_person_id
       if (customerData.salesPersonId) {
         console.log('Setting sales_person_id to:', customerData.salesPersonId);
         supabaseData.sales_person_id = customerData.salesPersonId;
+      } else {
+        console.warn('No salesPersonId provided for customer!');
       }
+      
+      console.log('Final Supabase data for insert:', supabaseData);
       
       const createdCustomer = await createRecord(supabaseData as any);
       
       if (createdCustomer) {
+        console.log('Created customer record:', createdCustomer);
         await refreshCustomers();
         return supabaseToCustomer(createdCustomer);
       }
@@ -133,15 +138,21 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // Update in Supabase
       const supabaseData = customerToSupabase(customerData);
       
-      // Ensure salesPersonId is properly set
+      // Ensure salesPersonId is explicitly set as sales_person_id
       if (customerData.salesPersonId) {
         console.log('Setting sales_person_id to:', customerData.salesPersonId);
         supabaseData.sales_person_id = customerData.salesPersonId;
+      } else if ('salesPersonId' in customerData) {
+        console.warn('salesPersonId is explicitly set to null or empty string');
+        supabaseData.sales_person_id = null; // Ensure it's explicitly set to null if that's what was provided
       }
+      
+      console.log('Final Supabase data for update:', supabaseData);
       
       const updatedCustomer = await updateRecord(id, supabaseData);
       
       if (updatedCustomer) {
+        console.log('Updated customer record:', updatedCustomer);
         await refreshCustomers();
         return supabaseToCustomer(updatedCustomer);
       }
