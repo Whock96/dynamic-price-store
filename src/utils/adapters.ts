@@ -138,14 +138,35 @@ export const supabaseOrderToAppOrder = (
 
 // Adaptar o formato dos dados do usuário enviados pelo backend
 export const adaptUserData = (userData: any): User => {
+  // Map the role to one of the allowed values in our User type
+  let normalizedRole: 'administrator' | 'salesperson' | 'billing' | 'inventory' = 'salesperson';
+  
+  // Handle both raw string values and user_type object from database
+  const roleValue = typeof userData.role === 'string' ? userData.role : 
+                    (userData.user_type ? userData.user_type.name : 'salesperson');
+                    
+  // Normalize role names to match our enum
+  if (roleValue) {
+    const roleLower = roleValue.toLowerCase();
+    if (roleLower.includes('admin')) {
+      normalizedRole = 'administrator';
+    } else if (roleLower.includes('sales') || roleLower.includes('vend')) {
+      normalizedRole = 'salesperson';
+    } else if (roleLower.includes('bill') || roleLower.includes('financ')) {
+      normalizedRole = 'billing';
+    } else if (roleLower.includes('inven') || roleLower.includes('estoque')) {
+      normalizedRole = 'inventory';
+    }
+  }
+  
   return {
     id: userData.id,
-    name: userData.name,
-    username: userData.username,
-    role: userData.role || 'salesperson',
+    name: userData.name || '',
+    username: userData.username || '',
+    role: normalizedRole,
     permissions: userData.permissions || [],
     email: userData.email || '',
-    createdAt: new Date(userData.created_at || userData.createdAt),
-    userTypeId: userData.user_type_id || userData.userTypeId || '' // Ensure userTypeId is always provided
+    createdAt: new Date(userData.created_at || userData.createdAt || new Date()),
+    userTypeId: userData.user_type_id || userData.userTypeId || ''
   };
 };

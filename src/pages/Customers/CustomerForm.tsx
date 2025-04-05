@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Trash2 } from 'lucide-react';
@@ -28,6 +29,7 @@ import {
 import { useCustomers } from '@/context/CustomerContext';
 import { Customer, User } from '@/types/types';
 import { supabase } from '@/integrations/supabase/client';
+import { adaptUserData } from '@/utils/adapters';
 
 const BRAZILIAN_STATES = [
   { code: 'AC', name: 'Acre' },
@@ -97,26 +99,27 @@ const CustomerForm = () => {
       try {
         const { data, error } = await supabase
           .from('users')
-          .select('*')
+          .select('*, user_type:user_types(*)')
           .eq('is_active', true);
 
         if (error) {
           throw error;
         }
 
-        const formattedUsers = data.map(user => ({
-          id: user.id,
-          name: user.name,
-          username: user.username,
-          role: user.user_type_id,
-          permissions: [],
-          email: user.email || '',
-          createdAt: new Date(user.created_at),
-          userTypeId: user.user_type_id
-        }));
-
-        setSalespeople(formattedUsers);
-        console.log('Fetched salespeople:', formattedUsers);
+        if (data) {
+          const formattedUsers = data.map(user => adaptUserData({
+            id: user.id,
+            name: user.name,
+            username: user.username,
+            role: user.user_type?.name || 'salesperson',
+            email: user.email || '',
+            created_at: user.created_at,
+            user_type_id: user.user_type_id
+          }));
+          
+          setSalespeople(formattedUsers);
+          console.log('Fetched salespeople:', formattedUsers);
+        }
       } catch (error) {
         console.error('Error fetching salespeople:', error);
         toast.error('Erro ao carregar vendedores');
