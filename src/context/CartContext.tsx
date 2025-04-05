@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 import { useOrders } from './OrderContext';
 import { useCustomers } from './CustomerContext';
 import { useDiscountSettings } from '../hooks/use-discount-settings';
-import { useAuth } from './AuthContext';
 
 interface CartContextType {
   items: CartItem[];
@@ -61,7 +60,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const { customers } = useCustomers();
   const { settings } = useDiscountSettings();
-  const { user } = useAuth();
   
   const [items, setItems] = useState<CartItem[]>([]);
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -532,8 +530,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         withIPI,
         ipiValue: withIPI ? ipiValue : undefined,
         status: 'pending',
-        notes: observations,
-        userId: user?.id
+        notes: observations
       };
       
       console.log('Sending order:', orderData);

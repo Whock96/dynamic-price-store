@@ -1,403 +1,648 @@
-
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
-import { ChevronLeft, Save } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Save, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useCustomers } from '@/context/CustomerContext';
 import { Customer, User } from '@/types/types';
 import { supabase } from '@/integrations/supabase/client';
 import { adaptUserData } from '@/utils/adapters';
-import { useAuth } from '@/context/AuthContext';
+
+const BRAZILIAN_STATES = [
+  { code: 'AC', name: 'Acre' },
+  { code: 'AL', name: 'Alagoas' },
+  { code: 'AP', name: 'Amapá' },
+  { code: 'AM', name: 'Amazonas' },
+  { code: 'BA', name: 'Bahia' },
+  { code: 'CE', name: 'Ceará' },
+  { code: 'DF', name: 'Distrito Federal' },
+  { code: 'ES', name: 'Espírito Santo' },
+  { code: 'GO', name: 'Goiás' },
+  { code: 'MA', name: 'Maranhão' },
+  { code: 'MT', name: 'Mato Grosso' },
+  { code: 'MS', name: 'Mato Grosso do Sul' },
+  { code: 'MG', name: 'Minas Gerais' },
+  { code: 'PA', name: 'Pará' },
+  { code: 'PB', name: 'Paraíba' },
+  { code: 'PR', name: 'Paraná' },
+  { code: 'PE', name: 'Pernambuco' },
+  { code: 'PI', name: 'Piauí' },
+  { code: 'RJ', name: 'Rio de Janeiro' },
+  { code: 'RN', name: 'Rio Grande do Norte' },
+  { code: 'RS', name: 'Rio Grande do Sul' },
+  { code: 'RO', name: 'Rondônia' },
+  { code: 'RR', name: 'Roraima' },
+  { code: 'SC', name: 'Santa Catarina' },
+  { code: 'SP', name: 'São Paulo' },
+  { code: 'SE', name: 'Sergipe' },
+  { code: 'TO', name: 'Tocantins' },
+];
+
+const EMPTY_CUSTOMER: Customer = {
+  id: '',
+  companyName: '',
+  document: '',
+  salesPersonId: '',
+  street: '',
+  number: '',
+  noNumber: false,
+  complement: '',
+  city: '',
+  state: '',
+  zipCode: '',
+  phone: '',
+  email: '',
+  defaultDiscount: 0,
+  maxDiscount: 15,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
 
 const CustomerForm = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { addCustomer, updateCustomer, getCustomerById } = useCustomers();
-  const { user: currentUser } = useAuth();
-  const isEditing = !!id;
-  const [isLoading, setIsLoading] = useState(false);
+  const { getCustomerById, addCustomer, updateCustomer, deleteCustomer } = useCustomers();
+  const isEditMode = id !== undefined && id !== 'new';
   const [salespeople, setSalespeople] = useState<User[]>([]);
-  const [isLoadingSalespeople, setIsLoadingSalespeople] = useState(false);
-  
-  // Check if current user is a salesperson
-  const isSalesperson = currentUser?.role === 'salesperson';
+  const [isLoadingSalespeople, setIsLoadingSalespeople] = useState(true);
 
-  // Default form values
-  const [formValues, setFormValues] = useState<Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>>({
-    companyName: '',
-    document: '',
-    salesPersonId: isSalesperson && currentUser?.id ? currentUser.id : '',
-    street: '',
-    number: '',
-    noNumber: false,
-    complement: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    phone: '',
-    email: '',
-    defaultDiscount: 0,
-    maxDiscount: 0
-  });
+  const [formData, setFormData] = useState<Customer>(EMPTY_CUSTOMER);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
-  // Fetch salespeople when component mounts
-  useEffect(() => {
-    const fetchSalespeople = async () => {
-      setIsLoadingSalespeople(true);
-      try {
-        // Get all users with role 'salesperson'
-        const { data, error } = await supabase
-          .from('users')
-          .select('*, user_type:user_types(*)')
-          .eq('is_active', true);
+  const fetchSalespeople = async () => {
+    setIsLoadingSalespeople(true);
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*, user_type:user_types(*)')
+        .eq('is_active', true);
 
-        if (error) {
-          throw error;
-        }
-
-        if (data) {
-          const formattedUsers = data.map(user => adaptUserData({
-            id: user.id,
-            name: user.name,
-            username: user.username,
-            role: user.user_type?.name || 'salesperson',
-            email: user.email || '',
-            created_at: user.created_at,
-            user_type_id: user.user_type_id
-          }));
-          
-          setSalespeople(formattedUsers);
-          console.log('Fetched salespeople:', formattedUsers);
-        }
-      } catch (error) {
-        console.error('Error fetching salespeople:', error);
-        toast.error('Erro ao carregar vendedores');
-      } finally {
-        setIsLoadingSalespeople(false);
+      if (error) {
+        throw error;
       }
-    };
 
+      if (data) {
+        const formattedUsers = data.map(user => adaptUserData({
+          id: user.id,
+          name: user.name,
+          username: user.username,
+          role: user.user_type?.name || 'salesperson',
+          email: user.email || '',
+          created_at: user.created_at,
+          user_type_id: user.user_type_id
+        }));
+        
+        setSalespeople(formattedUsers);
+        console.log('Fetched salespeople for form:', formattedUsers);
+      }
+    } catch (error) {
+      console.error('Error fetching salespeople:', error);
+      toast.error('Erro ao carregar vendedores');
+    } finally {
+      setIsLoadingSalespeople(false);
+    }
+  };
+
+  useEffect(() => {
     fetchSalespeople();
   }, []);
 
-  // Load customer data if editing
   useEffect(() => {
-    if (isEditing && id) {
-      const customer = getCustomerById(id);
-      if (customer) {
-        // Remove id, createdAt, and updatedAt from customer object
-        const { id: customerId, createdAt, updatedAt, ...customerValues } = customer;
-        setFormValues(customerValues);
+    if (isEditMode && id) {
+      const customerData = getCustomerById(id);
+      if (customerData) {
+        console.log('Loaded customer with salesperson ID:', customerData.salesPersonId);
+        setFormData(customerData);
+        
+        const salesperson = salespeople.find(sp => sp.id === customerData.salesPersonId);
+        if (!salesperson) {
+          console.warn(`Salesperson with ID ${customerData.salesPersonId} not found in the list of salespeople`);
+        } else {
+          console.log('Found salesperson in list:', salesperson.name);
+        }
       } else {
         toast.error('Cliente não encontrado');
         navigate('/customers');
       }
+    } else {
+      setFormData({
+        ...EMPTY_CUSTOMER,
+        id: `customer-${Date.now()}`,
+      });
     }
-  }, [isEditing, id, getCustomerById, navigate]);
+  }, [id, isEditMode, getCustomerById, navigate, salespeople]);
 
-  // Handles form input changes
-  const handleChange = (field: keyof typeof formValues, value: any) => {
-    setFormValues(prev => ({ ...prev, [field]: value }));
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type } = e.target;
+    
+    if (name === 'defaultDiscount' || name === 'maxDiscount') {
+      const numValue = value === '' ? 0 : Number(value);
+      setFormData(prev => ({ ...prev, [name]: numValue }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+    
+    if (validationErrors[name]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
-  // Form submission handler
+  const handleSelectChange = (name: string, value: string) => {
+    console.log(`Changing ${name} to:`, value);
+    
+    if (name === 'salesPersonId') {
+      const selectedSalesperson = salespeople.find(sp => sp.id === value);
+      if (selectedSalesperson) {
+        console.log('Selected salesperson:', selectedSalesperson.name);
+      } else if (value) {
+        console.warn(`Salesperson with ID ${value} not found`);
+      }
+    }
+    
+    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    if (validationErrors[name]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+  };
+
+  const handleNoNumberChange = (checked: boolean) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      noNumber: checked,
+      number: checked ? 'S/N' : ''
+    }));
+  };
+
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+
+    if (!formData.companyName.trim()) {
+      errors.companyName = 'Razão Social é obrigatória';
+    }
+
+    if (!formData.document.trim()) {
+      errors.document = 'CNPJ/CPF é obrigatório';
+    }
+
+    if (!formData.salesPersonId) {
+      errors.salesPersonId = 'Vendedor é obrigatório';
+    }
+
+    if (!formData.street.trim()) {
+      errors.street = 'Rua é obrigatória';
+    }
+
+    if (!formData.noNumber && !formData.number.trim()) {
+      errors.number = 'Número é obrigatório';
+    }
+
+    if (!formData.city.trim()) {
+      errors.city = 'Cidade é obrigatória';
+    }
+
+    if (!formData.state) {
+      errors.state = 'Estado é obrigatório';
+    }
+
+    if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
+      errors.email = 'Email inválido';
+    }
+
+    const defaultDiscount = Number(formData.defaultDiscount);
+    const maxDiscount = Number(formData.maxDiscount);
+
+    if (maxDiscount < defaultDiscount) {
+      errors.maxDiscount = 'Desconto máximo deve ser maior ou igual ao desconto padrão';
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    
+    if (!validateForm()) {
+      toast.error('Por favor, corrija os erros no formulário antes de continuar');
+      return;
+    }
+
+    setIsSubmitting(true);
+    console.log('Submitting form with data:', formData);
+
+    if (!formData.salesPersonId) {
+      console.warn('No salesPersonId is set before submission!');
+    }
 
     try {
-      // Ensure the phone and number fields are strings
-      const customerData = {
-        ...formValues,
-        phone: formValues.phone.toString(),
-        number: formValues.number.toString(),
-        defaultDiscount: Number(formValues.defaultDiscount),
-        maxDiscount: Number(formValues.maxDiscount)
-      };
-
-      let result;
-      if (isEditing && id) {
-        // Update existing customer
-        result = await updateCustomer(id, customerData);
-        if (result) {
-          toast.success('Cliente atualizado com sucesso!');
-          navigate(`/customers/${id}`);
-        }
+      const customerToSave = { ...formData };
+      
+      if (isEditMode) {
+        const updated = await updateCustomer(formData.id, customerToSave);
+        console.log('Updated customer:', updated);
+        toast.success('Cliente atualizado com sucesso');
       } else {
-        // Add new customer
-        result = await addCustomer(customerData);
-        if (result) {
-          toast.success('Cliente adicionado com sucesso!');
-          navigate(`/customers/${result.id}`);
-        }
+        const added = await addCustomer(customerToSave);
+        console.log('Added customer:', added);
+        toast.success('Cliente cadastrado com sucesso');
       }
-
-      if (!result) {
-        throw new Error('Erro ao processar dados do cliente');
-      }
+      navigate('/customers');
     } catch (error) {
-      console.error('Error saving customer:', error);
-      toast.error('Erro ao salvar cliente');
+      console.error('Error submitting form:', error);
+      toast.error(`Erro ao ${isEditMode ? 'atualizar' : 'cadastrar'} cliente`);
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  // Get Brazilian states for the dropdown
-  const brStates = [
-    'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
-    'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
-    'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
-  ];
+  const handleDelete = async () => {
+    setIsSubmitting(true);
+
+    try {
+      await deleteCustomer(formData.id);
+      toast.success('Cliente removido com sucesso');
+      navigate('/customers');
+    } catch (error) {
+      console.error('Error deleting customer:', error);
+      toast.error('Erro ao remover cliente');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (formData.salesPersonId) {
+      console.log('Current formData.salesPersonId:', formData.salesPersonId);
+    }
+  }, [formData.salesPersonId]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center space-x-2">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="h-8 w-8 p-0" 
-          onClick={() => navigate('/customers')}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <h1 className="text-3xl font-bold">
-          {isEditing ? 'Editar Cliente' : 'Novo Cliente'}
-        </h1>
-      </div>
+    <div className="space-y-6 animate-fade-in">
+      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex items-center">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="mr-4 text-gray-500"
+            onClick={() => navigate('/customers')}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {isEditMode ? 'Editar Cliente' : 'Novo Cliente'}
+            </h1>
+            <p className="text-muted-foreground">
+              {isEditMode 
+                ? 'Atualize as informações do cliente' 
+                : 'Preencha os dados para cadastrar um novo cliente'}
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {isEditMode && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                  disabled={isSubmitting}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Excluir
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação não pode ser desfeita. Isso excluirá permanentemente o cliente e todos os seus dados.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction 
+                    className="bg-red-600 hover:bg-red-700"
+                    onClick={handleDelete}
+                  >
+                    Excluir
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          <Button 
+            type="submit"
+            form="customer-form"
+            className="bg-ferplas-500 hover:bg-ferplas-600"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Salvar
+              </>
+            )}
+          </Button>
+        </div>
+      </header>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form id="customer-form" onSubmit={handleSubmit}>
         <Card>
-          <CardHeader>
-            <CardTitle>Informações Básicas</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-medium">Informações Básicas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="companyName">Razão Social *</Label>
-                <Input 
-                  id="companyName" 
-                  value={formValues.companyName} 
-                  onChange={(e) => handleChange('companyName', e.target.value)}
-                  required
+                <Label htmlFor="companyName">
+                  Razão Social <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="companyName"
+                  name="companyName"
+                  value={formData.companyName}
+                  onChange={handleInputChange}
+                  placeholder="Nome da empresa ou pessoa física"
+                  className={validationErrors.companyName ? 'border-red-500' : ''}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="document">CNPJ / CPF *</Label>
-                <Input 
-                  id="document" 
-                  value={formValues.document} 
-                  onChange={(e) => handleChange('document', e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-            
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="salesPerson">Vendedor *</Label>
-                <Select 
-                  value={formValues.salesPersonId} 
-                  onValueChange={(value) => handleChange('salesPersonId', value)}
-                  disabled={isSalesperson}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um vendedor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {!isLoadingSalespeople && salespeople.map(person => (
-                      <SelectItem key={person.id} value={person.id}>
-                        {person.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {isSalesperson && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Como você é vendedor, você é automaticamente atribuído como vendedor deste cliente.
-                  </p>
+                {validationErrors.companyName && (
+                  <p className="text-xs text-red-500">{validationErrors.companyName}</p>
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone">Telefone</Label>
-                <Input 
-                  id="phone" 
-                  value={formValues.phone} 
-                  onChange={(e) => handleChange('phone', e.target.value)}
+                <Label htmlFor="document">
+                  CNPJ/CPF <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="document"
+                  name="document"
+                  value={formData.document}
+                  onChange={handleInputChange}
+                  placeholder="Documento"
+                  className={validationErrors.document ? 'border-red-500' : ''}
+                />
+                {validationErrors.document && (
+                  <p className="text-xs text-red-500">{validationErrors.document}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="salesPersonId">
+                  Vendedor <span className="text-red-500">*</span>
+                </Label>
+                <Select 
+                  value={formData.salesPersonId} 
+                  onValueChange={(value) => handleSelectChange('salesPersonId', value)}
+                >
+                  <SelectTrigger 
+                    id="salesPersonId"
+                    className={validationErrors.salesPersonId ? 'border-red-500' : ''}
+                  >
+                    <SelectValue placeholder="Selecione um vendedor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isLoadingSalespeople ? (
+                      <SelectItem value="loading" disabled>Carregando vendedores...</SelectItem>
+                    ) : salespeople.length > 0 ? (
+                      salespeople.map(salesperson => (
+                        <SelectItem key={salesperson.id} value={salesperson.id}>
+                          {salesperson.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="empty" disabled>Nenhum vendedor encontrado</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                {validationErrors.salesPersonId && (
+                  <p className="text-xs text-red-500">{validationErrors.salesPersonId}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="defaultDiscount">Desconto Padrão (%)</Label>
+                <Input
+                  id="defaultDiscount"
+                  name="defaultDiscount"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={formData.defaultDiscount}
+                  onChange={handleInputChange}
+                  placeholder="0"
                 />
               </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input 
-                id="email" 
-                type="email"
-                value={formValues.email} 
-                onChange={(e) => handleChange('email', e.target.value)}
-              />
+              <div className="space-y-2">
+                <Label htmlFor="maxDiscount">
+                  Desconto Máximo (%) <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="maxDiscount"
+                  name="maxDiscount"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={formData.maxDiscount}
+                  onChange={handleInputChange}
+                  placeholder="15"
+                  className={validationErrors.maxDiscount ? 'border-red-500' : ''}
+                />
+                {validationErrors.maxDiscount && (
+                  <p className="text-xs text-red-500">{validationErrors.maxDiscount}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Limite máximo de desconto que pode ser aplicado aos produtos deste cliente
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Endereço</CardTitle>
+        <Card className="mt-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-medium">Endereço</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="street">Logradouro *</Label>
-              <Input 
-                id="street" 
-                value={formValues.street} 
-                onChange={(e) => handleChange('street', e.target.value)}
-                required
-              />
-            </div>
-            
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="number">Número</Label>
-                <Input 
-                  id="number" 
-                  value={formValues.number} 
-                  onChange={(e) => handleChange('number', e.target.value)}
-                  disabled={formValues.noNumber}
+                <Label htmlFor="street">
+                  Rua <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="street"
+                  name="street"
+                  value={formData.street}
+                  onChange={handleInputChange}
+                  placeholder="Nome da rua"
+                  className={validationErrors.street ? 'border-red-500' : ''}
                 />
+                {validationErrors.street && (
+                  <p className="text-xs text-red-500">{validationErrors.street}</p>
+                )}
               </div>
-              <div className="flex items-center space-x-2 pt-8">
-                <Checkbox 
-                  id="noNumber" 
-                  checked={formValues.noNumber} 
-                  onCheckedChange={(checked) => {
-                    const isChecked = checked === true;
-                    handleChange('noNumber', isChecked);
-                    if (isChecked) {
-                      handleChange('number', '');
-                    }
-                  }}
-                />
-                <Label htmlFor="noNumber" className="cursor-pointer">Sem número</Label>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="number">
+                    Número {!formData.noNumber && <span className="text-red-500">*</span>}
+                  </Label>
+                  <Input
+                    id="number"
+                    name="number"
+                    value={formData.number}
+                    onChange={handleInputChange}
+                    placeholder="Número"
+                    disabled={formData.noNumber}
+                    className={validationErrors.number ? 'border-red-500' : ''}
+                  />
+                  {validationErrors.number && (
+                    <p className="text-xs text-red-500">{validationErrors.number}</p>
+                  )}
+                </div>
+                <div className="flex items-end space-x-2 h-11">
+                  <Switch
+                    id="noNumber"
+                    checked={formData.noNumber}
+                    onCheckedChange={handleNoNumberChange}
+                  />
+                  <Label htmlFor="noNumber" className="cursor-pointer">Sem número</Label>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="complement">Complemento</Label>
-                <Input 
-                  id="complement" 
-                  value={formValues.complement} 
-                  onChange={(e) => handleChange('complement', e.target.value)}
-                />
-              </div>
-            </div>
-            
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="city">Cidade *</Label>
-                <Input 
-                  id="city" 
-                  value={formValues.city} 
-                  onChange={(e) => handleChange('city', e.target.value)}
-                  required
+                <Input
+                  id="complement"
+                  name="complement"
+                  value={formData.complement}
+                  onChange={handleInputChange}
+                  placeholder="Complemento"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="state">Estado *</Label>
+                <Label htmlFor="zipCode">CEP</Label>
+                <Input
+                  id="zipCode"
+                  name="zipCode"
+                  value={formData.zipCode}
+                  onChange={handleInputChange}
+                  placeholder="CEP"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="city">
+                  Cidade <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="city"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleInputChange}
+                  placeholder="Cidade"
+                  className={validationErrors.city ? 'border-red-500' : ''}
+                />
+                {validationErrors.city && (
+                  <p className="text-xs text-red-500">{validationErrors.city}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="state">
+                  Estado <span className="text-red-500">*</span>
+                </Label>
                 <Select 
-                  value={formValues.state} 
-                  onValueChange={(value) => handleChange('state', value)}
-                  required
+                  value={formData.state} 
+                  onValueChange={(value) => handleSelectChange('state', value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger 
+                    id="state"
+                    className={validationErrors.state ? 'border-red-500' : ''}
+                  >
                     <SelectValue placeholder="Selecione um estado" />
                   </SelectTrigger>
                   <SelectContent>
-                    {brStates.map((state) => (
-                      <SelectItem key={state} value={state}>
-                        {state}
+                    {BRAZILIAN_STATES.map(state => (
+                      <SelectItem key={state.code} value={state.code}>
+                        {state.name} ({state.code})
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="zipCode">CEP *</Label>
-                <Input 
-                  id="zipCode" 
-                  value={formValues.zipCode} 
-                  onChange={(e) => handleChange('zipCode', e.target.value)}
-                  required
-                />
+                {validationErrors.state && (
+                  <p className="text-xs text-red-500">{validationErrors.state}</p>
+                )}
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Configurações de Desconto</CardTitle>
+        <Card className="mt-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-medium">Contato</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="defaultDiscount">Desconto Padrão (%)</Label>
-                <Input 
-                  id="defaultDiscount" 
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  value={formValues.defaultDiscount} 
-                  onChange={(e) => handleChange('defaultDiscount', parseFloat(e.target.value) || 0)}
+                <Label htmlFor="phone">Telefone</Label>
+                <Input
+                  id="phone"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  placeholder="Telefone"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="maxDiscount">Desconto Máximo (%)</Label>
-                <Input 
-                  id="maxDiscount" 
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  value={formValues.maxDiscount} 
-                  onChange={(e) => handleChange('maxDiscount', parseFloat(e.target.value) || 0)}
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  placeholder="Email"
+                  className={validationErrors.email ? 'border-red-500' : ''}
                 />
+                {validationErrors.email && (
+                  <p className="text-xs text-red-500">{validationErrors.email}</p>
+                )}
               </div>
             </div>
           </CardContent>
         </Card>
-
-        <CardFooter className="flex justify-between px-0">
-          <Button 
-            type="button" 
-            variant="outline"
-            onClick={() => navigate('/customers')}
-          >
-            Cancelar
-          </Button>
-          <Button 
-            type="submit"
-            disabled={isLoading}
-            className="bg-ferplas-500 hover:bg-ferplas-600"
-          >
-            {isLoading ? (
-              <div className="h-5 w-5 rounded-full border-2 border-t-transparent border-white animate-spin mr-2" />
-            ) : (
-              <Save className="mr-2 h-4 w-4" />
-            )}
-            {isEditing ? 'Atualizar' : 'Salvar'}
-          </Button>
-        </CardFooter>
       </form>
     </div>
   );

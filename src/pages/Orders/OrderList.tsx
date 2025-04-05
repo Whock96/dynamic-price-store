@@ -61,17 +61,7 @@ const OrderList = () => {
         userId: o.userId, 
         userName: o.user?.name 
       })));
-      
-      // Check if user is salesperson and filter orders accordingly
-      let ordersToUse = [...contextOrders];
-      
-      // Only filter if the user is a salesperson
-      if (currentUser?.role === 'salesperson' && currentUser?.id) {
-        console.log("Filtering orders for salesperson:", currentUser.id);
-        ordersToUse = ordersToUse.filter(order => order.userId === currentUser.id);
-      }
-      
-      setOrders(ordersToUse);
+      setOrders(contextOrders);
       setIsLoading(false);
       // We no longer need to fetch directly if context has orders
       setDirectFetchRequired(false);
@@ -83,7 +73,7 @@ const OrderList = () => {
       console.log("Context has no orders, setting direct fetch required");
       setDirectFetchRequired(true);
     }
-  }, [contextOrders, contextLoading, currentUser]);
+  }, [contextOrders, contextLoading]);
 
   // Only fetch directly when necessary and when context has finished loading
   useEffect(() => {
@@ -96,24 +86,13 @@ const OrderList = () => {
   const fetchOrders = async () => {
     setIsLoading(true);
     try {
-      // If user is a salesperson, filter orders by user_id
-      let query = supabase
+      const { data, error } = await supabase
         .from('orders')
         .select(`
           *,
           customers(*)
-        `);
-      
-      // Only filter if the user is a salesperson
-      if (currentUser?.role === 'salesperson' && currentUser?.id) {
-        console.log("Filtering Supabase query for salesperson:", currentUser.id);
-        query = query.eq('user_id', currentUser.id);
-      }
-      
-      // Add ordering regardless of user role
-      query = query.order('created_at', { ascending: false });
-      
-      const { data, error } = await query;
+        `)
+        .order('created_at', { ascending: false });
 
       if (error) {
         throw error;
