@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Order, CartItem } from '@/types/types';
 import { format } from 'date-fns';
@@ -157,6 +156,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     
     try {
       console.log("Adding new order:", newOrder);
+      
+      // Check if we have the current user's name to use
+      const userName = user?.name || 'Usuário do Sistema';
+      console.log("Current user information:", user);
       
       const orderInsert = {
         customer_id: newOrder.customer.id,

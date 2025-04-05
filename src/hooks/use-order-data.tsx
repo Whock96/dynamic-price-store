@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useOrders } from '@/context/OrderContext';
 import { supabaseOrderToAppOrder } from '@/utils/adapters';
 import { Order } from '@/types/types';
+import { useAuth } from '@/context/AuthContext';
 
 /**
  * Custom hook to fetch order data directly from Supabase
@@ -15,6 +16,7 @@ export function useOrderData(orderId: string | undefined) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const { getOrderById } = useOrders();
+  const { user: currentUser } = useAuth();
 
   const fetchOrderData = useCallback(async () => {
     if (!orderId) {
@@ -88,14 +90,20 @@ export function useOrderData(orderId: string | undefined) {
       // Fetch user info separately
       let userName = 'Usuário do Sistema';
       if (orderData && orderData.user_id) {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('name')
-          .eq('id', orderData.user_id)
-          .single();
-          
-        if (userData && userData.name) {
-          userName = userData.name;
+        // Check if this is the current user's order
+        if (currentUser && currentUser.id === orderData.user_id) {
+          userName = currentUser.name;
+        } else {
+          // If not the current user, fetch from the database
+          const { data: userData } = await supabase
+            .from('users')
+            .select('name')
+            .eq('id', orderData.user_id)
+            .single();
+            
+          if (userData && userData.name) {
+            userName = userData.name;
+          }
         }
       }
       
@@ -117,7 +125,7 @@ export function useOrderData(orderId: string | undefined) {
     } finally {
       setIsLoading(false);
     }
-  }, [orderId, getOrderById]);
+  }, [orderId, getOrderById, currentUser]);
 
   useEffect(() => {
     fetchOrderData();

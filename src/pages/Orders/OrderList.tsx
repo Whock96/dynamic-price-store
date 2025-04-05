@@ -33,6 +33,7 @@ import { toast } from 'sonner';
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabaseOrderToAppOrder } from '@/utils/adapters';
 import { useOrders } from '@/context/OrderContext';
+import { useAuth } from '@/context/AuthContext';
 
 // Define custom type that includes joined tables
 interface OrderWithCustomer extends Tables<'orders'> {
@@ -42,6 +43,7 @@ interface OrderWithCustomer extends Tables<'orders'> {
 const OrderList = () => {
   const navigate = useNavigate();
   const { orders: contextOrders, isLoading: contextLoading, deleteOrder } = useOrders();
+  const { user: currentUser } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -117,17 +119,22 @@ const OrderList = () => {
             }
           }
           
-          // Fetch user info separately since there's no direct relationship in Supabase
+          // Check if this is the current user's order
           let userName = 'Usuário do Sistema';
           if (order.user_id) {
-            const { data: userData } = await supabase
-              .from('users')
-              .select('name')
-              .eq('id', order.user_id)
-              .single();
-              
-            if (userData && userData.name) {
-              userName = userData.name;
+            if (currentUser && currentUser.id === order.user_id) {
+              userName = currentUser.name;
+            } else {
+              // If not the current user, fetch from database
+              const { data: userData } = await supabase
+                .from('users')
+                .select('name')
+                .eq('id', order.user_id)
+                .single();
+                
+              if (userData && userData.name) {
+                userName = userData.name;
+              }
             }
           }
           
