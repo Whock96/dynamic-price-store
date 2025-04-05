@@ -34,8 +34,8 @@ export function useSupabaseData<T extends Record<string, any>>(
   const [data, setData] = useState<T[]>(options.initialData || []);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const previousOptionsRef = useRef(options);
-  const initialFetchRef = useRef(false);
+  const optionsRef = useRef(options);
+  const initialFetchDoneRef = useRef(false);
 
   // Simplified fetch data function with explicit type casting
   const fetchData = useCallback(async () => {
@@ -306,41 +306,66 @@ export function useSupabaseData<T extends Record<string, any>>(
     return data.find(item => (item as any).id === id);
   }, [data]);
 
-  // Função para verificar se as opções mudaram
+  // Function to check if options have changed
   const haveOptionsChanged = useCallback(() => {
-    const prev = previousOptionsRef.current;
+    // Deep comparison for specific option properties
+    const prev = optionsRef.current;
     
-    // Comparação simples das propriedades chave que afetam a consulta
-    return (
+    if (
       options.filterKey !== prev.filterKey ||
       options.filterValue !== prev.filterValue ||
       options.isActive !== prev.isActive ||
-      JSON.stringify(options.orderBy) !== JSON.stringify(prev.orderBy) ||
       options.select !== prev.select ||
       options.joinTable !== prev.joinTable
-    );
+    ) {
+      return true;
+    }
+    
+    // Deep comparison for orderBy object
+    if (options.orderBy && prev.orderBy) {
+      return (
+        options.orderBy.column !== prev.orderBy.column ||
+        options.orderBy.ascending !== prev.orderBy.ascending
+      );
+    }
+    
+    // One has orderBy and the other doesn't
+    if ((!options.orderBy && prev.orderBy) || (options.orderBy && !prev.orderBy)) {
+      return true;
+    }
+    
+    return false;
   }, [options]);
 
-  // Initial data fetch
+  // Initial data fetch only once
   useEffect(() => {
-    // Only fetch if this is the first render or if the table name changes
-    if (!initialFetchRef.current || previousOptionsRef.current !== options) {
-      console.log(`Initial fetch for ${tableName} - initialFetchRef: ${initialFetchRef.current}`);
+    if (!initialFetchDoneRef.current) {
+      console.log(`Initial fetch for ${tableName} - initialFetchDoneRef: ${initialFetchDoneRef.current}`);
       fetchData();
-      initialFetchRef.current = true;
-      previousOptionsRef.current = options;
+      initialFetchDoneRef.current = true;
+      optionsRef.current = { ...options };
     }
-  }, [tableName, fetchData, options]);
+  }, [tableName, fetchData]);
 
-  // This separate effect handles significant option changes
+  // This separate effect handles option changes only after initial fetch
   useEffect(() => {
-    // Skip the initial render since the first effect handles it
-    if (initialFetchRef.current && haveOptionsChanged()) {
+    if (initialFetchDoneRef.current && haveOptionsChanged()) {
       console.log(`Options changed for ${tableName}, re-fetching data`);
       fetchData();
-      previousOptionsRef.current = { ...options };
+      optionsRef.current = { ...options };
     }
-  }, [options.filterKey, options.filterValue, options.isActive, fetchData, tableName, haveOptionsChanged]);
+  }, [
+    options.filterKey, 
+    options.filterValue, 
+    options.isActive,
+    options.select,
+    options.joinTable,
+    options.orderBy?.column,
+    options.orderBy?.ascending,
+    haveOptionsChanged,
+    fetchData,
+    tableName
+  ]);
 
   return {
     data,
