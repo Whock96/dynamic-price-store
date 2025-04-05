@@ -24,6 +24,7 @@ import { useCustomers } from '@/context/CustomerContext';
 import { supabase } from '@/integrations/supabase/client';
 import { adaptUserData } from '@/utils/adapters';
 import { User } from '@/types/types';
+import { useAuth } from '@/context/AuthContext';
 
 const CustomerList = () => {
   const navigate = useNavigate();
@@ -34,6 +35,8 @@ const CustomerList = () => {
   const [salespeople, setSalespeople] = useState<User[]>([]);
   const [isLoadingSalespeople, setIsLoadingSalespeople] = useState(true);
   const [hasRefreshed, setHasRefreshed] = useState(false);
+  const [filteredCustomers, setFilteredCustomers] = useState<Array<any>>([]);
+  const { user } = useAuth();
 
   useEffect(() => {
     // Fetch salespeople from the database
@@ -79,14 +82,31 @@ const CustomerList = () => {
     }
   }, [refreshCustomers, hasRefreshed]);
 
-  const filteredCustomers = customers.filter(customer => {
-    const matchesSearch = customer.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         customer.document.includes(searchQuery);
-    const matchesCity = cityFilter === 'all' || customer.city === cityFilter;
-    const matchesSalesPerson = salesPersonFilter === 'all' || customer.salesPersonId === salesPersonFilter;
+  useEffect(() => {
+    // Filter customers based on search, city, and salesperson filters
+    // If user is a salesperson (role === 'salesperson'), only show their customers
+    let filtered = [...customers];
     
-    return matchesSearch && matchesCity && matchesSalesPerson;
-  });
+    // Check if the current user is a salesperson
+    const isSalesperson = user?.role === 'salesperson';
+    
+    if (isSalesperson && user?.id) {
+      // Filter to only show customers assigned to this salesperson
+      filtered = filtered.filter(customer => customer.salesPersonId === user.id);
+    }
+    
+    // Apply other filters
+    filtered = filtered.filter(customer => {
+      const matchesSearch = customer.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           customer.document.includes(searchQuery);
+      const matchesCity = cityFilter === 'all' || customer.city === cityFilter;
+      const matchesSalesPerson = salesPersonFilter === 'all' || customer.salesPersonId === salesPersonFilter;
+      
+      return matchesSearch && matchesCity && matchesSalesPerson;
+    });
+    
+    setFilteredCustomers(filtered);
+  }, [customers, searchQuery, cityFilter, salesPersonFilter, user]);
 
   const uniqueCities = Array.from(new Set(customers.map(c => c.city))).sort();
 
