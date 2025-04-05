@@ -33,6 +33,7 @@ const CustomerList = () => {
   const { customers, isLoading, refreshCustomers } = useCustomers();
   const [salespeople, setSalespeople] = useState<User[]>([]);
   const [isLoadingSalespeople, setIsLoadingSalespeople] = useState(true);
+  const [hasRefreshed, setHasRefreshed] = useState(false);
 
   useEffect(() => {
     // Fetch salespeople from the database
@@ -71,9 +72,12 @@ const CustomerList = () => {
 
     fetchSalespeople();
     
-    // Refresh customers when component mounts
-    refreshCustomers();
-  }, [refreshCustomers]);
+    // Refresh customers once when component mounts
+    if (!hasRefreshed) {
+      refreshCustomers();
+      setHasRefreshed(true);
+    }
+  }, [refreshCustomers, hasRefreshed]);
 
   const filteredCustomers = customers.filter(customer => {
     const matchesSearch = customer.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||

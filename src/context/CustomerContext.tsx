@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import { Customer } from '@/types/types';
 import { useSupabaseData } from '@/hooks/use-supabase-data';
 import { supabase, Tables } from '@/integrations/supabase/client';
@@ -77,7 +77,7 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     updateRecord,
     deleteRecord,
     getRecordById: getSupabaseCustomerById,
-    fetchData: refreshData
+    fetchData: fetchSupabaseData
   } = useSupabaseData<SupabaseCustomer>('customers', {
     orderBy: { column: 'company_name', ascending: true }
   });
@@ -87,17 +87,17 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return supabaseCustomers.map(supabaseToCustomer);
   }, [supabaseCustomers]);
 
-  const refreshCustomers = async () => {
+  const refreshCustomers = useCallback(async () => {
     try {
-      await refreshData();
+      await fetchSupabaseData();
     } catch (error) {
       console.error('Error refreshing customers:', error);
     }
-  };
+  }, [fetchSupabaseData]);
 
-  const getCustomerById = (id: string) => {
+  const getCustomerById = useCallback((id: string) => {
     return customers.find(customer => customer.id === id);
-  };
+  }, [customers]);
 
   const addCustomer = async (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {

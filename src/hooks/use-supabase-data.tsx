@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -34,6 +34,7 @@ export function useSupabaseData<T extends Record<string, any>>(
   const [data, setData] = useState<T[]>(options.initialData || []);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const previousOptionsRef = useRef(options);
 
   // Simplified fetch data function with explicit type casting
   const fetchData = useCallback(async () => {
@@ -174,7 +175,7 @@ export function useSupabaseData<T extends Record<string, any>>(
       console.log('Created data:', createdData);
       
       // Refetch to get the full data with any joins
-      fetchData();
+      await fetchData();
       
       toast.success('Registro criado com sucesso');
       return createdData?.[0] as unknown as T;
@@ -302,9 +303,29 @@ export function useSupabaseData<T extends Record<string, any>>(
     return data.find(item => (item as any).id === id);
   }, [data]);
 
+  // Função para verificar se as opções mudaram
+  const haveOptionsChanged = () => {
+    const prev = previousOptionsRef.current;
+    
+    // Comparação simples das propriedades chave que afetam a consulta
+    return (
+      options.filterKey !== prev.filterKey ||
+      options.filterValue !== prev.filterValue ||
+      options.isActive !== prev.isActive ||
+      JSON.stringify(options.orderBy) !== JSON.stringify(prev.orderBy) ||
+      options.select !== prev.select ||
+      options.joinTable !== prev.joinTable
+    );
+  };
+
   // Initial data fetch
   useEffect(() => {
-    fetchData();
+    // Verificar se as opções realmente mudaram antes de buscar novamente
+    if (haveOptionsChanged()) {
+      fetchData();
+      // Atualizar a referência para as novas opções
+      previousOptionsRef.current = { ...options };
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options.filterKey, options.filterValue, options.isActive]);
 
