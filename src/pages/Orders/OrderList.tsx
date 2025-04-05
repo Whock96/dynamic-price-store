@@ -122,8 +122,16 @@ const OrderList = () => {
           // Check if this is the current user's order
           let userName = 'Usuário do Sistema';
           if (order.user_id) {
-            if (currentUser && currentUser.id === order.user_id) {
+            console.log("OrderList - Comparing user IDs:", {
+              orderUserId: order.user_id,
+              currentUserId: currentUser?.id,
+              match: String(currentUser?.id) === String(order.user_id)
+            });
+            
+            // Check if it's the current user - use string comparison to avoid type issues
+            if (currentUser && String(currentUser.id) === String(order.user_id)) {
               userName = currentUser.name;
+              console.log("OrderList - Using current user name:", userName);
             } else {
               // If not the current user, fetch from database
               const { data: userData } = await supabase
@@ -134,6 +142,9 @@ const OrderList = () => {
                 
               if (userData && userData.name) {
                 userName = userData.name;
+                console.log("OrderList - Fetched user name from DB:", userName);
+              } else {
+                console.log("OrderList - Could not find user with ID:", order.user_id);
               }
             }
           }

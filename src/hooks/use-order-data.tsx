@@ -89,10 +89,18 @@ export function useOrderData(orderId: string | undefined) {
       
       // Fetch user info separately
       let userName = 'Usuário do Sistema';
+      
       if (orderData && orderData.user_id) {
-        // Check if this is the current user's order
-        if (currentUser && currentUser.id === orderData.user_id) {
+        console.log("Comparing user IDs:", {
+          orderUserId: orderData.user_id,
+          currentUserId: currentUser?.id,
+          match: currentUser?.id === orderData.user_id
+        });
+        
+        // Check if this is the current user's order - make explicit string comparison
+        if (currentUser && String(currentUser.id) === String(orderData.user_id)) {
           userName = currentUser.name;
+          console.log("Using current user's name:", userName);
         } else {
           // If not the current user, fetch from the database
           const { data: userData } = await supabase
@@ -103,6 +111,9 @@ export function useOrderData(orderId: string | undefined) {
             
           if (userData && userData.name) {
             userName = userData.name;
+            console.log("Fetched user name from database:", userName);
+          } else {
+            console.log("Could not find user name for ID:", orderData.user_id);
           }
         }
       }

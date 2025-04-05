@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Order, CartItem } from '@/types/types';
 import { format } from 'date-fns';
@@ -88,14 +89,24 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // Fetch user info separately since there's no direct relationship in Supabase
         let userName = 'Usuário do Sistema';
         if (order.user_id) {
-          const { data: userData } = await supabase
-            .from('users')
-            .select('name')
-            .eq('id', order.user_id)
-            .single();
-            
-          if (userData && userData.name) {
-            userName = userData.name;
+          // Check if this is the current user's order - make explicit string comparison
+          if (user && String(user.id) === String(order.user_id)) {
+            userName = user.name;
+            console.log("Using current user's name for order:", userName);
+          } else {
+            // If not the current user, fetch from the database
+            const { data: userData } = await supabase
+              .from('users')
+              .select('name')
+              .eq('id', order.user_id)
+              .single();
+              
+            if (userData && userData.name) {
+              userName = userData.name;
+              console.log("Fetched user name from DB for order:", userName);
+            } else {
+              console.log("Could not find user for order with user_id:", order.user_id);
+            }
           }
         }
         
@@ -183,6 +194,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       };
       
       console.log("Order data being inserted:", orderInsert);
+      console.log("User ID being used for order:", user?.id);
       
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
