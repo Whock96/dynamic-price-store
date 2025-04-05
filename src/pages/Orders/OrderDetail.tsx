@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
@@ -351,6 +350,14 @@ const OrderDetail = () => {
   const withIPI = order.withIPI !== undefined ? order.withIPI : (order.with_ipi !== undefined ? order.with_ipi : false);
   const ipiValue = order.ipiValue || order.ipi_value || 0;
   
+  // Get correct user name to display in the order history
+  const userName = order.user?.name || 'Usuário não identificado';
+  console.log("Order user details:", {
+    userId: order.userId || order.user_id,
+    userName: order.user?.name,
+    userObject: order.user
+  });
+  
   // Calculate tax substitution value
   const taxSubstitutionValue = taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
 
@@ -482,7 +489,7 @@ const OrderDetail = () => {
                   <p className="text-sm text-gray-500">
                     {format(new Date(order.createdAt || order.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                   </p>
-                  <p className="text-sm text-gray-500">Por {order.user?.name || 'Usuário'}</p>
+                  <p className="text-sm text-gray-500">Por {userName}</p>
                 </div>
               </div>
               
