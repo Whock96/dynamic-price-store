@@ -242,16 +242,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Fetch permissions for this user type
       const permissions = await fetchUserTypePermissions(userData.user_type.id);
       
-      // Ensure the role is one of the allowed values
-      const userRole = userData.user_type.name as 'administrator' | 'salesperson' | 'billing' | 'inventory';
+      // Check if the user role is administrator (case-insensitive)
+      let userRole = userData.user_type.name;
+      const isAdministrator = 
+        userRole.toLowerCase() === 'administrator' || 
+        userRole.toLowerCase() === 'administrador';
+      
+      // Normalize administrator role name
+      if (isAdministrator) {
+        userRole = 'administrator';
+      }
       
       // Update user in state and localStorage
       const updatedUser: UserType = {
         ...user,
-        role: userRole,
+        role: userRole as 'administrator' | 'salesperson' | 'billing' | 'inventory',
         permissions: permissions,
       };
       
+      console.log("Updated user with permissions:", updatedUser);
       setUser(updatedUser);
       localStorage.setItem('ferplas_user', JSON.stringify(updatedUser));
     } catch (err) {
@@ -299,19 +308,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Tipo de usuário não encontrado');
       }
       
-      // Make sure we're using the 'administrator' role if needed
-      // This handles the case of users who had the old 'administrador' role
+      // Check if the user role is administrator (case-insensitive)
       let userTypeName = data.user_type.name;
-      if (userTypeName === 'administrador') {
+      const isAdministrator = 
+        userTypeName.toLowerCase() === 'administrator' || 
+        userTypeName.toLowerCase() === 'administrador';
+      
+      // Normalize administrator role name
+      if (isAdministrator) {
         userTypeName = 'administrator';
         
-        // Update the user's role in the database to fix the issue
+        // Update the user's role in the database to fix the issue (optional)
         try {
           // Find the administrator user type
           const { data: adminTypes } = await supabase
             .from('user_types')
             .select('*')
-            .eq('name', 'administrator')
+            .ilike('name', 'administrator')
             .limit(1);
             
           if (adminTypes && adminTypes.length > 0) {
@@ -345,6 +358,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userTypeId: data.user_type.id
       };
       
+      console.log("Logged in user:", userObj);
       setUser(userObj);
       localStorage.setItem('ferplas_user', JSON.stringify(userObj));
     } catch (err) {
@@ -361,19 +375,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const hasPermission = (permissionCode: string) => {
-    if (!user || !user.permissions) return false;
+    if (!user) return false;
     
-    // Admin has all permissions
-    if (user.role === 'administrator') return true;
+    console.log(`Checking permission: ${permissionCode}, user role: ${user.role}`);
     
-    return user.permissions.some(p => p.code === permissionCode && p.isGranted);
+    // Admin has all permissions - explicitly check for administrator role
+    if (user.role === 'administrator') {
+      console.log("User is administrator, granting permission");
+      return true;
+    }
+    
+    // For other roles, check if they have the required permission
+    const hasSpecificPermission = user.permissions.some(p => p.code === permissionCode && p.isGranted);
+    console.log(`Specific permission check for ${permissionCode}: ${hasSpecificPermission}`);
+    
+    return hasSpecificPermission;
   };
 
   const checkAccess = (menuPath: string) => {
     if (!user) return false;
     
-    // Admin has access to everything
-    if (user.role === 'administrator') return true;
+    console.log(`Checking access for path: ${menuPath}, user role: ${user.role}`);
+    
+    // Admin has access to everything - explicitly check for administrator role
+    if (user.role === 'administrator') {
+      console.log("User is administrator, granting access to path");
+      return true;
+    }
     
     // For other roles, check if they have the required permission for this path
     for (const [permCode, paths] of Object.entries(PERMISSION_MENU_MAP)) {
@@ -389,6 +417,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       if (matchesPath && hasPermission(permCode)) {
+        console.log(`Access granted via permission: ${permCode}`);
         return true;
       }
     }
@@ -404,7 +433,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return path === menuPath;
     });
     
-    return !isPathMapped;
+    if (!isPathMapped) {
+      console.log("Path is not mapped to any permission, access granted");
+      return true;
+    }
+    
+    console.log("Access denied to path");
+    return false;
   };
 
   return (
