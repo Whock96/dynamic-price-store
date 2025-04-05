@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Trash2 } from 'lucide-react';
@@ -27,7 +26,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useCustomers } from '@/context/CustomerContext';
-import { Customer } from '@/types/types';
+import { Customer, User } from '@/types/types';
+import { supabase } from '@/integrations/supabase/client';
 
 const BRAZILIAN_STATES = [
   { code: 'AC', name: 'Acre' },
@@ -59,12 +59,6 @@ const BRAZILIAN_STATES = [
   { code: 'TO', name: 'Tocantins' },
 ];
 
-const MOCK_SALESPEOPLE = [
-  { id: '1', name: 'João Silva' },
-  { id: '2', name: 'Maria Oliveira' },
-  { id: '3', name: 'Carlos Santos' },
-];
-
 const EMPTY_CUSTOMER: Customer = {
   id: '',
   companyName: '',
@@ -90,10 +84,49 @@ const CustomerForm = () => {
   const navigate = useNavigate();
   const { getCustomerById, addCustomer, updateCustomer, deleteCustomer } = useCustomers();
   const isEditMode = id !== undefined && id !== 'new';
+  const [salespeople, setSalespeople] = useState<User[]>([]);
+  const [isLoadingSalespeople, setIsLoadingSalespeople] = useState(true);
 
   const [formData, setFormData] = useState<Customer>(EMPTY_CUSTOMER);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const fetchSalespeople = async () => {
+      setIsLoadingSalespeople(true);
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('is_active', true);
+
+        if (error) {
+          throw error;
+        }
+
+        const formattedUsers = data.map(user => ({
+          id: user.id,
+          name: user.name,
+          username: user.username,
+          role: user.user_type_id,
+          permissions: [],
+          email: user.email || '',
+          createdAt: new Date(user.created_at),
+          userTypeId: user.user_type_id
+        }));
+
+        setSalespeople(formattedUsers);
+        console.log('Fetched salespeople:', formattedUsers);
+      } catch (error) {
+        console.error('Error fetching salespeople:', error);
+        toast.error('Erro ao carregar vendedores');
+      } finally {
+        setIsLoadingSalespeople(false);
+      }
+    };
+
+    fetchSalespeople();
+  }, []);
 
   useEffect(() => {
     if (isEditMode && id) {
@@ -115,7 +148,6 @@ const CustomerForm = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
     
-    // Fix: Only convert to number if the field is a discount field
     if (name === 'defaultDiscount' || name === 'maxDiscount') {
       const numValue = value === '' ? 0 : Number(value);
       setFormData(prev => ({ ...prev, [name]: numValue }));
@@ -370,11 +402,17 @@ const CustomerForm = () => {
                     <SelectValue placeholder="Selecione um vendedor" />
                   </SelectTrigger>
                   <SelectContent>
-                    {MOCK_SALESPEOPLE.map(salesperson => (
-                      <SelectItem key={salesperson.id} value={salesperson.id}>
-                        {salesperson.name}
-                      </SelectItem>
-                    ))}
+                    {isLoadingSalespeople ? (
+                      <SelectItem value="loading" disabled>Carregando vendedores...</SelectItem>
+                    ) : salespeople.length > 0 ? (
+                      salespeople.map(salesperson => (
+                        <SelectItem key={salesperson.id} value={salesperson.id}>
+                          {salesperson.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="empty" disabled>Nenhum vendedor encontrado</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
                 {validationErrors.salesPersonId && (

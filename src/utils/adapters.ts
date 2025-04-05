@@ -35,7 +35,8 @@ export const supabaseProductToAppProduct = (supabaseProduct: Tables<'products'>)
 export const supabaseOrderToAppOrder = (
   order: any, 
   items: any[] = [], 
-  discounts: DiscountOption[] = []
+  discounts: DiscountOption[] = [],
+  userData?: { name: string } // Optional parameter to provide user data
 ): Order => {
   // Ensure customer is properly formatted
   const customer: Customer = order.customers ? {
@@ -93,10 +94,10 @@ export const supabaseOrderToAppOrder = (
   const userRole: 'administrator' | 'salesperson' | 'billing' | 'inventory' = 'salesperson';
 
   // Create a properly formatted user object for the order
-  // Important: Don't put a default name here - let the calling function handle that
   const user: User = {
     id: order.user_id,
-    name: '', // Don't set a default here, let the calling function handle this
+    // If userData is provided, use its name, otherwise use empty string (calling code should handle this)
+    name: userData?.name || '',
     username: '',
     role: userRole,
     permissions: [],
