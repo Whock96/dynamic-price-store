@@ -89,7 +89,7 @@ export function useSupabaseData<T extends Record<string, any>>(
   // Create a new record
   const createRecord = async (record: Omit<T, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      console.log('Creating record:', record);
+      console.log(`Creating record in ${tableName}:`, record);
       
       // Ensure the record has the correct shape expected by Supabase
       const recordToCreate: any = { ...record };
@@ -107,6 +107,13 @@ export function useSupabaseData<T extends Record<string, any>>(
           ? recordToCreate.updatedAt.toISOString() 
           : recordToCreate.updatedAt;
         delete recordToCreate.updatedAt;
+      }
+      
+      // Handle specific field conversions based on table
+      if (tableName === 'customers' && recordToCreate.salesPersonId !== undefined) {
+        recordToCreate.sales_person_id = recordToCreate.salesPersonId;
+        delete recordToCreate.salesPersonId;
+        console.log('Converted salesPersonId to sales_person_id:', recordToCreate.sales_person_id);
       }
       
       // Ensure current timestamps are set
@@ -153,10 +160,17 @@ export function useSupabaseData<T extends Record<string, any>>(
   // Update an existing record
   const updateRecord = async (id: string, record: Partial<T>) => {
     try {
-      console.log('Updating record:', id, record);
+      console.log(`Updating record in ${tableName}:`, id, record);
       
       // Convert between camelCase and snake_case if needed
       const recordToUpdate: any = { ...record };
+      
+      // Handle specific field conversions based on table
+      if (tableName === 'customers' && recordToUpdate.salesPersonId !== undefined) {
+        recordToUpdate.sales_person_id = recordToUpdate.salesPersonId;
+        delete recordToUpdate.salesPersonId;
+        console.log('Converted salesPersonId to sales_person_id:', recordToUpdate.sales_person_id);
+      }
       
       // Ensure we're using the right field based on the table format
       if (recordToUpdate.updatedAt !== undefined && recordToUpdate.updated_at === undefined) {

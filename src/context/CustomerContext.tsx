@@ -101,8 +101,17 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const addCustomer = async (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
+      console.log('Adding customer with data:', customerData);
+      
       // Add to Supabase
       const supabaseData = customerToSupabase(customerData);
+      
+      // Ensure salesPersonId is properly set
+      if (customerData.salesPersonId) {
+        console.log('Setting sales_person_id to:', customerData.salesPersonId);
+        supabaseData.sales_person_id = customerData.salesPersonId;
+      }
+      
       const createdCustomer = await createRecord(supabaseData as any);
       
       if (createdCustomer) {
@@ -119,8 +128,17 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const updateCustomer = async (id: string, customerData: Partial<Customer>) => {
     try {
+      console.log('Updating customer with data:', customerData);
+      
       // Update in Supabase
       const supabaseData = customerToSupabase(customerData);
+      
+      // Ensure salesPersonId is properly set
+      if (customerData.salesPersonId) {
+        console.log('Setting sales_person_id to:', customerData.salesPersonId);
+        supabaseData.sales_person_id = customerData.salesPersonId;
+      }
+      
       const updatedCustomer = await updateRecord(id, supabaseData);
       
       if (updatedCustomer) {

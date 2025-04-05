@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Trash2 } from 'lucide-react';
@@ -136,6 +135,7 @@ const CustomerForm = () => {
       const customerData = getCustomerById(id);
       if (customerData) {
         setFormData(customerData);
+        console.log('Loaded customer with salesperson ID:', customerData.salesPersonId);
       } else {
         toast.error('Cliente não encontrado');
         navigate('/customers');
@@ -168,6 +168,7 @@ const CustomerForm = () => {
   };
 
   const handleSelectChange = (name: string, value: string) => {
+    console.log(`Changing ${name} to:`, value);
     setFormData(prev => ({ ...prev, [name]: value }));
     
     if (validationErrors[name]) {
@@ -242,13 +243,16 @@ const CustomerForm = () => {
     }
 
     setIsSubmitting(true);
+    console.log('Submitting form with data:', formData);
 
     try {
       if (isEditMode) {
-        await updateCustomer(formData.id, formData);
+        const updated = await updateCustomer(formData.id, formData);
+        console.log('Updated customer:', updated);
         toast.success('Cliente atualizado com sucesso');
       } else {
-        await addCustomer(formData);
+        const added = await addCustomer(formData);
+        console.log('Added customer:', added);
         toast.success('Cliente cadastrado com sucesso');
       }
       navigate('/customers');
