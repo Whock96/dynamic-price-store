@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Order, CartItem } from '@/types/types';
 import { format } from 'date-fns';
@@ -86,17 +85,14 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
         }
         
-        // Fetch user info separately and don't set default values until we know we need them
-        let userName = null; // Start with null instead of default value
+        let userName = null;
         if (order.user_id) {
           console.log("OrderContext - Checking user ID:", order.user_id);
 
-          // Check if this is the current user's order (using string comparison)
           if (user && String(user.id) === String(order.user_id)) {
             userName = user.name;
             console.log("OrderContext - Using current user's name for order:", userName);
           } else {
-            // If not the current user, fetch from the database
             const { data: userData } = await supabase
               .from('users')
               .select('name')
@@ -108,18 +104,15 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               console.log("OrderContext - Fetched user name from DB for order:", userName);
             } else {
               console.log("OrderContext - Could not find user for order with user_id:", order.user_id);
-              // Only use default if we truly couldn't find a name
               userName = 'Usuário do Sistema';
             }
           }
         } else {
-          // If no user_id at all, then use default
           userName = 'Usuário do Sistema';
         }
         
         const processedOrder = supabaseOrderToAppOrder(order, itemsData || [], discounts);
         
-        // Only set the user name if we actually found one
         if (userName) {
           processedOrder.user = {
             ...processedOrder.user,
@@ -178,13 +171,14 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       console.log("Adding new order:", newOrder);
       
-      // Use current user name if available instead of default
+      const userId = newOrder.userId || (user?.id || null);
       const userName = user?.name || 'Usuário do Sistema';
       console.log("Current user information:", user);
+      console.log("Using user ID for order:", userId);
       
       const orderInsert = {
         customer_id: newOrder.customer.id,
-        user_id: user?.id || 'anonymous',
+        user_id: userId,
         status: 'pending',
         shipping: newOrder.shipping || 'delivery',
         full_invoice: newOrder.fullInvoice !== undefined ? newOrder.fullInvoice : true,
@@ -204,7 +198,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       };
       
       console.log("Order data being inserted:", orderInsert);
-      console.log("User ID being used for order:", user?.id);
+      console.log("User ID being used for order:", userId);
       
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
@@ -331,7 +325,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (orderData.deliveryFee !== undefined) supabaseOrderData.delivery_fee = orderData.deliveryFee;
       if (orderData.withIPI !== undefined) supabaseOrderData.with_ipi = orderData.withIPI;
       if (orderData.ipiValue !== undefined) supabaseOrderData.ipi_value = orderData.ipiValue;
-      // Add support for updating the salesperson (userId)
       if (orderData.userId !== undefined) supabaseOrderData.user_id = orderData.userId;
       
       const { error } = await supabase
@@ -344,7 +337,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         throw error;
       }
       
-      // Update the orders state with the new data
       setOrders(prevOrders =>
         prevOrders.map(order =>
           order.id === orderId
@@ -359,7 +351,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       toast.success(`Pedido atualizado com sucesso!`);
       
-      // Refresh orders to ensure we get the most up-to-date data
       await fetchOrders();
       
     } catch (error: any) {
