@@ -333,7 +333,7 @@ const OrderDetail = () => {
     );
   }
 
-  // Handle different field names between context and direct DB access
+  // Get correct values from order object
   const orderNumber = order.orderNumber || order.order_number || 1;
   const totalDiscount = order.totalDiscount || order.total_discount || 0;
   const appliedDiscounts = order.appliedDiscounts || order.discountOptions || [];
@@ -351,8 +351,8 @@ const OrderDetail = () => {
   const ipiValue = order.ipiValue || order.ipi_value || 0;
   
   // Get correct user name to display in the order history
-  const userName = order.user?.name || 'Usuário não identificado';
-  console.log("Order user details:", {
+  const userName = order.user?.name || 'Usuário do Sistema';
+  console.log("OrderDetail - Order user details:", {
     userId: order.userId || order.user_id,
     userName: order.user?.name,
     userObject: order.user

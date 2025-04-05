@@ -92,22 +92,26 @@ export const supabaseOrderToAppOrder = (
   // Ensure user.role is always one of the allowed values
   const userRole: 'administrator' | 'salesperson' | 'billing' | 'inventory' = 'salesperson';
 
+  // Create a properly formatted user object for the order
+  // The name will be set by the calling function
+  const user: User = {
+    id: order.user_id,
+    name: 'Usuário do Sistema', // Default value that should be overridden
+    username: '',
+    role: userRole,
+    permissions: [],
+    email: '',
+    createdAt: new Date(),
+    userTypeId: '' // Ensure userTypeId is provided with a default empty string
+  };
+
   return {
     id: order.id,
     orderNumber: order.order_number,
     customerId: order.customer_id,
     customer,
     userId: order.user_id,
-    user: {
-      id: order.user_id,
-      name: 'Usuário do Sistema',
-      username: '',
-      role: userRole,
-      permissions: [],
-      email: '',
-      createdAt: new Date(),
-      userTypeId: '' // Ensure userTypeId is provided with a default empty string
-    },
+    user,
     items: formattedItems,
     appliedDiscounts: discounts,
     totalDiscount: Number(order.total_discount) || 0,

@@ -55,6 +55,11 @@ const OrderList = () => {
   useEffect(() => {
     if (!contextLoading && contextOrders.length > 0) {
       console.log("Using orders from context:", contextOrders.length);
+      console.log("Order list user details:", contextOrders.map(o => ({ 
+        id: o.id, 
+        userId: o.userId, 
+        userName: o.user?.name 
+      })));
       setOrders(contextOrders);
       setIsLoading(false);
     } else {
@@ -122,11 +127,7 @@ const OrderList = () => {
           // Check if this is the current user's order
           let userName = 'Usuário do Sistema';
           if (order.user_id) {
-            console.log("OrderList - Comparing user IDs:", {
-              orderUserId: order.user_id,
-              currentUserId: currentUser?.id,
-              match: String(currentUser?.id) === String(order.user_id)
-            });
+            console.log("OrderList - Checking user ID:", order.user_id);
             
             // Check if it's the current user - use string comparison to avoid type issues
             if (currentUser && String(currentUser.id) === String(order.user_id)) {
@@ -158,8 +159,15 @@ const OrderList = () => {
             name: userName
           };
           
+          console.log("OrderList - Processed order with user:", appOrder.user);
           return appOrder;
         }));
+        
+        console.log("Final processed orders with users:", processedOrders.map(o => ({
+          id: o.id,
+          userId: o.userId,
+          userName: o.user?.name
+        })));
         
         setOrders(processedOrders);
       }

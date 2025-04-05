@@ -50,7 +50,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return;
       }
       
-      console.log("Fetched orders data:", ordersData);
+      console.log("OrderContext - Fetched orders data:", ordersData);
       
       const processedOrders = await Promise.all(ordersData.map(async (order) => {
         const { data: itemsData } = await supabase
@@ -89,10 +89,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // Fetch user info separately since there's no direct relationship in Supabase
         let userName = 'Usuário do Sistema';
         if (order.user_id) {
-          // Check if this is the current user's order - make explicit string comparison
+          console.log("OrderContext - Checking user ID:", order.user_id);
+
+          // Check if this is the current user's order
           if (user && String(user.id) === String(order.user_id)) {
             userName = user.name;
-            console.log("Using current user's name for order:", userName);
+            console.log("OrderContext - Using current user's name for order:", userName);
           } else {
             // If not the current user, fetch from the database
             const { data: userData } = await supabase
@@ -103,9 +105,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               
             if (userData && userData.name) {
               userName = userData.name;
-              console.log("Fetched user name from DB for order:", userName);
+              console.log("OrderContext - Fetched user name from DB for order:", userName);
             } else {
-              console.log("Could not find user for order with user_id:", order.user_id);
+              console.log("OrderContext - Could not find user for order with user_id:", order.user_id);
             }
           }
         }
@@ -118,6 +120,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           name: userName
         };
         
+        console.log("OrderContext - Processed order with user:", processedOrder.user);
         return processedOrder;
       }));
       
@@ -353,7 +356,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const getOrderById = (id: string) => {
     console.log(`Fetching order with ID: ${id}`);
-    console.log(`Current orders in state:`, orders.map(o => ({ id: o.id, number: o.orderNumber })));
+    console.log(`Current orders in state:`, orders.map(o => ({ id: o.id, number: o.orderNumber, user: o.user })));
     
     const foundOrder = orders.find(order => order.id === id);
     
