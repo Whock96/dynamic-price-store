@@ -320,14 +320,23 @@ export function useSupabaseData<T extends Record<string, any>>(
 
   // Initial data fetch
   useEffect(() => {
-    // Verificar se as opções realmente mudaram antes de buscar novamente
+    fetchData();
+    // Update the reference to the new options after fetching
+    previousOptionsRef.current = { ...options };
+    
+    // We only include tableName in the dependency array to prevent infinite loops
+    // Options are handled manually through the haveOptionsChanged check
+  }, [tableName, fetchData]);
+
+  // This separate effect handles option changes
+  useEffect(() => {
+    // Only fetch if options have actually changed
     if (haveOptionsChanged()) {
       fetchData();
-      // Atualizar a referência para as novas opções
+      // Update the reference to the new options
       previousOptionsRef.current = { ...options };
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [options.filterKey, options.filterValue, options.isActive]);
+  }, [options.filterKey, options.filterValue, options.isActive, fetchData]);
 
   return {
     data,
