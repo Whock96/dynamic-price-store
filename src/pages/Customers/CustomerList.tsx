@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useCustomers } from '@/context/CustomerContext';
 import { supabase } from '@/integrations/supabase/client';
 import { adaptUserData } from '@/utils/adapters';
@@ -167,7 +168,11 @@ const CustomerList = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={salesPersonFilter} onValueChange={setSalesPersonFilter}>
+            <Select 
+              value={salesPersonFilter} 
+              onValueChange={setSalesPersonFilter}
+              disabled={user?.role === 'salesperson'}
+            >
               <SelectTrigger>
                 <div className="flex items-center">
                   <Users className="mr-2 h-4 w-4 text-gray-400" />
