@@ -46,7 +46,18 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { addOrder } = useOrders();
+  let addOrder: (newOrder: Partial<Order>) => Promise<string | undefined>;
+  try {
+    const { addOrder: orderContextAddOrder } = useOrders();
+    addOrder = orderContextAddOrder;
+  } catch (error) {
+    console.error("OrderContext not available:", error);
+    addOrder = async () => {
+      toast.error("Erro: Sistema de pedidos não está disponível");
+      return undefined;
+    };
+  }
+  
   const { customers } = useCustomers();
   const { settings } = useDiscountSettings();
   
@@ -528,7 +539,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log(`Sending order email to ${customer.email} and vendas@ferplas.ind.br`);
       
-      addOrder(orderData);
+      await addOrder(orderData);
       
       toast.success('Pedido enviado com sucesso!');
       clearCart();
