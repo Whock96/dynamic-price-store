@@ -331,6 +331,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (orderData.deliveryFee !== undefined) supabaseOrderData.delivery_fee = orderData.deliveryFee;
       if (orderData.withIPI !== undefined) supabaseOrderData.with_ipi = orderData.withIPI;
       if (orderData.ipiValue !== undefined) supabaseOrderData.ipi_value = orderData.ipiValue;
+      // Add support for updating the salesperson (userId)
+      if (orderData.userId !== undefined) supabaseOrderData.user_id = orderData.userId;
       
       const { error } = await supabase
         .from('orders')
@@ -342,6 +344,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         throw error;
       }
       
+      // Update the orders state with the new data
       setOrders(prevOrders =>
         prevOrders.map(order =>
           order.id === orderId
@@ -355,6 +358,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       );
       
       toast.success(`Pedido atualizado com sucesso!`);
+      
+      // Refresh orders to ensure we get the most up-to-date data
+      await fetchOrders();
+      
     } catch (error: any) {
       console.error('Error updating order:', error);
       toast.error(`Erro ao atualizar pedido: ${error.message || 'Erro desconhecido'}`);

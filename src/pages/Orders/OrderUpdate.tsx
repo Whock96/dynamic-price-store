@@ -14,48 +14,70 @@ import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useSupabaseData } from '@/hooks/use-supabase-data';
+import { useOrderData } from '@/hooks/use-order-data';
+import { supabase } from '@/integrations/supabase/client';
+import { User } from '@/types/types';
 
 const OrderUpdate = () => {
   const { id } = useParams<{ id: string }>();
-  const { getOrderById, updateOrder, updateOrderStatus, isLoading } = useOrders();
+  const { updateOrder, updateOrderStatus } = useOrders();
   const navigate = useNavigate();
-  const [order, setOrder] = useState<any>(null);
   const [status, setStatus] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [withIPI, setWithIPI] = useState(false);
+  const [salespeople, setSalespeople] = useState<User[]>([]);
+  const [selectedSalespersonId, setSelectedSalespersonId] = useState<string>('');
+  const [isLoadingSalespeople, setIsLoadingSalespeople] = useState(true);
   
-  // Use direct Supabase data for backup if context fails
-  const { data: supabaseOrders, isLoading: isLoadingSupabase } = useSupabaseData('orders', {
-    select: '*',
-    filterKey: 'id',
-    filterValue: id || '',
-  });
+  // Use the custom hook to fetch order data directly from Supabase
+  const { order, isLoading, fetchOrderData } = useOrderData(id);
+
+  // Fetch salespeople for the dropdown
+  useEffect(() => {
+    const fetchSalespeople = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, name, username, role')
+          .eq('is_active', true);
+          
+        if (error) throw error;
+        
+        if (data) {
+          // Map to User type
+          const mappedSalespeople: User[] = data.map(sp => ({
+            id: sp.id,
+            name: sp.name,
+            username: sp.username,
+            role: sp.role || 'salesperson',
+            permissions: [],
+            email: '',
+            createdAt: new Date(),
+            userTypeId: ''
+          }));
+          
+          setSalespeople(mappedSalespeople);
+        }
+      } catch (error) {
+        console.error('Error fetching salespeople:', error);
+        toast.error('Erro ao carregar vendedores');
+      } finally {
+        setIsLoadingSalespeople(false);
+      }
+    };
+    
+    fetchSalespeople();
+  }, []);
 
   useEffect(() => {
-    // First try to get the order from the context
-    if (!isLoading && id) {
-      const foundOrder = getOrderById(id);
-      if (foundOrder) {
-        console.log("Found order for editing from context:", foundOrder);
-        setOrder(foundOrder);
-        setStatus(foundOrder.status || 'pending');
-        setNotes(foundOrder.notes || foundOrder.observations || '');
-        setWithIPI(foundOrder.withIPI || false);
-      } else if (supabaseOrders && supabaseOrders.length > 0) {
-        // Fall back to direct Supabase data if context doesn't have the order
-        const supabaseOrder = supabaseOrders[0];
-        console.log("Found order for editing from Supabase:", supabaseOrder);
-        setOrder(supabaseOrder);
-        setStatus(supabaseOrder.status || 'pending');
-        setNotes(supabaseOrder.notes || supabaseOrder.observations || '');
-        setWithIPI(supabaseOrder.with_ipi || false);
-      } else {
-        toast.error('Pedido não encontrado');
-        navigate('/orders');
-      }
+    if (order) {
+      console.log("Setting form values from order:", order);
+      setStatus(order.status || 'pending');
+      setNotes(order.notes || order.observations || '');
+      setWithIPI(order.withIPI || false);
+      setSelectedSalespersonId(order.userId || '');
     }
-  }, [id, getOrderById, isLoading, supabaseOrders, navigate]);
+  }, [order]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +101,11 @@ const OrderUpdate = () => {
       updates.withIPI = withIPI;
     }
 
+    // Update salesperson if it was changed
+    if (selectedSalespersonId !== order.userId) {
+      updates.userId = selectedSalespersonId;
+    }
+
     // Only call updateOrder if there are changes to make
     if (Object.keys(updates).length > 0) {
       updateOrder(id, updates);
@@ -88,7 +115,7 @@ const OrderUpdate = () => {
     navigate(`/orders/${id}`);
   };
 
-  if (isLoading || isLoadingSupabase) {
+  if (isLoading || isLoadingSalespeople) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
@@ -157,6 +184,26 @@ const OrderUpdate = () => {
                   <div className="mt-1 border rounded-md p-3 bg-gray-50">
                     {formatDate(order.createdAt || order.created_at)}
                   </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Vendedor</label>
+                  <Select 
+                    value={selectedSalespersonId} 
+                    onValueChange={setSelectedSalespersonId}
+                  >
+                    <SelectTrigger className="w-full mt-1">
+                      <SelectValue placeholder="Selecione um vendedor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Nenhum</SelectItem>
+                      {salespeople.map((sp) => (
+                        <SelectItem key={sp.id} value={sp.id}>
+                          {sp.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
