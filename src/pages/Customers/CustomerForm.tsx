@@ -31,14 +31,14 @@ const CustomerForm = () => {
   const [salespeople, setSalespeople] = useState<User[]>([]);
   const [isLoadingSalespeople, setIsLoadingSalespeople] = useState(false);
   
-  // Check if current user is a salesperson
-  const isSalesperson = currentUser?.role === 'salesperson';
-
-  // Default form values
+  // Check if current user is a salesperson by user type ID
+  const isSalesperson = currentUser?.userTypeId === 'c5ee0433-3faf-46a4-a516-be7261bfe575';
+  
+  // Default form values - Set salesPersonId to current user's ID if available
   const [formValues, setFormValues] = useState<Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>>({
     companyName: '',
     document: '',
-    salesPersonId: isSalesperson && currentUser?.id ? currentUser.id : '',
+    salesPersonId: currentUser?.id || '',
     street: '',
     number: '',
     noNumber: false,
