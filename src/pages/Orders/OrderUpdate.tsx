@@ -26,7 +26,7 @@ const OrderUpdate = () => {
   const [notes, setNotes] = useState<string>('');
   const [withIPI, setWithIPI] = useState(false);
   const [salespeople, setSalespeople] = useState<User[]>([]);
-  const [selectedSalespersonId, setSelectedSalespersonId] = useState<string>('');
+  const [selectedSalespersonId, setSelectedSalespersonId] = useState<string>('none');
   const [isLoadingSalespeople, setIsLoadingSalespeople] = useState(true);
   
   // Use the custom hook to fetch order data directly from Supabase
@@ -38,8 +38,7 @@ const OrderUpdate = () => {
       try {
         const { data, error } = await supabase
           .from('users')
-          .select('id, name, username, role')
-          .eq('is_active', true);
+          .select('id, name, username, user_type_id');
           
         if (error) throw error;
         
@@ -49,11 +48,11 @@ const OrderUpdate = () => {
             id: sp.id,
             name: sp.name,
             username: sp.username,
-            role: sp.role || 'salesperson',
+            role: 'salesperson', // Default role
             permissions: [],
             email: '',
             createdAt: new Date(),
-            userTypeId: ''
+            userTypeId: sp.user_type_id || ''
           }));
           
           setSalespeople(mappedSalespeople);
@@ -75,7 +74,8 @@ const OrderUpdate = () => {
       setStatus(order.status || 'pending');
       setNotes(order.notes || order.observations || '');
       setWithIPI(order.withIPI || false);
-      setSelectedSalespersonId(order.userId || '');
+      // Set to 'none' if no salesperson is assigned
+      setSelectedSalespersonId(order.userId || 'none');
     }
   }, [order]);
 
@@ -103,7 +103,8 @@ const OrderUpdate = () => {
 
     // Update salesperson if it was changed
     if (selectedSalespersonId !== order.userId) {
-      updates.userId = selectedSalespersonId;
+      // If 'none' is selected, set userId to null
+      updates.userId = selectedSalespersonId === 'none' ? null : selectedSalespersonId;
     }
 
     // Only call updateOrder if there are changes to make
@@ -138,7 +139,7 @@ const OrderUpdate = () => {
   }
 
   // Calculate order number display
-  const orderNumber = order.orderNumber || (order.order_number ? order.order_number : id?.split('-')[0]);
+  const orderNumber = order.orderNumber || id?.split('-')[0];
 
   return (
     <div className="space-y-6">
@@ -175,14 +176,14 @@ const OrderUpdate = () => {
                 <div>
                   <label className="text-sm font-medium">Cliente</label>
                   <div className="mt-1 border rounded-md p-3 bg-gray-50">
-                    {order.customer?.companyName || order.customers?.company_name || "Cliente não encontrado"}
+                    {order.customer?.companyName || "Cliente não encontrado"}
                   </div>
                 </div>
 
                 <div>
                   <label className="text-sm font-medium">Data</label>
                   <div className="mt-1 border rounded-md p-3 bg-gray-50">
-                    {formatDate(order.createdAt || order.created_at)}
+                    {formatDate(order.createdAt)}
                   </div>
                 </div>
 
@@ -196,7 +197,7 @@ const OrderUpdate = () => {
                       <SelectValue placeholder="Selecione um vendedor" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Nenhum</SelectItem>
+                      <SelectItem value="none">Nenhum</SelectItem>
                       {salespeople.map((sp) => (
                         <SelectItem key={sp.id} value={sp.id}>
                           {sp.name}
@@ -286,10 +287,10 @@ const OrderUpdate = () => {
                       <span>+ {formatCurrency((7.8 / 100) * order.subtotal)}</span>
                     </div>
                   )}
-                  {(order.withIPI || order.with_ipi) && (order.ipiValue || order.ipi_value) > 0 && (
+                  {order.withIPI && order.ipiValue > 0 && (
                     <div className="flex justify-between mb-2">
                       <span className="text-sm text-gray-700">IPI</span>
-                      <span>{formatCurrency(order.ipiValue || order.ipi_value)}</span>
+                      <span>{formatCurrency(order.ipiValue)}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-bold mt-4 pt-4 border-t">
