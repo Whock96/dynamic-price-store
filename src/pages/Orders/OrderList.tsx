@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Plus, FileText, Edit3, Trash2, Search, ExternalLink, Calendar } from 'lucide-react';
+import { Plus, FileText, Edit3, Trash2, Search, ExternalLink, Calendar, Filter } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { 
@@ -27,6 +27,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuCheckboxItem,
+} from "@/components/ui/dropdown-menu";
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -48,6 +57,7 @@ interface OrderWithCustomer extends Tables<'orders'> {
 }
 
 type SortDirection = 'asc' | 'desc' | null;
+type OrderStatus = 'all' | 'pending' | 'approved' | 'canceled' | 'delivered' | 'processing';
 
 const OrderList = () => {
   const navigate = useNavigate();
@@ -66,6 +76,7 @@ const OrderList = () => {
   
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [statusFilter, setStatusFilter] = useState<OrderStatus>('all');
 
   const isSalespersonType = currentUser?.userTypeId === 'c5ee0433-3faf-46a4-a516-be7261bfe575';
 
@@ -327,6 +338,10 @@ const OrderList = () => {
       });
     }
     
+    if (statusFilter !== 'all') {
+      result = result.filter(order => order.status === statusFilter);
+    }
+    
     if (searchTerm.trim() !== '') {
       const lowercasedSearch = searchTerm.toLowerCase();
       result = result.filter(order => {
@@ -397,7 +412,7 @@ const OrderList = () => {
     }
     
     setFilteredOrders(result);
-  }, [orders, searchTerm, sortKey, sortDirection, startDate, endDate]);
+  }, [orders, searchTerm, sortKey, sortDirection, startDate, endDate, statusFilter]);
 
   const handleDeleteOrder = async () => {
     if (!selectedOrderId) return;
@@ -424,6 +439,17 @@ const OrderList = () => {
     setStartDate(undefined);
     setEndDate(undefined);
     setSearchTerm('');
+    setStatusFilter('all');
+  };
+
+  const renderStatusOption = (status: OrderStatus) => {
+    if (status === 'all') return 'Todos os status';
+    if (status === 'pending') return 'Pendente';
+    if (status === 'approved') return 'Aprovado';
+    if (status === 'canceled') return 'Cancelado';
+    if (status === 'delivered') return 'Entregue';
+    if (status === 'processing') return 'Em processamento';
+    return status;
   };
 
   return (
@@ -449,6 +475,37 @@ const OrderList = () => {
                 />
                 
                 <div className="flex space-x-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="flex-1">
+                        <Filter className="mr-2 h-4 w-4" />
+                        {renderStatusOption(statusFilter)}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-[200px]">
+                      <DropdownMenuLabel>Status do Pedido</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setStatusFilter('all')}>
+                        Todos os status
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setStatusFilter('pending')}>
+                        Pendente
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setStatusFilter('approved')}>
+                        Aprovado
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setStatusFilter('processing')}>
+                        Em processamento
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setStatusFilter('delivered')}>
+                        Entregue
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setStatusFilter('canceled')}>
+                        Cancelado
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline" className="flex-1">
