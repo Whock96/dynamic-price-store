@@ -441,10 +441,11 @@ const OrderList = () => {
             <div className="flex flex-col space-y-4">
               <CardTitle>Lista de Pedidos</CardTitle>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center gap-4">
                 <OrderSearch 
                   searchQuery={searchTerm}
                   setSearchQuery={setSearchTerm}
+                  className="flex-1"
                 />
                 
                 <div className="flex space-x-2">

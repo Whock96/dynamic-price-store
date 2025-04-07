@@ -6,11 +6,16 @@ import { Search } from 'lucide-react';
 interface OrderSearchProps {
   searchQuery: string;
   setSearchQuery: (value: string) => void;
+  className?: string;
 }
 
-const OrderSearch: React.FC<OrderSearchProps> = ({ searchQuery, setSearchQuery }) => {
+const OrderSearch: React.FC<OrderSearchProps> = ({ 
+  searchQuery, 
+  setSearchQuery, 
+  className = '' 
+}) => {
   return (
-    <div className="relative w-full md:w-96">
+    <div className={`relative w-full ${className}`}>
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
       <Input
         placeholder="Buscar por número, CNPJ ou cliente..."
