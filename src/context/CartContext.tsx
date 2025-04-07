@@ -116,6 +116,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [settings]);
 
+  const handleSetCustomer = (selectedCustomer: Customer | null) => {
+    const isSalesperson = user?.userTypeId === 'c5ee0433-3faf-46a4-a516-be7261bfe575';
+    
+    if (isSalesperson && selectedCustomer && selectedCustomer.salesPersonId !== user.id) {
+      toast.error('Você só pode selecionar clientes atribuídos a você.');
+      return;
+    }
+    
+    setCustomer(selectedCustomer);
+  };
+
   const calculateTotalUnits = (item: CartItem): number => {
     return item.quantity * (item.product.quantityPerVolume || 1);
   };
@@ -573,7 +584,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       deliveryFee,
       applyDiscounts,
       withIPI,
-      setCustomer,
+      setCustomer: handleSetCustomer,
       addItem,
       removeItem,
       updateItemQuantity,

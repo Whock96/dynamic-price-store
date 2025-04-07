@@ -29,6 +29,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/client';
 import { supabaseProductToAppProduct } from '@/utils/adapters';
+import { useAuth } from '@/context/AuthContext';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,6 +61,7 @@ const Cart = () => {
   const location = useLocation();
   const { customers } = useCustomers();
   const { settings } = useDiscountSettings();
+  const { user } = useAuth();
   const searchParams = new URLSearchParams(location.search);
   const productParam = searchParams.get('product');
   const customerParam = searchParams.get('customer');
@@ -81,6 +83,9 @@ const Cart = () => {
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [products, setProducts] = useState<SupabaseProduct[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  
+  // Check if current user is a salesperson
+  const isSalesperson = user?.userTypeId === 'c5ee0433-3faf-46a4-a516-be7261bfe575';
   
   const fetchProducts = async () => {
     try {
@@ -111,10 +116,20 @@ const Cart = () => {
     fetchProducts();
   }, []);
   
-  const filteredCustomers = customers.filter(c => 
-    c.companyName.toLowerCase().includes(customerSearch.toLowerCase()) ||
-    c.document.includes(customerSearch)
-  );
+  // Filter customers based on user role
+  const filteredCustomers = customers.filter(c => {
+    // First apply search filter
+    const matchesSearch = c.companyName.toLowerCase().includes(customerSearch.toLowerCase()) ||
+      c.document.includes(customerSearch);
+    
+    // If user is a salesperson, only show their customers
+    if (isSalesperson) {
+      return matchesSearch && c.salesPersonId === user?.id;
+    }
+    
+    // For other user types, show all customers that match the search
+    return matchesSearch;
+  });
   
   const filteredProducts = products.filter(p => 
     p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
@@ -321,7 +336,9 @@ const Cart = () => {
                   <DialogHeader>
                     <DialogTitle>Selecionar Cliente</DialogTitle>
                     <DialogDescription>
-                      Escolha um cliente para este pedido ou adicione um novo.
+                      {isSalesperson 
+                        ? "Escolha um dos seus clientes para este pedido ou adicione um novo."
+                        : "Escolha um cliente para este pedido ou adicione um novo."}
                     </DialogDescription>
                   </DialogHeader>
                   
@@ -381,7 +398,11 @@ const Cart = () => {
                     </ScrollArea>
                   ) : (
                     <div className="text-center py-12">
-                      <p className="text-gray-500">Nenhum cliente encontrado. Altere sua busca ou adicione um novo cliente.</p>
+                      <p className="text-gray-500">
+                        {isSalesperson 
+                          ? "Nenhum cliente encontrado. Altere sua busca ou adicione um novo cliente atribuído a você."
+                          : "Nenhum cliente encontrado. Altere sua busca ou adicione um novo cliente."}
+                      </p>
                     </div>
                   )}
                   
