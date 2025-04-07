@@ -7,12 +7,12 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import Logo from '@/assets/logo';
+import { Loader2 } from 'lucide-react';
 
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const { login, user } = useAuth();
+  const { login, user, isLoading, error } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -29,18 +29,7 @@ const Login = () => {
       return;
     }
     
-    setIsLoading(true);
-    
-    try {
-      await login(username, password);
-      toast.success('Login realizado com sucesso!');
-      navigate('/dashboard');
-    } catch (error) {
-      console.error('Login error:', error);
-      toast.error('Erro ao realizar login');
-    } finally {
-      setIsLoading(false);
-    }
+    await login(username, password);
   };
 
   return (
@@ -81,12 +70,26 @@ const Login = () => {
                     autoComplete="current-password"
                   />
                 </div>
+                
+                {error && (
+                  <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm">
+                    {error}
+                  </div>
+                )}
+                
                 <Button 
                   type="submit" 
                   className="w-full bg-ferplas-500 hover:bg-ferplas-600" 
                   disabled={isLoading}
                 >
-                  {isLoading ? "Entrando..." : "Entrar"}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Entrando...
+                    </>
+                  ) : (
+                    'Entrar'
+                  )}
                 </Button>
               </div>
             </form>

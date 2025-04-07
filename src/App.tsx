@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { ProductProvider } from "./context/ProductContext";
 import { CustomerProvider } from "./context/CustomerContext";
@@ -50,7 +50,7 @@ const App = () => (
                       <Sonner />
                       <Routes>
                         <Route path="/login" element={<Login />} />
-                        <Route path="/" element={<PageContainer><Dashboard /></PageContainer>} />
+                        <Route path="/" element={<Navigate to="/dashboard" replace />} />
                         <Route path="/dashboard" element={<PageContainer><Dashboard /></PageContainer>} />
                         
                         {/* Product routes */}

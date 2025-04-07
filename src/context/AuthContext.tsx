@@ -36,11 +36,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   useEffect(() => {
     async function checkSession() {
-      const { data, error } = await supabase.auth.getSession();
-      
-      if (data?.session?.user) {
-        await fetchUser(data.session.user.id);
-      } else {
+      try {
+        setIsLoading(true);
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (data?.session?.user) {
+          await fetchUser(data.session.user.id);
+        } else {
+          setUser(null);
+          setIsLoading(false);
+        }
+      } catch (err) {
+        console.error("Error checking session:", err);
         setUser(null);
         setIsLoading(false);
       }
@@ -64,6 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const fetchUser = async (userId: string) => {
     setIsLoading(true);
+    setError(null);
     try {
       const { data: userData, error: userError } = await supabase
         .from('users')
@@ -172,6 +180,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     
     try {
+      console.log('Attempting login with:', { username });
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email: username,
         password: password,
@@ -179,8 +189,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) {
         console.error('Login error:', error);
-        setError(error.message);
-        toast.error('Credenciais inválidas');
+        if (error.message === 'Invalid login credentials') {
+          setError('Credenciais inválidas. Verifique seu usuário e senha.');
+        } else {
+          setError(error.message);
+        }
+        toast.error('Erro ao fazer login');
       } else {
         console.log('Login successful:', data);
         toast.success('Login realizado com sucesso!');
