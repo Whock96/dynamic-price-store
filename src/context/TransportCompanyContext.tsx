@@ -63,8 +63,8 @@ export const TransportCompanyProvider: React.FC<{ children: React.ReactNode }> =
         return;
       }
       
-      setCompanies(data.map(supabaseToTransportCompany));
-    } catch (err) {
+      setCompanies((data || []).map(supabaseToTransportCompany));
+    } catch (err: any) {
       console.error('Error in fetchCompanies:', err);
       setError('Ocorreu um erro ao buscar as transportadoras');
     } finally {
@@ -93,7 +93,7 @@ export const TransportCompanyProvider: React.FC<{ children: React.ReactNode }> =
       const supabaseData = transportCompanyToSupabase(companyData as TransportCompany);
       
       // Ensure required fields
-      if (!supabaseData.name || !supabaseData.document) {
+      if (!companyData.name || !companyData.document) {
         toast.error('Nome e CNPJ são campos obrigatórios');
         return null;
       }
@@ -101,7 +101,13 @@ export const TransportCompanyProvider: React.FC<{ children: React.ReactNode }> =
       // Add to Supabase
       const { data, error } = await supabase
         .from('transport_companies')
-        .insert(supabaseData)
+        .insert({
+          name: companyData.name,
+          document: companyData.document,
+          phone: companyData.phone,
+          email: companyData.email,
+          whatsapp: companyData.whatsapp
+        })
         .select()
         .single();
       

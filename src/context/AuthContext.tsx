@@ -1,270 +1,233 @@
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { User, Permission } from '@/types/types';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { User, UserType, Permission } from '@/types/types';
 
-// Define the MENU_ITEMS to export for sidebar
-export const MENU_ITEMS = [
-  {
-    id: 'dashboard',
-    name: 'Dashboard',
-    path: '/dashboard',
-    icon: 'home',
-    requiredRoles: ['administrator', 'salesperson', 'billing', 'inventory'],
-  },
-  {
-    id: 'products',
-    name: 'Produtos',
-    path: '/products',
-    icon: 'package',
-    requiredRoles: ['administrator', 'salesperson', 'inventory'],
-  },
-  {
-    id: 'customers',
-    name: 'Clientes',
-    path: '/customers',
-    icon: 'users',
-    requiredRoles: ['administrator', 'salesperson'],
-  },
-  {
-    id: 'orders',
-    name: 'Pedidos',
-    path: '/orders',
-    icon: 'clipboard',
-    requiredRoles: ['administrator', 'salesperson', 'billing'],
-  },
-  {
-    id: 'cart',
-    name: 'Carrinho',
-    path: '/cart',
-    icon: 'shopping-cart',
-    requiredRoles: ['administrator', 'salesperson'],
-  },
-  {
-    id: 'settings',
-    name: 'Configurações',
-    path: '/settings',
-    icon: 'settings',
-    requiredRoles: ['administrator'],
-    submenus: [
-      {
-        id: 'product-management',
-        name: 'Gerenciar Produtos',
-        path: '/settings/products',
-        icon: 'list',
-        requiredRoles: ['administrator'],
-      },
-      {
-        id: 'user-management',
-        name: 'Gerenciar Usuários',
-        path: '/settings/users',
-        icon: 'user-plus',
-        requiredRoles: ['administrator'],
-      },
-      {
-        id: 'user-type-management',
-        name: 'Tipos de Usuário',
-        path: '/settings/user-types',
-        icon: 'shield',
-        requiredRoles: ['administrator'],
-      },
-      {
-        id: 'category-management',
-        name: 'Gerenciar Categorias',
-        path: '/settings/categories',
-        icon: 'tag',
-        requiredRoles: ['administrator'],
-      },
-      {
-        id: 'discount-management',
-        name: 'Gerenciar Descontos',
-        path: '/settings/discounts',
-        icon: 'percent',
-        requiredRoles: ['administrator'],
-      },
-      {
-        id: 'transport-company-management',
-        name: 'Gerenciar Transportadoras',
-        path: '/settings/transport-companies',
-        icon: 'truck',
-        requiredRoles: ['administrator'],
-      },
-      {
-        id: 'company-settings',
-        name: 'Dados da Empresa',
-        path: '/settings/company',
-        icon: 'building-2',
-        requiredRoles: ['administrator'],
-      },
-    ],
-  },
-];
-
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<User | null>;
+  userTypes: UserType[];
+  permissions: Permission[];
+  isLoading: boolean;
+  error: string | null;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   hasPermission: (permissionCode: string) => boolean;
-  checkAccess: (path: string) => boolean;
-  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
-  children 
-}) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
 
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [userTypes, setUserTypes] = useState<UserType[]>([]);
+  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  
   useEffect(() => {
-    // Check if the user is already logged in
-    const checkAuth = async () => {
-      setIsLoading(true);
-      try {
-        // Try to get the session from localStorage
-        const storedUser = localStorage.getItem('user');
-        
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
-        } else {
-          // If no stored user, clear any potential session
-          await logout();
-        }
-      } catch (error) {
-        console.error('Error checking auth:', error);
-        await logout();
-      } finally {
+    const session = supabase.auth.getSession();
+    
+    supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.session?.user) {
+        await fetchUser(session.session.user.id);
+      } else {
+        setUser(null);
         setIsLoading(false);
       }
-    };
-
-    checkAuth();
+    });
+    
+    if (session?.data?.session?.user) {
+      fetchUser(session.data.session.user.id);
+    } else {
+      setIsLoading(false);
+    }
   }, []);
-
-  const login = async (email: string, password: string): Promise<User | null> => {
+  
+  const fetchUser = async (userId: string) => {
     setIsLoading(true);
     try {
-      // For demo purposes, using a simple authentication
-      const { data, error } = await supabase
+      const { data: userData, error: userError } = await supabase
         .from('users')
-        .select(`
-          id, name, email, username, user_type_id,
-          user_types:user_type_id (
-            id, name, permissions:user_type_permissions (
-              permissions:permission_id (
-                id, name, description, code
-              )
-            )
-          )
-        `)
-        .eq('email', email)
-        .eq('password', password) // In a real app, you'd use proper password hashing
-        .eq('is_active', true)
+        .select('*')
+        .eq('id', userId)
         .single();
-
-      if (error || !data) {
-        console.error('Login error:', error);
-        throw new Error('Credenciais inválidas');
+        
+      if (userError) {
+        throw new Error(userError.message);
       }
-
-      // Transform the data to match our User type
-      const permissions: Permission[] = data.user_types?.permissions
-        ?.map((p: any) => ({
-          id: p.permissions.id,
-          name: p.permissions.name,
-          description: p.permissions.description,
-          code: p.permissions.code,
-          isGranted: true
-        })) || [];
-
-      const userData: User = {
-        id: data.id,
-        username: data.username,
-        name: data.name,
-        email: data.email,
-        role: data.user_types?.name.toLowerCase() as 'administrator' | 'salesperson' | 'billing' | 'inventory',
-        permissions,
-        createdAt: new Date(),
-        userTypeId: data.user_type_id
+      
+      if (!userData) {
+        throw new Error('User not found');
+      }
+      
+      const { data: userTypeData, error: userTypeError } = await supabase
+        .from('user_types')
+        .select('*')
+        .eq('id', userData.user_type_id)
+        .single();
+        
+      if (userTypeError) {
+        console.error('Error fetching user type:', userTypeError);
+        throw new Error(userTypeError.message);
+      }
+      
+      if (!userTypeData) {
+        console.error('User type not found for id:', userData.user_type_id);
+        throw new Error('User type not found');
+      }
+      
+      // Fetch permissions
+      const fetchedPermissions = await getPermissions(userData.user_type_id);
+      setPermissions(fetchedPermissions);
+      
+      // Construct user object
+      const user: User = {
+        id: userData.id,
+        username: userData.username,
+        name: userData.name,
+        email: userData.email || '',
+        role: userTypeData.name as any, // Adjust type assertion as needed
+        permissions: fetchedPermissions,
+        createdAt: new Date(userData.created_at),
+        userTypeId: userData.user_type_id,
       };
+      
+      setUser(user);
+      
+    } catch (err: any) {
+      console.error('Error fetching user:', err);
+      setError(err.message || 'Failed to fetch user data');
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const getPermissions = useCallback(async (userTypeId: string): Promise<Permission[]> => {
+    try {
+      // Fetch permissions associated with this user type
+      const { data: permissionsData, error: permissionsError } = await supabase
+        .from('user_type_permissions')
+        .select('permission_id')
+        .eq('user_type_id', userTypeId);
+        
+      if (permissionsError) {
+        console.error('Error fetching permissions:', permissionsError);
+        return [];
+      }
+      
+      if (!permissionsData || permissionsData.length === 0) {
+        return [];
+      }
+      
+      // Extract permission IDs
+      const permissionIds = permissionsData.map(p => p.permission_id);
+      
+      // Fetch permission details
+      const { data: permissions, error: permDetailsError } = await supabase
+        .from('permissions')
+        .select('*')
+        .in('id', permissionIds);
+        
+      if (permDetailsError) {
+        console.error('Error fetching permission details:', permDetailsError);
+        return [];
+      }
+      
+      // Map to Permission type with isGranted set to true
+      return (permissions || []).map(p => ({
+        id: p.id,
+        name: p.name,
+        description: p.description || '',
+        code: p.code,
+        isGranted: true
+      }));
+    } catch (err) {
+      console.error('Error in getPermissions:', err);
+      return [];
+    }
+  }, []);
 
-      // Store user in localStorage for session persistence
-      localStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
-
-      return userData;
-    } catch (error) {
-      console.error('Login error:', error);
-      toast.error('Falha na autenticação. Verifique suas credenciais.');
-      return null;
+  const login = async (username: string, password: string) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: username,
+        password: password,
+      });
+      
+      if (error) {
+        console.error('Login error:', error);
+        setError(error.message);
+        toast.error('Credenciais inválidas');
+      } else {
+        console.log('Login successful:', data);
+        toast.success('Login realizado com sucesso!');
+        navigate('/dashboard');
+      }
+    } catch (err: any) {
+      console.error('Login error:', err.message);
+      setError(err.message || 'Ocorreu um erro ao fazer login.');
+      toast.error('Ocorreu um erro ao fazer login.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = async (): Promise<void> => {
-    // Clear the stored user data
-    localStorage.removeItem('user');
-    setUser(null);
-  };
+  const logout = async () => {
+    setIsLoading(true);
+    setError(null);
 
-  const hasPermission = (permissionCode: string): boolean => {
-    if (!user) return false;
-    
-    // For administrator role, grant all permissions
-    if (user.role === 'administrator') return true;
-    
-    // Check if the user has the specific permission
-    return user.permissions.some(permission => 
-      permission.code === permissionCode && permission.isGranted
-    );
-  };
-
-  const checkAccess = (path: string): boolean => {
-    if (!user) return false;
-    
-    // Check all menu items and their submenus
-    for (const item of MENU_ITEMS) {
-      // Check if the current item matches the path
-      if (item.path === path && item.requiredRoles.includes(user.role)) {
-        return true;
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Logout error:', error.message);
+        setError(error.message);
+        toast.error('Erro ao fazer logout.');
+      } else {
+        console.log('Logout successful');
+        toast.success('Logout realizado com sucesso!');
+        navigate('/login');
       }
-      
-      // Check submenus if they exist
-      if (item.submenus) {
-        for (const submenu of item.submenus) {
-          if (submenu.path === path && submenu.requiredRoles.includes(user.role)) {
-            return true;
-          }
-        }
-      }
+    } catch (err: any) {
+      console.error('Logout error:', err.message);
+      setError(err.message || 'Ocorreu um erro ao fazer logout.');
+      toast.error('Ocorreu um erro ao fazer logout.');
+    } finally {
+      setIsLoading(false);
+      setUser(null);
     }
-    
-    return false;
+  };
+  
+  const hasPermission = (permissionCode: string): boolean => {
+    return permissions.some(perm => perm.code === permissionCode && perm.isGranted);
+  };
+
+  const value: AuthContextType = {
+    user,
+    userTypes,
+    permissions,
+    isLoading,
+    error,
+    login,
+    logout,
+    hasPermission,
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      login, 
-      logout, 
-      hasPermission,
-      checkAccess,
-      isLoading
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 };

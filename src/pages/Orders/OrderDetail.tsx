@@ -1,36 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useOrders } from '@/context/OrderContext';
+import { useAuth } from '@/context/AuthContext';
+import { useSupabaseData } from '@/hooks/use-supabase-data';
 import { useTransportCompanies } from '@/context/TransportCompanyContext';
+import { Printer, FileText, Edit, ArrowLeft, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import {
-  Clipboard,
-  Edit,
-  Loader2,
-  ChevronLeft,
-  Printer,
-  AlertTriangle,
-  CreditCard,
-  Calendar,
-  FileText,
-  Check,
-  Tag,
-  Hourglass,
-  Phone, 
-  Mail,
-  Truck
-} from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,19 +20,27 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Order, CartItem, TransportCompany } from '@/types/types';
-import { cn } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { formatCurrency, formatDocument, formatPhoneNumber } from '@/utils/formatters';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import StatusBadge from '@/components/orders/StatusBadge';
+import { Order } from '@/types/types';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
+import PrintableOrder from '@/components/orders/PrintableOrder';
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getOrderById, updateOrder, deleteOrder, isLoading } = useOrders();
   const { getCompanyById } = useTransportCompanies();
+  const { user } = useAuth();
   const [order, setOrder] = useState<Order | null>(null);
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
@@ -67,7 +53,6 @@ const OrderDetail = () => {
       if (foundOrder) {
         setOrder(foundOrder);
         
-        // Fetch transport company if present
         if (foundOrder.transportCompanyId) {
           const company = getCompanyById(foundOrder.transportCompanyId);
           if (company) {
@@ -140,10 +125,8 @@ const OrderDetail = () => {
       
       printWindow.document.close();
       
-      // Use fallback method for rendering since we can't use React in the new window
       const mountNode = printWindow.document.getElementById('printable-content');
       if (mountNode) {
-        // Create an iframe to hold the content
         const iframe = document.createElement('iframe');
         iframe.style.width = '100%';
         iframe.style.height = '100vh';
@@ -151,13 +134,11 @@ const OrderDetail = () => {
         
         mountNode.appendChild(iframe);
         
-        // Wait for iframe to load then add content
         iframe.onload = function() {
           const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
           if (iframeDoc) {
             printWindow.document.title = `Pedido #${order.orderNumber || '1'} - Impressão`;
             
-            // Add component markup directly
             const companyInfo = JSON.parse(localStorage.getItem('ferplas-company-info') || '{}');
             iframeDoc.body.innerHTML = renderPrintableOrderHTML(order, companyInfo);
           }
@@ -171,26 +152,19 @@ const OrderDetail = () => {
   };
 
   const renderPrintableOrderHTML = (order: any, companyInfo: any) => {
-    // Determine invoice type text based on fullInvoice flag
     const invoiceTypeText = order.fullInvoice ? 'Nota Cheia' : 'Meia Nota';
-    
-    // Show percentage only if it's a half invoice
     const halfInvoiceText = !order.fullInvoice && order.halfInvoicePercentage ? 
       `(${order.halfInvoicePercentage}%)` : '';
       
-    // Calculate tax substitution value if applicable
     let taxSubstitutionValue = 0;
     if (order.taxSubstitution) {
-      // Using 7.8% which is the standard tax substitution rate in the system
       taxSubstitutionValue = (7.8 / 100) * order.subtotal;
     }
     
-    // Calculate IPI if applicable
     const ipiValue = (order.withIPI || order.with_ipi) ? (order.ipiValue || order.ipi_value || 0) : 0;
     
     return `
       <div style="max-width: 800px; margin: 0 auto; padding: 12px; font-family: Arial, sans-serif; font-size: 11px;">
-        <!-- Company header - more compact -->
         <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-bottom: 8px;">
           <div>
             <img src="/lovable-uploads/68daf61d-816f-4f86-8b3f-4f0970296cf0.png" width="150" height="60" style="object-fit: contain;" alt="Ferplas Logo">
@@ -204,17 +178,15 @@ const OrderDetail = () => {
           </div>
         </div>
         
-        <!-- Order title -->
         <div style="text-align: center; margin-bottom: 8px;">
           <h1 style="font-size: 16px; font-weight: bold; border: 1px solid #ddd; display: inline-block; padding: 4px 12px; margin: 4px 0;">
             PEDIDO #${order.orderNumber || order.order_number || '1'}
           </h1>
           <p style="font-size: 10px; margin: 2px 0;">
-            Emitido em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+            Emitido em ${format(new Date(order.createdAt || order.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
           </p>
         </div>
         
-        <!-- Customer and order info -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
           <div style="border: 1px solid #ddd; border-radius: 4px; padding: 8px;">
             <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Cliente</h2>
@@ -250,7 +222,6 @@ const OrderDetail = () => {
           </div>
         </div>
         
-        <!-- Order items -->
         <div style="margin-bottom: 8px;">
           <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Itens do Pedido</h2>
           <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
@@ -281,9 +252,7 @@ const OrderDetail = () => {
           </table>
         </div>
         
-        <!-- Two column layout for delivery and financial summary -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
-          <!-- Delivery info -->
           <div>
             <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Entrega</h2>
             <p style="margin: 2px 0;"><span style="font-weight: 600;">Tipo:</span> ${(order.shipping || order.shipping) === 'delivery' ? 'Entrega' : 'Retirada'}</p>
@@ -293,7 +262,6 @@ const OrderDetail = () => {
               `<p style="margin: 2px 0;"><span style="font-weight: 600;">Taxa:</span> ${formatCurrency(order.deliveryFee || order.delivery_fee)}</p>` : ''}
           </div>
           
-          <!-- Financial summary -->
           <div>
             <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Resumo Financeiro</h2>
             <table style="width: 100%;">
@@ -368,7 +336,7 @@ const OrderDetail = () => {
             className="mr-2 p-0 h-9 w-9" 
             onClick={() => navigate('/orders')}
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
             <h1 className="text-2xl font-bold">
@@ -403,24 +371,22 @@ const OrderDetail = () => {
               className="gap-1" 
               disabled={order.status === 'canceled'}
             >
-              <AlertTriangle className="h-4 w-4" /> Cancelar
+              <Trash2 className="h-4 w-4" /> Cancelar
             </Button>
           </AlertDialogTrigger>
         </div>
       </div>
       
       <div className="grid md:grid-cols-3 gap-6">
-        {/* Left column - Order Info */}
         <div className="md:col-span-2 space-y-6">
           <Card>
             <CardHeader className="pb-4">
               <div className="flex justify-between items-center">
                 <CardTitle>Detalhes do Pedido</CardTitle>
-                <StatusBadge status={order.status} />
+                <OrderStatusBadge status={order.status} />
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Customer Info */}
               <div>
                 <div className="flex justify-between">
                   <h3 className="font-medium text-base mb-2">Cliente</h3>
@@ -439,7 +405,6 @@ const OrderDetail = () => {
               
               <Separator />
               
-              {/* Order Details */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <p className="text-sm text-muted-foreground">Vendedor</p>
@@ -492,7 +457,6 @@ const OrderDetail = () => {
                   </div>
                 )}
                 
-                {/* Transport Company information if available */}
                 {order.transportCompanyId && transportCompany && (
                   <div className="col-span-2">
                     <p className="text-sm text-muted-foreground">Transportadora</p>
@@ -561,7 +525,6 @@ const OrderDetail = () => {
             </CardContent>
           </Card>
           
-          {/* Items Card */}
           <Card>
             <CardHeader>
               <CardTitle>Itens do Pedido</CardTitle>
@@ -598,7 +561,6 @@ const OrderDetail = () => {
           </Card>
         </div>
         
-        {/* Right column - Summary */}
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -660,7 +622,7 @@ const OrderDetail = () => {
                     <Hourglass className="text-amber-500 h-5 w-5" />
                     <span className="font-medium">Status Atual:</span>
                   </div>
-                  <StatusBadge status={order.status} />
+                  <OrderStatusBadge status={order.status} />
                 </div>
                 
                 <Separator />
@@ -702,7 +664,6 @@ const OrderDetail = () => {
         </div>
       </div>
       
-      {/* Print Dialog */}
       <Dialog open={isPrintDialogOpen} onOpenChange={setIsPrintDialogOpen}>
         <DialogContent className="sm:max-w-[900px] max-h-[90vh]">
           <DialogHeader>
@@ -711,9 +672,8 @@ const OrderDetail = () => {
           
           <ScrollArea className="h-[70vh] mt-6 rounded border p-4">
             <div className="print-container bg-white p-4" id="printSection">
-              {/* ... keep existing code for the print section */}
+              <PrintableOrder order={order} />
               
-              {/* Add Transport Company to print section if available */}
               {order.transportCompanyId && transportCompany && (
                 <div className="mt-2">
                   <Label className="text-sm font-medium">Transportadora</Label>
@@ -725,9 +685,6 @@ const OrderDetail = () => {
                   )}
                 </div>
               )}
-              
-              {/* Rest of the print section */}
-              {/* ... keep existing code for the print section */}
             </div>
           </ScrollArea>
           
@@ -748,7 +705,6 @@ const OrderDetail = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Cancel Order Alert Dialog */}
       <AlertDialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
