@@ -18,6 +18,7 @@ const PageContainer: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   useEffect(() => {
     // Se o usuário não estiver autenticado e não estivermos carregando, redirecione para o login
     if (!user && !isLoading) {
+      console.log('Usuário não autenticado, redirecionando para /login');
       navigate('/login');
     }
     
@@ -48,7 +49,12 @@ const PageContainer: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     );
   }
 
-  if (!user) return null;
+  if (!user) {
+    console.log('PageContainer: sem usuário, retornando null');
+    return null;
+  }
+
+  console.log('PageContainer: renderizando com sidebar');
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -64,3 +70,4 @@ const PageContainer: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 };
 
 export default PageContainer;
+

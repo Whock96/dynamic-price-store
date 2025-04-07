@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -120,12 +119,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const fetchedPermissions = await getPermissions(userData.user_type_id);
       setPermissions(fetchedPermissions);
       
+      const userRole = userTypeData.name.toLowerCase();
+      console.log("User role determined:", userRole);
+      
       const user: User = {
         id: userData.id,
         username: userData.username,
         name: userData.name,
         email: userData.email || '',
-        role: userTypeData.name as any,
+        role: userRole as any,
         permissions: fetchedPermissions,
         createdAt: new Date(userData.created_at),
         userTypeId: userData.user_type_id,
@@ -227,12 +229,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           const fetchedPermissions = await getPermissions(directUser.user_type_id);
           
+          const userRole = userTypeData.name.toLowerCase();
+          console.log("Direct login user role:", userRole);
+          
           const userObj: User = {
             id: directUser.id,
             username: directUser.username,
             name: directUser.name,
             email: directUser.email || '',
-            role: userTypeData.name as any,
+            role: userRole as any,
             permissions: fetchedPermissions,
             createdAt: new Date(directUser.created_at),
             userTypeId: directUser.user_type_id,
@@ -290,13 +295,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
   
   const hasPermission = (permissionCode: string): boolean => {
+    // Para debug
+    console.log(`Verificando permissão: ${permissionCode}, Usuário: ${user?.role}, Permissões: `, permissions);
+    
     // Para administradores, sempre retorne true
-    if (user?.role === 'administrator') {
+    if (user?.role === 'administrator' || user?.role === 'admin') {
+      console.log('Usuário é administrador, concedendo permissão');
       return true;
     }
     
     // Verifique se a permissão está na lista de permissões do usuário
-    return permissions.some(perm => perm.code === permissionCode && perm.isGranted);
+    const hasPermission = permissions.some(perm => perm.code === permissionCode && perm.isGranted);
+    console.log(`Permissão ${permissionCode} concedida: ${hasPermission}`);
+    return hasPermission;
   };
 
   const value: AuthContextType = {

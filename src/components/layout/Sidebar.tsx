@@ -17,42 +17,42 @@ const MENU_ITEMS = [
     name: 'Dashboard',
     path: '/dashboard',
     icon: 'home',
-    requiredRoles: ['administrator', 'salesperson', 'billing', 'inventory'],
+    requiredRoles: ['administrator', 'admin', 'salesperson', 'billing', 'inventory'],
   },
   {
     id: 'products',
     name: 'Produtos',
     path: '/products',
     icon: 'package',
-    requiredRoles: ['administrator', 'salesperson', 'inventory'],
+    requiredRoles: ['administrator', 'admin', 'salesperson', 'inventory'],
   },
   {
     id: 'customers',
     name: 'Clientes',
     path: '/customers',
     icon: 'users',
-    requiredRoles: ['administrator', 'salesperson'],
+    requiredRoles: ['administrator', 'admin', 'salesperson'],
   },
   {
     id: 'orders',
     name: 'Pedidos',
     path: '/orders',
     icon: 'clipboard',
-    requiredRoles: ['administrator', 'salesperson', 'billing'],
+    requiredRoles: ['administrator', 'admin', 'salesperson', 'billing'],
   },
   {
     id: 'cart',
     name: 'Carrinho',
     path: '/cart',
     icon: 'shopping-cart',
-    requiredRoles: ['administrator', 'salesperson'],
+    requiredRoles: ['administrator', 'admin', 'salesperson'],
   },
   {
     id: 'settings',
     name: 'Configurações',
     path: '/settings',
     icon: 'settings',
-    requiredRoles: ['administrator'],
+    requiredRoles: ['administrator', 'admin'],
     submenus: [
       {
         id: 'settings-products',
@@ -116,6 +116,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
   // For debugging
   useEffect(() => {
     console.log('Current user in Sidebar:', user);
+    console.log('User role:', user?.role);
+    console.log('User permissions:', user?.permissions);
   }, [user]);
 
   useEffect(() => {
@@ -192,16 +194,35 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
 
   // Função corrigida para verificar acesso do usuário aos menus
   const hasAccessToMenu = (menuItem: typeof MENU_ITEMS[0]) => {
-    if (!user) return false;
+    if (!user) {
+      console.log("Sem usuário, negando acesso ao menu");
+      return false;
+    }
+    
+    console.log(`Verificando acesso ao menu ${menuItem.id} para o usuário com papel ${user.role}`);
     
     // Administradores têm acesso a tudo
-    if (user.role === 'administrator') return true;
+    if (user.role === 'administrator' || user.role === 'admin') {
+      console.log(`Usuário é administrador, concedendo acesso ao menu ${menuItem.id}`);
+      return true;
+    }
     
     // Verificar se o papel do usuário está nos papéis exigidos
-    return menuItem.requiredRoles.includes(user.role);
+    const hasAccess = menuItem.requiredRoles.includes(user.role);
+    console.log(`Menu ${menuItem.id} requer papéis: ${menuItem.requiredRoles.join(', ')}`);
+    console.log(`Usuário tem papel: ${user.role}`);
+    console.log(`Acesso concedido: ${hasAccess}`);
+    
+    return hasAccess;
   };
 
-  if (!user) return null;
+  if (!user) {
+    console.log("Componente Sidebar - Usuário não está definido, retornando null");
+    return null;
+  }
+
+  console.log("Renderizando Sidebar com user:", user);
+  console.log("Itens do menu visíveis:", MENU_ITEMS.filter(item => hasAccessToMenu(item)).map(item => item.id));
 
   return (
     <div 
@@ -328,3 +349,4 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
 };
 
 export default Sidebar;
+
