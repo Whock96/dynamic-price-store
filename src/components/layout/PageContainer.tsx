@@ -10,13 +10,18 @@ const PageContainer: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(true);
 
+  // Para debug
   useEffect(() => {
-    // If user is not authenticated and we're not loading, redirect to login
+    console.log('Current user in PageContainer:', user);
+  }, [user]);
+
+  useEffect(() => {
+    // Se o usuário não estiver autenticado e não estivermos carregando, redirecione para o login
     if (!user && !isLoading) {
       navigate('/login');
     }
     
-    // Set sidebar initial state based on screen size
+    // Definir o estado inicial da barra lateral com base no tamanho da tela
     const handleResize = () => {
       if (window.innerWidth < 768) {
         setIsExpanded(false);
@@ -25,13 +30,13 @@ const PageContainer: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       }
     };
     
-    // Call once on mount
+    // Chamar uma vez na montagem
     handleResize();
     
-    // Add event listener
+    // Adicionar listener de evento
     window.addEventListener('resize', handleResize);
     
-    // Clean up
+    // Limpar
     return () => window.removeEventListener('resize', handleResize);
   }, [user, navigate, isLoading]);
 

@@ -35,6 +35,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   
+  // Para debug
+  useEffect(() => {
+    console.log('Current auth state:', { user, permissions, isLoading });
+  }, [user, permissions, isLoading]);
+  
   useEffect(() => {
     async function checkSession() {
       try {
@@ -140,6 +145,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const getPermissions = useCallback(async (userTypeId: string): Promise<Permission[]> => {
     try {
+      console.log("Fetching permissions for user type:", userTypeId);
+      
       const { data: permissionsData, error: permissionsError } = await supabase
         .from('user_type_permissions')
         .select('permission_id')
@@ -151,10 +158,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       if (!permissionsData || permissionsData.length === 0) {
+        console.log("No permissions found for user type:", userTypeId);
         return [];
       }
       
       const permissionIds = permissionsData.map(p => p.permission_id);
+      console.log("Permission IDs:", permissionIds);
       
       const { data: permissions, error: permDetailsError } = await supabase
         .from('permissions')
@@ -165,6 +174,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Error fetching permission details:', permDetailsError);
         return [];
       }
+      
+      console.log("Permissions retrieved:", permissions);
       
       return (permissions || []).map(p => ({
         id: p.id,
@@ -186,13 +197,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Attempting login with username:', username);
       
-      // Step 1: First try to authenticate directly from users table
+      // Passo 1: Primeiro tente autenticar diretamente da tabela de usuários
       const { success, user: directUser, error: directError } = await authenticateDirectly(username, password);
       
       if (success && directUser) {
         console.log('Direct authentication successful, user found in database:', directUser.id);
         
-        // Step 2: Try to login with Supabase Auth using the username as email
+        // Passo 2: Tente fazer login com Supabase Auth usando o nome de usuário como email
         const { data, error } = await supabase.auth.signInWithPassword({
           email: username,
           password,
@@ -202,8 +213,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('Supabase Auth login failed with error:', error.message);
           console.log('User exists in database but not in Auth. Loading user directly');
           
-          // Step 3: If login fails, but user exists in database, load user directly
-          await fetchUser(directUser.id);
+          // Passo 3: Se o login falhar, mas o usuário existir no banco de dados, carregue o usuário diretamente
+          const { data: userTypeData, error: userTypeError } = await supabase
+            .from('user_types')
+            .select('*')
+            .eq('id', directUser.user_type_id)
+            .single();
+            
+          if (userTypeError) {
+            console.error('Error fetching user type:', userTypeError);
+            throw new Error('Erro ao buscar tipo de usuário');
+          }
+          
+          const fetchedPermissions = await getPermissions(directUser.user_type_id);
+          
+          const userObj: User = {
+            id: directUser.id,
+            username: directUser.username,
+            name: directUser.name,
+            email: directUser.email || '',
+            role: userTypeData.name as any,
+            permissions: fetchedPermissions,
+            createdAt: new Date(directUser.created_at),
+            userTypeId: directUser.user_type_id,
+          };
+          
+          setUser(userObj);
+          setPermissions(fetchedPermissions);
+          
           toast.success('Login realizado com sucesso!');
           navigate('/dashboard');
           return;
@@ -253,6 +290,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
   
   const hasPermission = (permissionCode: string): boolean => {
+    // Para administradores, sempre retorne true
+    if (user?.role === 'administrator') {
+      return true;
+    }
+    
+    // Verifique se a permissão está na lista de permissões do usuário
     return permissions.some(perm => perm.code === permissionCode && perm.isGranted);
   };
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -112,6 +113,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
   
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
 
+  // For debugging
+  useEffect(() => {
+    console.log('Current user in Sidebar:', user);
+  }, [user]);
+
   useEffect(() => {
     if (!isExpanded) {
       setExpandedMenu(null);
@@ -184,15 +190,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
     return location.pathname === path;
   };
 
-  // Remove hasPermission from sidebar component and use a more reliable check
+  // Função corrigida para verificar acesso do usuário aos menus
   const hasAccessToMenu = (menuItem: typeof MENU_ITEMS[0]) => {
     if (!user) return false;
     
-    // If user is administrator, allow access to all items
+    // Administradores têm acesso a tudo
     if (user.role === 'administrator') return true;
     
-    // Otherwise check if user's role is in the required roles
-    return menuItem.requiredRoles.includes(user.role) || hasPermission(menuItem.path);
+    // Verificar se o papel do usuário está nos papéis exigidos
+    return menuItem.requiredRoles.includes(user.role);
   };
 
   if (!user) return null;
@@ -202,7 +208,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
       ref={sidebarRef}
       className={cn(
         "h-screen fixed left-0 top-16 bg-sidebar z-40 transition-all duration-300 ease-in-out border-r border-sidebar-border",
-        isExpanded ? "sidebar-expanded" : "sidebar-collapsed"
+        isExpanded ? "w-64" : "w-16"
       )}
     >
       <div className="flex flex-col h-full py-4">
@@ -260,25 +266,23 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
                 
                 {isExpanded && item.submenus && expandedMenu === item.id && (
                   <div className="pl-10 mt-1 space-y-1 animate-accordion-down">
-                    {item.submenus
-                      .filter(submenu => hasPermission(submenu.path) || user.role === 'administrator')
-                      .map((submenu) => (
-                        <button
-                          key={submenu.id}
-                          onClick={() => handleNavigate(submenu.path)}
-                          className={cn(
-                            "w-full flex items-center py-2 px-2 rounded-md transition-colors duration-200",
-                            isActive(submenu.path) 
-                              ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                          )}
-                        >
-                          <div className="flex items-center justify-center w-5 h-5">
-                            {getIcon(submenu.icon)}
-                          </div>
-                          <span className="ml-2 text-sm">{submenu.name}</span>
-                        </button>
-                      ))}
+                    {item.submenus.map((submenu) => (
+                      <button
+                        key={submenu.id}
+                        onClick={() => handleNavigate(submenu.path)}
+                        className={cn(
+                          "w-full flex items-center py-2 px-2 rounded-md transition-colors duration-200",
+                          isActive(submenu.path) 
+                            ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                            : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        )}
+                      >
+                        <div className="flex items-center justify-center w-5 h-5">
+                          {getIcon(submenu.icon)}
+                        </div>
+                        <span className="ml-2 text-sm">{submenu.name}</span>
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
