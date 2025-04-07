@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   username: string;
@@ -63,37 +62,25 @@ export interface Subcategory {
   categoryId: string;
 }
 
-export interface TransportCompany {
-  id: string;
-  name: string;
-  document: string;
-  email: string;
-  phone: string;
-  whatsapp: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export interface Customer {
   id: string;
   companyName: string;
-  document: string;
+  document: string; // CNPJ/CPF
   salesPersonId: string;
   street: string;
   number: string;
   noNumber: boolean;
   complement: string;
-  neighborhood: string;
+  neighborhood: string; // New field for neighborhood
   city: string;
   state: string;
   zipCode: string;
   phone: string;
   email: string;
   whatsapp?: string;
-  stateRegistration?: string;
+  stateRegistration?: string; // New field for state registration
   defaultDiscount: number;
   maxDiscount: number;
-  transportCompanyId?: string;
   createdAt: Date;
   updatedAt: Date;
   registerDate: Date;
@@ -104,9 +91,9 @@ export interface CartItem {
   productId: string;
   product: Product;
   quantity: number;
-  discount: number;
-  finalPrice: number;
-  subtotal: number;
+  discount: number; // Individual discount percentage
+  finalPrice: number; // After all discounts, without tax substitution
+  subtotal: number; // (finalPrice + tax) * quantity
 }
 
 export interface DiscountOption {
@@ -125,7 +112,7 @@ export interface DeliveryFees {
 
 export interface Order {
   id: string;
-  orderNumber?: number;
+  orderNumber?: number; // Add orderNumber as optional property
   customerId: string;
   customer: Customer;
   userId: string;
@@ -144,16 +131,14 @@ export interface Order {
   notes: string;
   createdAt: Date;
   updatedAt: Date;
-  observations?: string;
+  observations?: string; // Optional to maintain compatibility with existing code
   deliveryLocation?: 'capital' | 'interior' | null;
   halfInvoicePercentage?: number;
-  halfInvoiceType?: 'quantity' | 'price';
+  halfInvoiceType?: 'quantity' | 'price'; // New field for half invoice type
   discountOptions?: DiscountOption[];
   deliveryFee?: number;
-  withIPI?: boolean;
-  ipiValue?: number;
-  transportCompanyId?: string;
-  transportCompany?: TransportCompany;
+  withIPI?: boolean; // IPI flag
+  ipiValue?: number; // IPI value
 }
 
 export interface MenuItem {

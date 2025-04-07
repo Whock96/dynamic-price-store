@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, Package } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -17,20 +18,9 @@ import { Tables } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 
-interface Category {
-  id: string;
-  name: string;
-  description?: string;
-}
-
-interface Subcategory {
-  id: string;
-  name: string;
-  category_id: string;
-  description?: string;
-}
-
 type Product = Tables<'products'>;
+type Category = Tables<'categories'>;
+type Subcategory = Tables<'subcategories'>;
 
 const ProductList = () => {
   const navigate = useNavigate();
@@ -77,14 +67,7 @@ const ProductList = () => {
         variant: "destructive" 
       });
     }
-    if (subcategoriesError) {
-      toast({ 
-        title: "Erro ao carregar subcategorias", 
-        description: subcategoriesError.message, 
-        variant: "destructive" 
-      });
-    }
-  }, [productsError, categoriesError, subcategoriesError, toast]);
+  }, [productsError, categoriesError, toast]);
 
   // Update available subcategories when category filter changes
   useEffect(() => {

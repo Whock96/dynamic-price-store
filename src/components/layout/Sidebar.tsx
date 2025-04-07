@@ -4,12 +4,11 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home, ShoppingCart, Users, Package, Clipboard, Settings, 
   ChevronRight, List, UserPlus, Search, Edit, Menu, Building2, LogOut,
-  Tag, Percent, Shield, Truck
+  Tag, Percent, Shield
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, MENU_ITEMS } from '../../context/AuthContext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { MENU_ITEMS } from '../../context/AuthContext';
 
 interface SidebarProps {
   isExpanded: boolean;

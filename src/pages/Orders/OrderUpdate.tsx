@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useOrders } from '@/context/OrderContext';
@@ -15,7 +16,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useOrderData } from '@/hooks/use-order-data';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@/types/types';
-import { useTransportCompanies } from '@/context/TransportCompanyContext';
 
 const OrderUpdate = () => {
   const { id } = useParams<{ id: string }>();
@@ -29,11 +29,11 @@ const OrderUpdate = () => {
   const [salespeople, setSalespeople] = useState<User[]>([]);
   const [selectedSalespersonId, setSelectedSalespersonId] = useState<string>('none');
   const [isLoadingSalespeople, setIsLoadingSalespeople] = useState(true);
-  const [selectedTransportCompanyId, setSelectedTransportCompanyId] = useState<string>('none');
-  const { transportCompanies } = useTransportCompanies();
-
+  
+  // Use the custom hook to fetch order data directly from Supabase
   const { order, isLoading, fetchOrderData } = useOrderData(id);
 
+  // Fetch salespeople for the dropdown
   useEffect(() => {
     const fetchSalespeople = async () => {
       try {
@@ -44,11 +44,12 @@ const OrderUpdate = () => {
         if (error) throw error;
         
         if (data) {
+          // Map to User type
           const mappedSalespeople: User[] = data.map(sp => ({
             id: sp.id,
             name: sp.name,
             username: sp.username,
-            role: 'salesperson',
+            role: 'salesperson', // Default role
             permissions: [],
             email: '',
             createdAt: new Date(),
@@ -76,8 +77,8 @@ const OrderUpdate = () => {
       setShipping(order.shipping || 'delivery');
       setPaymentMethod(order.paymentMethod || 'cash');
       setPaymentTerms(order.paymentTerms || '');
+      // Set to 'none' if no salesperson is assigned
       setSelectedSalespersonId(order.userId || 'none');
-      setSelectedTransportCompanyId(order.transportCompanyId || 'none');
     }
   }, [order]);
 
@@ -88,34 +89,38 @@ const OrderUpdate = () => {
 
     const updates: any = {};
 
+    // Update status if it was changed
     if (status !== order.status) {
       updateOrderStatus(id, status as any);
     }
 
+    // Update notes if they were changed
     if (notes !== order.notes) {
       updates.notes = notes;
     }
 
+    // Update shipping if it was changed
     if (shipping !== order.shipping) {
       updates.shipping = shipping;
     }
 
+    // Update payment method if it was changed
     if (paymentMethod !== order.paymentMethod) {
       updates.paymentMethod = paymentMethod;
     }
 
+    // Update payment terms if they were changed
     if (paymentTerms !== order.paymentTerms) {
       updates.paymentTerms = paymentTerms;
     }
 
+    // Update salesperson if it was changed
     if (selectedSalespersonId !== order.userId) {
+      // If 'none' is selected, set userId to null
       updates.userId = selectedSalespersonId === 'none' ? null : selectedSalespersonId;
     }
 
-    if (selectedTransportCompanyId !== (order.transportCompanyId || 'none')) {
-      updates.transportCompanyId = selectedTransportCompanyId === 'none' ? null : selectedTransportCompanyId;
-    }
-
+    // Only call updateOrder if there are changes to make
     if (Object.keys(updates).length > 0) {
       updateOrder(id, updates);
     }
@@ -146,6 +151,7 @@ const OrderUpdate = () => {
     );
   }
 
+  // Calculate order number display
   const orderNumber = order.orderNumber || id?.split('-')[0];
 
   return (
@@ -333,26 +339,6 @@ const OrderUpdate = () => {
           </div>
         </CardContent>
       </Card>
-
-      <div>
-        <label className="text-sm font-medium">Transportadora</label>
-        <Select 
-          value={selectedTransportCompanyId} 
-          onValueChange={setSelectedTransportCompanyId}
-        >
-          <SelectTrigger className="w-full mt-1">
-            <SelectValue placeholder="Selecione uma transportadora" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">Nenhuma</SelectItem>
-            {transportCompanies.map((tc) => (
-              <SelectItem key={tc.id} value={tc.id}>
-                {tc.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
     </div>
   );
 };

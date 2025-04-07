@@ -1,81 +1,73 @@
 
 /**
- * Format a number to currency string (BRL)
+ * Formats a number as currency in Brazilian Real (BRL)
  */
-export const formatCurrency = (value: number): string => {
+export const formatCurrency = (value: number | null | undefined) => {
+  // Ensure value is a valid number
+  const safeValue = Number(value) || 0;
+  
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
-    currency: 'BRL'
-  }).format(value);
+    currency: 'BRL',
+  }).format(safeValue);
 };
 
 /**
- * Format a date to a localized string
+ * Formats a date as DD/MM/YYYY in Brazilian Portuguese format
  */
-export const formatDate = (date: Date | string): string => {
+export const formatDate = (date: Date | string | null | undefined) => {
   if (!date) return '';
   
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  return dateObj.toLocaleDateString('pt-BR');
+  try {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    return new Intl.DateTimeFormat('pt-BR').format(dateObj);
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return '';
+  }
 };
 
 /**
- * Format a phone number to Brazilian format
+ * Formats a phone number to the Brazilian format
  */
-export const formatPhoneNumber = (phone: string | null | undefined): string => {
+export const formatPhoneNumber = (phone: string | null | undefined) => {
   if (!phone) return '';
   
-  // Remove all non-digit characters
-  const digits = phone.replace(/\D/g, '');
+  // Remove all non-numeric characters
+  const numericOnly = phone.replace(/\D/g, '');
   
-  if (digits.length === 11) {
-    // Mobile: (XX) 9XXXX-XXXX
-    return `(${digits.substring(0, 2)}) ${digits.substring(2, 7)}-${digits.substring(7)}`;
-  } else if (digits.length === 10) {
-    // Landline: (XX) XXXX-XXXX
-    return `(${digits.substring(0, 2)}) ${digits.substring(2, 6)}-${digits.substring(6)}`;
+  // Handle different phone number lengths
+  if (numericOnly.length === 11) {
+    // Mobile phone: (xx) xxxxx-xxxx
+    return numericOnly.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+  } else if (numericOnly.length === 10) {
+    // Landline: (xx) xxxx-xxxx
+    return numericOnly.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
   }
   
+  // Return the original format if it doesn't match expected patterns
   return phone;
 };
 
 /**
- * Format a document (CPF/CNPJ) to Brazilian format
+ * Formats a CNPJ/CPF document number to the Brazilian format
  */
-export const formatDocument = (doc: string | null | undefined): string => {
-  if (!doc) return '';
+export const formatDocument = (document: string | null | undefined) => {
+  if (!document) return '';
   
-  // Remove all non-digit characters
-  const digits = doc.replace(/\D/g, '');
+  // Remove all non-numeric characters
+  const numericOnly = document.replace(/\D/g, '');
   
-  if (digits.length === 11) {
-    // CPF: XXX.XXX.XXX-XX
-    return `${digits.substring(0, 3)}.${digits.substring(3, 6)}.${digits.substring(6, 9)}-${digits.substring(9)}`;
-  } else if (digits.length === 14) {
-    // CNPJ: XX.XXX.XXX/XXXX-XX
-    return `${digits.substring(0, 2)}.${digits.substring(2, 5)}.${digits.substring(5, 8)}/${digits.substring(8, 12)}-${digits.substring(12)}`;
+  // Format CNPJ (14 digits)
+  if (numericOnly.length === 14) {
+    return numericOnly.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
   }
   
-  return doc;
-};
-
-/**
- * Format a number as a percentage
- */
-export const formatPercent = (value: number): string => {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'percent',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(value / 100);
-};
-
-/**
- * Format a number with specified decimal places
- */
-export const formatNumber = (value: number, decimals: number = 2): string => {
-  return new Intl.NumberFormat('pt-BR', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals
-  }).format(value);
+  // Format CPF (11 digits)
+  if (numericOnly.length === 11) {
+    return numericOnly.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+  }
+  
+  // Return original if it doesn't match expected patterns
+  return document;
 };

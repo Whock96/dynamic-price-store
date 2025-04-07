@@ -47,7 +47,7 @@ const PageContainer: React.FC<PageContainerProps> = ({
       }
 
       // If user is logged in but doesn't have permission to access this page
-      if (user && requireAuth && checkAccess && !checkAccess(location.pathname)) {
+      if (user && requireAuth && !checkAccess(location.pathname)) {
         // Redirect to dashboard or show access denied
         toast.error('Você não tem permissão para acessar esta página');
         navigate('/dashboard');

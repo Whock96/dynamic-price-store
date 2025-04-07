@@ -16,19 +16,6 @@ import { Tables } from '@/integrations/supabase/client';
 import { supabaseProductToAppProduct } from '@/utils/adapters';
 import { Product } from '@/types/types';
 
-interface Category {
-  id: string;
-  name: string;
-  description?: string;
-}
-
-interface Subcategory {
-  id: string;
-  name: string;
-  category_id: string;
-  description?: string;
-}
-
 type SupabaseProduct = Tables<'products'>;
 
 const ProductDetail = () => {
@@ -51,12 +38,12 @@ const ProductDetail = () => {
   const { 
     data: categories,
     isLoading: categoriesLoading
-  } = useSupabaseData<Category>('categories');
+  } = useSupabaseData('categories');
   
   const { 
     data: subcategories,
     isLoading: subcategoriesLoading
-  } = useSupabaseData<Subcategory>('subcategories');
+  } = useSupabaseData('subcategories');
   
   // Find the product when products are loaded
   useEffect(() => {
@@ -67,13 +54,6 @@ const ProductDetail = () => {
     }
   }, [id, products, productsLoading]);
   
-  // Show error toast if there's an error
-  useEffect(() => {
-    if (productsError) {
-      toast.error(`Error loading products: ${productsError.message}`);
-    }
-  }, [productsError]);
-
   // Helper functions to get category and subcategory names
   const getCategoryName = (categoryId: string | null) => {
     if (!categoryId) return 'Sem categoria';

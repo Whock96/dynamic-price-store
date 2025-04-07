@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
-  Trash2, ShoppingCart, Package, Search, Send, MapPin, Percent, Tags, Truck
+  Trash2, ShoppingCart, Package, Search, Send, MapPin, Percent, Tags
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,7 +53,6 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatCurrency } from '@/utils/formatters';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { useTransportCompanies } from '@/context/TransportCompanyContext';
 
 type SupabaseProduct = Tables<'products'>;
 
@@ -62,7 +62,6 @@ const Cart = () => {
   const { customers } = useCustomers();
   const { settings } = useDiscountSettings();
   const { user } = useAuth();
-  const { transportCompanies } = useTransportCompanies();
   const searchParams = new URLSearchParams(location.search);
   const productParam = searchParams.get('product');
   const customerParam = searchParams.get('customer');
@@ -74,8 +73,7 @@ const Cart = () => {
     halfInvoiceType, setHalfInvoiceType,
     observations, setObservations, totalItems, subtotal, totalDiscount, total, sendOrder, clearCart, 
     deliveryFee, applyDiscounts, toggleApplyDiscounts, paymentTerms, setPaymentTerms,
-    calculateTaxSubstitutionValue, withIPI, toggleIPI, calculateIPIValue, calculateItemTaxSubstitutionValue,
-    transportCompanyId, setTransportCompanyId
+    calculateTaxSubstitutionValue, withIPI, toggleIPI, calculateIPIValue, calculateItemTaxSubstitutionValue
   } = useCart();
   
   const [customerSearch, setCustomerSearch] = useState('');
@@ -86,6 +84,7 @@ const Cart = () => {
   const [products, setProducts] = useState<SupabaseProduct[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   
+  // Check if current user is a salesperson
   const isSalesperson = user?.userTypeId === 'c5ee0433-3faf-46a4-a516-be7261bfe575';
   
   const fetchProducts = async () => {
@@ -117,14 +116,18 @@ const Cart = () => {
     fetchProducts();
   }, []);
   
+  // Filter customers based on user role
   const filteredCustomers = customers.filter(c => {
+    // First apply search filter
     const matchesSearch = c.companyName.toLowerCase().includes(customerSearch.toLowerCase()) ||
       c.document.includes(customerSearch);
     
+    // If user is a salesperson, only show their customers
     if (isSalesperson) {
       return matchesSearch && c.salesPersonId === user?.id;
     }
     
+    // For other user types, show all customers that match the search
     return matchesSearch;
   });
   
@@ -713,32 +716,6 @@ const Cart = () => {
                               <Label htmlFor="interior" className="text-sm">Interior</Label>
                             </div>
                           </RadioGroup>
-                          
-                          <div className="mt-4 border-t border-gray-200 pt-3">
-                            <div className="flex items-center mb-1">
-                              <Truck className="h-4 w-4 text-ferplas-500 mr-1" />
-                              <span className="text-sm font-medium text-gray-700">Transportadora:</span>
-                            </div>
-                            <Select 
-                              value={transportCompanyId || ''} 
-                              onValueChange={(value) => setTransportCompanyId(value ? value : undefined)}
-                            >
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Selecione uma transportadora (opcional)" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="">Nenhuma</SelectItem>
-                                {transportCompanies.map((company) => (
-                                  <SelectItem key={company.id} value={company.id}>
-                                    {company.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <p className="text-xs text-gray-500 mt-1">
-                              Selecione a transportadora para este pedido
-                            </p>
-                          </div>
                         </div>
                       )}
                     </div>

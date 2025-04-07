@@ -103,7 +103,7 @@ const ProductManagement = () => {
 
   const { 
     data: products, 
-    isLoading: productsLoading,
+    isLoading: productsLoading, 
     error: productsError,
     fetchData: refetchProducts,
     createRecord: createProduct,
@@ -125,12 +125,12 @@ const ProductManagement = () => {
 
   useEffect(() => {
     console.log("ProductManagement - User:", user);
-    console.log("ProductManagement - Has products_manage permission:", hasPermission && hasPermission('products_manage'));
+    console.log("ProductManagement - Has products_manage permission:", hasPermission('products_manage'));
     
     const isAdmin = user?.role?.toLowerCase() === 'administrator';
     console.log("ProductManagement - User is administrator:", isAdmin);
     
-    if (!isAdmin && hasPermission && !hasPermission('products_manage')) {
+    if (!isAdmin && !hasPermission('products_manage')) {
       toast.error('Você não tem permissão para acessar esta página');
       navigate('/dashboard');
       return;
