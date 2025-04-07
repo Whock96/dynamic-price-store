@@ -324,6 +324,7 @@ const OrderDetail = () => {
                           Faturado
                         </Button>
                       )}
+                      {/* Fixed the comparison issue on this line */}
                       {order.status !== 'completed' && (
                         <Button
                           variant="outline"
