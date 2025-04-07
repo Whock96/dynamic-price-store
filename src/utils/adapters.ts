@@ -1,4 +1,3 @@
-
 import { Tables } from "@/integrations/supabase/client";
 import { Product, Order, CartItem, DiscountOption, Customer, User } from "@/types/types";
 
@@ -53,10 +52,12 @@ export const supabaseOrderToAppOrder = (
     zipCode: order.customers.zip_code,
     phone: order.customers.phone || '',
     email: order.customers.email || '',
+    whatsapp: order.customers.whatsapp || '',
     defaultDiscount: Number(order.customers.default_discount) || 0,
     maxDiscount: Number(order.customers.max_discount) || 0,
     createdAt: new Date(order.customers.created_at),
     updatedAt: new Date(order.customers.updated_at),
+    registerDate: new Date(order.customers.register_date || order.customers.created_at),
   } : {} as Customer;
 
   // Format order items
