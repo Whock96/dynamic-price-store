@@ -31,7 +31,6 @@ const OrderPrint = () => {
     documentTitle: `Pedido_${order?.orderNumber || id?.split('-')[0]}`,
     onPrintError: (error) => console.error('Print error:', error),
     onAfterPrint: () => console.log('Print completed'),
-    removeAfterPrint: false,
   });
 
   if (!order) {
@@ -63,7 +62,7 @@ const OrderPrint = () => {
         </Button>
         <Button onClick={() => {
           if (componentRef.current) {
-            handlePrint(undefined, () => componentRef.current);
+            handlePrint();
           }
         }}>
           <Printer className="mr-2 h-4 w-4" />

@@ -58,18 +58,121 @@ const transportCompanyToSupabase = (transportCompany: Partial<TransportCompany>)
 export const TransportCompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [localTransportCompanies, setLocalTransportCompanies] = useState<TransportCompany[]>([]);
 
-  // Use our custom hook for Supabase data
-  const { 
-    data: supabaseTransportCompanies, 
-    isLoading,
-    createRecord,
-    updateRecord,
-    deleteRecord,
-    getRecordById: getSupabaseTransportCompanyById,
-    fetchData: fetchSupabaseData
-  } = useSupabaseData<TransportCompanyDB>('transport_companies', {
-    orderBy: { column: 'name', ascending: true }
-  });
+  // Use direct Supabase queries instead of the custom hook
+  const [supabaseTransportCompanies, setSupabaseTransportCompanies] = useState<TransportCompanyDB[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch transport companies from Supabase
+  const fetchSupabaseData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('transport_companies')
+        .select('*')
+        .order('name', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching transport companies:', error);
+        toast.error('Erro ao carregar transportadoras');
+        return;
+      }
+
+      setSupabaseTransportCompanies(data || []);
+    } catch (error) {
+      console.error('Error in fetchSupabaseData:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Get a record by ID
+  const getSupabaseTransportCompanyById = useCallback(async (id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('transport_companies')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching transport company by ID:', error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error in getSupabaseTransportCompanyById:', error);
+      return null;
+    }
+  }, []);
+
+  // Create a new record
+  const createRecord = useCallback(async (record: Partial<TransportCompanyDB>) => {
+    try {
+      const { data, error } = await supabase
+        .from('transport_companies')
+        .insert(record)
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error('Error creating transport company:', error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error in createRecord:', error);
+      return null;
+    }
+  }, []);
+
+  // Update an existing record
+  const updateRecord = useCallback(async (id: string, record: Partial<TransportCompanyDB>) => {
+    try {
+      const { data, error } = await supabase
+        .from('transport_companies')
+        .update(record)
+        .eq('id', id)
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error('Error updating transport company:', error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error in updateRecord:', error);
+      return null;
+    }
+  }, []);
+
+  // Delete a record
+  const deleteRecord = useCallback(async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('transport_companies')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error deleting transport company:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in deleteRecord:', error);
+      return false;
+    }
+  }, []);
+
+  // Initialize data
+  React.useEffect(() => {
+    fetchSupabaseData();
+  }, [fetchSupabaseData]);
 
   // Convert Supabase transport companies to our frontend model
   const transportCompanies = React.useMemo(() => {
