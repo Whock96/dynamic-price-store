@@ -13,15 +13,17 @@ import { formatCurrency } from '@/utils/formatters';
 import { toast } from 'sonner';
 import { useSupabaseData } from '@/hooks/use-supabase-data';
 import { Tables } from '@/integrations/supabase/client';
+import { supabaseProductToAppProduct } from '@/utils/adapters';
+import { Product } from '@/types/types';
 
-type Product = Tables<'products'>;
+type SupabaseProduct = Tables<'products'>;
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
-  const [product, setProduct] = useState<Product | null>(null);
+  const [product, setProduct] = useState<SupabaseProduct | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { addItem } = useCart();
   
@@ -30,7 +32,7 @@ const ProductDetail = () => {
     data: products, 
     isLoading: productsLoading,
     error: productsError 
-  } = useSupabaseData<Product>('products');
+  } = useSupabaseData<SupabaseProduct>('products');
   
   // Get categories and subcategories
   const { 
@@ -88,10 +90,12 @@ const ProductDetail = () => {
     'https://via.placeholder.com/500/0CAB77',
   ];
   
-  // Função para adicionar ao carrinho
+  // Function to convert Supabase Product to our App's Product interface
   const handleAddToCart = () => {
     try {
-      addItem(product, quantity);
+      // Convert the Supabase product to our application's Product interface
+      const appProduct = supabaseProductToAppProduct(product);
+      addItem(appProduct, quantity);
       toast.success(`${product.name} adicionado ao carrinho`);
     } catch (error) {
       console.error('Erro ao adicionar ao carrinho:', error);
