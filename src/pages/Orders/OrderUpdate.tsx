@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Save } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -24,7 +23,9 @@ const OrderUpdate = () => {
   const navigate = useNavigate();
   const [status, setStatus] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
-  const [withIPI, setWithIPI] = useState(false);
+  const [shipping, setShipping] = useState<string>('delivery');
+  const [paymentMethod, setPaymentMethod] = useState<string>('cash');
+  const [paymentTerms, setPaymentTerms] = useState<string>('');
   const [salespeople, setSalespeople] = useState<User[]>([]);
   const [selectedSalespersonId, setSelectedSalespersonId] = useState<string>('none');
   const [isLoadingSalespeople, setIsLoadingSalespeople] = useState(true);
@@ -73,7 +74,9 @@ const OrderUpdate = () => {
       console.log("Setting form values from order:", order);
       setStatus(order.status || 'pending');
       setNotes(order.notes || order.observations || '');
-      setWithIPI(order.withIPI || false);
+      setShipping(order.shipping || 'delivery');
+      setPaymentMethod(order.paymentMethod || 'cash');
+      setPaymentTerms(order.paymentTerms || '');
       // Set to 'none' if no salesperson is assigned
       setSelectedSalespersonId(order.userId || 'none');
     }
@@ -96,9 +99,19 @@ const OrderUpdate = () => {
       updates.notes = notes;
     }
 
-    // Update IPI if it was changed
-    if (withIPI !== order.withIPI) {
-      updates.withIPI = withIPI;
+    // Update shipping if it was changed
+    if (shipping !== order.shipping) {
+      updates.shipping = shipping;
+    }
+
+    // Update payment method if it was changed
+    if (paymentMethod !== order.paymentMethod) {
+      updates.paymentMethod = paymentMethod;
+    }
+
+    // Update payment terms if they were changed
+    if (paymentTerms !== order.paymentTerms) {
+      updates.paymentTerms = paymentTerms;
     }
 
     // Update salesperson if it was changed
@@ -223,14 +236,43 @@ const OrderUpdate = () => {
                   </Select>
                 </div>
 
-                <div className="flex items-center space-x-2 py-2">
-                  <Switch 
-                    id="with-ipi" 
-                    checked={withIPI} 
-                    onCheckedChange={setWithIPI} 
-                  />
-                  <Label htmlFor="with-ipi">IPI</Label>
+                <div>
+                  <label className="text-sm font-medium">Forma de Entrega</label>
+                  <Select value={shipping} onValueChange={setShipping}>
+                    <SelectTrigger className="w-full mt-1">
+                      <SelectValue placeholder="Selecione a forma de entrega" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="delivery">Entrega</SelectItem>
+                      <SelectItem value="pickup">Retirada</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+
+                <div>
+                  <label className="text-sm font-medium">Forma de Pagamento</label>
+                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <SelectTrigger className="w-full mt-1">
+                      <SelectValue placeholder="Selecione a forma de pagamento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">À Vista</SelectItem>
+                      <SelectItem value="credit">A Prazo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {paymentMethod === 'credit' && (
+                  <div>
+                    <label className="text-sm font-medium">Condições de Pagamento</label>
+                    <Input
+                      className="mt-1"
+                      placeholder="Ex: 30/60/90 dias"
+                      value={paymentTerms}
+                      onChange={(e) => setPaymentTerms(e.target.value)}
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="text-sm font-medium">Observações</label>
@@ -285,12 +327,6 @@ const OrderUpdate = () => {
                     <div className="flex justify-between mb-2">
                       <span className="text-sm text-gray-700">Substituição Tributária</span>
                       <span>+ {formatCurrency((7.8 / 100) * order.subtotal)}</span>
-                    </div>
-                  )}
-                  {order.withIPI && order.ipiValue > 0 && (
-                    <div className="flex justify-between mb-2">
-                      <span className="text-sm text-gray-700">IPI</span>
-                      <span>{formatCurrency(order.ipiValue)}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-bold mt-4 pt-4 border-t">

@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, Users, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Plus, Edit, Trash2, Search } from 'lucide-react';
+import { useCustomers } from '@/context/CustomerContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -14,286 +15,283 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { useCustomers } from '@/context/CustomerContext';
-import { supabase } from '@/integrations/supabase/client';
-import { adaptUserData } from '@/utils/adapters';
-import { User } from '@/types/types';
-import { useAuth } from '@/context/AuthContext';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
+import { formatPhoneNumber, formatDocument } from '@/utils/formatters';
+import SortableHeader from '@/components/ui/sortable-header';
+
+type SortDirection = 'asc' | 'desc' | null;
 
 const CustomerList = () => {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [cityFilter, setCityFilter] = useState('all');
-  const [salesPersonFilter, setSalesPersonFilter] = useState('all');
-  const { customers, isLoading, refreshCustomers } = useCustomers();
-  const [salespeople, setSalespeople] = useState<User[]>([]);
-  const [isLoadingSalespeople, setIsLoadingSalespeople] = useState(true);
-  const [hasRefreshed, setHasRefreshed] = useState(false);
-  const [filteredCustomers, setFilteredCustomers] = useState<Array<any>>([]);
-  const { user } = useAuth();
-
-  // Verificação para identificar se o usuário é do tipo vendedor específico
-  const isSalespersonType = user?.userTypeId === 'c5ee0433-3faf-46a4-a516-be7261bfe575';
+  const { customers, isLoading, deleteCustomer } = useCustomers();
+  const [filteredCustomers, setFilteredCustomers] = useState(customers);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  
+  // Sorting states
+  const [sortKey, setSortKey] = useState<string | null>('companyName');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   useEffect(() => {
-    // Fetch salespeople from the database
-    const fetchSalespeople = async () => {
-      setIsLoadingSalespeople(true);
-      try {
-        const { data, error } = await supabase
-          .from('users')
-          .select('*, user_type:user_types(*)')
-          .eq('is_active', true);
-
-        if (error) {
-          throw error;
-        }
-
-        if (data) {
-          const formattedUsers = data.map(user => adaptUserData({
-            id: user.id,
-            name: user.name,
-            username: user.username,
-            role: user.user_type?.name || 'salesperson',
-            email: user.email || '',
-            created_at: user.created_at,
-            user_type_id: user.user_type_id
-          }));
-          
-          setSalespeople(formattedUsers);
-          console.log('Fetched salespeople for customer list:', formattedUsers);
-        }
-      } catch (error) {
-        console.error('Error fetching salespeople:', error);
-      } finally {
-        setIsLoadingSalespeople(false);
+    if (searchTerm.trim() === '') {
+      // Apply sorting without filtering
+      const sortedCustomers = [...customers];
+      
+      if (sortKey && sortDirection) {
+        sortCustomers(sortedCustomers);
       }
-    };
-
-    fetchSalespeople();
-    
-    // Refresh customers once when component mounts
-    if (!hasRefreshed) {
-      refreshCustomers();
-      setHasRefreshed(true);
+      
+      setFilteredCustomers(sortedCustomers);
+    } else {
+      const lowerCaseSearchTerm = searchTerm.toLowerCase();
+      const filtered = customers.filter(
+        customer =>
+          customer.companyName.toLowerCase().includes(lowerCaseSearchTerm) ||
+          (customer.document && customer.document.toLowerCase().includes(lowerCaseSearchTerm))
+      );
+      
+      // Apply sorting to filtered results
+      if (sortKey && sortDirection) {
+        sortCustomers(filtered);
+      }
+      
+      setFilteredCustomers(filtered);
     }
-  }, [refreshCustomers, hasRefreshed]);
+  }, [customers, searchTerm, sortKey, sortDirection]);
 
-  useEffect(() => {
-    // Filter customers based on search, city, and salesperson filters
-    // Se o usuário é do tipo vendedor específico (c5ee0433-3faf-46a4-a516-be7261bfe575),
-    // aplicamos a filtragem rigorosa
-    let filtered = [...customers];
-    
-    console.log('CustomerList - Filtrando clientes. User:', user);
-    console.log('CustomerList - Tipo de usuário do vendedor:', user?.userTypeId);
-    console.log('CustomerList - É vendedor específico:', isSalespersonType);
-    
-    // Verificação mais rigorosa para o tipo específico de vendedor
-    if (isSalespersonType && user?.id) {
-      console.log('CustomerList - Aplicando filtro rigoroso para vendedor com ID:', user.id);
+  const sortCustomers = (customersToSort: typeof customers) => {
+    customersToSort.sort((a, b) => {
+      let aValue, bValue;
       
-      // Converter para string para garantir comparação consistente
-      const currentUserIdStr = String(user.id);
+      switch (sortKey) {
+        case 'companyName':
+          aValue = a.companyName;
+          bValue = b.companyName;
+          break;
+        case 'document':
+          aValue = a.document || '';
+          bValue = b.document || '';
+          break;
+        case 'city':
+          aValue = a.city || '';
+          bValue = b.city || '';
+          break;
+        case 'state':
+          aValue = a.state || '';
+          bValue = b.state || '';
+          break;
+        case 'phone':
+          aValue = a.phone || '';
+          bValue = b.phone || '';
+          break;
+        default:
+          aValue = a[sortKey as keyof typeof a] || '';
+          bValue = b[sortKey as keyof typeof b] || '';
+      }
       
-      // Filtrar para mostrar apenas clientes atribuídos a este vendedor
-      filtered = filtered.filter(customer => {
-        const customerSalesPersonIdStr = String(customer.salesPersonId);
-        const matches = customerSalesPersonIdStr === currentUserIdStr;
-        
-        console.log(`CustomerList - Comparando cliente ${customer.companyName}: ID do vendedor ${customerSalesPersonIdStr} vs ID do usuário atual ${currentUserIdStr} = ${matches}`);
-        
-        return matches;
-      });
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortDirection === 'asc' 
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      }
       
-      console.log(`CustomerList - Após filtragem rigorosa: ${filtered.length} de ${customers.length} clientes`);
-    } 
-    // Verificação padrão para usuários com role = salesperson (mantida para compatibilidade)
-    else if (user?.role === 'salesperson' && user?.id) {
-      console.log('CustomerList - Aplicando filtro padrão para vendedor (role):', user.id);
-      
-      // Filter to only show customers assigned to this salesperson
-      filtered = filtered.filter(customer => {
-        const matches = customer.salesPersonId === user.id;
-        return matches;
-      });
-    }
-    
-    // Apply other filters
-    filtered = filtered.filter(customer => {
-      const matchesSearch = customer.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           customer.document.includes(searchQuery);
-      const matchesCity = cityFilter === 'all' || customer.city === cityFilter;
-      const matchesSalesPerson = salesPersonFilter === 'all' || customer.salesPersonId === salesPersonFilter;
-      
-      return matchesSearch && matchesCity && matchesSalesPerson;
+      return sortDirection === 'asc'
+        ? (aValue as number) - (bValue as number)
+        : (bValue as number) - (aValue as number);
     });
-    
-    setFilteredCustomers(filtered);
-  }, [customers, searchQuery, cityFilter, salesPersonFilter, user, isSalespersonType]);
+  };
 
-  const uniqueCities = Array.from(new Set(customers.map(c => c.city))).sort();
+  const handleSort = (key: string) => {
+    if (sortKey === key) {
+      // If already sorting by this key, toggle direction or reset
+      setSortDirection(sortDirection === 'asc' ? 'desc' : sortDirection === 'desc' ? null : 'asc');
+      if (sortDirection === null) {
+        setSortKey(null);
+      }
+    } else {
+      // If sorting by a new key, start with ascending
+      setSortKey(key);
+      setSortDirection('asc');
+    }
+  };
 
-  const getSalesPersonName = (id: string) => {
-    const salesPerson = salespeople.find(sp => sp.id === id);
-    return salesPerson ? salesPerson.name : 'Não atribuído';
+  const handleConfirmDelete = (id: string) => {
+    setConfirmDeleteId(id);
+    setIsConfirmDialogOpen(true);
+  };
+
+  const handleDeleteCustomer = async () => {
+    if (!confirmDeleteId) return;
+
+    try {
+      await deleteCustomer(confirmDeleteId);
+      toast.success('Cliente excluído com sucesso');
+    } catch (error) {
+      console.error('Error deleting customer:', error);
+      toast.error('Erro ao excluir cliente');
+    } finally {
+      setIsConfirmDialogOpen(false);
+      setConfirmDeleteId(null);
+    }
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Clientes</h1>
-          <p className="text-muted-foreground">
-            Gerenciamento de clientes da Ferplas.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button 
-            className="bg-ferplas-500 hover:bg-ferplas-600 button-transition"
-            onClick={() => navigate('/customers/new')}
-          >
-            <UserPlus className="mr-2 h-4 w-4" />
-            Novo Cliente
-          </Button>
-        </div>
-      </header>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Clientes</h1>
+        <Button onClick={() => navigate('/customers/new')} className="bg-ferplas-500 hover:bg-ferplas-600">
+          <Plus className="mr-2 h-4 w-4" /> Novo Cliente
+        </Button>
+      </div>
 
-      {/* Filters */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-medium">Filtros</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Lista de Clientes</CardTitle>
+            <div className="relative w-full md:w-64">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nome ou documento..."
-                className="pl-10 input-transition"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar clientes..."
+                className="pl-8"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Select value={cityFilter} onValueChange={setCityFilter}>
-              <SelectTrigger>
-                <div className="flex items-center">
-                  <Filter className="mr-2 h-4 w-4 text-gray-400" />
-                  <SelectValue placeholder="Cidade" />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as cidades</SelectItem>
-                {uniqueCities.map(city => (
-                  <SelectItem key={city} value={city}>
-                    {city}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select 
-              value={salesPersonFilter} 
-              onValueChange={setSalesPersonFilter}
-              disabled={user?.role === 'salesperson'}
-            >
-              <SelectTrigger>
-                <div className="flex items-center">
-                  <Users className="mr-2 h-4 w-4 text-gray-400" />
-                  <SelectValue placeholder="Vendedor" />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os vendedores</SelectItem>
-                {!isLoadingSalespeople && salespeople.map(salesPerson => (
-                  <SelectItem key={salesPerson.id} value={salesPerson.id}>
-                    {salesPerson.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center space-x-4">
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-md border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>
+                      <SortableHeader
+                        label="Nome"
+                        sortKey="companyName"
+                        currentSortKey={sortKey}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                    </TableHead>
+                    <TableHead>
+                      <SortableHeader
+                        label="CNPJ"
+                        sortKey="document"
+                        currentSortKey={sortKey}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                    </TableHead>
+                    <TableHead>
+                      <SortableHeader
+                        label="Cidade"
+                        sortKey="city"
+                        currentSortKey={sortKey}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                    </TableHead>
+                    <TableHead>
+                      <SortableHeader
+                        label="Estado"
+                        sortKey="state"
+                        currentSortKey={sortKey}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                    </TableHead>
+                    <TableHead>
+                      <SortableHeader
+                        label="Telefone"
+                        sortKey="phone"
+                        currentSortKey={sortKey}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                    </TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCustomers.length > 0 ? (
+                    filteredCustomers.map((customer) => (
+                      <TableRow key={customer.id}>
+                        <TableCell className="font-medium">{customer.companyName}</TableCell>
+                        <TableCell>{customer.document ? formatDocument(customer.document) : '—'}</TableCell>
+                        <TableCell>{customer.city || '—'}</TableCell>
+                        <TableCell>{customer.state || '—'}</TableCell>
+                        <TableCell>{customer.phone ? formatPhoneNumber(customer.phone) : '—'}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end space-x-2">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => navigate(`/customers/${customer.id}/edit`)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => handleConfirmDelete(customer.id)}
+                              className="text-red-500 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-24 text-center">
+                        Nenhum cliente encontrado.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Customers table */}
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="h-12 w-12 rounded-full border-4 border-t-ferplas-500 border-r-transparent border-b-ferplas-300 border-l-ferplas-300 animate-spin mb-4" />
-              <h2 className="text-xl font-medium text-gray-600">Carregando clientes...</h2>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Razão Social</TableHead>
-                  <TableHead>CNPJ/CPF</TableHead>
-                  <TableHead>Cidade/UF</TableHead>
-                  <TableHead>Vendedor</TableHead>
-                  <TableHead>Telefone</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCustomers.map(customer => (
-                  <TableRow 
-                    key={customer.id}
-                    className="cursor-pointer hover:bg-gray-50"
-                    onClick={() => navigate(`/customers/${customer.id}`)}
-                  >
-                    <TableCell className="font-medium">{customer.companyName}</TableCell>
-                    <TableCell>{customer.document}</TableCell>
-                    <TableCell>{customer.city}/{customer.state}</TableCell>
-                    <TableCell>{getSalesPersonName(customer.salesPersonId)}</TableCell>
-                    <TableCell>{customer.phone}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="h-8 px-2 text-ferplas-500"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/customers/${customer.id}/edit`);
-                          }}
-                        >
-                          Editar
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="h-8 px-2"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/cart?customer=${customer.id}`);
-                          }}
-                        >
-                          Novo Pedido
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-          
-          {!isLoading && filteredCustomers.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Users className="h-12 w-12 text-gray-300 mb-4" />
-              <h2 className="text-xl font-medium text-gray-600">Nenhum cliente encontrado</h2>
-              <p className="text-gray-500 mt-1">Tente ajustar seus filtros ou realizar uma nova busca.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteCustomer} className="bg-red-600 hover:bg-red-700">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

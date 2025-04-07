@@ -1,11 +1,9 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Plus, FileText, Edit3, Trash2, Search, Printer, ExternalLink } from 'lucide-react';
+import { Plus, FileText, Edit3, Trash2, Search, ExternalLink, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { 
   Table, 
   TableBody, 
@@ -24,6 +22,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { Order } from '@/types/types';
@@ -34,11 +40,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabaseOrderToAppOrder } from '@/utils/adapters';
 import { useOrders } from '@/context/OrderContext';
 import { useAuth } from '@/context/AuthContext';
+import SortableHeader from '@/components/ui/sortable-header';
 
 // Define custom type that includes joined tables
 interface OrderWithCustomer extends Tables<'orders'> {
   customers: Tables<'customers'>;
 }
+
+type SortDirection = 'asc' | 'desc' | null;
 
 const OrderList = () => {
   const navigate = useNavigate();
@@ -51,6 +60,17 @@ const OrderList = () => {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [directFetchRequired, setDirectFetchRequired] = useState(false);
+  
+  // Sorting states
+  const [sortKey, setSortKey] = useState<string | null>('createdAt');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  
+  // Filter states
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [documentFilter, setDocumentFilter] = useState('');
+  const [customerNameFilter, setCustomerNameFilter] = useState('');
+  const [orderNumberFilter, setOrderNumberFilter] = useState('');
 
   // Verificação para identificar se o usuário é do tipo vendedor específico
   const isSalespersonType = currentUser?.userTypeId === 'c5ee0433-3faf-46a4-a516-be7261bfe575';
@@ -302,12 +322,67 @@ const OrderList = () => {
     }
   };
 
-  useEffect(() => {
-    if (searchTerm.trim() === '') {
-      setFilteredOrders(orders);
+  const handleSort = (key: string) => {
+    if (sortKey === key) {
+      // If already sorting by this key, toggle direction or reset
+      setSortDirection(sortDirection === 'asc' ? 'desc' : sortDirection === 'desc' ? null : 'asc');
+      if (sortDirection === null) {
+        setSortKey(null);
+      }
     } else {
+      // If sorting by a new key, start with ascending
+      setSortKey(key);
+      setSortDirection('asc');
+    }
+  };
+
+  // Apply filtering and sorting
+  useEffect(() => {
+    let result = [...orders];
+    
+    // Apply document filter (CNPJ)
+    if (documentFilter) {
+      result = result.filter(order => 
+        order.customer?.document?.toLowerCase().includes(documentFilter.toLowerCase())
+      );
+    }
+    
+    // Apply customer name filter
+    if (customerNameFilter) {
+      result = result.filter(order => 
+        order.customer?.companyName?.toLowerCase().includes(customerNameFilter.toLowerCase())
+      );
+    }
+    
+    // Apply order number filter
+    if (orderNumberFilter) {
+      result = result.filter(order => 
+        String(order.orderNumber).includes(orderNumberFilter)
+      );
+    }
+    
+    // Apply date range filter
+    if (startDate && endDate) {
+      result = result.filter(order => {
+        const orderDate = new Date(order.createdAt);
+        return orderDate >= startDate && orderDate <= endDate;
+      });
+    } else if (startDate) {
+      result = result.filter(order => {
+        const orderDate = new Date(order.createdAt);
+        return orderDate >= startDate;
+      });
+    } else if (endDate) {
+      result = result.filter(order => {
+        const orderDate = new Date(order.createdAt);
+        return orderDate <= endDate;
+      });
+    }
+    
+    // Apply search term filter
+    if (searchTerm.trim() !== '') {
       const lowercasedSearch = searchTerm.toLowerCase();
-      const filtered = orders.filter(order => {
+      result = result.filter(order => {
         const customerName = order.customer?.companyName?.toLowerCase() || '';
         const orderNumber = String(order.orderNumber);
         const salesPersonName = order.user?.name?.toLowerCase() || '';
@@ -316,9 +391,67 @@ const OrderList = () => {
                orderNumber.includes(lowercasedSearch) ||
                salesPersonName.includes(lowercasedSearch);
       });
-      setFilteredOrders(filtered);
     }
-  }, [searchTerm, orders]);
+    
+    // Apply sorting
+    if (sortKey && sortDirection) {
+      result.sort((a, b) => {
+        let aValue, bValue;
+        
+        switch (sortKey) {
+          case 'orderNumber':
+            aValue = a.orderNumber;
+            bValue = b.orderNumber;
+            break;
+          case 'customerName':
+            aValue = a.customer?.companyName || '';
+            bValue = b.customer?.companyName || '';
+            break;
+          case 'customerDocument':
+            aValue = a.customer?.document || '';
+            bValue = b.customer?.document || '';
+            break;
+          case 'salesPerson':
+            aValue = a.user?.name || '';
+            bValue = b.user?.name || '';
+            break;
+          case 'createdAt':
+            aValue = new Date(a.createdAt).getTime();
+            bValue = new Date(b.createdAt).getTime();
+            break;
+          case 'total':
+            aValue = a.total;
+            bValue = b.total;
+            break;
+          case 'city':
+            aValue = a.customer?.city || '';
+            bValue = b.customer?.city || '';
+            break;
+          case 'state':
+            aValue = a.customer?.state || '';
+            bValue = b.customer?.state || '';
+            break;
+          default:
+            aValue = a[sortKey as keyof Order] || '';
+            bValue = b[sortKey as keyof Order] || '';
+        }
+        
+        // Handle string comparison
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return sortDirection === 'asc' 
+            ? aValue.localeCompare(bValue) 
+            : bValue.localeCompare(aValue);
+        }
+        
+        // Handle number comparison
+        return sortDirection === 'asc' 
+          ? (aValue as number) - (bValue as number) 
+          : (bValue as number) - (aValue as number);
+      });
+    }
+    
+    setFilteredOrders(result);
+  }, [orders, searchTerm, sortKey, sortDirection, startDate, endDate, documentFilter, customerNameFilter, orderNumberFilter]);
 
   const handleDeleteOrder = async () => {
     if (!selectedOrderId) return;
@@ -341,6 +474,14 @@ const OrderList = () => {
     setIsAlertOpen(true);
   };
 
+  const resetFilters = () => {
+    setStartDate(undefined);
+    setEndDate(undefined);
+    setDocumentFilter('');
+    setCustomerNameFilter('');
+    setOrderNumberFilter('');
+  };
+
   return (
     <>
       <div className="flex flex-col space-y-6">
@@ -353,16 +494,79 @@ const OrderList = () => {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col space-y-4">
               <CardTitle>Lista de Pedidos</CardTitle>
-              <div className="relative w-full md:w-64">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar pedidos..."
+                    className="pl-8"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                
+                <div className="flex space-x-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="flex-1">
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {startDate ? format(startDate, 'P', { locale: ptBR }) : 'Data Inicial'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <CalendarComponent
+                        mode="single"
+                        selected={startDate}
+                        onSelect={setStartDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="flex-1">
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {endDate ? format(endDate, 'P', { locale: ptBR }) : 'Data Final'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <CalendarComponent
+                        mode="single"
+                        selected={endDate}
+                        onSelect={setEndDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                
                 <Input
-                  placeholder="Buscar pedidos..."
-                  className="pl-8"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="CNPJ do Cliente"
+                  value={documentFilter}
+                  onChange={(e) => setDocumentFilter(e.target.value)}
                 />
+                
+                <div className="flex space-x-2">
+                  <Input
+                    placeholder="Nome do Cliente"
+                    className="flex-1"
+                    value={customerNameFilter}
+                    onChange={(e) => setCustomerNameFilter(e.target.value)}
+                  />
+                  
+                  <Input
+                    placeholder="Número do Pedido"
+                    className="flex-1"
+                    value={orderNumberFilter}
+                    onChange={(e) => setOrderNumberFilter(e.target.value)}
+                  />
+                  
+                  <Button variant="outline" onClick={resetFilters}>Limpar</Button>
+                </div>
               </div>
             </div>
           </CardHeader>
@@ -380,12 +584,87 @@ const OrderList = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[80px]">Número</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Vendedor</TableHead>
-                      <TableHead>Data</TableHead>
-                      <TableHead>Valor</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead className="w-[80px]">
+                        <SortableHeader
+                          label="Número"
+                          sortKey="orderNumber"
+                          currentSortKey={sortKey}
+                          currentSortDirection={sortDirection}
+                          onSort={handleSort}
+                        />
+                      </TableHead>
+                      <TableHead>
+                        <SortableHeader
+                          label="Cliente"
+                          sortKey="customerName"
+                          currentSortKey={sortKey}
+                          currentSortDirection={sortDirection}
+                          onSort={handleSort}
+                        />
+                      </TableHead>
+                      <TableHead>
+                        <SortableHeader
+                          label="CNPJ"
+                          sortKey="customerDocument"
+                          currentSortKey={sortKey}
+                          currentSortDirection={sortDirection}
+                          onSort={handleSort}
+                        />
+                      </TableHead>
+                      <TableHead>
+                        <SortableHeader
+                          label="Cidade"
+                          sortKey="city"
+                          currentSortKey={sortKey}
+                          currentSortDirection={sortDirection}
+                          onSort={handleSort}
+                        />
+                      </TableHead>
+                      <TableHead>
+                        <SortableHeader
+                          label="Estado"
+                          sortKey="state"
+                          currentSortKey={sortKey}
+                          currentSortDirection={sortDirection}
+                          onSort={handleSort}
+                        />
+                      </TableHead>
+                      <TableHead>
+                        <SortableHeader
+                          label="Vendedor"
+                          sortKey="salesPerson"
+                          currentSortKey={sortKey}
+                          currentSortDirection={sortDirection}
+                          onSort={handleSort}
+                        />
+                      </TableHead>
+                      <TableHead>
+                        <SortableHeader
+                          label="Data"
+                          sortKey="createdAt"
+                          currentSortKey={sortKey}
+                          currentSortDirection={sortDirection}
+                          onSort={handleSort}
+                        />
+                      </TableHead>
+                      <TableHead>
+                        <SortableHeader
+                          label="Valor"
+                          sortKey="total"
+                          currentSortKey={sortKey}
+                          currentSortDirection={sortDirection}
+                          onSort={handleSort}
+                        />
+                      </TableHead>
+                      <TableHead>
+                        <SortableHeader
+                          label="Status"
+                          sortKey="status"
+                          currentSortKey={sortKey}
+                          currentSortDirection={sortDirection}
+                          onSort={handleSort}
+                        />
+                      </TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -395,6 +674,9 @@ const OrderList = () => {
                         <TableRow key={order.id}>
                           <TableCell className="font-medium">#{order.orderNumber}</TableCell>
                           <TableCell>{order.customer?.companyName || "Cliente desconhecido"}</TableCell>
+                          <TableCell>{order.customer?.document || "—"}</TableCell>
+                          <TableCell>{order.customer?.city || "—"}</TableCell>
+                          <TableCell>{order.customer?.state || "—"}</TableCell>
                           <TableCell>{order.user?.name || "Não informado"}</TableCell>
                           <TableCell>{formatDate(new Date(order.createdAt))}</TableCell>
                           <TableCell>{formatCurrency(order.total)}</TableCell>
@@ -442,7 +724,7 @@ const OrderList = () => {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={7} className="h-24 text-center">
+                        <TableCell colSpan={10} className="h-24 text-center">
                           Nenhum pedido encontrado.
                         </TableCell>
                       </TableRow>
