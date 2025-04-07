@@ -90,9 +90,18 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
           <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Cliente</h2>
           <p className="font-semibold">{order.customer.companyName}</p>
           <p>CNPJ/CPF: {order.customer.document}</p>
+          {order.customer.stateRegistration && (
+            <p>IE: {order.customer.stateRegistration}</p>
+          )}
           <p>{order.customer.street}, {order.customer.number} {order.customer.complement && `- ${order.customer.complement}`}</p>
+          {order.customer.neighborhood && (
+            <p>Bairro: {order.customer.neighborhood}</p>
+          )}
           <p>{order.customer.city}/{order.customer.state} - {order.customer.zipCode}</p>
           <p>Tel: {order.customer.phone}</p>
+          {order.customer.whatsapp && (
+            <p>WhatsApp: {order.customer.whatsapp}</p>
+          )}
         </div>
         
         <div className="border p-2 rounded">
