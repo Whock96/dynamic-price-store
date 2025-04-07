@@ -1,7 +1,8 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useSupabaseData } from '@/hooks/use-supabase-data';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface CompanyInfo {
   name: string;
@@ -19,7 +20,7 @@ export interface CompanyInfo {
 interface CompanyContextType {
   companyInfo: CompanyInfo;
   setCompanyInfo: (info: CompanyInfo) => void;
-  saveCompanyInfo: (info: CompanyInfo) => void;
+  saveCompanyInfo: (info: CompanyInfo) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -84,7 +85,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [companySettingsData]);
 
-  const saveCompanyInfo = async (info: CompanyInfo) => {
+  const saveCompanyInfo = useCallback(async (info: CompanyInfo) => {
     try {
       // Save to localStorage
       localStorage.setItem(COMPANY_INFO_STORAGE_KEY, JSON.stringify(info));
@@ -92,38 +93,63 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // Update context state
       setCompanyInfoState(info);
       
+      // Map our format to Supabase format
+      const mappedData = {
+        name: info.name,
+        document: info.document,
+        state_registration: info.stateRegistration,
+        address: info.address,
+        city: info.city,
+        state: info.state,
+        zip_code: info.zipCode,
+        phone: info.phone,
+        email: info.email,
+        website: info.website,
+        updated_at: new Date().toISOString()
+      };
+      
+      console.log('Mapped data for Supabase:', mappedData);
+      
       // If we have company settings in Supabase, update them
       if (companySettingsData && companySettingsData.length > 0) {
-        // Map our format to Supabase format
+        // Get the ID of the existing record
         const settingsId = companySettingsData[0].id;
-        const mappedData = {
-          name: info.name,
-          document: info.document,
-          state_registration: info.stateRegistration,
-          address: info.address,
-          city: info.city,
-          state: info.state,
-          zip_code: info.zipCode,
-          phone: info.phone,
-          email: info.email,
-          website: info.website,
-          updated_at: new Date().toISOString()
+        
+        console.log('Updating existing company settings with ID:', settingsId);
+        
+        // Update the record directly with Supabase client
+        const { error } = await supabase
+          .from('company_settings')
+          .update(mappedData)
+          .eq('id', settingsId);
+          
+        if (error) throw error;
+      } else {
+        // Create a new record in Supabase
+        console.log('Creating new company settings record');
+        
+        // Add created_at field for new records
+        const dataWithCreatedAt = {
+          ...mappedData,
+          created_at: new Date().toISOString()
         };
         
-        // Use our hook to update the record
-        const { updateRecord } = useSupabaseData('company_settings');
-        await updateRecord(settingsId, mappedData);
-        
-        // Refresh data
-        fetchData();
+        const { error } = await supabase
+          .from('company_settings')
+          .insert(dataWithCreatedAt);
+          
+        if (error) throw error;
       }
+      
+      // Refresh data to get the latest from Supabase
+      await fetchData();
       
       toast.success('Dados da empresa salvos com sucesso!');
     } catch (error) {
       console.error('Error saving company info:', error);
       toast.error('Erro ao salvar informações da empresa');
     }
-  };
+  }, [companySettingsData, fetchData]);
 
   return (
     <CompanyContext.Provider value={{ 

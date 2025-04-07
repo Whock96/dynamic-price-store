@@ -21,8 +21,8 @@ const CompanySettings = () => {
     reset(companyInfo);
   }, [companyInfo, reset]);
 
-  const onSubmit = (data: CompanyInfo) => {
-    saveCompanyInfo(data);
+  const onSubmit = async (data: CompanyInfo) => {
+    await saveCompanyInfo(data);
   };
 
   const handleReset = () => {
