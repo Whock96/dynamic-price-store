@@ -1,4 +1,3 @@
-
 import { Customer, Product, Category, Subcategory } from '@/types/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useCustomers } from '@/context/CustomerContext';
@@ -15,7 +14,7 @@ export const migrateCustomersToSupabase = async (customers: Customer[]) => {
       id: customer.id,
       company_name: customer.companyName,
       document: customer.document,
-      sales_person_id: customer.salesPersonId,
+      sales_person_id: customer.salesPersonId || 'default-salesperson-id', // Ensure we always have a value
       street: customer.street,
       number: customer.number,
       no_number: customer.noNumber,
@@ -25,12 +24,14 @@ export const migrateCustomersToSupabase = async (customers: Customer[]) => {
       zip_code: customer.zipCode,
       phone: customer.phone,
       email: customer.email,
-      whatsapp: customer.whatsapp, // Add whatsapp field
+      whatsapp: customer.whatsapp || '', // Ensure whatsapp has a default value
       default_discount: customer.defaultDiscount,
       max_discount: customer.maxDiscount,
       created_at: customer.createdAt.toISOString(),
       updated_at: customer.updatedAt.toISOString(),
-      register_date: customer.registerDate.toISOString().split('T')[0], // Add register_date field with date format
+      register_date: customer.registerDate 
+        ? customer.registerDate.toISOString().split('T')[0] 
+        : new Date().toISOString().split('T')[0], // Ensure register_date has a default value
     }));
     
     // Verifique se já existem registros com os mesmos IDs

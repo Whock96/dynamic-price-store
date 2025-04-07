@@ -30,6 +30,7 @@ const CustomerForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [salespeople, setSalespeople] = useState<User[]>([]);
   const [isLoadingSalespeople, setIsLoadingSalespeople] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   
   // Check if current user is a salesperson by user type ID
   const isSalesperson = currentUser?.userTypeId === 'c5ee0433-3faf-46a4-a516-be7261bfe575';
@@ -112,6 +113,11 @@ const CustomerForm = () => {
   // Handles form input changes
   const handleChange = (field: keyof typeof formValues, value: any) => {
     setFormValues(prev => ({ ...prev, [field]: value }));
+    
+    // Clear validation error when salesPersonId is selected
+    if (field === 'salesPersonId' && value) {
+      setValidationError(null);
+    }
   };
 
   // Date formatting for input
@@ -125,6 +131,14 @@ const CustomerForm = () => {
     setIsLoading(true);
 
     try {
+      // Validate that salesPersonId is not empty
+      if (!formValues.salesPersonId) {
+        setValidationError('É necessário selecionar um vendedor');
+        setIsLoading(false);
+        toast.error('Por favor, selecione um vendedor');
+        return;
+      }
+      
       // Ensure the phone and number fields are strings
       const customerData = {
         ...formValues,
@@ -214,13 +228,16 @@ const CustomerForm = () => {
             
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="salesPerson">Vendedor *</Label>
+                <Label htmlFor="salesPerson" className={validationError ? "text-red-500" : ""}>
+                  Vendedor *
+                </Label>
                 <Select 
                   value={formValues.salesPersonId} 
                   onValueChange={(value) => handleChange('salesPersonId', value)}
                   disabled={isSalesperson}
+                  required
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={validationError ? "border-red-500" : ""}>
                     <SelectValue placeholder="Selecione um vendedor" />
                   </SelectTrigger>
                   <SelectContent>
@@ -231,6 +248,9 @@ const CustomerForm = () => {
                     ))}
                   </SelectContent>
                 </Select>
+                {validationError && (
+                  <p className="text-xs text-red-500 mt-1">{validationError}</p>
+                )}
                 {isSalesperson && (
                   <p className="text-xs text-muted-foreground mt-1">
                     Como você é vendedor, você é automaticamente atribuído como vendedor deste cliente.

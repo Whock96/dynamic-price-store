@@ -109,16 +109,17 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       console.log('Adding customer with data:', customerData);
       
-      // Add to Supabase - Explicitly handle the salesPersonId to ensure it is properly saved
+      // Validate required field
+      if (!customerData.salesPersonId) {
+        toast.error('Erro: Um vendedor deve ser selecionado');
+        return null;
+      }
+      
+      // Add to Supabase
       const supabaseData = customerToSupabase(customerData);
       
       // Ensure salesPersonId is explicitly set as sales_person_id
-      if (customerData.salesPersonId) {
-        console.log('Setting sales_person_id to:', customerData.salesPersonId);
-        supabaseData.sales_person_id = customerData.salesPersonId;
-      } else {
-        console.warn('No salesPersonId provided for customer!');
-      }
+      supabaseData.sales_person_id = customerData.salesPersonId;
       
       console.log('Final Supabase data for insert:', supabaseData);
       
@@ -141,16 +142,20 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       console.log('Updating customer with data:', customerData);
       
+      // Validate required field if it's being updated
+      if ('salesPersonId' in customerData && !customerData.salesPersonId) {
+        console.error('salesPersonId cannot be empty - this is a required field');
+        toast.error('Erro: Um vendedor deve ser selecionado');
+        return null;
+      }
+      
       // Update in Supabase
       const supabaseData = customerToSupabase(customerData);
       
-      // Ensure salesPersonId is explicitly set as sales_person_id
+      // Ensure salesPersonId is explicitly set as sales_person_id if it exists
       if (customerData.salesPersonId) {
         console.log('Setting sales_person_id to:', customerData.salesPersonId);
         supabaseData.sales_person_id = customerData.salesPersonId;
-      } else if ('salesPersonId' in customerData) {
-        console.warn('salesPersonId is explicitly set to null or empty string');
-        supabaseData.sales_person_id = null; // Ensure it's explicitly set to null if that's what was provided
       }
       
       console.log('Final Supabase data for update:', supabaseData);
