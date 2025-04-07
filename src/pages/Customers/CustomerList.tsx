@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit, Trash2, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Info } from 'lucide-react';
 import { useCustomers } from '@/context/CustomerContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -28,8 +28,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { formatPhoneNumber, formatDocument } from '@/utils/formatters';
 import SortableHeader from '@/components/ui/sortable-header';
+import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
 
 type SortDirection = 'asc' | 'desc' | null;
+
+interface SalesPersonCache {
+  [id: string]: string;
+}
 
 const CustomerList = () => {
   const navigate = useNavigate();
@@ -38,10 +44,36 @@ const CustomerList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [salesPersonCache, setSalesPersonCache] = useState<SalesPersonCache>({});
   
   // Sorting states
   const [sortKey, setSortKey] = useState<string | null>('companyName');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  // Fetch salespeople data
+  useEffect(() => {
+    const fetchSalespeople = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, name');
+        
+        if (error) throw error;
+        
+        if (data) {
+          const cache: SalesPersonCache = {};
+          data.forEach(user => {
+            cache[user.id] = user.name;
+          });
+          setSalesPersonCache(cache);
+        }
+      } catch (error) {
+        console.error('Error fetching salespeople:', error);
+      }
+    };
+    
+    fetchSalespeople();
+  }, []);
 
   useEffect(() => {
     if (searchTerm.trim() === '') {
@@ -95,9 +127,24 @@ const CustomerList = () => {
           aValue = a.phone || '';
           bValue = b.phone || '';
           break;
+        case 'salesPerson':
+          aValue = salesPersonCache[a.salesPersonId] || '';
+          bValue = salesPersonCache[b.salesPersonId] || '';
+          break;
+        case 'registerDate':
+          aValue = a.registerDate || a.createdAt;
+          bValue = b.registerDate || b.createdAt;
+          break;
         default:
           aValue = a[sortKey as keyof typeof a] || '';
           bValue = b[sortKey as keyof typeof b] || '';
+      }
+      
+      if (sortKey === 'registerDate') {
+        // For dates, we need to compare timestamps
+        const aTime = aValue instanceof Date ? aValue.getTime() : 0;
+        const bTime = bValue instanceof Date ? bValue.getTime() : 0;
+        return sortDirection === 'asc' ? aTime - bTime : bTime - aTime;
       }
       
       if (typeof aValue === 'string' && typeof bValue === 'string') {
@@ -144,6 +191,11 @@ const CustomerList = () => {
       setIsConfirmDialogOpen(false);
       setConfirmDeleteId(null);
     }
+  };
+
+  const formatDate = (date?: Date) => {
+    if (!date) return '—';
+    return format(date, 'dd/MM/yyyy');
   };
 
   return (
@@ -222,8 +274,17 @@ const CustomerList = () => {
                     </TableHead>
                     <TableHead>
                       <SortableHeader
-                        label="Telefone"
-                        sortKey="phone"
+                        label="Vendedor"
+                        sortKey="salesPerson"
+                        currentSortKey={sortKey}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                    </TableHead>
+                    <TableHead>
+                      <SortableHeader
+                        label="Data de Cadastro"
+                        sortKey="registerDate"
                         currentSortKey={sortKey}
                         currentSortDirection={sortDirection}
                         onSort={handleSort}
@@ -240,13 +301,23 @@ const CustomerList = () => {
                         <TableCell>{customer.document ? formatDocument(customer.document) : '—'}</TableCell>
                         <TableCell>{customer.city || '—'}</TableCell>
                         <TableCell>{customer.state || '—'}</TableCell>
-                        <TableCell>{customer.phone ? formatPhoneNumber(customer.phone) : '—'}</TableCell>
+                        <TableCell>{salesPersonCache[customer.salesPersonId] || '—'}</TableCell>
+                        <TableCell>{formatDate(customer.registerDate || customer.createdAt)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end space-x-2">
                             <Button
                               variant="outline"
                               size="icon"
+                              onClick={() => navigate(`/customers/${customer.id}`)}
+                              title="Ver detalhes"
+                            >
+                              <Info className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="icon"
                               onClick={() => navigate(`/customers/${customer.id}/edit`)}
+                              title="Editar"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -255,6 +326,7 @@ const CustomerList = () => {
                               size="icon"
                               onClick={() => handleConfirmDelete(customer.id)}
                               className="text-red-500 hover:bg-red-50"
+                              title="Excluir"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -264,7 +336,7 @@ const CustomerList = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center">
+                      <TableCell colSpan={7} className="h-24 text-center">
                         Nenhum cliente encontrado.
                       </TableCell>
                     </TableRow>

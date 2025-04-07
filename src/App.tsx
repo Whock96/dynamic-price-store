@@ -1,93 +1,131 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from 'react-query';
+import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "@/components/ui/toaster"
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
-import { ProductProvider } from "./context/ProductContext";
-import { CustomerProvider } from "./context/CustomerContext";
-import { OrderProvider } from "./context/OrderContext";
-import { CartProvider } from "./context/CartContext";
-import { CompanyProvider } from "./context/CompanyContext";
-import PageContainer from "./components/layout/PageContainer";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import ProductList from "./pages/Products/ProductList";
-import ProductDetail from "./pages/Products/ProductDetail";
-import CustomerList from "./pages/Customers/CustomerList";
-import CustomerForm from "./pages/Customers/CustomerForm";
-import OrderList from "./pages/Orders/OrderList";
-import OrderDetail from "./pages/Orders/OrderDetail";
-import OrderUpdate from "./pages/Orders/OrderUpdate";
-import ProductManagement from "./pages/Settings/ProductManagement";
-import UserManagement from "./pages/Settings/UserManagement";
-import UserTypeManagement from "./pages/Settings/UserTypeManagement";
-import CategoryManagement from "./pages/Settings/CategoryManagement";
-import DiscountManagement from "./pages/Settings/DiscountManagement";
-import CompanySettings from "./pages/Settings/CompanySettings";
-import Cart from "./pages/Cart/Cart";
-import Settings from "./pages/Settings/Settings";
-import NotFound from "./pages/NotFound";
+import Index from '@/pages/Index';
+import Dashboard from '@/pages/Dashboard';
+import ProductList from '@/pages/Products/ProductList';
+import ProductDetail from '@/pages/Products/ProductDetail';
+import CustomerList from '@/pages/Customers/CustomerList';
+import CustomerForm from '@/pages/Customers/CustomerForm';
+import CustomerDetail from '@/pages/Customers/CustomerDetail';
+import OrderList from '@/pages/Orders/OrderList';
+import OrderDetail from '@/pages/Orders/OrderDetail';
+import OrderUpdate from '@/pages/Orders/OrderUpdate';
+import Cart from '@/pages/Cart';
+import Settings from '@/pages/Settings';
+import CompanySettings from '@/pages/Settings/CompanySettings';
+import CategoryManagement from '@/pages/Settings/CategoryManagement';
+import UserManagement from '@/pages/Settings/UserManagement';
+import UserTypeManagement from '@/pages/Settings/UserTypeManagement';
+import DiscountManagement from '@/pages/Settings/DiscountManagement';
+import ProductManagement from '@/pages/Settings/ProductManagement';
+import Login from '@/pages/Login';
+import NotFound from '@/pages/NotFound';
+
+import Sidebar from '@/components/Sidebar';
+import Navbar from '@/components/Navbar';
+
+import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { CompanyProvider } from '@/context/CompanyContext';
+import { CartProvider } from '@/context/CartContext';
+import { OrderProvider } from '@/context/OrderContext';
+import { ProductProvider } from '@/context/ProductContext';
+import { CustomerProvider } from '@/context/CustomerContext';
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <BrowserRouter>
+function App() {
+  const { loggedIn } = useAuth();
+  const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
+  const [collapsed, setCollapsed] = useState(isMobileView);
+
+  const checkScreenSize = useCallback(() => {
+    setIsMobileView(window.innerWidth < 768);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('resize', checkScreenSize);
+    return () => {
+      window.removeEventListener('resize', checkScreenSize);
+    };
+  }, [checkScreenSize]);
+
+  useEffect(() => {
+    if (isMobileView) {
+      setCollapsed(true);
+    }
+  }, [isMobileView]);
+
+  const toggleSidebar = (open: boolean) => {
+    setCollapsed(!open);
+  };
+
+  return (
+    <Router>
+      <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <CompanyProvider>
-            <ProductProvider>
-              <CustomerProvider>
-                <OrderProvider>
-                  <CartProvider>
-                    <Toaster />
-                    <Sonner />
-                    <Routes>
-                      <Route path="/login" element={<Login />} />
-                      <Route path="/" element={<PageContainer><Dashboard /></PageContainer>} />
-                      <Route path="/dashboard" element={<PageContainer><Dashboard /></PageContainer>} />
-                      
-                      {/* Product routes */}
-                      <Route path="/products" element={<PageContainer><ProductList /></PageContainer>} />
-                      <Route path="/products/:id" element={<PageContainer><ProductDetail /></PageContainer>} />
-                      
-                      {/* Customer routes */}
-                      <Route path="/customers" element={<PageContainer><CustomerList /></PageContainer>} />
-                      <Route path="/customers/new" element={<PageContainer><CustomerForm /></PageContainer>} />
-                      <Route path="/customers/:id" element={<PageContainer><CustomerForm /></PageContainer>} />
-                      <Route path="/customers/:id/edit" element={<PageContainer><CustomerForm /></PageContainer>} />
-                      
-                      {/* Order routes */}
-                      <Route path="/orders" element={<PageContainer><OrderList /></PageContainer>} />
-                      <Route path="/orders/:id" element={<PageContainer><OrderDetail /></PageContainer>} />
-                      <Route path="/orders/:id/edit" element={<PageContainer><OrderUpdate /></PageContainer>} />
-                      
-                      {/* Cart route */}
-                      <Route path="/cart" element={<PageContainer><Cart /></PageContainer>} />
-                      
-                      {/* Settings routes */}
-                      <Route path="/settings" element={<PageContainer><Settings /></PageContainer>} />
-                      <Route path="/settings/products" element={<PageContainer><ProductManagement /></PageContainer>} />
-                      <Route path="/settings/users" element={<PageContainer><UserManagement /></PageContainer>} />
-                      <Route path="/settings/user-types" element={<PageContainer><UserTypeManagement /></PageContainer>} />
-                      <Route path="/settings/categories" element={<PageContainer><CategoryManagement /></PageContainer>} />
-                      <Route path="/settings/discounts" element={<PageContainer><DiscountManagement /></PageContainer>} />
-                      <Route path="/settings/company" element={<PageContainer><CompanySettings /></PageContainer>} />
-                      
-                      {/* Catch-all route */}
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </CartProvider>
-                </OrderProvider>
-              </CustomerProvider>
-            </ProductProvider>
+            <CartProvider>
+              <OrderProvider>
+                <ProductProvider>
+                  <CustomerProvider>
+                    <ThemeProvider defaultTheme="light" storageKey="ferplas-theme">
+                      <div className="min-h-screen">
+                        {loggedIn ? (
+                          <div className="flex">
+                            <Sidebar 
+                              collapsed={isMobileView}
+                              onToggle={() => toggleSidebar(!isMobileView)}
+                            />
+                            <div className="flex-1 p-8">
+                              <Navbar toggleSidebar={() => toggleSidebar(true)} />
+                              <div className="mt-4">
+                                <Routes>
+                                  <Route path="/" element={<Index />} />
+                                  <Route path="/dashboard" element={<Dashboard />} />
+                                  <Route path="/products" element={<ProductList />} />
+                                  <Route path="/products/:id" element={<ProductDetail />} />
+                                  <Route path="/customers" element={<CustomerList />} />
+                                  <Route path="/customers/new" element={<CustomerForm />} />
+                                  <Route path="/customers/:id" element={<CustomerDetail />} />
+                                  <Route path="/customers/:id/edit" element={<CustomerForm />} />
+                                  <Route path="/orders" element={<OrderList />} />
+                                  <Route path="/orders/:id" element={<OrderDetail />} />
+                                  <Route path="/orders/new" element={<Cart />} />
+                                  <Route path="/orders/:id/update" element={<OrderUpdate />} />
+                                  <Route path="/cart" element={<Cart />} />
+                                  <Route path="/settings" element={<Settings />} />
+                                  <Route path="/settings/company" element={<CompanySettings />} />
+                                  <Route path="/settings/categories" element={<CategoryManagement />} />
+                                  <Route path="/settings/users" element={<UserManagement />} />
+                                  <Route path="/settings/user-types" element={<UserTypeManagement />} />
+                                  <Route path="/settings/discounts" element={<DiscountManagement />} />
+                                  <Route path="/settings/products" element={<ProductManagement />} />
+                                  <Route path="*" element={<NotFound />} />
+                                </Routes>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <Routes>
+                            <Route path="*" element={<Login />} />
+                          </Routes>
+                        )}
+                      </div>
+                      <Toaster />
+                    </ThemeProvider>
+                  </CustomerProvider>
+                </ProductProvider>
+              </OrderProvider>
+            </CartProvider>
           </CompanyProvider>
         </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+      </QueryClientProvider>
+    </Router>
+  );
+}
 
 export default App;

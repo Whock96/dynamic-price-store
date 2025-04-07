@@ -20,6 +20,7 @@ import { Customer, User } from '@/types/types';
 import { supabase } from '@/integrations/supabase/client';
 import { adaptUserData } from '@/utils/adapters';
 import { useAuth } from '@/context/AuthContext';
+import { format } from 'date-fns';
 
 const CustomerForm = () => {
   const { id } = useParams<{ id: string }>();
@@ -47,9 +48,11 @@ const CustomerForm = () => {
     state: '',
     zipCode: '',
     phone: '',
+    whatsApp: '',
     email: '',
     defaultDiscount: 0,
-    maxDiscount: 0
+    maxDiscount: 0,
+    registerDate: new Date()
   });
 
   // Fetch salespeople when component mounts
@@ -99,7 +102,10 @@ const CustomerForm = () => {
       if (customer) {
         // Remove id, createdAt, and updatedAt from customer object
         const { id: customerId, createdAt, updatedAt, ...customerValues } = customer;
-        setFormValues(customerValues);
+        setFormValues({
+          ...customerValues,
+          registerDate: customer.registerDate || customer.createdAt // Use registerDate if exists, otherwise fallback to createdAt
+        });
       } else {
         toast.error('Cliente não encontrado');
         navigate('/customers');
@@ -122,9 +128,11 @@ const CustomerForm = () => {
       const customerData = {
         ...formValues,
         phone: formValues.phone.toString(),
+        whatsApp: formValues.whatsApp?.toString() || "",
         number: formValues.number.toString(),
         defaultDiscount: Number(formValues.defaultDiscount),
-        maxDiscount: Number(formValues.maxDiscount)
+        maxDiscount: Number(formValues.maxDiscount),
+        registerDate: formValues.registerDate || new Date()
       };
 
       let result;
@@ -161,6 +169,12 @@ const CustomerForm = () => {
     'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
     'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
   ];
+
+  // Format date as yyyy-MM-dd for date input
+  const formatDateForInput = (date?: Date) => {
+    if (!date) return '';
+    return format(date, 'yyyy-MM-dd');
+  };
 
   return (
     <div className="space-y-6">
@@ -231,6 +245,21 @@ const CustomerForm = () => {
                 )}
               </div>
               <div className="space-y-2">
+                <Label htmlFor="registerDate">Data de Cadastro</Label>
+                <Input 
+                  id="registerDate" 
+                  type="date"
+                  value={formatDateForInput(formValues.registerDate)}
+                  onChange={(e) => {
+                    const date = e.target.value ? new Date(e.target.value) : undefined;
+                    handleChange('registerDate', date);
+                  }}
+                />
+              </div>
+            </div>
+            
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="space-y-2">
                 <Label htmlFor="phone">Telefone</Label>
                 <Input 
                   id="phone" 
@@ -238,16 +267,23 @@ const CustomerForm = () => {
                   onChange={(e) => handleChange('phone', e.target.value)}
                 />
               </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input 
-                id="email" 
-                type="email"
-                value={formValues.email} 
-                onChange={(e) => handleChange('email', e.target.value)}
-              />
+              <div className="space-y-2">
+                <Label htmlFor="whatsApp">WhatsApp</Label>
+                <Input 
+                  id="whatsApp" 
+                  value={formValues.whatsApp || ''} 
+                  onChange={(e) => handleChange('whatsApp', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input 
+                  id="email" 
+                  type="email"
+                  value={formValues.email} 
+                  onChange={(e) => handleChange('email', e.target.value)}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>

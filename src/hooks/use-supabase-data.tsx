@@ -122,6 +122,22 @@ export function useSupabaseData<T extends Record<string, any>>(
           console.log('Converted salesPersonId to sales_person_id:', recordToCreate.sales_person_id);
         }
         
+        // Handle register date
+        if (recordToCreate.registerDate !== undefined) {
+          recordToCreate.register_date = recordToCreate.registerDate instanceof Date 
+            ? recordToCreate.registerDate.toISOString() 
+            : recordToCreate.registerDate;
+          delete recordToCreate.registerDate;
+          console.log('Converted registerDate to register_date:', recordToCreate.register_date);
+        }
+        
+        // Handle whatsApp
+        if (recordToCreate.whatsApp !== undefined) {
+          recordToCreate.whatsapp = recordToCreate.whatsApp;
+          delete recordToCreate.whatsApp;
+          console.log('Converted whatsApp to whatsapp:', recordToCreate.whatsapp);
+        }
+        
         // Handle other customer-specific conversions
         if (recordToCreate.companyName !== undefined) {
           recordToCreate.company_name = recordToCreate.companyName;
@@ -205,6 +221,22 @@ export function useSupabaseData<T extends Record<string, any>>(
           recordToUpdate.sales_person_id = recordToUpdate.salesPersonId;
           delete recordToUpdate.salesPersonId;
           console.log('Converted salesPersonId to sales_person_id:', recordToUpdate.sales_person_id);
+        }
+        
+        // Handle register date
+        if (recordToUpdate.registerDate !== undefined) {
+          recordToUpdate.register_date = recordToUpdate.registerDate instanceof Date 
+            ? recordToUpdate.registerDate.toISOString() 
+            : recordToUpdate.registerDate;
+          delete recordToUpdate.registerDate;
+          console.log('Converted registerDate to register_date:', recordToUpdate.register_date);
+        }
+        
+        // Handle whatsApp
+        if (recordToUpdate.whatsApp !== undefined) {
+          recordToUpdate.whatsapp = recordToUpdate.whatsApp;
+          delete recordToUpdate.whatsApp;
+          console.log('Converted whatsApp to whatsapp:', recordToUpdate.whatsapp);
         }
         
         // Handle other customer-specific conversions
