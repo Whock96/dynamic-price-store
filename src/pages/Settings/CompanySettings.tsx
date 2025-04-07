@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,13 +7,19 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useCompany, CompanyInfo } from '@/context/CompanyContext';
 import { Building2, Save, Undo } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const CompanySettings = () => {
-  const { companyInfo, saveCompanyInfo } = useCompany();
+  const { companyInfo, saveCompanyInfo, isLoading } = useCompany();
   
   const { register, handleSubmit, reset, formState: { isDirty, isSubmitting } } = useForm<CompanyInfo>({
     defaultValues: companyInfo
   });
+
+  // Reset form when companyInfo changes (e.g. after loading from storage/API)
+  useEffect(() => {
+    reset(companyInfo);
+  }, [companyInfo, reset]);
 
   const onSubmit = (data: CompanyInfo) => {
     saveCompanyInfo(data);
@@ -22,6 +28,35 @@ const CompanySettings = () => {
   const handleReset = () => {
     reset(companyInfo);
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <header>
+          <h1 className="text-3xl font-bold tracking-tight">Dados da Empresa</h1>
+          <p className="text-muted-foreground">
+            Configure as informações da sua empresa que aparecerão em documentos e impressões.
+          </p>
+        </header>
+        <Card>
+          <CardHeader>
+            <div className="flex items-center space-x-3">
+              <Skeleton className="h-10 w-10 rounded-md" />
+              <div>
+                <Skeleton className="h-6 w-40" />
+                <Skeleton className="h-4 w-60 mt-1" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {Array.from({ length: 8 }).map((_, index) => (
+              <Skeleton key={index} className="h-12 w-full" />
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
