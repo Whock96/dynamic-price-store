@@ -100,15 +100,25 @@ const CustomerForm = () => {
     if (isEditing && id) {
       const customer = getCustomerById(id);
       if (customer) {
+        console.log('Loading customer data:', customer);
+        
         // Remove id, createdAt, and updatedAt from customer object
         const { id: customerId, createdAt, updatedAt, ...customerValues } = customer;
+        
+        // Ensure the salesPersonId is set properly
+        if (customerValues.salesPersonId) {
+          console.log('Setting salesPersonId to:', customerValues.salesPersonId);
+        } else {
+          console.log('No salesPersonId found in customer data');
+        }
+        
         setFormValues(customerValues);
       } else {
         toast.error('Cliente não encontrado');
         navigate('/customers');
       }
     }
-  }, [isEditing, id, getCustomerById, navigate]);
+  }, [isEditing, id, getCustomerById, navigate, salespeople]);
 
   // Handles form input changes
   const handleChange = (field: keyof typeof formValues, value: any) => {
