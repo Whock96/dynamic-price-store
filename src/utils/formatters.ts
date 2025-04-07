@@ -1,4 +1,7 @@
 
+/**
+ * Format a number to currency string (BRL)
+ */
 export const formatCurrency = (value: number): string => {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -6,44 +9,73 @@ export const formatCurrency = (value: number): string => {
   }).format(value);
 };
 
-export const formatDate = (date: Date): string => {
-  return new Intl.DateTimeFormat('pt-BR').format(date);
+/**
+ * Format a date to a localized string
+ */
+export const formatDate = (date: Date | string): string => {
+  if (!date) return '';
+  
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  return dateObj.toLocaleDateString('pt-BR');
 };
 
-export const formatPhoneNumber = (phone: string): string => {
-  // Basic phone formatting for Brazilian numbers
+/**
+ * Format a phone number to Brazilian format
+ */
+export const formatPhoneNumber = (phone: string | null | undefined): string => {
   if (!phone) return '';
   
-  // Remove non-numeric characters
-  const cleaned = phone.replace(/\D/g, '');
+  // Remove all non-digit characters
+  const digits = phone.replace(/\D/g, '');
   
-  // Format according to length
-  if (cleaned.length === 11) {
-    // Mobile: (XX) XXXXX-XXXX
-    return `(${cleaned.substring(0, 2)}) ${cleaned.substring(2, 7)}-${cleaned.substring(7, 11)}`;
-  } else if (cleaned.length === 10) {
+  if (digits.length === 11) {
+    // Mobile: (XX) 9XXXX-XXXX
+    return `(${digits.substring(0, 2)}) ${digits.substring(2, 7)}-${digits.substring(7)}`;
+  } else if (digits.length === 10) {
     // Landline: (XX) XXXX-XXXX
-    return `(${cleaned.substring(0, 2)}) ${cleaned.substring(2, 6)}-${cleaned.substring(6, 10)}`;
+    return `(${digits.substring(0, 2)}) ${digits.substring(2, 6)}-${digits.substring(6)}`;
   }
   
-  return phone; // Return original if doesn't match expected formats
+  return phone;
 };
 
-export const formatDocument = (document: string): string => {
-  if (!document) return '';
+/**
+ * Format a document (CPF/CNPJ) to Brazilian format
+ */
+export const formatDocument = (doc: string | null | undefined): string => {
+  if (!doc) return '';
   
-  // Remove non-numeric characters
-  const cleaned = document.replace(/\D/g, '');
+  // Remove all non-digit characters
+  const digits = doc.replace(/\D/g, '');
   
-  // Format CNPJ: XX.XXX.XXX/XXXX-XX
-  if (cleaned.length === 14) {
-    return `${cleaned.substring(0, 2)}.${cleaned.substring(2, 5)}.${cleaned.substring(5, 8)}/${cleaned.substring(8, 12)}-${cleaned.substring(12, 14)}`;
+  if (digits.length === 11) {
+    // CPF: XXX.XXX.XXX-XX
+    return `${digits.substring(0, 3)}.${digits.substring(3, 6)}.${digits.substring(6, 9)}-${digits.substring(9)}`;
+  } else if (digits.length === 14) {
+    // CNPJ: XX.XXX.XXX/XXXX-XX
+    return `${digits.substring(0, 2)}.${digits.substring(2, 5)}.${digits.substring(5, 8)}/${digits.substring(8, 12)}-${digits.substring(12)}`;
   }
   
-  // Format CPF: XXX.XXX.XXX-XX
-  if (cleaned.length === 11) {
-    return `${cleaned.substring(0, 3)}.${cleaned.substring(3, 6)}.${cleaned.substring(6, 9)}-${cleaned.substring(9, 11)}`;
-  }
-  
-  return document; // Return original if doesn't match expected formats
+  return doc;
+};
+
+/**
+ * Format a number as a percentage
+ */
+export const formatPercent = (value: number): string => {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'percent',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(value / 100);
+};
+
+/**
+ * Format a number with specified decimal places
+ */
+export const formatNumber = (value: number, decimals: number = 2): string => {
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  }).format(value);
 };

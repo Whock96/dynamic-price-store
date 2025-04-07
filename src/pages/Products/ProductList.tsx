@@ -67,7 +67,14 @@ const ProductList = () => {
         variant: "destructive" 
       });
     }
-  }, [productsError, categoriesError, toast]);
+    if (subcategoriesError) {
+      toast({ 
+        title: "Erro ao carregar subcategorias", 
+        description: subcategoriesError.message, 
+        variant: "destructive" 
+      });
+    }
+  }, [productsError, categoriesError, subcategoriesError, toast]);
 
   // Update available subcategories when category filter changes
   useEffect(() => {

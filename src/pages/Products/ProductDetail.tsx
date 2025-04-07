@@ -54,6 +54,13 @@ const ProductDetail = () => {
     }
   }, [id, products, productsLoading]);
   
+  // Show error toast if there's an error
+  useEffect(() => {
+    if (productsError) {
+      toast.error(`Error loading products: ${productsError.message}`);
+    }
+  }, [productsError]);
+
   // Helper functions to get category and subcategory names
   const getCategoryName = (categoryId: string | null) => {
     if (!categoryId) return 'Sem categoria';
