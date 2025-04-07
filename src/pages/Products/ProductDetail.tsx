@@ -16,6 +16,19 @@ import { Tables } from '@/integrations/supabase/client';
 import { supabaseProductToAppProduct } from '@/utils/adapters';
 import { Product } from '@/types/types';
 
+interface Category {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+interface Subcategory {
+  id: string;
+  name: string;
+  category_id: string;
+  description?: string;
+}
+
 type SupabaseProduct = Tables<'products'>;
 
 const ProductDetail = () => {
@@ -38,12 +51,12 @@ const ProductDetail = () => {
   const { 
     data: categories,
     isLoading: categoriesLoading
-  } = useSupabaseData('categories');
+  } = useSupabaseData<Category>('categories');
   
   const { 
     data: subcategories,
     isLoading: subcategoriesLoading
-  } = useSupabaseData('subcategories');
+  } = useSupabaseData<Subcategory>('subcategories');
   
   // Find the product when products are loaded
   useEffect(() => {

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -104,7 +103,7 @@ const ProductManagement = () => {
 
   const { 
     data: products, 
-    isLoading: productsLoading, 
+    isLoading: productsLoading,
     error: productsError,
     fetchData: refetchProducts,
     createRecord: createProduct,

@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '@/types/types';
+import { User, Permission } from '@/types/types';
 
 // Define menu items structure
 export const MENU_ITEMS = [
@@ -138,7 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         username: username,
         name: 'Mock User',
         role: 'administrator',
-        permissions: [],
+        permissions: [], // Empty array of Permission objects, not strings
         email: `${username}@example.com`,
         createdAt: new Date(),
         userTypeId: 'mock-user-type-id'
@@ -160,7 +160,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const hasPermission = (permissionCode: string) => {
     if (!user) return false;
     if (user.role === 'administrator') return true;
-    return user.permissions?.includes(permissionCode) || false;
+    return user.permissions?.some(perm => perm.code === permissionCode) || false;
   };
 
   // Check if user has access to a specific path

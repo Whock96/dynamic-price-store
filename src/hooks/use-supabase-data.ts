@@ -3,7 +3,24 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PostgrestError } from '@supabase/supabase-js';
 
-export function useSupabaseData<T>(tableName: string) {
+// Define a specific type for table names to match what Supabase expects
+type TableName = 
+  | 'products' 
+  | 'customers' 
+  | 'orders' 
+  | 'categories' 
+  | 'company_settings' 
+  | 'discount_options' 
+  | 'order_discounts' 
+  | 'order_items' 
+  | 'subcategories'
+  | 'users'
+  | 'user_types'
+  | 'permissions'
+  | 'user_type_permissions'
+  | 'transport_companies';
+
+export function useSupabaseData<T>(tableName: TableName) {
   const [data, setData] = useState<T[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<PostgrestError | null>(null);
@@ -21,13 +38,13 @@ export function useSupabaseData<T>(tableName: string) {
         throw fetchError;
       }
       
-      setData(fetchedData || []);
-      return fetchedData;
+      setData(fetchedData as unknown as T[]);
+      return fetchedData as unknown as T[];
     } catch (err) {
       const postgrestError = err as PostgrestError;
       setError(postgrestError);
       console.error(`Error fetching data from ${tableName}:`, postgrestError);
-      return [];
+      return [] as T[];
     } finally {
       setIsLoading(false);
     }
@@ -55,9 +72,11 @@ export function useSupabaseData<T>(tableName: string) {
 
   const createRecord = async (record: Partial<T>) => {
     try {
+      // Using 'as any' to bypass TypeScript's strict checking for the insert operation
+      // This is necessary because Supabase's types are more specific than our generic T
       const { data, error: insertError } = await supabase
         .from(tableName)
-        .insert(record)
+        .insert(record as any)
         .select()
         .single();
       
@@ -76,9 +95,10 @@ export function useSupabaseData<T>(tableName: string) {
 
   const updateRecord = async (id: string, record: Partial<T>) => {
     try {
+      // Using 'as any' to bypass TypeScript's strict checking for the update operation
       const { data, error: updateError } = await supabase
         .from(tableName)
-        .update(record)
+        .update(record as any)
         .eq('id', id)
         .select()
         .single();
