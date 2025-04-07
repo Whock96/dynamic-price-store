@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useOrders } from '@/context/OrderContext';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,7 +15,6 @@ import {
 import { useReactToPrint } from 'react-to-print';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Printer } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { useTransportCompanies } from '@/context/TransportCompanyContext';
 
 const OrderPrint = () => {
@@ -27,10 +25,11 @@ const OrderPrint = () => {
   const { transportCompanies } = useTransportCompanies();
 
   const componentRef = React.useRef<HTMLDivElement>(null);
+  
   const handlePrint = useReactToPrint({
     documentTitle: `Pedido_${order?.orderNumber || id?.split('-')[0]}`,
-    onPrintError: (error) => console.error('Print error:', error),
     onAfterPrint: () => console.log('Print completed'),
+    content: () => componentRef.current
   });
 
   if (!order) {
@@ -60,11 +59,7 @@ const OrderPrint = () => {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Voltar
         </Button>
-        <Button onClick={() => {
-          if (componentRef.current) {
-            handlePrint();
-          }
-        }}>
+        <Button onClick={handlePrint}>
           <Printer className="mr-2 h-4 w-4" />
           Imprimir
         </Button>

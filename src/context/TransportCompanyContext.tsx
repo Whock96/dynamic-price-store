@@ -1,7 +1,6 @@
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { TransportCompany } from '@/types/types';
-import { useSupabaseData } from '@/hooks/use-supabase-data';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -42,24 +41,8 @@ const supabaseToTransportCompany = (supabaseTransportCompany: TransportCompanyDB
   updatedAt: new Date(supabaseTransportCompany.updated_at),
 });
 
-// Function to convert our frontend model to the Supabase format
-const transportCompanyToSupabase = (transportCompany: Partial<TransportCompany>): Partial<TransportCompanyDB> => {
-  const result: Partial<TransportCompanyDB> = {};
-  
-  if ('name' in transportCompany) result.name = transportCompany.name;
-  if ('document' in transportCompany) result.document = transportCompany.document;
-  if ('email' in transportCompany) result.email = transportCompany.email;
-  if ('phone' in transportCompany) result.phone = transportCompany.phone;
-  if ('whatsapp' in transportCompany) result.whatsapp = transportCompany.whatsapp;
-  
-  return result;
-};
-
 export const TransportCompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [localTransportCompanies, setLocalTransportCompanies] = useState<TransportCompany[]>([]);
-
-  // Use direct Supabase queries instead of the custom hook
-  const [supabaseTransportCompanies, setSupabaseTransportCompanies] = useState<TransportCompanyDB[]>([]);
+  const [transportCompanies, setTransportCompanies] = useState<TransportCompany[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch transport companies from Supabase
@@ -77,7 +60,10 @@ export const TransportCompanyProvider: React.FC<{ children: React.ReactNode }> =
         return;
       }
 
-      setSupabaseTransportCompanies(data || []);
+      if (data) {
+        const mappedCompanies = data.map(company => supabaseToTransportCompany(company as TransportCompanyDB));
+        setTransportCompanies(mappedCompanies);
+      }
     } catch (error) {
       console.error('Error in fetchSupabaseData:', error);
     } finally {
@@ -86,127 +72,43 @@ export const TransportCompanyProvider: React.FC<{ children: React.ReactNode }> =
   }, []);
 
   // Get a record by ID
-  const getSupabaseTransportCompanyById = useCallback(async (id: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('transport_companies')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) {
-        console.error('Error fetching transport company by ID:', error);
-        return null;
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Error in getSupabaseTransportCompanyById:', error);
-      return null;
-    }
-  }, []);
-
-  // Create a new record
-  const createRecord = useCallback(async (record: Partial<TransportCompanyDB>) => {
-    try {
-      const { data, error } = await supabase
-        .from('transport_companies')
-        .insert(record)
-        .select('*')
-        .single();
-
-      if (error) {
-        console.error('Error creating transport company:', error);
-        return null;
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Error in createRecord:', error);
-      return null;
-    }
-  }, []);
-
-  // Update an existing record
-  const updateRecord = useCallback(async (id: string, record: Partial<TransportCompanyDB>) => {
-    try {
-      const { data, error } = await supabase
-        .from('transport_companies')
-        .update(record)
-        .eq('id', id)
-        .select('*')
-        .single();
-
-      if (error) {
-        console.error('Error updating transport company:', error);
-        return null;
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Error in updateRecord:', error);
-      return null;
-    }
-  }, []);
-
-  // Delete a record
-  const deleteRecord = useCallback(async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('transport_companies')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error('Error deleting transport company:', error);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error in deleteRecord:', error);
-      return false;
-    }
-  }, []);
-
-  // Initialize data
-  React.useEffect(() => {
-    fetchSupabaseData();
-  }, [fetchSupabaseData]);
-
-  // Convert Supabase transport companies to our frontend model
-  const transportCompanies = React.useMemo(() => {
-    return supabaseTransportCompanies.map(supabaseToTransportCompany);
-  }, [supabaseTransportCompanies]);
-
-  const refreshTransportCompanies = useCallback(async () => {
-    try {
-      await fetchSupabaseData();
-    } catch (error) {
-      console.error('Error refreshing transport companies:', error);
-    }
-  }, [fetchSupabaseData]);
-
   const getTransportCompanyById = useCallback((id: string) => {
     return transportCompanies.find(transportCompany => transportCompany.id === id);
   }, [transportCompanies]);
 
+  // Create a new record
   const addTransportCompany = async (transportCompanyData: Omit<TransportCompany, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       console.log('Adding transport company with data:', transportCompanyData);
       
+      // Prepare data for Supabase insert
+      const supabaseData = {
+        name: transportCompanyData.name,
+        document: transportCompanyData.document,
+        email: transportCompanyData.email || null,
+        phone: transportCompanyData.phone || null,
+        whatsapp: transportCompanyData.whatsapp || null
+      };
+      
       // Add to Supabase
-      const supabaseData = transportCompanyToSupabase(transportCompanyData);
+      const { data, error } = await supabase
+        .from('transport_companies')
+        .insert(supabaseData)
+        .select('*')
+        .single();
       
-      console.log('Final Supabase data for insert:', supabaseData);
-      
-      const createdTransportCompany = await createRecord(supabaseData as any);
-      
-      if (createdTransportCompany) {
-        console.log('Created transport company record:', createdTransportCompany);
-        await refreshTransportCompanies();
-        return supabaseToTransportCompany(createdTransportCompany as TransportCompanyDB);
+      if (error) {
+        console.error('Error creating transport company:', error);
+        toast.error('Erro ao adicionar transportadora');
+        return null;
       }
+      
+      if (data) {
+        const newCompany = supabaseToTransportCompany(data as TransportCompanyDB);
+        setTransportCompanies(prev => [...prev, newCompany]);
+        return newCompany;
+      }
+      
       return null;
     } catch (error) {
       console.error('Error adding transport company:', error);
@@ -215,22 +117,42 @@ export const TransportCompanyProvider: React.FC<{ children: React.ReactNode }> =
     }
   };
 
+  // Update an existing record
   const updateTransportCompany = async (id: string, transportCompanyData: Partial<TransportCompany>) => {
     try {
       console.log('Updating transport company with data:', transportCompanyData);
       
+      // Prepare data for Supabase update
+      const supabaseData: { [key: string]: any } = {};
+      
+      if ('name' in transportCompanyData) supabaseData.name = transportCompanyData.name;
+      if ('document' in transportCompanyData) supabaseData.document = transportCompanyData.document;
+      if ('email' in transportCompanyData) supabaseData.email = transportCompanyData.email || null;
+      if ('phone' in transportCompanyData) supabaseData.phone = transportCompanyData.phone || null;
+      if ('whatsapp' in transportCompanyData) supabaseData.whatsapp = transportCompanyData.whatsapp || null;
+      
       // Update in Supabase
-      const supabaseData = transportCompanyToSupabase(transportCompanyData);
+      const { data, error } = await supabase
+        .from('transport_companies')
+        .update(supabaseData)
+        .eq('id', id)
+        .select('*')
+        .single();
       
-      console.log('Final Supabase data for update:', supabaseData);
-      
-      const updatedTransportCompany = await updateRecord(id, supabaseData);
-      
-      if (updatedTransportCompany) {
-        console.log('Updated transport company record:', updatedTransportCompany);
-        await refreshTransportCompanies();
-        return supabaseToTransportCompany(updatedTransportCompany as TransportCompanyDB);
+      if (error) {
+        console.error('Error updating transport company:', error);
+        toast.error('Erro ao atualizar transportadora');
+        return null;
       }
+      
+      if (data) {
+        const updatedCompany = supabaseToTransportCompany(data as TransportCompanyDB);
+        setTransportCompanies(prev => 
+          prev.map(company => company.id === id ? updatedCompany : company)
+        );
+        return updatedCompany;
+      }
+      
       return null;
     } catch (error) {
       console.error('Error updating transport company:', error);
@@ -239,14 +161,22 @@ export const TransportCompanyProvider: React.FC<{ children: React.ReactNode }> =
     }
   };
 
+  // Delete a record
   const deleteTransportCompany = async (id: string) => {
     try {
-      // Delete from Supabase
-      const result = await deleteRecord(id);
-      if (result) {
-        await refreshTransportCompanies();
+      const { error } = await supabase
+        .from('transport_companies')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error deleting transport company:', error);
+        toast.error('Erro ao excluir transportadora');
+        return false;
       }
-      return result;
+
+      setTransportCompanies(prev => prev.filter(company => company.id !== id));
+      return true;
     } catch (error) {
       console.error('Error deleting transport company:', error);
       toast.error('Erro ao excluir transportadora');
@@ -254,11 +184,21 @@ export const TransportCompanyProvider: React.FC<{ children: React.ReactNode }> =
     }
   };
 
+  // Refresh transport companies
+  const refreshTransportCompanies = async () => {
+    await fetchSupabaseData();
+  };
+
+  // Initialize data
+  React.useEffect(() => {
+    fetchSupabaseData();
+  }, [fetchSupabaseData]);
+
   return (
     <TransportCompanyContext.Provider value={{ 
       transportCompanies, 
       isLoading,
-      setTransportCompanies: setLocalTransportCompanies, 
+      setTransportCompanies, 
       getTransportCompanyById, 
       addTransportCompany, 
       updateTransportCompany,

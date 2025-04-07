@@ -1,14 +1,22 @@
 
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useState } from 'react';
+import { Customer } from '@/types/types';
 
 interface CustomerContextType {
-  customers: any[];
+  customers: Customer[];
+  addCustomer?: (customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Customer | null>;
+  updateCustomer?: (id: string, customer: Partial<Customer>) => Promise<Customer | null>;
+  deleteCustomer?: (id: string) => Promise<boolean>;
+  getCustomerById?: (id: string) => Customer | undefined;
+  isLoading?: boolean;
 }
 
-const CustomerContext = createContext<CustomerContextType | undefined>(undefined);
+const CustomerContext = createContext<CustomerContextType>({
+  customers: []
+});
 
 export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const customers: any[] = [];
+  const [customers, setCustomers] = useState<Customer[]>([]);
 
   return (
     <CustomerContext.Provider value={{ customers }}>
@@ -18,9 +26,5 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 };
 
 export const useCustomers = () => {
-  const context = useContext(CustomerContext);
-  if (context === undefined) {
-    throw new Error('useCustomers must be used within a CustomerProvider');
-  }
-  return context;
+  return useContext(CustomerContext);
 };

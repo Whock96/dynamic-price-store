@@ -1,17 +1,18 @@
 
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 
 interface OrderDataContextType {
-  // Add properties as needed
+  // Add actual properties later
 }
 
 const OrderDataContext = createContext<OrderDataContextType | undefined>(undefined);
 
 export const OrderDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Initialize state and functions
+  // Placeholder implementation
+  const contextValue = {};
 
   return (
-    <OrderDataContext.Provider value={{}}>
+    <OrderDataContext.Provider value={contextValue as OrderDataContextType}>
       {children}
     </OrderDataContext.Provider>
   );

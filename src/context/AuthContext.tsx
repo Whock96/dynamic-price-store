@@ -1,14 +1,40 @@
 
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { User } from '@/types/types';
 
-interface AuthContextType {
-  user: any | null;
+export interface AuthContextType {
+  user: User | null;
+  login?: (username: string, password: string) => Promise<void>;
+  logout?: () => void;
+  loading?: boolean;
+  error?: string | null;
+  hasPermission?: (permissionCode: string) => boolean;
+  checkAccess?: (requiredRoles: string[]) => boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType>({
+  user: null
+});
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const user = null;
+  const [user, setUser] = useState<User | null>(null);
+  
+  // Mock user for development
+  useEffect(() => {
+    // You can uncomment and modify this to simulate a logged-in user during development
+    /*
+    setUser({
+      id: 'mock-user-id',
+      username: 'mockuser',
+      name: 'Mock User',
+      role: 'administrator',
+      permissions: [],
+      email: 'mock@example.com',
+      createdAt: new Date(),
+      userTypeId: 'mock-user-type-id'
+    });
+    */
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user }}>
@@ -18,9 +44,5 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 };
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  return useContext(AuthContext);
 };
