@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
@@ -171,7 +170,6 @@ const OrderDetail = () => {
           </header>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Status e informações gerais */}
             <Card className="md:col-span-3">
               <CardHeader className="pb-2">
                 <CardTitle className="flex justify-between items-center">
@@ -181,7 +179,6 @@ const OrderDetail = () => {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap justify-between items-start gap-4">
-                  {/* Cliente e Vendedor */}
                   <div className="flex-1 min-w-[250px]">
                     <h3 className="font-semibold text-lg mb-2">Cliente</h3>
                     <div className="space-y-2">
@@ -207,7 +204,6 @@ const OrderDetail = () => {
                     <p className="text-base">{order.user?.name || 'Não informado'}</p>
                   </div>
 
-                  {/* Pagamento e entrega */}
                   <div className="flex-1 min-w-[250px]">
                     <h3 className="font-semibold text-lg mb-2">Pagamento</h3>
                     <div className="space-y-2">
@@ -258,7 +254,6 @@ const OrderDetail = () => {
                     </div>
                   </div>
 
-                  {/* Faturamento e taxas */}
                   <div className="flex-1 min-w-[250px]">
                     <h3 className="font-semibold text-lg mb-2">Faturamento</h3>
                     <div className="space-y-2">
@@ -283,7 +278,6 @@ const OrderDetail = () => {
                 </div>
                 <Separator className="my-4" />
                 
-                {/* Gerenciamento de Status */}
                 {hasPermission('orders_manage') && order.status !== 'completed' && order.status !== 'canceled' && (
                   <div className="mt-4">
                     <h3 className="font-semibold text-lg mb-2">Gerenciar Status</h3>
@@ -324,7 +318,6 @@ const OrderDetail = () => {
                           Faturado
                         </Button>
                       )}
-                      {/* Fixed the comparison issue on this line */}
                       {order.status !== 'completed' && (
                         <Button
                           variant="outline"
@@ -357,7 +350,6 @@ const OrderDetail = () => {
               </CardContent>
             </Card>
 
-            {/* Items do pedido */}
             <Card className="md:col-span-2">
               <CardHeader>
                 <CardTitle>Itens do Pedido</CardTitle>
@@ -416,7 +408,6 @@ const OrderDetail = () => {
               </ScrollArea>
             </Card>
 
-            {/* Observações e notas */}
             <Card>
               <CardHeader>
                 <CardTitle>Observações</CardTitle>
