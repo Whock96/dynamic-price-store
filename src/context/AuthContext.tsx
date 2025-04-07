@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -180,10 +179,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     
     try {
-      console.log('Attempting login with:', { username });
+      console.log('Attempting login with username:', username);
       
+      // First, we need to find the user in our custom users table to get their email/ID
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', username)
+        .single();
+      
+      if (userError || !userData) {
+        console.error('User not found:', userError);
+        setError('Usuário não encontrado. Verifique seu nome de usuário.');
+        toast.error('Usuário não encontrado');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Now we can authenticate directly with the Supabase auth system
+      // We'll use the username as the email for Supabase authentication
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: username,
+        email: username, // Using username as the email
         password: password,
       });
       
