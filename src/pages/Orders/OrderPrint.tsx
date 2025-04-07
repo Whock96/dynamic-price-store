@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { useOrders } from '@/context/OrderContext';
@@ -27,8 +28,10 @@ const OrderPrint = () => {
 
   const componentRef = React.useRef<HTMLDivElement>(null);
   const handlePrint = useReactToPrint({
-    content: () => componentRef.current as HTMLDivElement,
     documentTitle: `Pedido_${order?.orderNumber || id?.split('-')[0]}`,
+    onPrintError: (error) => console.error('Print error:', error),
+    onAfterPrint: () => console.log('Print completed'),
+    removeAfterPrint: false,
   });
 
   if (!order) {
@@ -58,7 +61,11 @@ const OrderPrint = () => {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Voltar
         </Button>
-        <Button onClick={handlePrint}>
+        <Button onClick={() => {
+          if (componentRef.current) {
+            handlePrint(undefined, () => componentRef.current);
+          }
+        }}>
           <Printer className="mr-2 h-4 w-4" />
           Imprimir
         </Button>

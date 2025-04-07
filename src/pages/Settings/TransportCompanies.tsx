@@ -1,11 +1,9 @@
 
 import React, { useState } from 'react';
 import { useTransportCompanies } from '@/context/TransportCompanyContext';
-import { TransportCompany } from '@/types/types';
+import { Plus, Edit, Trash2, MoreHorizontal, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -24,6 +22,14 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -34,152 +40,235 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Truck, Edit, Trash2, Plus, Eye } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { TransportCompany } from '@/types/types';
 import { toast } from 'sonner';
-import { formatCnpj } from '@/utils/formatters';
 
-const TransportCompanies = () => {
-  const { 
-    transportCompanies,
-    isLoading,
-    addTransportCompany,
-    updateTransportCompany,
-    deleteTransportCompany
-  } = useTransportCompanies();
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedTransportCompany, setSelectedTransportCompany] = useState<TransportCompany | null>(null);
-  
-  // Form state for adding/editing
-  const [formData, setFormData] = useState({
-    name: '',
-    document: '',
-    email: '',
-    phone: '',
-    whatsapp: '',
+const TransportCompanyForm = ({ 
+  onSubmit, 
+  initialData = null,
+  onCancel
+}: { 
+  onSubmit: (data: Omit<TransportCompany, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  initialData?: TransportCompany | null;
+  onCancel: () => void;
+}) => {
+  const [formData, setFormData] = useState<Omit<TransportCompany, 'id' | 'createdAt' | 'updatedAt'>>({
+    name: initialData?.name || '',
+    document: initialData?.document || '',
+    email: initialData?.email || '',
+    phone: initialData?.phone || '',
+    whatsapp: initialData?.whatsapp || '',
   });
 
-  const filteredTransportCompanies = transportCompanies.filter(tc => 
-    tc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    tc.document.includes(searchQuery)
-  );
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      document: '',
-      email: '',
-      phone: '',
-      whatsapp: '',
-    });
-  };
-
-  const handleAddSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.name || !formData.document) {
-      toast.error('Nome e CNPJ são campos obrigatórios');
+    if (!formData.name.trim()) {
+      toast.error('Nome da transportadora é obrigatório');
       return;
     }
-    
+    onSubmit(formData);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="name">Nome *</Label>
+          <Input 
+            id="name" 
+            name="name"
+            value={formData.name} 
+            onChange={handleChange} 
+            required 
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="document">CNPJ</Label>
+          <Input 
+            id="document" 
+            name="document"
+            value={formData.document} 
+            onChange={handleChange} 
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input 
+            id="email" 
+            name="email"
+            type="email"
+            value={formData.email} 
+            onChange={handleChange} 
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="phone">Telefone</Label>
+          <Input 
+            id="phone" 
+            name="phone"
+            value={formData.phone} 
+            onChange={handleChange} 
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="whatsapp">WhatsApp</Label>
+          <Input 
+            id="whatsapp" 
+            name="whatsapp"
+            value={formData.whatsapp} 
+            onChange={handleChange} 
+          />
+        </div>
+      </div>
+      
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancelar
+        </Button>
+        <Button type="submit">
+          {initialData ? 'Atualizar' : 'Cadastrar'}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+};
+
+const TransportCompanyDetail = ({ 
+  company,
+  onClose
+}: { 
+  company: TransportCompany;
+  onClose: () => void;
+}) => {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4">
+        <div>
+          <h3 className="font-medium text-sm text-gray-500">Nome</h3>
+          <p>{company.name}</p>
+        </div>
+        
+        {company.document && (
+          <div>
+            <h3 className="font-medium text-sm text-gray-500">CNPJ</h3>
+            <p>{company.document}</p>
+          </div>
+        )}
+        
+        {company.email && (
+          <div>
+            <h3 className="font-medium text-sm text-gray-500">Email</h3>
+            <p>{company.email}</p>
+          </div>
+        )}
+        
+        {company.phone && (
+          <div>
+            <h3 className="font-medium text-sm text-gray-500">Telefone</h3>
+            <p>{company.phone}</p>
+          </div>
+        )}
+        
+        {company.whatsapp && (
+          <div>
+            <h3 className="font-medium text-sm text-gray-500">WhatsApp</h3>
+            <p>{company.whatsapp}</p>
+          </div>
+        )}
+        
+        <div>
+          <h3 className="font-medium text-sm text-gray-500">Data de Cadastro</h3>
+          <p>{company.createdAt.toLocaleDateString('pt-BR')}</p>
+        </div>
+      </div>
+      
+      <DialogFooter>
+        <Button onClick={onClose}>
+          Fechar
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+};
+
+const TransportCompanies = () => {
+  const { transportCompanies, isLoading, addTransportCompany, updateTransportCompany, deleteTransportCompany } = useTransportCompanies();
+  const [search, setSearch] = useState('');
+  const [selectedCompany, setSelectedCompany] = useState<TransportCompany | null>(null);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  
+  const filteredCompanies = transportCompanies.filter(company => 
+    company.name.toLowerCase().includes(search.toLowerCase()) || 
+    company.document.toLowerCase().includes(search.toLowerCase())
+  );
+  
+  const handleAddSubmit = async (data: Omit<TransportCompany, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      await addTransportCompany(formData);
-      toast.success('Transportadora adicionada com sucesso');
-      setIsAddDialogOpen(false);
-      resetForm();
+      const newCompany = await addTransportCompany(data);
+      if (newCompany) {
+        toast.success('Transportadora adicionada com sucesso!');
+        setIsAddDialogOpen(false);
+      }
     } catch (error) {
       console.error('Error adding transport company:', error);
       toast.error('Erro ao adicionar transportadora');
     }
   };
-
-  const handleEditSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!selectedTransportCompany) return;
-    
-    if (!formData.name || !formData.document) {
-      toast.error('Nome e CNPJ são campos obrigatórios');
-      return;
-    }
+  
+  const handleEditSubmit = async (data: Omit<TransportCompany, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (!selectedCompany) return;
     
     try {
-      await updateTransportCompany(selectedTransportCompany.id, formData);
-      toast.success('Transportadora atualizada com sucesso');
-      setIsEditDialogOpen(false);
+      const updatedCompany = await updateTransportCompany(selectedCompany.id, data);
+      if (updatedCompany) {
+        toast.success('Transportadora atualizada com sucesso!');
+        setIsEditDialogOpen(false);
+        setSelectedCompany(null);
+      }
     } catch (error) {
       console.error('Error updating transport company:', error);
       toast.error('Erro ao atualizar transportadora');
     }
   };
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedTransportCompany) return;
+  
+  const handleDelete = async () => {
+    if (!selectedCompany) return;
     
     try {
-      await deleteTransportCompany(selectedTransportCompany.id);
-      toast.success('Transportadora excluída com sucesso');
-      setIsDeleteDialogOpen(false);
+      const success = await deleteTransportCompany(selectedCompany.id);
+      if (success) {
+        toast.success('Transportadora excluída com sucesso!');
+        setIsDeleteDialogOpen(false);
+        setSelectedCompany(null);
+      }
     } catch (error) {
       console.error('Error deleting transport company:', error);
       toast.error('Erro ao excluir transportadora');
     }
   };
-
-  const openEditDialog = (transportCompany: TransportCompany) => {
-    setSelectedTransportCompany(transportCompany);
-    setFormData({
-      name: transportCompany.name,
-      document: transportCompany.document,
-      email: transportCompany.email || '',
-      phone: transportCompany.phone || '',
-      whatsapp: transportCompany.whatsapp || '',
-    });
-    setIsEditDialogOpen(true);
-  };
-
-  const openViewDialog = (transportCompany: TransportCompany) => {
-    setSelectedTransportCompany(transportCompany);
-    setIsViewDialogOpen(true);
-  };
-
-  const openDeleteDialog = (transportCompany: TransportCompany) => {
-    setSelectedTransportCompany(transportCompany);
-    setIsDeleteDialogOpen(true);
-  };
-
+  
   return (
-    <div className="space-y-6 animate-fade-in">
-      <header>
-        <h1 className="text-3xl font-bold tracking-tight">Gerenciar Transportadoras</h1>
-        <p className="text-muted-foreground">
-          Adicione, edite ou remova transportadoras utilizadas nos pedidos
-        </p>
-      </header>
-
-      <div className="flex justify-between">
-        <div className="relative flex-1 max-w-sm">
-          <Input 
-            placeholder="Buscar transportadoras..." 
-            className="pl-10"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          </div>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Transportadoras</h1>
+          <p className="text-muted-foreground">
+            Gerencie as transportadoras para seus pedidos
+          </p>
         </div>
-        
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-ferplas-500 hover:bg-ferplas-600">
@@ -187,332 +276,161 @@ const TransportCompanies = () => {
               Nova Transportadora
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Adicionar Transportadora</DialogTitle>
+              <DialogTitle>Nova Transportadora</DialogTitle>
               <DialogDescription>
-                Preencha os campos abaixo para adicionar uma nova transportadora
+                Preencha os dados para cadastrar uma nova transportadora.
               </DialogDescription>
             </DialogHeader>
-            
-            <form onSubmit={handleAddSubmit} className="space-y-4 py-4">
-              <div className="grid grid-cols-1 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-right">
-                    Nome <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    placeholder="Nome da transportadora"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="document" className="text-right">
-                    CNPJ <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="document"
-                    name="document"
-                    placeholder="00.000.000/0000-00"
-                    value={formData.document}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-right">
-                    Email
-                  </Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="email@exemplo.com"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-right">
-                    Telefone
-                  </Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    placeholder="(00) 0000-0000"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="whatsapp" className="text-right">
-                    WhatsApp
-                  </Label>
-                  <Input
-                    id="whatsapp"
-                    name="whatsapp"
-                    placeholder="(00) 00000-0000"
-                    value={formData.whatsapp}
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </div>
-              
-              <DialogFooter>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => {
-                    setIsAddDialogOpen(false);
-                    resetForm();
-                  }}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit" className="bg-ferplas-500 hover:bg-ferplas-600">
-                  Adicionar
-                </Button>
-              </DialogFooter>
-            </form>
+            <TransportCompanyForm 
+              onSubmit={handleAddSubmit} 
+              onCancel={() => setIsAddDialogOpen(false)}
+            />
           </DialogContent>
         </Dialog>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Transportadoras Cadastradas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin h-8 w-8 border-4 border-ferplas-500 rounded-full border-t-transparent"></div>
-            </div>
-          ) : filteredTransportCompanies.length === 0 ? (
-            <div className="text-center py-12">
-              <Truck className="mx-auto h-12 w-12 text-gray-300" />
-              <h3 className="mt-4 text-lg font-semibold text-gray-900">Nenhuma transportadora encontrada</h3>
-              <p className="mt-2 text-sm text-gray-500">
-                {searchQuery ? 'Tente usar outros termos de busca' : 'Clique no botão "Nova Transportadora" para adicionar'}
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>CNPJ</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Telefone</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredTransportCompanies.map((transportCompany) => (
-                    <TableRow key={transportCompany.id}>
-                      <TableCell className="font-medium">{transportCompany.name}</TableCell>
-                      <TableCell>{formatCnpj(transportCompany.document)}</TableCell>
-                      <TableCell>{transportCompany.email || '-'}</TableCell>
-                      <TableCell>{transportCompany.phone || '-'}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openViewDialog(transportCompany)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEditDialog(transportCompany)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openDeleteDialog(transportCompany)}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* View Dialog */}
-      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Detalhes da Transportadora</DialogTitle>
-          </DialogHeader>
-          
-          {selectedTransportCompany && (
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-1 gap-4">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-500">Nome:</p>
-                  <p className="text-base">{selectedTransportCompany.name}</p>
-                </div>
-                
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-500">CNPJ:</p>
-                  <p className="text-base">{formatCnpj(selectedTransportCompany.document)}</p>
-                </div>
-                
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-500">Email:</p>
-                  <p className="text-base">{selectedTransportCompany.email || '-'}</p>
-                </div>
-                
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-500">Telefone:</p>
-                  <p className="text-base">{selectedTransportCompany.phone || '-'}</p>
-                </div>
-                
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-500">WhatsApp:</p>
-                  <p className="text-base">{selectedTransportCompany.whatsapp || '-'}</p>
-                </div>
-              </div>
-              
-              <DialogFooter>
-                <Button onClick={() => setIsViewDialogOpen(false)}>
-                  Fechar
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
+      
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar transportadoras..."
+            className="pl-10"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
+      
+      {isLoading ? (
+        <div className="flex justify-center items-center py-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ferplas-500"></div>
+        </div>
+      ) : filteredCompanies.length > 0 ? (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>CNPJ</TableHead>
+                <TableHead>Telefone</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead className="w-[80px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredCompanies.map((company) => (
+                <TableRow key={company.id}>
+                  <TableCell className="font-medium">{company.name}</TableCell>
+                  <TableCell>{company.document}</TableCell>
+                  <TableCell>{company.phone}</TableCell>
+                  <TableCell>{company.email}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">Abrir menu</span>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedCompany(company);
+                            setIsDetailDialogOpen(true);
+                          }}
+                        >
+                          Ver detalhes
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedCompany(company);
+                            setIsEditDialogOpen(true);
+                          }}
+                        >
+                          <Edit className="mr-2 h-4 w-4" /> Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-red-600"
+                          onClick={() => {
+                            setSelectedCompany(company);
+                            setIsDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-12 border rounded-md">
+          <p className="text-muted-foreground mb-4">Nenhuma transportadora encontrada.</p>
+          <Button 
+            className="bg-ferplas-500 hover:bg-ferplas-600"
+            onClick={() => setIsAddDialogOpen(true)}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Adicionar Transportadora
+          </Button>
+        </div>
+      )}
+      
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Editar Transportadora</DialogTitle>
             <DialogDescription>
-              Edite as informações da transportadora
+              Altere os dados da transportadora.
             </DialogDescription>
           </DialogHeader>
-          
-          <form onSubmit={handleEditSubmit} className="space-y-4 py-4">
-            <div className="grid grid-cols-1 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-name" className="text-right">
-                  Nome <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="edit-name"
-                  name="name"
-                  placeholder="Nome da transportadora"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="edit-document" className="text-right">
-                  CNPJ <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="edit-document"
-                  name="document"
-                  placeholder="00.000.000/0000-00"
-                  value={formData.document}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="edit-email" className="text-right">
-                  Email
-                </Label>
-                <Input
-                  id="edit-email"
-                  name="email"
-                  type="email"
-                  placeholder="email@exemplo.com"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="edit-phone" className="text-right">
-                  Telefone
-                </Label>
-                <Input
-                  id="edit-phone"
-                  name="phone"
-                  placeholder="(00) 0000-0000"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="edit-whatsapp" className="text-right">
-                  WhatsApp
-                </Label>
-                <Input
-                  id="edit-whatsapp"
-                  name="whatsapp"
-                  placeholder="(00) 00000-0000"
-                  value={formData.whatsapp}
-                  onChange={handleInputChange}
-                />
-              </div>
-            </div>
-            
-            <DialogFooter>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setIsEditDialogOpen(false)}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" className="bg-ferplas-500 hover:bg-ferplas-600">
-                Salvar Alterações
-              </Button>
-            </DialogFooter>
-          </form>
+          {selectedCompany && (
+            <TransportCompanyForm 
+              initialData={selectedCompany} 
+              onSubmit={handleEditSubmit} 
+              onCancel={() => setIsEditDialogOpen(false)}
+            />
+          )}
         </DialogContent>
       </Dialog>
-
-      {/* Delete Confirmation Dialog */}
+      
+      {/* Detail Dialog */}
+      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Detalhes da Transportadora</DialogTitle>
+          </DialogHeader>
+          {selectedCompany && (
+            <TransportCompanyDetail 
+              company={selectedCompany} 
+              onClose={() => setIsDetailDialogOpen(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Delete Alert Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir Transportadora</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir esta transportadora? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir a transportadora "{selectedCompany?.name}"? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction 
-              onClick={handleDeleteConfirm}
-              className="bg-red-500 hover:bg-red-600"
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700"
             >
               Excluir
             </AlertDialogAction>
