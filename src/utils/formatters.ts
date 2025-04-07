@@ -71,3 +71,8 @@ export const formatDocument = (document: string | null | undefined) => {
   // Return original if it doesn't match expected patterns
   return document;
 };
+
+/**
+ * Alias for formatPhoneNumber for backward compatibility
+ */
+export const formatPhone = formatPhoneNumber;

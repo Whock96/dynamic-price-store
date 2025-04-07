@@ -2,16 +2,17 @@ import React, { useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Logo from '@/assets/logo';
-import { Order } from '@/types/types';
+import { Order, TransportCompany } from '@/types/types';
 import { useCompany } from '@/context/CompanyContext';
 import { useTransportCompanies } from '@/context/TransportCompanyContext';
 
 interface PrintableOrderProps {
   order: Order;
+  transportCompany?: TransportCompany;
   onPrint?: () => void;
 }
 
-const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
+const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, transportCompany, onPrint }) => {
   const { companyInfo } = useCompany();
   const { companies } = useTransportCompanies();
   
@@ -53,9 +54,9 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
   const effectiveTaxRate = getTaxSubstitutionRate();
   const taxSubstitutionValue = order.taxSubstitution ? (effectiveTaxRate / 100) * order.subtotal : 0;
 
-  const transportCompany = order.transportCompanyId 
-    ? companies.find(c => c.id === order.transportCompanyId) 
-    : null;
+  // Use the passed transportCompany prop or find it from the context if not provided
+  const resolvedTransportCompany = transportCompany || 
+    (order.transportCompanyId ? companies.find(c => c.id === order.transportCompanyId) : null);
 
   return (
     <div className="bg-white p-4 max-w-4xl mx-auto print:p-2">
@@ -184,9 +185,9 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
             <p><span className="font-semibold">Taxa de Entrega:</span> {formatCurrency(order.deliveryFee)}</p>
           )}
           
-          {transportCompany && (
+          {resolvedTransportCompany && (
             <p className="text-sm mt-1">
-              <span className="font-semibold">Transportadora:</span> {transportCompany.name}
+              <span className="font-semibold">Transportadora:</span> {resolvedTransportCompany.name}
             </p>
           )}
         </div>

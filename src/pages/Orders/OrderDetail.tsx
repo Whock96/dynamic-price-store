@@ -187,7 +187,7 @@ const OrderDetail = () => {
                     <div className="space-y-2">
                       <p className="text-lg font-medium">{order.customer.companyName}</p>
                       <div className="flex items-center text-sm text-gray-500">
-                        <Badge variant="outline" className="mr-2">{order.customer.document}</Badge>
+                        <Badge className="mr-2">{order.customer.document}</Badge>
                       </div>
                       {order.customer.phone && (
                         <div className="flex items-center text-sm text-gray-500">
@@ -312,7 +312,7 @@ const OrderDetail = () => {
                           Confirmar
                         </Button>
                       )}
-                      {order.status !== 'invoiced' && order.status !== 'pending' && (
+                      {order.status !== 'invoiced' && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -324,7 +324,7 @@ const OrderDetail = () => {
                           Faturado
                         </Button>
                       )}
-                      {order.status !== 'completed' && order.status !== 'pending' && (
+                      {order.status !== 'completed' && (
                         <Button
                           variant="outline"
                           size="sm"
