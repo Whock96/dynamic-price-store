@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -181,7 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Attempting login with username:', username);
       
-      // First, we need to find the user in our custom users table to get their email/ID
+      // First, find the user in our custom users table
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
@@ -196,21 +197,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
-      // Now we can authenticate directly with the Supabase auth system
-      // We'll use the username as the email for Supabase authentication
+      // Now authenticate with Supabase using the username as email
+      console.log('Found user, authenticating with Supabase Auth');
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: username, // Using username as the email
-        password: password,
+        email: username, // Using username as email for authentication
+        password,
       });
       
       if (error) {
         console.error('Login error:', error);
+        
+        // If the error is invalid credentials, it means the user exists in our custom table
+        // but might not be properly set up in Supabase Auth - attempt to fix this
         if (error.message === 'Invalid login credentials') {
-          setError('Credenciais inválidas. Verifique seu usuário e senha.');
+          console.log('Attempting to register user in Supabase Auth');
+          // Try to register the user in Supabase Auth
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email: username,
+            password,
+          });
+          
+          if (signUpError) {
+            console.error('Failed to register user in Auth:', signUpError);
+            setError('Erro ao sincronizar credenciais. Entre em contato com o suporte.');
+            toast.error('Falha ao sincronizar credenciais');
+          } else {
+            // If registration succeeded, try to log in again
+            const { error: retryError } = await supabase.auth.signInWithPassword({
+              email: username,
+              password,
+            });
+            
+            if (retryError) {
+              setError('Credenciais inválidas após sincronização. Verifique seu usuário e senha.');
+              toast.error('Erro após sincronização de credenciais');
+            } else {
+              toast.success('Login realizado com sucesso!');
+              navigate('/dashboard');
+            }
+          }
         } else {
-          setError(error.message);
+          if (error.message === 'Invalid login credentials') {
+            setError('Credenciais inválidas. Verifique seu usuário e senha.');
+          } else {
+            setError(error.message);
+          }
+          toast.error('Erro ao fazer login');
         }
-        toast.error('Erro ao fazer login');
       } else {
         console.log('Login successful:', data);
         toast.success('Login realizado com sucesso!');
