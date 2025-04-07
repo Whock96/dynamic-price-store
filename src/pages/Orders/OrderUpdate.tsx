@@ -1,229 +1,192 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useOrders } from '@/context/OrderContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Save } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
-import { formatCurrency, formatDate } from '@/utils/formatters';
-import { toast } from 'sonner';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useOrderData } from '@/hooks/use-order-data';
-import { supabase } from '@/integrations/supabase/client';
-import { User } from '@/types/types';
+import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+
+import { useOrders } from '@/context/OrderContext';
+import { useCustomers } from '@/context/CustomerContext';
+import { useAuth } from '@/context/AuthContext';
+import { formatCurrency } from '@/utils/formatters';
+import { useTransportCompanies } from '@/context/TransportCompanyContext';
+
+const orderUpdateSchema = z.object({
+  customerId: z.string().min(1, { message: "Cliente é obrigatório." }),
+  status: z.enum(['pending', 'confirmed', 'invoiced', 'completed', 'canceled']),
+  shipping: z.enum(['delivery', 'pickup']),
+  fullInvoice: z.boolean().default(false),
+  taxSubstitution: z.boolean().default(false),
+  paymentMethod: z.enum(['cash', 'credit']),
+  paymentTerms: z.string().optional(),
+  notes: z.string().optional(),
+  observations: z.string().optional(),
+  deliveryLocation: z.enum(['capital', 'interior']).optional().nullable(),
+  transportCompanyId: z.string().optional().nullable(),
+});
+
+type OrderUpdateFormValues = z.infer<typeof orderUpdateSchema>;
 
 const OrderUpdate = () => {
-  const { id } = useParams<{ id: string }>();
-  const { updateOrder, updateOrderStatus } = useOrders();
   const navigate = useNavigate();
-  const [status, setStatus] = useState<string>('');
-  const [notes, setNotes] = useState<string>('');
-  const [shipping, setShipping] = useState<string>('delivery');
-  const [paymentMethod, setPaymentMethod] = useState<string>('cash');
-  const [paymentTerms, setPaymentTerms] = useState<string>('');
-  const [salespeople, setSalespeople] = useState<User[]>([]);
-  const [selectedSalespersonId, setSelectedSalespersonId] = useState<string>('none');
-  const [isLoadingSalespeople, setIsLoadingSalespeople] = useState(true);
-  
-  // Use the custom hook to fetch order data directly from Supabase
-  const { order, isLoading, fetchOrderData } = useOrderData(id);
+  const { id } = useParams<{ id: string }>();
+  const { getOrderById, updateOrder } = useOrders();
+  const { customers } = useCustomers();
+  const { user } = useAuth();
+  const { companies } = useTransportCompanies();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch salespeople for the dropdown
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    formState: { errors },
+  } = useForm<OrderUpdateFormValues>({
+    resolver: zodResolver(orderUpdateSchema),
+    defaultValues: {
+      customerId: "",
+      status: 'pending',
+      shipping: 'delivery',
+      fullInvoice: false,
+      taxSubstitution: false,
+      paymentMethod: 'cash',
+    }
+  });
+
   useEffect(() => {
-    const fetchSalespeople = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('users')
-          .select('id, name, username, user_type_id');
-          
-        if (error) throw error;
-        
-        if (data) {
-          // Map to User type
-          const mappedSalespeople: User[] = data.map(sp => ({
-            id: sp.id,
-            name: sp.name,
-            username: sp.username,
-            role: 'salesperson', // Default role
-            permissions: [],
-            email: '',
-            createdAt: new Date(),
-            userTypeId: sp.user_type_id || ''
-          }));
-          
-          setSalespeople(mappedSalespeople);
+    const loadOrder = async () => {
+      if (id) {
+        setIsLoading(true);
+        const order = await getOrderById(id);
+        if (order) {
+          // Populate the form with order data
+          setValue("customerId", order.customerId);
+          setValue("status", order.status);
+          setValue("shipping", order.shipping);
+          setValue("fullInvoice", order.fullInvoice);
+          setValue("taxSubstitution", order.taxSubstitution);
+          setValue("paymentMethod", order.paymentMethod);
+          setValue("notes", order.notes || "");
+          setValue("observations", order.observations || "");
+          setValue("paymentTerms", order.paymentTerms || "");
+          setValue("deliveryLocation", order.deliveryLocation || null);
+          setValue("transportCompanyId", order.transportCompanyId || null);
+        } else {
+          toast.error("Pedido não encontrado.");
+          navigate("/orders");
         }
-      } catch (error) {
-        console.error('Error fetching salespeople:', error);
-        toast.error('Erro ao carregar vendedores');
-      } finally {
-        setIsLoadingSalespeople(false);
+        setIsLoading(false);
       }
     };
-    
-    fetchSalespeople();
-  }, []);
 
-  useEffect(() => {
-    if (order) {
-      console.log("Setting form values from order:", order);
-      setStatus(order.status || 'pending');
-      setNotes(order.notes || order.observations || '');
-      setShipping(order.shipping || 'delivery');
-      setPaymentMethod(order.paymentMethod || 'cash');
-      setPaymentTerms(order.paymentTerms || '');
-      // Set to 'none' if no salesperson is assigned
-      setSelectedSalespersonId(order.userId || 'none');
+    loadOrder();
+  }, [id, navigate, setValue, getOrderById]);
+
+  const onSubmit = async (data: OrderUpdateFormValues) => {
+    setIsSubmitting(true);
+    try {
+      if (id) {
+        const success = await updateOrder(id, data);
+        if (success) {
+          toast.success("Pedido atualizado com sucesso!");
+          navigate(`/orders/${id}`);
+        } else {
+          toast.error("Erro ao atualizar o pedido.");
+        }
+      } else {
+        toast.error("ID do pedido inválido.");
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar o pedido:", error);
+      toast.error("Erro ao atualizar o pedido.");
+    } finally {
+      setIsSubmitting(false);
     }
-  }, [order]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!order || !id) return;
-
-    const updates: any = {};
-
-    // Update status if it was changed
-    if (status !== order.status) {
-      updateOrderStatus(id, status as any);
-    }
-
-    // Update notes if they were changed
-    if (notes !== order.notes) {
-      updates.notes = notes;
-    }
-
-    // Update shipping if it was changed
-    if (shipping !== order.shipping) {
-      updates.shipping = shipping;
-    }
-
-    // Update payment method if it was changed
-    if (paymentMethod !== order.paymentMethod) {
-      updates.paymentMethod = paymentMethod;
-    }
-
-    // Update payment terms if they were changed
-    if (paymentTerms !== order.paymentTerms) {
-      updates.paymentTerms = paymentTerms;
-    }
-
-    // Update salesperson if it was changed
-    if (selectedSalespersonId !== order.userId) {
-      // If 'none' is selected, set userId to null
-      updates.userId = selectedSalespersonId === 'none' ? null : selectedSalespersonId;
-    }
-
-    // Only call updateOrder if there are changes to make
-    if (Object.keys(updates).length > 0) {
-      updateOrder(id, updates);
-    }
-
-    toast.success('Pedido atualizado com sucesso');
-    navigate(`/orders/${id}`);
   };
 
-  if (isLoading || isLoadingSalespeople) {
+  if (isLoading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-[600px] w-full" />
+      <div className="flex justify-center items-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
       </div>
     );
   }
-
-  if (!order) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <h2 className="text-2xl font-bold mb-2">Pedido não encontrado</h2>
-        <p className="text-muted-foreground mb-6">O pedido solicitado não foi encontrado.</p>
-        <Button onClick={() => navigate('/orders')}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar para lista de pedidos
-        </Button>
-      </div>
-    );
-  }
-
-  // Calculate order number display
-  const orderNumber = order.orderNumber || id?.split('-')[0];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => navigate('/orders')}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-3xl font-bold">Editar Pedido #{orderNumber}</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link to={`/orders/${id}`}>
-            <Button variant="outline">Cancelar</Button>
-          </Link>
-          <Button onClick={handleSubmit} className="bg-ferplas-500 hover:bg-ferplas-600">
-            <Save className="mr-2 h-4 w-4" />
-            Salvar
-          </Button>
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Informações do Pedido</span>
-            <OrderStatusBadge status={status as any} />
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="container mx-auto py-8">
+      <h1 className="text-2xl font-bold mb-4">Editar Pedido</h1>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Informações do Pedido</CardTitle>
+            <CardDescription>
+              Altere as informações do pedido.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
             <div>
-              <h3 className="text-lg font-medium mb-4">Detalhes</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium">Cliente</label>
-                  <div className="mt-1 border rounded-md p-3 bg-gray-50">
-                    {order.customer?.companyName || "Cliente não encontrado"}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium">Data</label>
-                  <div className="mt-1 border rounded-md p-3 bg-gray-50">
-                    {formatDate(order.createdAt)}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium">Vendedor</label>
-                  <Select 
-                    value={selectedSalespersonId} 
-                    onValueChange={setSelectedSalespersonId}
+              <Label htmlFor="customerId">Cliente</Label>
+              <Controller
+                control={control}
+                name="customerId"
+                render={({ field }) => (
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
                   >
-                    <SelectTrigger className="w-full mt-1">
-                      <SelectValue placeholder="Selecione um vendedor" />
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione um cliente" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Nenhum</SelectItem>
-                      {salespeople.map((sp) => (
-                        <SelectItem key={sp.id} value={sp.id}>
-                          {sp.name}
+                      {customers.map((customer) => (
+                        <SelectItem key={customer.id} value={customer.id}>
+                          {customer.companyName}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium">Status</label>
-                  <Select value={status} onValueChange={setStatus}>
-                    <SelectTrigger className="w-full mt-1">
+                )}
+              />
+              {errors.customerId && (
+                <p className="text-red-500 text-sm">{errors.customerId.message}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <Controller
+                control={control}
+                name="status"
+                render={({ field }) => (
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecione um status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -234,111 +197,179 @@ const OrderUpdate = () => {
                       <SelectItem value="canceled">Cancelado</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                )}
+              />
+              {errors.status && (
+                <p className="text-red-500 text-sm">{errors.status.message}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="notes">Observações</Label>
+              <Controller
+                control={control}
+                name="notes"
+                render={({ field }) => (
+                  <Textarea
+                    placeholder="Observações sobre o pedido"
+                    {...field}
+                  />
+                )}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
-                <div>
-                  <label className="text-sm font-medium">Forma de Entrega</label>
-                  <Select value={shipping} onValueChange={setShipping}>
-                    <SelectTrigger className="w-full mt-1">
-                      <SelectValue placeholder="Selecione a forma de entrega" />
+        <Card>
+          <CardHeader>
+            <CardTitle>Opções de Entrega</CardTitle>
+            <CardDescription>
+              Configure as opções de entrega do pedido.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div>
+              <Label htmlFor="shipping">Método de Entrega</Label>
+              <Controller
+                control={control}
+                name="shipping"
+                render={({ field }) => (
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione um método" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="delivery">Entrega</SelectItem>
                       <SelectItem value="pickup">Retirada</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                )}
+              />
+              {errors.shipping && (
+                <p className="text-red-500 text-sm">{errors.shipping.message}</p>
+              )}
+            </div>
 
-                <div>
-                  <label className="text-sm font-medium">Forma de Pagamento</label>
-                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                    <SelectTrigger className="w-full mt-1">
-                      <SelectValue placeholder="Selecione a forma de pagamento" />
+            {/* Add transport company selection */}
+            {/* This should be inside the shipping options section */}
+            <div className="space-y-2">
+              <Label htmlFor="transportCompanyId">Transportadora</Label>
+              <Controller
+                control={control}
+                name="transportCompanyId"
+                render={({ field }) => (
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value || ""}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione uma transportadora" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="cash">À Vista</SelectItem>
-                      <SelectItem value="credit">A Prazo</SelectItem>
+                      <SelectItem value="">Nenhuma transportadora</SelectItem>
+                      {companies.map(company => (
+                        <SelectItem key={company.id} value={company.id}>
+                          {company.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                </div>
-
-                {paymentMethod === 'credit' && (
-                  <div>
-                    <label className="text-sm font-medium">Condições de Pagamento</label>
-                    <Input
-                      className="mt-1"
-                      placeholder="Ex: 30/60/90 dias"
-                      value={paymentTerms}
-                      onChange={(e) => setPaymentTerms(e.target.value)}
-                    />
-                  </div>
                 )}
+              />
+            </div>
 
-                <div>
-                  <label className="text-sm font-medium">Observações</label>
-                  <Textarea 
-                    className="mt-1" 
-                    placeholder="Observações sobre o pedido"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    rows={4}
+            <div className="flex items-center space-x-2">
+              <Label htmlFor="fullInvoice">Nota Fiscal Completa</Label>
+              <Controller
+                control={control}
+                name="fullInvoice"
+                render={({ field }) => (
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    id="fullInvoice"
                   />
-                </div>
-              </div>
+                )}
+              />
             </div>
+            <div className="flex items-center space-x-2">
+              <Label htmlFor="taxSubstitution">Substituição Tributária</Label>
+              <Controller
+                control={control}
+                name="taxSubstitution"
+                render={({ field }) => (
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    id="taxSubstitution"
+                  />
+                )}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle>Informações de Pagamento</CardTitle>
+            <CardDescription>
+              Configure as informações de pagamento do pedido.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
             <div>
-              <h3 className="text-lg font-medium mb-4">Resumo do Pedido</h3>
-              <div className="border rounded-md overflow-hidden">
-                <div className="bg-gray-50 p-4">
-                  <h4 className="font-medium">Itens</h4>
-                </div>
-                <div className="p-4 space-y-3">
-                  {order.items && order.items.map((item: any) => (
-                    <div key={item.id} className="flex justify-between">
-                      <div>
-                        <div className="font-medium">
-                          {item.product?.name || "Produto não encontrado"}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {item.quantity} x {formatCurrency(item.finalPrice)}
-                        </div>
-                      </div>
-                      <div className="font-medium">{formatCurrency(item.subtotal)}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="border-t p-4">
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm text-gray-700">Subtotal</span>
-                    <span>{formatCurrency(order.subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm text-gray-700">Desconto total</span>
-                    <span>- {formatCurrency(order.totalDiscount)}</span>
-                  </div>
-                  {order.deliveryFee > 0 && (
-                    <div className="flex justify-between mb-2">
-                      <span className="text-sm text-gray-700">Taxa de entrega</span>
-                      <span>{formatCurrency(order.deliveryFee)}</span>
-                    </div>
-                  )}
-                  {order.taxSubstitution && (
-                    <div className="flex justify-between mb-2">
-                      <span className="text-sm text-gray-700">Substituição Tributária</span>
-                      <span>+ {formatCurrency((7.8 / 100) * order.subtotal)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between font-bold mt-4 pt-4 border-t">
-                    <span>Total</span>
-                    <span>{formatCurrency(order.total)}</span>
-                  </div>
-                </div>
-              </div>
+              <Label htmlFor="paymentMethod">Método de Pagamento</Label>
+              <Controller
+                control={control}
+                name="paymentMethod"
+                render={({ field }) => (
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione um método" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Dinheiro</SelectItem>
+                      <SelectItem value="credit">Crédito</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.paymentMethod && (
+                <p className="text-red-500 text-sm">{errors.paymentMethod.message}</p>
+              )}
             </div>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="space-y-2">
+              <Label htmlFor="paymentTerms">Condições de Pagamento</Label>
+              <Controller
+                control={control}
+                name="paymentTerms"
+                render={({ field }) => (
+                  <Input
+                    placeholder="Condições de pagamento"
+                    {...field}
+                  />
+                )}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Atualizando...
+            </>
+          ) : (
+            "Atualizar Pedido"
+          )}
+        </Button>
+      </form>
     </div>
   );
 };

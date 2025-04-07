@@ -23,6 +23,7 @@ interface CartContextType {
   deliveryFee: number;
   applyDiscounts: boolean;
   withIPI: boolean;
+  transportCompanyId: string | undefined;
   setCustomer: (customer: Customer | null) => void;
   addItem: (product: Product, quantity: number) => void;
   removeItem: (id: string) => void;
@@ -42,6 +43,7 @@ interface CartContextType {
   toggleIPI: () => void;
   calculateIPIValue: () => number;
   calculateItemTaxSubstitutionValue: (item: CartItem) => number;
+  setTransportCompanyId: (id: string | undefined) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -74,6 +76,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [paymentTerms, setPaymentTerms] = useState<string>('');
   const [applyDiscounts, setApplyDiscounts] = useState<boolean>(true);
   const [withIPI, setWithIPI] = useState<boolean>(false);
+  const [transportCompanyId, setTransportCompanyId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (settings) {
@@ -495,12 +498,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const clearCart = () => {
     setItems([]);
     setCustomer(null);
-    setSelectedDiscountOptions([]);
+    setDiscountOptions([]);
     setDeliveryLocation(null);
     setHalfInvoicePercentage(50);
+    setHalfInvoiceType('quantity');
     setObservations('');
+    setApplyDiscounts(true);
     setPaymentTerms('');
     setWithIPI(false);
+    setTransportCompanyId(undefined);
     toast.info('Carrinho limpo');
   };
 
@@ -545,7 +551,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ipiValue: withIPI ? ipiValue : undefined,
         status: 'pending',
         notes: observations,
-        userId: user?.id
+        userId: user?.id,
+        transportCompanyId: transportCompanyId
       };
       
       console.log('Sending order with data:', orderData);
@@ -585,6 +592,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       deliveryFee,
       applyDiscounts,
       withIPI,
+      transportCompanyId,
       setCustomer: handleSetCustomer,
       addItem,
       removeItem,
@@ -603,7 +611,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       calculateTaxSubstitutionValue,
       toggleIPI,
       calculateIPIValue,
-      calculateItemTaxSubstitutionValue
+      calculateItemTaxSubstitutionValue,
+      setTransportCompanyId
     }}>
       {children}
     </CartContext.Provider>

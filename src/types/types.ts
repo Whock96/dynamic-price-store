@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   username: string;
@@ -84,6 +85,18 @@ export interface Customer {
   createdAt: Date;
   updatedAt: Date;
   registerDate: Date;
+  transportCompanyId?: string; // New field for transport company
+}
+
+export interface TransportCompany {
+  id: string;
+  name: string;
+  document: string;
+  phone?: string;
+  email?: string;
+  whatsapp?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface CartItem {
@@ -139,6 +152,7 @@ export interface Order {
   deliveryFee?: number;
   withIPI?: boolean; // IPI flag
   ipiValue?: number; // IPI value
+  transportCompanyId?: string; // New field for transport company
 }
 
 export interface MenuItem {

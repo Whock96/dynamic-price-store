@@ -23,6 +23,7 @@ import { useOrders } from '@/context/OrderContext';
 import { useOrderData } from '@/hooks/use-order-data';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import PrintableOrder from '@/components/orders/PrintableOrder';
+import { useTransportCompanies } from '@/context/TransportCompanyContext';
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -32,6 +33,7 @@ const OrderDetail = () => {
   const { order: supabaseOrder, isLoading: isSupabaseLoading } = useOrderData(id);
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const { companies } = useTransportCompanies();
 
   useEffect(() => {
     if (id) {
@@ -762,6 +764,15 @@ const OrderDetail = () => {
               <div>
                 <h3 className="text-sm font-medium text-gray-500">Taxa de Entrega</h3>
                 <p className="text-lg">{formatCurrency(deliveryFee)}</p>
+              </div>
+            )}
+            
+            {order.transportCompanyId && (
+              <div>
+                <Label>Transportadora</Label>
+                <div className="font-medium mt-1">
+                  {companies.find(c => c.id === order.transportCompanyId)?.name || 'Não especificada'}
+                </div>
               </div>
             )}
           </div>

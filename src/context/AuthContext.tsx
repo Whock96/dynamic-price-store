@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User as UserType, MenuItem, Permission } from '../types/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,49 +20,49 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'home',
-    name: 'Início',
+    name: 'Página Inicial',
     path: '/dashboard',
     icon: 'home',
-    requiredRoles: ['administrator', 'salesperson', 'billing', 'inventory'],
+    requiredRoles: ['administrator', 'salesperson', 'billing', 'inventory']
   },
   {
     id: 'products',
     name: 'Produtos',
     path: '/products',
     icon: 'package',
-    requiredRoles: ['administrator', 'salesperson', 'billing', 'inventory'],
+    requiredRoles: ['administrator', 'salesperson', 'inventory'],
     submenus: [
       {
-        id: 'product-list',
-        name: 'Listar Produtos',
+        id: 'products-list',
+        name: 'Lista de Produtos',
         path: '/products',
         icon: 'list',
-        requiredRoles: ['administrator', 'salesperson', 'billing', 'inventory'],
-      },
-    ],
+        requiredRoles: ['administrator', 'salesperson', 'inventory']
+      }
+    ]
   },
   {
     id: 'customers',
     name: 'Clientes',
     path: '/customers',
     icon: 'users',
-    requiredRoles: ['administrator', 'salesperson', 'billing'],
+    requiredRoles: ['administrator', 'salesperson'],
     submenus: [
       {
-        id: 'customer-list',
-        name: 'Listar Clientes',
+        id: 'customers-list',
+        name: 'Lista de Clientes',
         path: '/customers',
         icon: 'list',
-        requiredRoles: ['administrator', 'salesperson', 'billing'],
+        requiredRoles: ['administrator', 'salesperson']
       },
       {
-        id: 'customer-create',
-        name: 'Cadastrar Clientes',
+        id: 'customers-new',
+        name: 'Novo Cliente',
         path: '/customers/new',
         icon: 'user-plus',
-        requiredRoles: ['administrator', 'salesperson'],
-      },
-    ],
+        requiredRoles: ['administrator', 'salesperson']
+      }
+    ]
   },
   {
     id: 'orders',
@@ -73,20 +72,20 @@ export const MENU_ITEMS: MenuItem[] = [
     requiredRoles: ['administrator', 'salesperson', 'billing'],
     submenus: [
       {
-        id: 'order-list',
-        name: 'Consultar Pedidos',
+        id: 'orders-list',
+        name: 'Lista de Pedidos',
         path: '/orders',
-        icon: 'search',
-        requiredRoles: ['administrator', 'salesperson', 'billing'],
-      },
-    ],
+        icon: 'list',
+        requiredRoles: ['administrator', 'salesperson', 'billing']
+      }
+    ]
   },
   {
     id: 'cart',
     name: 'Carrinho',
     path: '/cart',
     icon: 'shopping-cart',
-    requiredRoles: ['administrator', 'salesperson'],
+    requiredRoles: ['administrator', 'salesperson']
   },
   {
     id: 'settings',
@@ -96,49 +95,49 @@ export const MENU_ITEMS: MenuItem[] = [
     requiredRoles: ['administrator'],
     submenus: [
       {
-        id: 'company-settings',
-        name: 'Dados da Empresa',
-        path: '/settings/company',
-        icon: 'building-2',
-        requiredRoles: ['administrator'],
-      },
-      {
-        id: 'product-management',
-        name: 'Gerenciar Produtos',
-        path: '/settings/products',
-        icon: 'package',
-        requiredRoles: ['administrator'],
-      },
-      {
-        id: 'user-management',
+        id: 'settings-users',
         name: 'Gerenciar Usuários',
         path: '/settings/users',
         icon: 'users',
-        requiredRoles: ['administrator'],
+        requiredRoles: ['administrator']
       },
       {
-        id: 'user-type-management',
+        id: 'settings-user-types',
         name: 'Gerenciar Tipos de Usuário',
         path: '/settings/user-types',
         icon: 'shield',
-        requiredRoles: ['administrator'],
+        requiredRoles: ['administrator']
       },
       {
-        id: 'category-management',
+        id: 'settings-categories',
         name: 'Gerenciar Categorias',
         path: '/settings/categories',
         icon: 'tag',
-        requiredRoles: ['administrator'],
+        requiredRoles: ['administrator']
       },
       {
-        id: 'discount-management',
+        id: 'settings-discounts',
         name: 'Gerenciar Descontos',
         path: '/settings/discounts',
         icon: 'percent',
-        requiredRoles: ['administrator'],
+        requiredRoles: ['administrator']
       },
-    ],
-  },
+      {
+        id: 'settings-transport-companies',
+        name: 'Gerenciar Transportadoras',
+        path: '/settings/transport-companies',
+        icon: 'truck',
+        requiredRoles: ['administrator']
+      },
+      {
+        id: 'settings-company',
+        name: 'Informações da Empresa',
+        path: '/settings/company',
+        icon: 'building-2',
+        requiredRoles: ['administrator']
+      }
+    ]
+  }
 ];
 
 // Map of permission codes to menu paths

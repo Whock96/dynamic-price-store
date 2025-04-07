@@ -44,6 +44,7 @@ const supabaseToCustomer = (supabaseCustomer: SupabaseCustomer): Customer => ({
   createdAt: new Date(supabaseCustomer.created_at),
   updatedAt: new Date(supabaseCustomer.updated_at),
   registerDate: new Date(supabaseCustomer.register_date),
+  transportCompanyId: supabaseCustomer.transport_company_id || undefined,
 });
 
 // Função para converter nosso modelo frontend para o formato Supabase
@@ -70,6 +71,7 @@ const customerToSupabase = (customer: Partial<Customer>): Partial<SupabaseCustom
   if ('registerDate' in customer) result.register_date = customer.registerDate instanceof Date 
     ? customer.registerDate.toISOString().split('T')[0] 
     : customer.registerDate;
+  if ('transportCompanyId' in customer) result.transport_company_id = customer.transportCompanyId;
   
   return result;
 };
