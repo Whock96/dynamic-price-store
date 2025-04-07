@@ -1,9 +1,8 @@
-
 export interface User {
   id: string;
   username: string;
   name: string;
-  role: 'administrator' | 'salesperson' | 'billing' | 'inventory';
+  role: 'administrator' | 'admin' | 'salesperson' | 'billing' | 'inventory';
   permissions: Permission[];
   email: string;
   createdAt: Date;

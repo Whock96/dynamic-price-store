@@ -55,6 +55,7 @@ const PageContainer: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   }
 
   console.log('PageContainer: renderizando com sidebar');
+  console.log('Papel do usuário:', user.role);
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -70,4 +71,3 @@ const PageContainer: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 };
 
 export default PageContainer;
-

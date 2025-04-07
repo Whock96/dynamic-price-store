@@ -192,7 +192,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
     return location.pathname === path;
   };
 
-  // Função corrigida para verificar acesso do usuário aos menus
+  // Fixed function to check user access to menu items
   const hasAccessToMenu = (menuItem: typeof MENU_ITEMS[0]) => {
     if (!user) {
       console.log("Sem usuário, negando acesso ao menu");
@@ -201,13 +201,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
     
     console.log(`Verificando acesso ao menu ${menuItem.id} para o usuário com papel ${user.role}`);
     
-    // Administradores têm acesso a tudo
-    if (user.role === 'administrator' || user.role === 'admin') {
-      console.log(`Usuário é administrador, concedendo acesso ao menu ${menuItem.id}`);
-      return true;
-    }
-    
-    // Verificar se o papel do usuário está nos papéis exigidos
+    // Check if user role is in the required roles for this menu item
     const hasAccess = menuItem.requiredRoles.includes(user.role);
     console.log(`Menu ${menuItem.id} requer papéis: ${menuItem.requiredRoles.join(', ')}`);
     console.log(`Usuário tem papel: ${user.role}`);
@@ -246,9 +240,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
         </div>
 
         <nav className="flex-1 space-y-1 px-2 overflow-y-auto">
-          {MENU_ITEMS
-            .filter(item => hasAccessToMenu(item))
-            .map((item) => (
+          {MENU_ITEMS.map((item) => {
+            const canAccess = hasAccessToMenu(item);
+            console.log(`Menu item ${item.id}: ${canAccess ? 'visible' : 'hidden'}`);
+            if (!canAccess) return null;
+            
+            return (
               <div key={item.id} className="relative">
                 <button
                   onClick={() => item.submenus?.length ? toggleMenu(item.id) : handleNavigate(item.path)}
@@ -307,7 +304,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
                   </div>
                 )}
               </div>
-            ))}
+            );
+          })}
 
           {/* Botão de Sair - Movido para dentro da navegação principal */}
           <div className="relative mt-2">
@@ -349,4 +347,3 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
 };
 
 export default Sidebar;
-

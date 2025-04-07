@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -119,7 +120,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const fetchedPermissions = await getPermissions(userData.user_type_id);
       setPermissions(fetchedPermissions);
       
-      const userRole = userTypeData.name.toLowerCase();
+      // Convert user type name to a role
+      let userRole = userTypeData.name.toLowerCase();
+      
+      // Ensure role is one of the valid types in our User interface
+      if (!['administrator', 'admin', 'salesperson', 'billing', 'inventory'].includes(userRole)) {
+        console.log(`Role "${userRole}" not recognized, defaulting to "salesperson"`);
+        userRole = 'salesperson';
+      }
+      
       console.log("User role determined:", userRole);
       
       const user: User = {
@@ -127,7 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         username: userData.username,
         name: userData.name,
         email: userData.email || '',
-        role: userRole as any,
+        role: userRole as User['role'],
         permissions: fetchedPermissions,
         createdAt: new Date(userData.created_at),
         userTypeId: userData.user_type_id,
@@ -229,7 +238,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           const fetchedPermissions = await getPermissions(directUser.user_type_id);
           
-          const userRole = userTypeData.name.toLowerCase();
+          // Convert user type name to a role and validate
+          let userRole = userTypeData.name.toLowerCase();
+          
+          // Ensure role is one of the valid types in our User interface
+          if (!['administrator', 'admin', 'salesperson', 'billing', 'inventory'].includes(userRole)) {
+            console.log(`Role "${userRole}" not recognized, defaulting to "salesperson"`);
+            userRole = 'salesperson';
+          }
+          
           console.log("Direct login user role:", userRole);
           
           const userObj: User = {
@@ -237,7 +254,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             username: directUser.username,
             name: directUser.name,
             email: directUser.email || '',
-            role: userRole as any,
+            role: userRole as User['role'],
             permissions: fetchedPermissions,
             createdAt: new Date(directUser.created_at),
             userTypeId: directUser.user_type_id,
@@ -298,8 +315,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Para debug
     console.log(`Verificando permissão: ${permissionCode}, Usuário: ${user?.role}, Permissões: `, permissions);
     
+    if (!user) {
+      console.log('Sem usuário, negando permissão');
+      return false;
+    }
+    
     // Para administradores, sempre retorne true
-    if (user?.role === 'administrator' || user?.role === 'admin') {
+    if (user.role === 'administrator' || user.role === 'admin') {
       console.log('Usuário é administrador, concedendo permissão');
       return true;
     }
