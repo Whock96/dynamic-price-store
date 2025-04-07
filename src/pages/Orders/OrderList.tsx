@@ -31,6 +31,7 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
+import OrderSearch from '@/components/orders/OrderSearch';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { Order } from '@/types/types';
 import { useNavigate } from 'react-router-dom';
@@ -42,7 +43,6 @@ import { useOrders } from '@/context/OrderContext';
 import { useAuth } from '@/context/AuthContext';
 import SortableHeader from '@/components/ui/sortable-header';
 
-// Define custom type that includes joined tables
 interface OrderWithCustomer extends Tables<'orders'> {
   customers: Tables<'customers'>;
 }
@@ -61,21 +61,14 @@ const OrderList = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [directFetchRequired, setDirectFetchRequired] = useState(false);
   
-  // Sorting states
   const [sortKey, setSortKey] = useState<string | null>('createdAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   
-  // Filter states
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
-  const [documentFilter, setDocumentFilter] = useState('');
-  const [customerNameFilter, setCustomerNameFilter] = useState('');
-  const [orderNumberFilter, setOrderNumberFilter] = useState('');
 
-  // Verificação para identificar se o usuário é do tipo vendedor específico
   const isSalespersonType = currentUser?.userTypeId === 'c5ee0433-3faf-46a4-a516-be7261bfe575';
 
-  // Use orders from context but fetch directly if needed
   useEffect(() => {
     if (!contextLoading && contextOrders.length > 0) {
       console.log("Using orders from context:", contextOrders.length);
@@ -85,7 +78,6 @@ const OrderList = () => {
         userName: o.user?.name 
       })));
       
-      // Implementando filtragem rigorosa específica para o tipo de vendedor com UUID c5ee0433-3faf-46a4-a516-be7261bfe575
       let ordersToDisplay = [...contextOrders];
       
       console.log("OrderList - Tipo de usuário do vendedor:", currentUser?.userTypeId);
@@ -108,7 +100,6 @@ const OrderList = () => {
         
         console.log("Após filtragem rigorosa para vendedor específico:", ordersToDisplay.length, "pedidos");
       }
-      // Manter filtragem por role para compatibilidade
       else if (currentUser?.role === 'salesperson' && currentUser?.id) {
         console.log("OrderList - Filtragem padrão para vendedor (role):", currentUser.id, "(tipo:", typeof currentUser.id, ")");
         console.log("Antes da filtragem:", ordersToDisplay.length, "pedidos");
@@ -138,7 +129,6 @@ const OrderList = () => {
     }
   }, [contextOrders, contextLoading, currentUser, isSalespersonType]);
 
-  // Only fetch directly when necessary and when context has finished loading
   useEffect(() => {
     if (directFetchRequired && !contextLoading) {
       console.log("Fetching orders directly from Supabase");
@@ -149,7 +139,6 @@ const OrderList = () => {
   const fetchOrders = async () => {
     setIsLoading(true);
     try {
-      // Garantindo que a consulta seja filtrada corretamente para vendedor específico ou role vendedor
       let query = supabase
         .from('orders')
         .select(`
@@ -157,20 +146,16 @@ const OrderList = () => {
           customers(*)
         `);
       
-      // Filtragem específica para o tipo de vendedor com UUID c5ee0433-3faf-46a4-a516-be7261bfe575
       if (isSalespersonType && currentUser?.id) {
         const currentUserIdStr = String(currentUser.id);
         console.log("OrderList - Filtrando consulta Supabase para vendedor ESPECÍFICO:", currentUserIdStr);
         
-        // Garantindo que estamos usando string para o filtro
         query = query.eq('user_id', currentUserIdStr);
       }
-      // Filtragem por role para compatibilidade
       else if (currentUser?.role === 'salesperson' && currentUser?.id) {
         const currentUserIdStr = String(currentUser.id);
         console.log("OrderList - Filtrando consulta Supabase para vendedor (role):", currentUserIdStr);
         
-        // Garantindo que estamos usando string para o filtro
         query = query.eq('user_id', currentUserIdStr);
       }
       
@@ -185,9 +170,7 @@ const OrderList = () => {
       if (data) {
         console.log("Pedidos recuperados diretamente:", data);
         
-        // Process each order to fetch items and applied discounts
         const processedOrders = await Promise.all(data.map(async (order) => {
-          // Fetch order items with product details
           const { data: itemsData } = await supabase
             .from('order_items')
             .select(`
@@ -196,13 +179,11 @@ const OrderList = () => {
             `)
             .eq('order_id', order.id);
             
-          // Fetch discount options applied to this order
           const { data: discountData } = await supabase
             .from('order_discounts')
             .select('discount_id')
             .eq('order_id', order.id);
             
-          // Fetch full discount details if there are any applied discounts
           let discounts = [];
           if (discountData && discountData.length > 0) {
             const discountIds = discountData.map(d => d.discount_id);
@@ -223,7 +204,6 @@ const OrderList = () => {
             }
           }
           
-          // Garantindo que o nome do usuário seja recuperado corretamente
           let userName = null;
           if (order.user_id) {
             console.log("OrderList - Verificando ID de usuário:", order.user_id, "(tipo:", typeof order.user_id, ")");
@@ -231,7 +211,6 @@ const OrderList = () => {
             const orderUserIdStr = String(order.user_id);
             const currentUserIdStr = currentUser ? String(currentUser.id) : '';
             
-            // Comparando strings para evitar problemas de tipo
             if (currentUser && currentUserIdStr === orderUserIdStr) {
               userName = currentUser.name;
               console.log("OrderList - Usando nome do usuário atual:", userName);
@@ -254,10 +233,8 @@ const OrderList = () => {
             userName = 'Usuário do Sistema';
           }
           
-          // Use adapter to convert Supabase order to app Order
           const appOrder = supabaseOrderToAppOrder(order, itemsData || [], discounts);
           
-          // Only add the user name if we actually found one
           if (userName) {
             appOrder.user = {
               ...appOrder.user,
@@ -265,7 +242,6 @@ const OrderList = () => {
             };
           }
           
-          // Garantir que registramos informações completas para debugging
           console.log("OrderList - Pedido processado:", {
             id: order.id,
             orderNumber: order.order_number,
@@ -276,10 +252,8 @@ const OrderList = () => {
           return appOrder;
         }));
         
-        // Verificação adicional de filtragem - SOLUÇÃO AQUI
         let finalOrders = [...processedOrders];
         
-        // Filtragem adicional especificamente para vendedor com UUID c5ee0433-3faf-46a4-a516-be7261bfe575
         if (isSalespersonType && currentUser?.id) {
           const currentUserIdStr = String(currentUser.id);
           console.log("OrderList - Aplicando filtragem final para vendedor ESPECÍFICO:", currentUserIdStr);
@@ -295,7 +269,6 @@ const OrderList = () => {
           
           console.log(`OrderList - Resultado final da filtragem específica: ${finalOrders.length} de ${processedOrders.length} pedidos`);
         }
-        // Manter filtragem por role para compatibilidade
         else if (currentUser?.role === 'salesperson' && currentUser?.id) {
           const currentUserIdStr = String(currentUser.id);
           console.log("OrderList - Aplicando filtragem final para vendedor (role):", currentUserIdStr);
@@ -324,44 +297,19 @@ const OrderList = () => {
 
   const handleSort = (key: string) => {
     if (sortKey === key) {
-      // If already sorting by this key, toggle direction or reset
       setSortDirection(sortDirection === 'asc' ? 'desc' : sortDirection === 'desc' ? null : 'asc');
       if (sortDirection === null) {
         setSortKey(null);
       }
     } else {
-      // If sorting by a new key, start with ascending
       setSortKey(key);
       setSortDirection('asc');
     }
   };
 
-  // Apply filtering and sorting
   useEffect(() => {
     let result = [...orders];
     
-    // Apply document filter (CNPJ)
-    if (documentFilter) {
-      result = result.filter(order => 
-        order.customer?.document?.toLowerCase().includes(documentFilter.toLowerCase())
-      );
-    }
-    
-    // Apply customer name filter
-    if (customerNameFilter) {
-      result = result.filter(order => 
-        order.customer?.companyName?.toLowerCase().includes(customerNameFilter.toLowerCase())
-      );
-    }
-    
-    // Apply order number filter
-    if (orderNumberFilter) {
-      result = result.filter(order => 
-        String(order.orderNumber).includes(orderNumberFilter)
-      );
-    }
-    
-    // Apply date range filter
     if (startDate && endDate) {
       result = result.filter(order => {
         const orderDate = new Date(order.createdAt);
@@ -379,21 +327,21 @@ const OrderList = () => {
       });
     }
     
-    // Apply search term filter
     if (searchTerm.trim() !== '') {
       const lowercasedSearch = searchTerm.toLowerCase();
       result = result.filter(order => {
         const customerName = order.customer?.companyName?.toLowerCase() || '';
+        const customerDocument = order.customer?.document?.toLowerCase() || '';
         const orderNumber = String(order.orderNumber);
         const salesPersonName = order.user?.name?.toLowerCase() || '';
         
         return customerName.includes(lowercasedSearch) || 
+               customerDocument.includes(lowercasedSearch) ||
                orderNumber.includes(lowercasedSearch) ||
                salesPersonName.includes(lowercasedSearch);
       });
     }
     
-    // Apply sorting
     if (sortKey && sortDirection) {
       result.sort((a, b) => {
         let aValue, bValue;
@@ -436,14 +384,12 @@ const OrderList = () => {
             bValue = b[sortKey as keyof Order] || '';
         }
         
-        // Handle string comparison
         if (typeof aValue === 'string' && typeof bValue === 'string') {
           return sortDirection === 'asc' 
             ? aValue.localeCompare(bValue) 
             : bValue.localeCompare(aValue);
         }
         
-        // Handle number comparison
         return sortDirection === 'asc' 
           ? (aValue as number) - (bValue as number) 
           : (bValue as number) - (aValue as number);
@@ -451,7 +397,7 @@ const OrderList = () => {
     }
     
     setFilteredOrders(result);
-  }, [orders, searchTerm, sortKey, sortDirection, startDate, endDate, documentFilter, customerNameFilter, orderNumberFilter]);
+  }, [orders, searchTerm, sortKey, sortDirection, startDate, endDate]);
 
   const handleDeleteOrder = async () => {
     if (!selectedOrderId) return;
@@ -477,9 +423,7 @@ const OrderList = () => {
   const resetFilters = () => {
     setStartDate(undefined);
     setEndDate(undefined);
-    setDocumentFilter('');
-    setCustomerNameFilter('');
-    setOrderNumberFilter('');
+    setSearchTerm('');
   };
 
   return (
@@ -497,16 +441,11 @@ const OrderList = () => {
             <div className="flex flex-col space-y-4">
               <CardTitle>Lista de Pedidos</CardTitle>
               
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar pedidos..."
-                    className="pl-8"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <OrderSearch 
+                  searchQuery={searchTerm}
+                  setSearchQuery={setSearchTerm}
+                />
                 
                 <div className="flex space-x-2">
                   <Popover>
@@ -542,28 +481,6 @@ const OrderList = () => {
                       />
                     </PopoverContent>
                   </Popover>
-                </div>
-                
-                <Input
-                  placeholder="CNPJ do Cliente"
-                  value={documentFilter}
-                  onChange={(e) => setDocumentFilter(e.target.value)}
-                />
-                
-                <div className="flex space-x-2">
-                  <Input
-                    placeholder="Nome do Cliente"
-                    className="flex-1"
-                    value={customerNameFilter}
-                    onChange={(e) => setCustomerNameFilter(e.target.value)}
-                  />
-                  
-                  <Input
-                    placeholder="Número do Pedido"
-                    className="flex-1"
-                    value={orderNumberFilter}
-                    onChange={(e) => setOrderNumberFilter(e.target.value)}
-                  />
                   
                   <Button variant="outline" onClick={resetFilters}>Limpar</Button>
                 </div>

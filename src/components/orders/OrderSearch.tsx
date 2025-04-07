@@ -13,7 +13,7 @@ const OrderSearch: React.FC<OrderSearchProps> = ({ searchQuery, setSearchQuery }
     <div className="relative w-full md:w-96">
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
       <Input
-        placeholder="Buscar por número do pedido, CNPJ ou cliente..."
+        placeholder="Buscar por número, CNPJ ou cliente..."
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         className="w-full pl-10"
