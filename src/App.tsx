@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from "./components/theme-provider";
-import { Toaster } from "@/components/ui/toaster"
+import { Toaster } from "@/components/ui/toaster";
 
 import Index from '@/pages/Index';
 import Dashboard from '@/pages/Dashboard';
@@ -15,8 +15,8 @@ import CustomerDetail from '@/pages/Customers/CustomerDetail';
 import OrderList from '@/pages/Orders/OrderList';
 import OrderDetail from '@/pages/Orders/OrderDetail';
 import OrderUpdate from '@/pages/Orders/OrderUpdate';
-import Cart from './pages/Cart';
-import Settings from './pages/Settings';
+import Cart from '@/pages/Cart/Cart';
+import Settings from './pages/Settings/Settings';
 import CompanySettings from '@/pages/Settings/CompanySettings';
 import CategoryManagement from '@/pages/Settings/CategoryManagement';
 import UserManagement from '@/pages/Settings/UserManagement';
@@ -79,11 +79,11 @@ function App() {
                         {loggedIn ? (
                           <div className="flex">
                             <Sidebar 
-                              collapsed={isMobileView}
-                              onToggle={() => toggleSidebar(!isMobileView)}
+                              isExpanded={!collapsed}
+                              setIsExpanded={() => toggleSidebar(!collapsed)}
                             />
                             <div className="flex-1 p-8">
-                              <Navbar toggleSidebar={() => toggleSidebar(true)} />
+                              <Navbar />
                               <div className="mt-4">
                                 <Routes>
                                   <Route path="/" element={<Index />} />
