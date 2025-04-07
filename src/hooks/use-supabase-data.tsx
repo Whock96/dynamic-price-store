@@ -7,7 +7,6 @@ import { toast } from 'sonner';
 type TableName = 
   | 'products' 
   | 'customers' 
-  | 'users' 
   | 'orders' 
   | 'categories' 
   | 'company_settings' 
@@ -15,10 +14,10 @@ type TableName =
   | 'order_discounts' 
   | 'order_items' 
   | 'subcategories'
+  | 'users'
   | 'user_types'
   | 'permissions'
-  | 'user_type_permissions'
-  | 'transport_companies';
+  | 'user_type_permissions';
 
 export function useSupabaseData<T extends Record<string, any>>(
   tableName: TableName, 
@@ -77,7 +76,7 @@ export function useSupabaseData<T extends Record<string, any>>(
       if (responseError) throw responseError;
 
       console.log(`Successfully fetched ${responseData.length} records from ${tableName}`);
-      // Use explicit type assertion as unknown first, then as T[]
+      // Use explicit type casting to avoid TypeScript recursion
       setData(responseData as unknown as T[]);
       return responseData as unknown as T[];
     } catch (err) {
@@ -92,7 +91,7 @@ export function useSupabaseData<T extends Record<string, any>>(
   }, [tableName, options.select, options.filterKey, options.filterValue, options.joinTable, options.orderBy, options.isActive]);
 
   // Create a new record
-  const createRecord = async (record: Partial<T>) => {
+  const createRecord = async (record: Omit<T, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       console.log(`Creating record in ${tableName}:`, record);
       
@@ -147,11 +146,6 @@ export function useSupabaseData<T extends Record<string, any>>(
         if (recordToCreate.maxDiscount !== undefined) {
           recordToCreate.max_discount = recordToCreate.maxDiscount;
           delete recordToCreate.maxDiscount;
-        }
-
-        if (recordToCreate.transportCompanyId !== undefined) {
-          recordToCreate.transport_company_id = recordToCreate.transportCompanyId;
-          delete recordToCreate.transportCompanyId;
         }
       }
       
@@ -237,11 +231,6 @@ export function useSupabaseData<T extends Record<string, any>>(
         if (recordToUpdate.maxDiscount !== undefined) {
           recordToUpdate.max_discount = recordToUpdate.maxDiscount;
           delete recordToUpdate.maxDiscount;
-        }
-
-        if (recordToUpdate.transportCompanyId !== undefined) {
-          recordToUpdate.transport_company_id = recordToUpdate.transportCompanyId;
-          delete recordToUpdate.transportCompanyId;
         }
       }
       

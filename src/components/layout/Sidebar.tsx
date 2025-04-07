@@ -6,99 +6,9 @@ import {
   ChevronRight, List, UserPlus, Search, Edit, Menu, Building2, LogOut,
   Tag, Percent, Shield
 } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, MENU_ITEMS } from '../../context/AuthContext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-
-// Define menu items
-const MENU_ITEMS = [
-  {
-    id: 'dashboard',
-    name: 'Dashboard',
-    path: '/dashboard',
-    icon: 'home',
-    requiredRoles: ['administrator', 'admin', 'salesperson', 'billing', 'inventory'],
-  },
-  {
-    id: 'products',
-    name: 'Produtos',
-    path: '/products',
-    icon: 'package',
-    requiredRoles: ['administrator', 'admin', 'salesperson', 'inventory'],
-  },
-  {
-    id: 'customers',
-    name: 'Clientes',
-    path: '/customers',
-    icon: 'users',
-    requiredRoles: ['administrator', 'admin', 'salesperson'],
-  },
-  {
-    id: 'orders',
-    name: 'Pedidos',
-    path: '/orders',
-    icon: 'clipboard',
-    requiredRoles: ['administrator', 'admin', 'salesperson', 'billing'],
-  },
-  {
-    id: 'cart',
-    name: 'Carrinho',
-    path: '/cart',
-    icon: 'shopping-cart',
-    requiredRoles: ['administrator', 'admin', 'salesperson'],
-  },
-  {
-    id: 'settings',
-    name: 'Configurações',
-    path: '/settings',
-    icon: 'settings',
-    requiredRoles: ['administrator', 'admin'],
-    submenus: [
-      {
-        id: 'settings-products',
-        name: 'Produtos',
-        path: '/settings/products',
-        icon: 'package',
-      },
-      {
-        id: 'settings-users',
-        name: 'Usuários',
-        path: '/settings/users',
-        icon: 'user-plus',
-      },
-      {
-        id: 'settings-user-types',
-        name: 'Tipos de Usuário',
-        path: '/settings/user-types',
-        icon: 'shield',
-      },
-      {
-        id: 'settings-categories',
-        name: 'Categorias',
-        path: '/settings/categories',
-        icon: 'list',
-      },
-      {
-        id: 'settings-discounts',
-        name: 'Descontos',
-        path: '/settings/discounts',
-        icon: 'percent',
-      },
-      {
-        id: 'settings-transport-companies',
-        name: 'Transportadoras',
-        path: '/settings/transport-companies',
-        icon: 'building-2',
-      },
-      {
-        id: 'settings-company',
-        name: 'Empresa',
-        path: '/settings/company',
-        icon: 'tag',
-      },
-    ],
-  },
-];
 
 interface SidebarProps {
   isExpanded: boolean;
@@ -106,19 +16,12 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
-  const { user, logout, hasPermission } = useAuth();
+  const { user, logout, hasPermission, checkAccess } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const sidebarRef = useRef<HTMLDivElement>(null);
   
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
-
-  // For debugging
-  useEffect(() => {
-    console.log('Current user in Sidebar:', user);
-    console.log('User role:', user?.role);
-    console.log('User permissions:', user?.permissions);
-  }, [user]);
 
   useEffect(() => {
     if (!isExpanded) {
@@ -192,38 +95,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
     return location.pathname === path;
   };
 
-  // Fixed function to check user access to menu items
   const hasAccessToMenu = (menuItem: typeof MENU_ITEMS[0]) => {
-    if (!user) {
-      console.log("Sem usuário, negando acesso ao menu");
-      return false;
-    }
-    
-    console.log(`Verificando acesso ao menu ${menuItem.id} para o usuário com papel ${user.role}`);
-    
-    // Check if user role is in the required roles for this menu item
-    const hasAccess = menuItem.requiredRoles.includes(user.role);
-    console.log(`Menu ${menuItem.id} requer papéis: ${menuItem.requiredRoles.join(', ')}`);
-    console.log(`Usuário tem papel: ${user.role}`);
-    console.log(`Acesso concedido: ${hasAccess}`);
-    
-    return hasAccess;
+    if (!user) return false;
+
+    // Check if user's role is in the required roles for this menu
+    return menuItem.requiredRoles.includes(user.role) || checkAccess(menuItem.path);
   };
 
-  if (!user) {
-    console.log("Componente Sidebar - Usuário não está definido, retornando null");
-    return null;
-  }
-
-  console.log("Renderizando Sidebar com user:", user);
-  console.log("Itens do menu visíveis:", MENU_ITEMS.filter(item => hasAccessToMenu(item)).map(item => item.id));
+  if (!user) return null;
 
   return (
     <div 
       ref={sidebarRef}
       className={cn(
         "h-screen fixed left-0 top-16 bg-sidebar z-40 transition-all duration-300 ease-in-out border-r border-sidebar-border",
-        isExpanded ? "w-64" : "w-16"
+        isExpanded ? "sidebar-expanded" : "sidebar-collapsed"
       )}
     >
       <div className="flex flex-col h-full py-4">
@@ -240,12 +126,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
         </div>
 
         <nav className="flex-1 space-y-1 px-2 overflow-y-auto">
-          {MENU_ITEMS.map((item) => {
-            const canAccess = hasAccessToMenu(item);
-            console.log(`Menu item ${item.id}: ${canAccess ? 'visible' : 'hidden'}`);
-            if (!canAccess) return null;
-            
-            return (
+          {MENU_ITEMS
+            .filter(item => hasAccessToMenu(item))
+            .map((item) => (
               <div key={item.id} className="relative">
                 <button
                   onClick={() => item.submenus?.length ? toggleMenu(item.id) : handleNavigate(item.path)}
@@ -284,28 +167,29 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
                 
                 {isExpanded && item.submenus && expandedMenu === item.id && (
                   <div className="pl-10 mt-1 space-y-1 animate-accordion-down">
-                    {item.submenus.map((submenu) => (
-                      <button
-                        key={submenu.id}
-                        onClick={() => handleNavigate(submenu.path)}
-                        className={cn(
-                          "w-full flex items-center py-2 px-2 rounded-md transition-colors duration-200",
-                          isActive(submenu.path) 
-                            ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                            : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                        )}
-                      >
-                        <div className="flex items-center justify-center w-5 h-5">
-                          {getIcon(submenu.icon)}
-                        </div>
-                        <span className="ml-2 text-sm">{submenu.name}</span>
-                      </button>
-                    ))}
+                    {item.submenus
+                      .filter(submenu => checkAccess(submenu.path))
+                      .map((submenu) => (
+                        <button
+                          key={submenu.id}
+                          onClick={() => handleNavigate(submenu.path)}
+                          className={cn(
+                            "w-full flex items-center py-2 px-2 rounded-md transition-colors duration-200",
+                            isActive(submenu.path) 
+                              ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                          )}
+                        >
+                          <div className="flex items-center justify-center w-5 h-5">
+                            {getIcon(submenu.icon)}
+                          </div>
+                          <span className="ml-2 text-sm">{submenu.name}</span>
+                        </button>
+                      ))}
                   </div>
                 )}
               </div>
-            );
-          })}
+            ))}
 
           {/* Botão de Sair - Movido para dentro da navegação principal */}
           <div className="relative mt-2">

@@ -1,351 +1,459 @@
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { User as UserType, MenuItem, Permission } from '../types/types';
 import { supabase } from '@/integrations/supabase/client';
-import { User, UserType, Permission } from '@/types/types';
-import { authenticateDirectly } from '@/utils/auth-helper';
 
-export interface AuthContextType {
-  user: User | null;
-  userTypes: UserType[];
-  permissions: Permission[];
-  isLoading: boolean;
+interface AuthContextType {
+  user: UserType | null;
+  loading: boolean;
   error: string | null;
   login: (username: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+  logout: () => void;
   hasPermission: (permissionCode: string) => boolean;
+  fetchPermissions: () => Promise<void>;
+  fetchUserTypes: () => Promise<any[]>;
+  checkAccess: (menuPath: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+// Menu items with permission requirements
+export const MENU_ITEMS: MenuItem[] = [
+  {
+    id: 'home',
+    name: 'Início',
+    path: '/dashboard',
+    icon: 'home',
+    requiredRoles: ['administrator', 'salesperson', 'billing', 'inventory'],
+  },
+  {
+    id: 'products',
+    name: 'Produtos',
+    path: '/products',
+    icon: 'package',
+    requiredRoles: ['administrator', 'salesperson', 'billing', 'inventory'],
+    submenus: [
+      {
+        id: 'product-list',
+        name: 'Listar Produtos',
+        path: '/products',
+        icon: 'list',
+        requiredRoles: ['administrator', 'salesperson', 'billing', 'inventory'],
+      },
+    ],
+  },
+  {
+    id: 'customers',
+    name: 'Clientes',
+    path: '/customers',
+    icon: 'users',
+    requiredRoles: ['administrator', 'salesperson', 'billing'],
+    submenus: [
+      {
+        id: 'customer-list',
+        name: 'Listar Clientes',
+        path: '/customers',
+        icon: 'list',
+        requiredRoles: ['administrator', 'salesperson', 'billing'],
+      },
+      {
+        id: 'customer-create',
+        name: 'Cadastrar Clientes',
+        path: '/customers/new',
+        icon: 'user-plus',
+        requiredRoles: ['administrator', 'salesperson'],
+      },
+    ],
+  },
+  {
+    id: 'orders',
+    name: 'Pedidos',
+    path: '/orders',
+    icon: 'clipboard',
+    requiredRoles: ['administrator', 'salesperson', 'billing'],
+    submenus: [
+      {
+        id: 'order-list',
+        name: 'Consultar Pedidos',
+        path: '/orders',
+        icon: 'search',
+        requiredRoles: ['administrator', 'salesperson', 'billing'],
+      },
+    ],
+  },
+  {
+    id: 'cart',
+    name: 'Carrinho',
+    path: '/cart',
+    icon: 'shopping-cart',
+    requiredRoles: ['administrator', 'salesperson'],
+  },
+  {
+    id: 'settings',
+    name: 'Configurações',
+    path: '/settings',
+    icon: 'settings',
+    requiredRoles: ['administrator'],
+    submenus: [
+      {
+        id: 'company-settings',
+        name: 'Dados da Empresa',
+        path: '/settings/company',
+        icon: 'building-2',
+        requiredRoles: ['administrator'],
+      },
+      {
+        id: 'product-management',
+        name: 'Gerenciar Produtos',
+        path: '/settings/products',
+        icon: 'package',
+        requiredRoles: ['administrator'],
+      },
+      {
+        id: 'user-management',
+        name: 'Gerenciar Usuários',
+        path: '/settings/users',
+        icon: 'users',
+        requiredRoles: ['administrator'],
+      },
+      {
+        id: 'user-type-management',
+        name: 'Gerenciar Tipos de Usuário',
+        path: '/settings/user-types',
+        icon: 'shield',
+        requiredRoles: ['administrator'],
+      },
+      {
+        id: 'category-management',
+        name: 'Gerenciar Categorias',
+        path: '/settings/categories',
+        icon: 'tag',
+        requiredRoles: ['administrator'],
+      },
+      {
+        id: 'discount-management',
+        name: 'Gerenciar Descontos',
+        path: '/settings/discounts',
+        icon: 'percent',
+        requiredRoles: ['administrator'],
+      },
+    ],
+  },
+];
+
+// Map of permission codes to menu paths
+const PERMISSION_MENU_MAP: Record<string, string[]> = {
+  'dashboard_access': ['/dashboard'],
+  'products_view': ['/products'],
+  'products_manage': ['/settings/products'],
+  'customers_view': ['/customers'],
+  'customers_manage': ['/customers/new', '/customers/:id/edit'],
+  'orders_view': ['/orders', '/orders/:id'],
+  'orders_manage': ['/orders/:id/edit', '/cart'],
+  'users_view': ['/settings/users'],
+  'users_manage': ['/settings/users'],
+  'user_types_manage': ['/settings/user-types'],
+  'settings_view': ['/settings'],
+  'settings_manage': ['/settings/company'],
+  'categories_manage': ['/settings/categories'],
+  'discounts_manage': ['/settings/discounts']
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [userTypes, setUserTypes] = useState<UserType[]>([]);
-  const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<UserType | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
-  
-  // Para debug
+
   useEffect(() => {
-    console.log('Current auth state:', { user, permissions, isLoading });
-  }, [user, permissions, isLoading]);
-  
-  useEffect(() => {
-    async function checkSession() {
+    // Check if user is logged in from localStorage
+    const storedUser = localStorage.getItem('ferplas_user');
+    if (storedUser) {
       try {
-        setIsLoading(true);
-        const { data, error } = await supabase.auth.getSession();
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
         
-        if (data?.session?.user) {
-          await fetchUser(data.session.user.id);
-        } else {
-          setUser(null);
-          setIsLoading(false);
+        // Fetch fresh permissions if we have a stored user
+        if (parsedUser) {
+          fetchPermissions();
         }
       } catch (err) {
-        console.error("Error checking session:", err);
-        setUser(null);
-        setIsLoading(false);
+        console.error("Error parsing stored user:", err);
+        localStorage.removeItem('ferplas_user');
       }
     }
-    
-    checkSession();
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        await fetchUser(session.user.id);
-      } else {
-        setUser(null);
-        setIsLoading(false);
-      }
-    });
-    
-    return () => {
-      subscription.unsubscribe();
-    };
+    setLoading(false);
   }, []);
-  
-  const fetchUser = async (userId: string) => {
-    setIsLoading(true);
-    setError(null);
+
+  const fetchUserTypePermissions = async (userTypeId: string): Promise<Permission[]> => {
     try {
-      console.log("Fetching user data for ID:", userId);
-      
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
-        
-      if (userError) {
-        console.error("Error fetching user:", userError);
-        throw new Error(userError.message);
-      }
-      
-      if (!userData) {
-        console.error("User not found for ID:", userId);
-        throw new Error('User not found');
-      }
-      
-      console.log("User data retrieved:", userData);
-      
-      const { data: userTypeData, error: userTypeError } = await supabase
-        .from('user_types')
-        .select('*')
-        .eq('id', userData.user_type_id)
-        .single();
-        
-      if (userTypeError) {
-        console.error('Error fetching user type:', userTypeError);
-        throw new Error(userTypeError.message);
-      }
-      
-      if (!userTypeData) {
-        console.error('User type not found for id:', userData.user_type_id);
-        throw new Error('User type not found');
-      }
-      
-      console.log("User type data retrieved:", userTypeData);
-      
-      const fetchedPermissions = await getPermissions(userData.user_type_id);
-      setPermissions(fetchedPermissions);
-      
-      // Convert user type name to a role
-      let userRole = userTypeData.name.toLowerCase();
-      
-      // Ensure role is one of the valid types in our User interface
-      if (!['administrator', 'admin', 'salesperson', 'billing', 'inventory'].includes(userRole)) {
-        console.log(`Role "${userRole}" not recognized, defaulting to "salesperson"`);
-        userRole = 'salesperson';
-      }
-      
-      console.log("User role determined:", userRole);
-      
-      const user: User = {
-        id: userData.id,
-        username: userData.username,
-        name: userData.name,
-        email: userData.email || '',
-        role: userRole as User['role'],
-        permissions: fetchedPermissions,
-        createdAt: new Date(userData.created_at),
-        userTypeId: userData.user_type_id,
-      };
-      
-      console.log("Setting user data:", user);
-      setUser(user);
-      
-    } catch (err: any) {
-      console.error('Error fetching user:', err);
-      setError(err.message || 'Failed to fetch user data');
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const getPermissions = useCallback(async (userTypeId: string): Promise<Permission[]> => {
-    try {
-      console.log("Fetching permissions for user type:", userTypeId);
-      
-      const { data: permissionsData, error: permissionsError } = await supabase
+      // Get permissions associated with this user type using direct queries
+      const { data: permLinks, error: permLinksError } = await supabase
         .from('user_type_permissions')
         .select('permission_id')
         .eq('user_type_id', userTypeId);
         
-      if (permissionsError) {
-        console.error('Error fetching permissions:', permissionsError);
+      if (permLinksError) throw permLinksError;
+      
+      if (!permLinks || permLinks.length === 0) {
         return [];
       }
       
-      if (!permissionsData || permissionsData.length === 0) {
-        console.log("No permissions found for user type:", userTypeId);
-        return [];
-      }
-      
-      const permissionIds = permissionsData.map(p => p.permission_id);
-      console.log("Permission IDs:", permissionIds);
-      
-      const { data: permissions, error: permDetailsError } = await supabase
+      // Get the actual permission details
+      const permissionIds = permLinks.map(p => p.permission_id);
+      const { data: permissions, error: permsError } = await supabase
         .from('permissions')
         .select('*')
         .in('id', permissionIds);
         
-      if (permDetailsError) {
-        console.error('Error fetching permission details:', permDetailsError);
-        return [];
-      }
+      if (permsError) throw permsError;
       
-      console.log("Permissions retrieved:", permissions);
-      
-      return (permissions || []).map(p => ({
+      return permissions.map(p => ({
         id: p.id,
         name: p.name,
         description: p.description || '',
-        code: p.code,
-        isGranted: true
+        isGranted: true,
+        code: p.code
       }));
     } catch (err) {
-      console.error('Error in getPermissions:', err);
+      console.error("Error fetching user type permissions:", err);
       return [];
     }
-  }, []);
+  };
+
+  const fetchPermissions = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      
+      // Get user with user type information using direct query
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*, user_type:user_types(*)')
+        .eq('id', user.id)
+        .single();
+        
+      if (userError) throw userError;
+      
+      if (!userData || !userData.user_type) {
+        throw new Error("User or user type not found");
+      }
+      
+      // Fetch permissions for this user type
+      const permissions = await fetchUserTypePermissions(userData.user_type.id);
+      
+      // Ensure the role is one of the allowed values - normalize to lowercase for case-insensitive comparison
+      let userRole = userData.user_type.name.toLowerCase();
+      
+      // Map 'administrador' (Portuguese) to 'administrator' (English) if needed
+      if (userRole === 'administrador') {
+        userRole = 'administrator';
+      }
+      
+      // Update user in state and localStorage
+      const updatedUser: UserType = {
+        ...user,
+        role: userRole as 'administrator' | 'salesperson' | 'billing' | 'inventory',
+        permissions: permissions,
+      };
+      
+      console.log("Updated user role:", updatedUser.role);
+      console.log("User permissions:", permissions);
+      
+      setUser(updatedUser);
+      localStorage.setItem('ferplas_user', JSON.stringify(updatedUser));
+    } catch (err) {
+      console.error("Error fetching permissions:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUserTypes = async () => {
+    try {
+      // Use direct query to Supabase instead of abstracted hook
+      const { data, error } = await supabase
+        .from('user_types')
+        .select('*')
+        .order('name');
+        
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error("Error fetching user types:", err);
+      return [];
+    }
+  };
 
   const login = async (username: string, password: string) => {
-    setIsLoading(true);
+    setLoading(true);
     setError(null);
     
     try {
-      console.log('Attempting login with username:', username);
-      
-      // Passo 1: Primeiro tente autenticar diretamente da tabela de usuários
-      const { success, user: directUser, error: directError } = await authenticateDirectly(username, password);
-      
-      if (success && directUser) {
-        console.log('Direct authentication successful, user found in database:', directUser.id);
+      // In a real application, this would be an API call with proper authentication
+      const { data, error } = await supabase
+        .from('users')
+        .select('*, user_type:user_types(*)')
+        .eq('username', username)
+        .eq('password', password) // Note: In a real app, use proper password hashing
+        .eq('is_active', true)
+        .single();
         
-        // Passo 2: Tente fazer login com Supabase Auth usando o nome de usuário como email
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: username,
-          password,
-        });
+      if (error || !data) {
+        throw new Error('Credenciais inválidas ou usuário inativo');
+      }
+      
+      if (!data.user_type) {
+        throw new Error('Tipo de usuário não encontrado');
+      }
+      
+      // Make sure we're using the 'administrator' role if needed
+      // This handles the case of users who had the old 'administrador' role
+      let userTypeName = data.user_type.name;
+      if (userTypeName === 'administrador') {
+        userTypeName = 'administrator';
         
-        if (error) {
-          console.log('Supabase Auth login failed with error:', error.message);
-          console.log('User exists in database but not in Auth. Loading user directly');
-          
-          // Passo 3: Se o login falhar, mas o usuário existir no banco de dados, carregue o usuário diretamente
-          const { data: userTypeData, error: userTypeError } = await supabase
+        // Update the user's role in the database to fix the issue
+        try {
+          // Find the administrator user type
+          const { data: adminTypes } = await supabase
             .from('user_types')
             .select('*')
-            .eq('id', directUser.user_type_id)
-            .single();
+            .eq('name', 'administrator')
+            .limit(1);
             
-          if (userTypeError) {
-            console.error('Error fetching user type:', userTypeError);
-            throw new Error('Erro ao buscar tipo de usuário');
+          if (adminTypes && adminTypes.length > 0) {
+            // Update the user's user_type_id to the administrator type
+            await supabase
+              .from('users')
+              .update({ user_type_id: adminTypes[0].id })
+              .eq('id', data.id);
           }
-          
-          const fetchedPermissions = await getPermissions(directUser.user_type_id);
-          
-          // Convert user type name to a role and validate
-          let userRole = userTypeData.name.toLowerCase();
-          
-          // Ensure role is one of the valid types in our User interface
-          if (!['administrator', 'admin', 'salesperson', 'billing', 'inventory'].includes(userRole)) {
-            console.log(`Role "${userRole}" not recognized, defaulting to "salesperson"`);
-            userRole = 'salesperson';
-          }
-          
-          console.log("Direct login user role:", userRole);
-          
-          const userObj: User = {
-            id: directUser.id,
-            username: directUser.username,
-            name: directUser.name,
-            email: directUser.email || '',
-            role: userRole as User['role'],
-            permissions: fetchedPermissions,
-            createdAt: new Date(directUser.created_at),
-            userTypeId: directUser.user_type_id,
-          };
-          
-          setUser(userObj);
-          setPermissions(fetchedPermissions);
-          
-          toast.success('Login realizado com sucesso!');
-          navigate('/dashboard');
-          return;
-        } else {
-          console.log('Login with Supabase Auth successful');
-          toast.success('Login realizado com sucesso!');
-          navigate('/dashboard');
-          return;
+        } catch (updateErr) {
+          console.error("Error updating user role:", updateErr);
+          // Continue with login even if this fails
         }
-      } else {
-        console.error('Direct authentication failed:', directError);
-        setError('Credenciais inválidas. Verifique seu usuário e senha.');
-        toast.error('Erro ao fazer login');
       }
-    } catch (err: any) {
-      console.error('Login error:', err.message);
-      setError(err.message || 'Ocorreu um erro ao fazer login.');
-      toast.error('Ocorreu um erro ao fazer login.');
+      
+      // Fetch permissions for this user
+      const permissions = await fetchUserTypePermissions(data.user_type.id);
+      
+      // Ensure the role is one of the allowed values
+      const userRole = userTypeName as 'administrator' | 'salesperson' | 'billing' | 'inventory';
+      
+      // Create user object
+      const userObj: UserType = {
+        id: data.id,
+        username: data.username,
+        name: data.name,
+        role: userRole,
+        permissions: permissions,
+        email: data.email || '',
+        createdAt: new Date(data.created_at),
+        userTypeId: data.user_type.id
+      };
+      
+      setUser(userObj);
+      localStorage.setItem('ferplas_user', JSON.stringify(userObj));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao fazer login');
+      console.error('Login error:', err);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const logout = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Logout error:', error.message);
-        setError(error.message);
-        toast.error('Erro ao fazer logout.');
-      } else {
-        console.log('Logout successful');
-        toast.success('Logout realizado com sucesso!');
-        navigate('/login');
-      }
-    } catch (err: any) {
-      console.error('Logout error:', err.message);
-      setError(err.message || 'Ocorreu um erro ao fazer logout.');
-      toast.error('Ocorreu um erro ao fazer logout.');
-    } finally {
-      setIsLoading(false);
-      setUser(null);
-    }
+  const logout = () => {
+    localStorage.removeItem('ferplas_user');
+    setUser(null);
   };
-  
-  const hasPermission = (permissionCode: string): boolean => {
-    // Para debug
-    console.log(`Verificando permissão: ${permissionCode}, Usuário: ${user?.role}, Permissões: `, permissions);
+
+  const hasPermission = (permissionCode: string) => {
+    if (!user || !user.permissions) return false;
     
-    if (!user) {
-      console.log('Sem usuário, negando permissão');
-      return false;
-    }
+    // Added more logging to diagnose permission issues
+    console.log(`Checking permission ${permissionCode} for user with role ${user.role}`);
     
-    // Para administradores, sempre retorne true
-    if (user.role === 'administrator' || user.role === 'admin') {
-      console.log('Usuário é administrador, concedendo permissão');
+    // Admin has all permissions - perform case-insensitive comparison
+    if (user.role.toLowerCase() === 'administrator') {
+      console.log("User is administrator - granting all permissions");
       return true;
     }
     
-    // Verifique se a permissão está na lista de permissões do usuário
-    const hasPermission = permissions.some(perm => perm.code === permissionCode && perm.isGranted);
-    console.log(`Permissão ${permissionCode} concedida: ${hasPermission}`);
-    return hasPermission;
+    // For other roles, check if they have the required permission
+    const hasPermAccess = user.permissions.some(p => p.code === permissionCode && p.isGranted);
+    console.log(`Permission ${permissionCode} access:`, hasPermAccess);
+    
+    return hasPermAccess;
   };
 
-  const value: AuthContextType = {
-    user,
-    userTypes,
-    permissions,
-    isLoading,
-    error,
-    login,
-    logout,
-    hasPermission,
+  const checkAccess = (menuPath: string) => {
+    if (!user) return false;
+    
+    // Added more logging to diagnose access control issues
+    console.log(`Checking access to ${menuPath} for user with role ${user.role}`);
+    
+    // Admin has access to everything - perform case-insensitive comparison
+    if (user.role.toLowerCase() === 'administrator') {
+      console.log("User is administrator - granting access to all paths");
+      return true;
+    }
+    
+    // For other roles, check if they have the required permission for this path
+    for (const [permCode, paths] of Object.entries(PERMISSION_MENU_MAP)) {
+      // Check if this permission grants access to the requested path
+      const matchesPath = paths.some(path => {
+        if (path.includes(':')) {
+          // Convert dynamic paths like '/orders/:id' to regex pattern
+          const regexPath = path.replace(/:\w+/g, '[^/]+');
+          const pattern = new RegExp(`^${regexPath}$`);
+          return pattern.test(menuPath);
+        }
+        return path === menuPath;
+      });
+      
+      if (matchesPath && hasPermission(permCode)) {
+        console.log(`Access granted to ${menuPath} via permission ${permCode}`);
+        return true;
+      }
+    }
+    
+    // If no specific permission mapping is found, allow access to unmapped paths
+    // This is a fallback mechanism for paths not explicitly controlled
+    const isPathMapped = Object.values(PERMISSION_MENU_MAP).flat().some(path => {
+      if (path.includes(':')) {
+        const regexPath = path.replace(/:\w+/g, '[^/]+');
+        const pattern = new RegExp(`^${regexPath}$`);
+        return pattern.test(menuPath);
+      }
+      return path === menuPath;
+    });
+    
+    console.log(`Path ${menuPath} is ${isPathMapped ? 'mapped' : 'not mapped'} in permission system`);
+    return !isPathMapped;
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      error, 
+      login, 
+      logout, 
+      hasPermission, 
+      fetchPermissions,
+      fetchUserTypes,
+      checkAccess
+    }}>
       {children}
     </AuthContext.Provider>
   );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };

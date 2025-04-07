@@ -1,472 +1,344 @@
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useOrders } from '@/context/OrderContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { Loader2 } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
-import { cn } from '@/lib/utils';
-import { formatDocument } from '@/utils/formatters';
-import { useTransportCompanies } from '@/context/TransportCompanyContext';
+import { Label } from '@/components/ui/label';
+import { ArrowLeft, Save } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 import { toast } from 'sonner';
-
-// Definição do esquema de validação
-const orderUpdateSchema = z.object({
-  status: z.enum(['pending', 'confirmed', 'invoiced', 'completed', 'canceled']),
-  shipping: z.enum(['delivery', 'pickup']),
-  fullInvoice: z.boolean(),
-  taxSubstitution: z.boolean(),
-  paymentMethod: z.enum(['cash', 'credit']),
-  paymentTerms: z.string().optional(),
-  notes: z.string().optional(),
-  observations: z.string().optional(),
-  deliveryLocation: z.enum(['capital', 'interior']).optional().nullable(),
-  halfInvoicePercentage: z.number().min(0).max(100).optional(),
-  deliveryFee: z.number().min(0).optional(),
-  withIPI: z.boolean(),
-  ipiValue: z.number().min(0).optional(),
-  transportCompanyId: z.string().optional().nullable(),
-});
-
-type OrderUpdateFormValues = z.infer<typeof orderUpdateSchema>;
+import { Skeleton } from '@/components/ui/skeleton';
+import { useOrderData } from '@/hooks/use-order-data';
+import { supabase } from '@/integrations/supabase/client';
+import { User } from '@/types/types';
 
 const OrderUpdate = () => {
   const { id } = useParams<{ id: string }>();
+  const { updateOrder, updateOrderStatus } = useOrders();
   const navigate = useNavigate();
-  const { getOrderById, updateOrder } = useOrders();
-  const { user, hasPermission } = useAuth();
-  const { companies, isLoading: isLoadingCompanies } = useTransportCompanies();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDelivery, setIsDelivery] = useState(true);
-  const [isFullInvoice, setIsFullInvoice] = useState(true);
-  const [isWithIPI, setIsWithIPI] = useState(false);
+  const [status, setStatus] = useState<string>('');
+  const [notes, setNotes] = useState<string>('');
+  const [shipping, setShipping] = useState<string>('delivery');
+  const [paymentMethod, setPaymentMethod] = useState<string>('cash');
+  const [paymentTerms, setPaymentTerms] = useState<string>('');
+  const [salespeople, setSalespeople] = useState<User[]>([]);
+  const [selectedSalespersonId, setSelectedSalespersonId] = useState<string>('none');
+  const [isLoadingSalespeople, setIsLoadingSalespeople] = useState(true);
+  
+  // Use the custom hook to fetch order data directly from Supabase
+  const { order, isLoading, fetchOrderData } = useOrderData(id);
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    reset,
-    formState: { errors }
-  } = useForm<OrderUpdateFormValues>({
-    resolver: zodResolver(orderUpdateSchema),
-    defaultValues: {
-      status: 'pending',
-      shipping: 'delivery',
-      fullInvoice: true,
-      taxSubstitution: false,
-      paymentMethod: 'cash',
-      paymentTerms: '',
-      notes: '',
-      observations: '',
-      deliveryLocation: null,
-      halfInvoicePercentage: 0,
-      deliveryFee: 0,
-      withIPI: false,
-      ipiValue: 0,
-      transportCompanyId: null,
-    }
-  });
-
-  const shipping = watch('shipping');
-  const fullInvoice = watch('fullInvoice');
-  const withIPI = watch('withIPI');
-
+  // Fetch salespeople for the dropdown
   useEffect(() => {
-    setIsDelivery(shipping === 'delivery');
-  }, [shipping]);
-
-  useEffect(() => {
-    setIsFullInvoice(fullInvoice);
-  }, [fullInvoice]);
-
-  useEffect(() => {
-    setIsWithIPI(withIPI);
-  }, [withIPI]);
-
-  useEffect(() => {
-    if (id) {
-      const order = getOrderById(id);
-      if (order) {
-        reset({
-          status: order.status,
-          shipping: order.shipping,
-          fullInvoice: order.fullInvoice,
-          taxSubstitution: order.taxSubstitution,
-          paymentMethod: order.paymentMethod,
-          paymentTerms: order.paymentTerms || '',
-          notes: order.notes || '',
-          observations: order.observations || '',
-          deliveryLocation: order.deliveryLocation,
-          halfInvoicePercentage: order.halfInvoicePercentage || 0,
-          deliveryFee: order.deliveryFee || 0,
-          withIPI: order.withIPI || false,
-          ipiValue: order.ipiValue || 0,
-          transportCompanyId: order.transportCompanyId || null,
-        });
+    const fetchSalespeople = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, name, username, user_type_id');
+          
+        if (error) throw error;
         
-        setIsDelivery(order.shipping === 'delivery');
-        setIsFullInvoice(order.fullInvoice);
-        setIsWithIPI(order.withIPI || false);
+        if (data) {
+          // Map to User type
+          const mappedSalespeople: User[] = data.map(sp => ({
+            id: sp.id,
+            name: sp.name,
+            username: sp.username,
+            role: 'salesperson', // Default role
+            permissions: [],
+            email: '',
+            createdAt: new Date(),
+            userTypeId: sp.user_type_id || ''
+          }));
+          
+          setSalespeople(mappedSalespeople);
+        }
+      } catch (error) {
+        console.error('Error fetching salespeople:', error);
+        toast.error('Erro ao carregar vendedores');
+      } finally {
+        setIsLoadingSalespeople(false);
       }
-    }
-  }, [id, getOrderById, reset]);
+    };
+    
+    fetchSalespeople();
+  }, []);
 
-  const onSubmit = async (data: OrderUpdateFormValues) => {
-    if (!id) return;
-    
-    setIsSubmitting(true);
-    
-    try {
-      await updateOrder(id, {
-        ...data,
-        deliveryLocation: isDelivery ? data.deliveryLocation : null,
-        halfInvoicePercentage: !isFullInvoice ? data.halfInvoicePercentage : undefined,
-        ipiValue: isWithIPI ? data.ipiValue : 0,
-        transportCompanyId: isDelivery ? data.transportCompanyId : null,
-      });
-      
-      toast.success('Pedido atualizado com sucesso!');
-      navigate(`/orders/${id}`);
-    } catch (error) {
-      console.error('Error updating order:', error);
-      toast.error('Erro ao atualizar pedido');
-    } finally {
-      setIsSubmitting(false);
+  useEffect(() => {
+    if (order) {
+      console.log("Setting form values from order:", order);
+      setStatus(order.status || 'pending');
+      setNotes(order.notes || order.observations || '');
+      setShipping(order.shipping || 'delivery');
+      setPaymentMethod(order.paymentMethod || 'cash');
+      setPaymentTerms(order.paymentTerms || '');
+      // Set to 'none' if no salesperson is assigned
+      setSelectedSalespersonId(order.userId || 'none');
     }
+  }, [order]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!order || !id) return;
+
+    const updates: any = {};
+
+    // Update status if it was changed
+    if (status !== order.status) {
+      updateOrderStatus(id, status as any);
+    }
+
+    // Update notes if they were changed
+    if (notes !== order.notes) {
+      updates.notes = notes;
+    }
+
+    // Update shipping if it was changed
+    if (shipping !== order.shipping) {
+      updates.shipping = shipping;
+    }
+
+    // Update payment method if it was changed
+    if (paymentMethod !== order.paymentMethod) {
+      updates.paymentMethod = paymentMethod;
+    }
+
+    // Update payment terms if they were changed
+    if (paymentTerms !== order.paymentTerms) {
+      updates.paymentTerms = paymentTerms;
+    }
+
+    // Update salesperson if it was changed
+    if (selectedSalespersonId !== order.userId) {
+      // If 'none' is selected, set userId to null
+      updates.userId = selectedSalespersonId === 'none' ? null : selectedSalespersonId;
+    }
+
+    // Only call updateOrder if there are changes to make
+    if (Object.keys(updates).length > 0) {
+      updateOrder(id, updates);
+    }
+
+    toast.success('Pedido atualizado com sucesso');
+    navigate(`/orders/${id}`);
   };
 
-  if (!id) {
-    return <div>Pedido não encontrado</div>;
+  if (isLoading || isLoadingSalespeople) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-[600px] w-full" />
+      </div>
+    );
   }
 
-  const order = getOrderById(id);
-  
   if (!order) {
     return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">Pedido não encontrado</h2>
-        <p className="text-gray-600 mb-4">O pedido solicitado não existe ou você não tem permissão para editá-lo.</p>
-        <Button 
-          onClick={() => navigate('/orders')}
-          className="bg-ferplas-500 hover:bg-ferplas-600"
-        >
-          Voltar para a lista de pedidos
+      <div className="flex flex-col items-center justify-center py-12">
+        <h2 className="text-2xl font-bold mb-2">Pedido não encontrado</h2>
+        <p className="text-muted-foreground mb-6">O pedido solicitado não foi encontrado.</p>
+        <Button onClick={() => navigate('/orders')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Voltar para lista de pedidos
         </Button>
       </div>
     );
   }
 
-  if (!hasPermission('orders_manage')) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">Acesso Restrito</h2>
-        <p className="text-gray-600 mb-4">Você não tem permissão para editar pedidos.</p>
-        <Button 
-          onClick={() => navigate(`/orders/${id}`)}
-          className="bg-ferplas-500 hover:bg-ferplas-600"
-        >
-          Voltar para detalhes do pedido
-        </Button>
-      </div>
-    );
-  }
+  // Calculate order number display
+  const orderNumber = order.orderNumber || id?.split('-')[0];
 
   return (
-    <div className="animate-fade-in">
-      <header className="flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0 mb-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Editar Pedido #{order.orderNumber}
-          </h1>
-          <p className="text-muted-foreground">
-            Cliente: {order.customer.companyName} ({formatDocument(order.customer.document)})
-          </p>
-        </div>
-        <div className="flex space-x-2">
-          <Button 
-            variant="outline" 
-            onClick={() => navigate(`/orders/${id}`)}
-          >
-            Cancelar
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={() => navigate('/orders')}>
+            <ArrowLeft className="h-4 w-4" />
           </Button>
-          <Button 
-            onClick={handleSubmit(onSubmit)}
-            disabled={isSubmitting}
-            className="bg-ferplas-500 hover:bg-ferplas-600"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Salvando...
-              </>
-            ) : (
-              'Salvar Alterações'
-            )}
+          <h1 className="text-3xl font-bold">Editar Pedido #{orderNumber}</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link to={`/orders/${id}`}>
+            <Button variant="outline">Cancelar</Button>
+          </Link>
+          <Button onClick={handleSubmit} className="bg-ferplas-500 hover:bg-ferplas-600">
+            <Save className="mr-2 h-4 w-4" />
+            Salvar
           </Button>
         </div>
-      </header>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Informações do Pedido</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  value={watch('status')}
-                  onValueChange={(value) => setValue('status', value as any)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pendente</SelectItem>
-                    <SelectItem value="confirmed">Confirmado</SelectItem>
-                    <SelectItem value="invoiced">Faturado</SelectItem>
-                    <SelectItem value="completed">Concluído</SelectItem>
-                    <SelectItem value="canceled">Cancelado</SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors.status && (
-                  <p className="text-red-500 text-sm mt-1">{errors.status.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="shipping">Tipo de Entrega</Label>
-                <Select
-                  value={watch('shipping')}
-                  onValueChange={(value) => setValue('shipping', value as any)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tipo de entrega" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="delivery">Entrega</SelectItem>
-                    <SelectItem value="pickup">Retirada</SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors.shipping && (
-                  <p className="text-red-500 text-sm mt-1">{errors.shipping.message}</p>
-                )}
-              </div>
-
-              {isDelivery && (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Informações do Pedido</span>
+            <OrderStatusBadge status={status as any} />
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-lg font-medium mb-4">Detalhes</h3>
+              <div className="space-y-4">
                 <div>
-                  <Label htmlFor="deliveryLocation">Local de Entrega</Label>
-                  <Select
-                    value={watch('deliveryLocation') || ''}
-                    onValueChange={(value) => setValue('deliveryLocation', value === '' ? null : value as any)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o local de entrega" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Não especificado</SelectItem>
-                      <SelectItem value="capital">Capital</SelectItem>
-                      <SelectItem value="interior">Interior</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.deliveryLocation && (
-                    <p className="text-red-500 text-sm mt-1">{errors.deliveryLocation.message}</p>
-                  )}
+                  <label className="text-sm font-medium">Cliente</label>
+                  <div className="mt-1 border rounded-md p-3 bg-gray-50">
+                    {order.customer?.companyName || "Cliente não encontrado"}
+                  </div>
                 </div>
-              )}
 
-              {isDelivery && (
                 <div>
-                  <Label htmlFor="transportCompanyId">Transportadora</Label>
-                  <Select
-                    value={watch('transportCompanyId') || ''}
-                    onValueChange={(value) => setValue('transportCompanyId', value === '' ? null : value)}
+                  <label className="text-sm font-medium">Data</label>
+                  <div className="mt-1 border rounded-md p-3 bg-gray-50">
+                    {formatDate(order.createdAt)}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Vendedor</label>
+                  <Select 
+                    value={selectedSalespersonId} 
+                    onValueChange={setSelectedSalespersonId}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma transportadora" />
+                    <SelectTrigger className="w-full mt-1">
+                      <SelectValue placeholder="Selecione um vendedor" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Nenhuma transportadora</SelectItem>
-                      {companies.map(company => (
-                        <SelectItem key={company.id} value={company.id}>
-                          {company.name}
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {salespeople.map((sp) => (
+                        <SelectItem key={sp.id} value={sp.id}>
+                          {sp.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  {errors.transportCompanyId && (
-                    <p className="text-red-500 text-sm mt-1">{errors.transportCompanyId.message}</p>
-                  )}
                 </div>
-              )}
 
-              {isDelivery && (
                 <div>
-                  <Label htmlFor="deliveryFee">Taxa de Entrega (R$)</Label>
-                  <Input
-                    id="deliveryFee"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    {...register("deliveryFee", { valueAsNumber: true })}
-                  />
-                  {errors.deliveryFee && (
-                    <p className="text-red-500 text-sm mt-1">{errors.deliveryFee.message}</p>
-                  )}
+                  <label className="text-sm font-medium">Status</label>
+                  <Select value={status} onValueChange={setStatus}>
+                    <SelectTrigger className="w-full mt-1">
+                      <SelectValue placeholder="Selecione um status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pendente</SelectItem>
+                      <SelectItem value="confirmed">Confirmado</SelectItem>
+                      <SelectItem value="invoiced">Faturado</SelectItem>
+                      <SelectItem value="completed">Concluído</SelectItem>
+                      <SelectItem value="canceled">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Pagamento e Faturamento</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="paymentMethod">Forma de Pagamento</Label>
-                <Select
-                  value={watch('paymentMethod')}
-                  onValueChange={(value) => setValue('paymentMethod', value as any)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a forma de pagamento" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">À vista</SelectItem>
-                    <SelectItem value="credit">A prazo</SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors.paymentMethod && (
-                  <p className="text-red-500 text-sm mt-1">{errors.paymentMethod.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="paymentTerms">Condições de Pagamento</Label>
-                <Input
-                  id="paymentTerms"
-                  placeholder="Ex: 30/60/90 dias"
-                  {...register("paymentTerms")}
-                />
-                {errors.paymentTerms && (
-                  <p className="text-red-500 text-sm mt-1">{errors.paymentTerms.message}</p>
-                )}
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="fullInvoice"
-                  checked={watch('fullInvoice')}
-                  onCheckedChange={(checked) => setValue('fullInvoice', checked)}
-                />
-                <Label htmlFor="fullInvoice">Nota fiscal completa</Label>
-              </div>
-
-              {!isFullInvoice && (
                 <div>
-                  <Label htmlFor="halfInvoicePercentage">Percentual da Nota (%)</Label>
-                  <Input
-                    id="halfInvoicePercentage"
-                    type="number"
-                    min="0"
-                    max="100"
-                    {...register("halfInvoicePercentage", { valueAsNumber: true })}
-                  />
-                  {errors.halfInvoicePercentage && (
-                    <p className="text-red-500 text-sm mt-1">{errors.halfInvoicePercentage.message}</p>
-                  )}
+                  <label className="text-sm font-medium">Forma de Entrega</label>
+                  <Select value={shipping} onValueChange={setShipping}>
+                    <SelectTrigger className="w-full mt-1">
+                      <SelectValue placeholder="Selecione a forma de entrega" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="delivery">Entrega</SelectItem>
+                      <SelectItem value="pickup">Retirada</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
 
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="taxSubstitution"
-                  checked={watch('taxSubstitution')}
-                  onCheckedChange={(checked) => setValue('taxSubstitution', checked)}
-                />
-                <Label htmlFor="taxSubstitution">Substituição tributária</Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="withIPI"
-                  checked={watch('withIPI')}
-                  onCheckedChange={(checked) => setValue('withIPI', checked)}
-                />
-                <Label htmlFor="withIPI">Com IPI</Label>
-              </div>
-
-              {isWithIPI && (
                 <div>
-                  <Label htmlFor="ipiValue">Valor do IPI (R$)</Label>
-                  <Input
-                    id="ipiValue"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    {...register("ipiValue", { valueAsNumber: true })}
-                  />
-                  {errors.ipiValue && (
-                    <p className="text-red-500 text-sm mt-1">{errors.ipiValue.message}</p>
-                  )}
+                  <label className="text-sm font-medium">Forma de Pagamento</label>
+                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <SelectTrigger className="w-full mt-1">
+                      <SelectValue placeholder="Selecione a forma de pagamento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">À Vista</SelectItem>
+                      <SelectItem value="credit">A Prazo</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Observações</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="observations">Observações do Pedido (visíveis para o cliente)</Label>
-                <Textarea
-                  id="observations"
-                  placeholder="Adicione observações sobre o pedido aqui..."
-                  className="min-h-[100px]"
-                  {...register("observations")}
-                />
-                {errors.observations && (
-                  <p className="text-red-500 text-sm mt-1">{errors.observations.message}</p>
+                {paymentMethod === 'credit' && (
+                  <div>
+                    <label className="text-sm font-medium">Condições de Pagamento</label>
+                    <Input
+                      className="mt-1"
+                      placeholder="Ex: 30/60/90 dias"
+                      value={paymentTerms}
+                      onChange={(e) => setPaymentTerms(e.target.value)}
+                    />
+                  </div>
                 )}
-              </div>
 
-              <div>
-                <Label htmlFor="notes">Notas Internas (visíveis apenas para a empresa)</Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Adicione notas internas aqui..."
-                  className="min-h-[100px]"
-                  {...register("notes")}
-                />
-                {errors.notes && (
-                  <p className="text-red-500 text-sm mt-1">{errors.notes.message}</p>
-                )}
+                <div>
+                  <label className="text-sm font-medium">Observações</label>
+                  <Textarea 
+                    className="mt-1" 
+                    placeholder="Observações sobre o pedido"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={4}
+                  />
+                </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+
+            <div>
+              <h3 className="text-lg font-medium mb-4">Resumo do Pedido</h3>
+              <div className="border rounded-md overflow-hidden">
+                <div className="bg-gray-50 p-4">
+                  <h4 className="font-medium">Itens</h4>
+                </div>
+                <div className="p-4 space-y-3">
+                  {order.items && order.items.map((item: any) => (
+                    <div key={item.id} className="flex justify-between">
+                      <div>
+                        <div className="font-medium">
+                          {item.product?.name || "Produto não encontrado"}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {item.quantity} x {formatCurrency(item.finalPrice)}
+                        </div>
+                      </div>
+                      <div className="font-medium">{formatCurrency(item.subtotal)}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t p-4">
+                  <div className="flex justify-between mb-2">
+                    <span className="text-sm text-gray-700">Subtotal</span>
+                    <span>{formatCurrency(order.subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between mb-2">
+                    <span className="text-sm text-gray-700">Desconto total</span>
+                    <span>- {formatCurrency(order.totalDiscount)}</span>
+                  </div>
+                  {order.deliveryFee > 0 && (
+                    <div className="flex justify-between mb-2">
+                      <span className="text-sm text-gray-700">Taxa de entrega</span>
+                      <span>{formatCurrency(order.deliveryFee)}</span>
+                    </div>
+                  )}
+                  {order.taxSubstitution && (
+                    <div className="flex justify-between mb-2">
+                      <span className="text-sm text-gray-700">Substituição Tributária</span>
+                      <span>+ {formatCurrency((7.8 / 100) * order.subtotal)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-bold mt-4 pt-4 border-t">
+                    <span>Total</span>
+                    <span>{formatCurrency(order.total)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

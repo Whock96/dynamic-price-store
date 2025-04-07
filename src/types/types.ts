@@ -2,7 +2,7 @@ export interface User {
   id: string;
   username: string;
   name: string;
-  role: 'administrator' | 'admin' | 'salesperson' | 'billing' | 'inventory';
+  role: 'administrator' | 'salesperson' | 'billing' | 'inventory';
   permissions: Permission[];
   email: string;
   createdAt: Date;
@@ -84,19 +84,6 @@ export interface Customer {
   createdAt: Date;
   updatedAt: Date;
   registerDate: Date;
-  transportCompanyId?: string; // Field for transport company
-  observations?: string; // Optional field for observations
-}
-
-export interface TransportCompany {
-  id: string;
-  name: string;
-  document: string;
-  phone?: string;
-  email?: string;
-  whatsapp?: string;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface CartItem {
@@ -152,7 +139,6 @@ export interface Order {
   deliveryFee?: number;
   withIPI?: boolean; // IPI flag
   ipiValue?: number; // IPI value
-  transportCompanyId?: string; // New field for transport company
 }
 
 export interface MenuItem {

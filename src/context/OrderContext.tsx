@@ -8,18 +8,16 @@ import { supabase, Tables } from '@/integrations/supabase/client';
 import { supabaseOrderToAppOrder } from '@/utils/adapters';
 
 type SupabaseOrder = Tables<'orders'>;
-type OrderStatus = Order['status'];
 
 interface OrderContextType {
   orders: Order[];
   addOrder: (newOrder: Partial<Order>) => Promise<string | undefined>;
-  updateOrderStatus: (orderId: string, status: OrderStatus) => void;
+  updateOrderStatus: (orderId: string, status: Order['status']) => void;
   updateOrder: (orderId: string, orderData: Partial<Order>) => void;
   getOrderById: (id: string) => Order | undefined;
   clearAllOrders: () => void;
   deleteOrder: (orderId: string) => void;
   isLoading: boolean;
-  isFinalStatus: (status: OrderStatus) => boolean;
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
@@ -37,10 +35,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     console.log("OrderContext - É vendedor específico:", isSalespersonType);
     fetchOrders();
   }, [user, isSalespersonType]);
-  
-  const isFinalStatus = (status: OrderStatus): boolean => {
-    return status === 'completed' || status === 'canceled';
-  };
   
   const fetchOrders = async () => {
     setIsLoading(true);
@@ -341,7 +335,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
+  const updateOrderStatus = async (orderId: string, status: Order['status']) => {
     try {
       console.log(`Updating order ${orderId} status to ${status}`);
       
@@ -485,8 +479,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       getOrderById, 
       clearAllOrders,
       deleteOrder,
-      isLoading,
-      isFinalStatus
+      isLoading
     }}>
       {children}
     </OrderContext.Provider>

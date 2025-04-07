@@ -1,68 +1,89 @@
 
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
-const PageContainer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, isLoading } = useAuth();
+interface PageContainerProps {
+  children: React.ReactNode;
+  requireAuth?: boolean;
+}
+
+const PageContainer: React.FC<PageContainerProps> = ({ 
+  children, 
+  requireAuth = true 
+}) => {
+  const { user, loading, checkAccess } = useAuth();
   const navigate = useNavigate();
-  const [isExpanded, setIsExpanded] = useState(true);
-
-  // Para debug
-  useEffect(() => {
-    console.log('Current user in PageContainer:', user);
-  }, [user]);
+  const location = useLocation();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Se o usuário não estiver autenticado e não estivermos carregando, redirecione para o login
-    if (!user && !isLoading) {
-      console.log('Usuário não autenticado, redirecionando para /login');
-      navigate('/login');
-    }
-    
-    // Definir o estado inicial da barra lateral com base no tamanho da tela
+    // Set initial expanded state based on screen size
     const handleResize = () => {
-      if (window.innerWidth < 768) {
-        setIsExpanded(false);
-      } else {
-        setIsExpanded(true);
-      }
+      setIsExpanded(window.innerWidth >= 1024);
     };
-    
-    // Chamar uma vez na montagem
-    handleResize();
-    
-    // Adicionar listener de evento
-    window.addEventListener('resize', handleResize);
-    
-    // Limpar
-    return () => window.removeEventListener('resize', handleResize);
-  }, [user, navigate, isLoading]);
 
-  if (isLoading) {
+    // Call once on mount
+    handleResize();
+    setMounted(true);
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      // If authentication is required and user is not logged in, redirect to login
+      if (requireAuth && !user) {
+        navigate('/login');
+        return;
+      }
+
+      // If user is logged in but doesn't have permission to access this page
+      if (user && requireAuth && !checkAccess(location.pathname)) {
+        // Redirect to dashboard or show access denied
+        toast.error('Você não tem permissão para acessar esta página');
+        navigate('/dashboard');
+      }
+    }
+  }, [user, loading, navigate, requireAuth, location.pathname, checkAccess]);
+
+  if (loading || !mounted) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-ferplas-500"></div>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-white to-gray-100">
+        <div className="flex flex-col items-center justify-center">
+          <div className="w-16 h-16 border-4 border-ferplas-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="mt-4 text-lg text-gray-600">Carregando...</p>
+        </div>
       </div>
     );
   }
 
-  if (!user) {
-    console.log('PageContainer: sem usuário, retornando null');
-    return null;
+  if (requireAuth && !user) {
+    return null; // Will redirect due to useEffect
   }
 
-  console.log('PageContainer: renderizando com sidebar');
-  console.log('Papel do usuário:', user.role);
-
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <Sidebar isExpanded={isExpanded} setIsExpanded={setIsExpanded} />
-      <div className={`flex-1 flex flex-col ${isExpanded ? 'md:ml-64' : 'md:ml-16'} transition-all duration-300`}>
-        <Navbar />
-        <main className="flex-1 p-4 md:p-6 overflow-y-auto">
+    <div className="flex flex-col min-h-screen bg-gray-50">
+      {user && <Navbar />}
+      
+      <div className="flex flex-1">
+        {user && <Sidebar isExpanded={isExpanded} setIsExpanded={setIsExpanded} />}
+        
+        <main 
+          className={cn(
+            "flex-1 transition-all duration-300 ease-in-out pt-6 px-4 sm:px-6 lg:px-8 pb-12",
+            user ? "ml-16 lg:ml-16" : "",
+            isExpanded && "lg:ml-64"
+          )}
+        >
           {children}
         </main>
       </div>

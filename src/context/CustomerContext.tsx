@@ -2,34 +2,11 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { Customer } from '@/types/types';
 import { useSupabaseData } from '@/hooks/use-supabase-data';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, Tables } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 // Define the type that maps to the Supabase table structure
-type SupabaseCustomer = {
-  id: string;
-  company_name: string;
-  document: string;
-  sales_person_id: string;
-  street: string;
-  number?: string;
-  no_number: boolean;
-  complement?: string;
-  neighborhood?: string;
-  city: string;
-  state: string;
-  zip_code: string;
-  phone?: string;
-  email?: string;
-  whatsapp?: string;
-  state_registration?: string;
-  default_discount: number;
-  max_discount: number;
-  created_at: string;
-  updated_at: string;
-  register_date: string;
-  transport_company_id?: string;
-};
+type SupabaseCustomer = Tables<'customers'>;
 
 interface CustomerContextType {
   customers: Customer[];
@@ -44,7 +21,7 @@ interface CustomerContextType {
 
 const CustomerContext = createContext<CustomerContextType | undefined>(undefined);
 
-// Function to convert Supabase format to our frontend model
+// Função para converter o formato Supabase para nosso modelo frontend
 const supabaseToCustomer = (supabaseCustomer: SupabaseCustomer): Customer => ({
   id: supabaseCustomer.id,
   companyName: supabaseCustomer.company_name,
@@ -67,10 +44,9 @@ const supabaseToCustomer = (supabaseCustomer: SupabaseCustomer): Customer => ({
   createdAt: new Date(supabaseCustomer.created_at),
   updatedAt: new Date(supabaseCustomer.updated_at),
   registerDate: new Date(supabaseCustomer.register_date),
-  transportCompanyId: supabaseCustomer.transport_company_id,
 });
 
-// Function to convert our frontend model to Supabase format
+// Função para converter nosso modelo frontend para o formato Supabase
 const customerToSupabase = (customer: Partial<Customer>): Partial<SupabaseCustomer> => {
   const result: Partial<SupabaseCustomer> = {};
   
@@ -93,13 +69,14 @@ const customerToSupabase = (customer: Partial<Customer>): Partial<SupabaseCustom
   if ('maxDiscount' in customer) result.max_discount = customer.maxDiscount;
   if ('registerDate' in customer) result.register_date = customer.registerDate instanceof Date 
     ? customer.registerDate.toISOString().split('T')[0] 
-    : customer.registerDate as any;
-  if ('transportCompanyId' in customer) result.transport_company_id = customer.transportCompanyId;
+    : customer.registerDate;
   
   return result;
 };
 
 export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Removemos a lógica de verificação de localStorage vs Supabase
+  // Agora sempre usamos Supabase
   const [localCustomers, setLocalCustomers] = useState<Customer[]>([]);
 
   // Use our custom hook for Supabase data
@@ -117,7 +94,7 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Convert Supabase customers to our frontend model
   const customers = React.useMemo(() => {
-    return (supabaseCustomers as SupabaseCustomer[]).map(supabaseToCustomer);
+    return supabaseCustomers.map(supabaseToCustomer);
   }, [supabaseCustomers]);
 
   const refreshCustomers = useCallback(async () => {
@@ -155,7 +132,7 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (createdCustomer) {
         console.log('Created customer record:', createdCustomer);
         await refreshCustomers();
-        return supabaseToCustomer(createdCustomer as SupabaseCustomer);
+        return supabaseToCustomer(createdCustomer);
       }
       return null;
     } catch (error) {
@@ -192,7 +169,7 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (updatedCustomer) {
         console.log('Updated customer record:', updatedCustomer);
         await refreshCustomers();
-        return supabaseToCustomer(updatedCustomer as SupabaseCustomer);
+        return supabaseToCustomer(updatedCustomer);
       }
       return null;
     } catch (error) {

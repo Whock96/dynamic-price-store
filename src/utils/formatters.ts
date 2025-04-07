@@ -71,15 +71,3 @@ export const formatDocument = (document: string | null | undefined) => {
   // Return original if it doesn't match expected patterns
   return document;
 };
-
-/**
- * Alias for formatPhoneNumber for backward compatibility
- */
-export const formatPhone = formatPhoneNumber;
-
-/**
- * Checks if a given status is a final status (completed or canceled)
- */
-export const isFinalOrderStatus = (status: string): boolean => {
-  return status === 'completed' || status === 'canceled';
-};
