@@ -6,10 +6,7 @@ import { supabase, Tables } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 // Define the type that maps to the Supabase table structure
-type SupabaseCustomer = Tables<'customers'> & {
-  whatsapp?: string;
-  register_date?: string;
-};
+type SupabaseCustomer = Tables<'customers'>;
 
 interface CustomerContextType {
   customers: Customer[];
@@ -38,13 +35,11 @@ const supabaseToCustomer = (supabaseCustomer: SupabaseCustomer): Customer => ({
   state: supabaseCustomer.state,
   zipCode: supabaseCustomer.zip_code,
   phone: supabaseCustomer.phone || '',
-  whatsApp: supabaseCustomer.whatsapp || '',
   email: supabaseCustomer.email || '',
   defaultDiscount: Number(supabaseCustomer.default_discount),
   maxDiscount: Number(supabaseCustomer.max_discount),
   createdAt: new Date(supabaseCustomer.created_at),
   updatedAt: new Date(supabaseCustomer.updated_at),
-  registerDate: supabaseCustomer.register_date ? new Date(supabaseCustomer.register_date) : undefined
 });
 
 // Função para converter nosso modelo frontend para o formato Supabase
@@ -62,12 +57,9 @@ const customerToSupabase = (customer: Partial<Customer>): Partial<SupabaseCustom
   if ('state' in customer) result.state = customer.state;
   if ('zipCode' in customer) result.zip_code = customer.zipCode;
   if ('phone' in customer) result.phone = customer.phone;
-  if ('whatsApp' in customer) result.whatsapp = customer.whatsApp;
   if ('email' in customer) result.email = customer.email;
   if ('defaultDiscount' in customer) result.default_discount = customer.defaultDiscount;
   if ('maxDiscount' in customer) result.max_discount = customer.maxDiscount;
-  if ('registerDate' in customer && customer.registerDate) 
-    result.register_date = customer.registerDate.toISOString();
   
   return result;
 };
@@ -122,12 +114,6 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         console.warn('No salesPersonId provided for customer!');
       }
       
-      // Set the register_date if provided
-      if (customerData.registerDate) {
-        console.log('Setting register_date to:', customerData.registerDate);
-        supabaseData.register_date = customerData.registerDate.toISOString();
-      }
-      
       console.log('Final Supabase data for insert:', supabaseData);
       
       const createdCustomer = await createRecord(supabaseData as any);
@@ -159,12 +145,6 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       } else if ('salesPersonId' in customerData) {
         console.warn('salesPersonId is explicitly set to null or empty string');
         supabaseData.sales_person_id = null; // Ensure it's explicitly set to null if that's what was provided
-      }
-      
-      // Update register_date if provided
-      if (customerData.registerDate) {
-        console.log('Setting register_date to:', customerData.registerDate);
-        supabaseData.register_date = customerData.registerDate.toISOString();
       }
       
       console.log('Final Supabase data for update:', supabaseData);
