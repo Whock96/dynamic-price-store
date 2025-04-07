@@ -113,6 +113,12 @@ const OrderDetail = () => {
     );
   };
 
+  const shouldShowStatusManagement = () => {
+    const nonFinalStatuses = ['pending', 'confirmed', 'invoiced'] as const;
+    return hasPermission('orders_manage') && 
+           !['completed', 'canceled'].includes(order.status);
+  };
+
   return (
     <div className="animate-fade-in">
       {isPrintMode ? (
@@ -278,7 +284,7 @@ const OrderDetail = () => {
                 </div>
                 <Separator className="my-4" />
                 
-                {hasPermission('orders_manage') && order.status !== 'completed' && order.status !== 'canceled' && (
+                {shouldShowStatusManagement() && (
                   <div className="mt-4">
                     <h3 className="font-semibold text-lg mb-2">Gerenciar Status</h3>
                     <div className="flex flex-wrap gap-2">
