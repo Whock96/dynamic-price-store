@@ -32,14 +32,9 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      const result = await login(username, password);
-      
-      if (result.success) {
-        toast.success('Login realizado com sucesso!');
-        navigate('/dashboard');
-      } else {
-        toast.error(result.message || 'Erro ao realizar login');
-      }
+      await login(username, password);
+      toast.success('Login realizado com sucesso!');
+      navigate('/dashboard');
     } catch (error) {
       console.error('Login error:', error);
       toast.error('Erro ao realizar login');
