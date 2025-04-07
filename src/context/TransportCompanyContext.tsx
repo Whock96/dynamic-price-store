@@ -2,11 +2,8 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { TransportCompany } from '@/types/types';
 import { useSupabaseData } from '@/hooks/use-supabase-data';
-import { Tables } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-
-// Define the type that maps to the Supabase table structure
-type SupabaseTransportCompany = Tables<'transport_companies'>;
+import { supabase } from '@/integrations/supabase/client';
 
 interface TransportCompanyContextType {
   transportCompanies: TransportCompany[];
@@ -21,8 +18,20 @@ interface TransportCompanyContextType {
 
 const TransportCompanyContext = createContext<TransportCompanyContextType | undefined>(undefined);
 
+// Define the type that maps to the Supabase table structure
+type TransportCompanyDB = {
+  id: string;
+  name: string;
+  document: string;
+  email: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 // Function to convert the Supabase format to our frontend model
-const supabaseToTransportCompany = (supabaseTransportCompany: SupabaseTransportCompany): TransportCompany => ({
+const supabaseToTransportCompany = (supabaseTransportCompany: TransportCompanyDB): TransportCompany => ({
   id: supabaseTransportCompany.id,
   name: supabaseTransportCompany.name,
   document: supabaseTransportCompany.document,
@@ -34,8 +43,8 @@ const supabaseToTransportCompany = (supabaseTransportCompany: SupabaseTransportC
 });
 
 // Function to convert our frontend model to the Supabase format
-const transportCompanyToSupabase = (transportCompany: Partial<TransportCompany>): Partial<SupabaseTransportCompany> => {
-  const result: Partial<SupabaseTransportCompany> = {};
+const transportCompanyToSupabase = (transportCompany: Partial<TransportCompany>): Partial<TransportCompanyDB> => {
+  const result: Partial<TransportCompanyDB> = {};
   
   if ('name' in transportCompany) result.name = transportCompany.name;
   if ('document' in transportCompany) result.document = transportCompany.document;
@@ -58,7 +67,7 @@ export const TransportCompanyProvider: React.FC<{ children: React.ReactNode }> =
     deleteRecord,
     getRecordById: getSupabaseTransportCompanyById,
     fetchData: fetchSupabaseData
-  } = useSupabaseData<SupabaseTransportCompany>('transport_companies', {
+  } = useSupabaseData<TransportCompanyDB>('transport_companies' as any, {
     orderBy: { column: 'name', ascending: true }
   });
 
@@ -93,7 +102,7 @@ export const TransportCompanyProvider: React.FC<{ children: React.ReactNode }> =
       if (createdTransportCompany) {
         console.log('Created transport company record:', createdTransportCompany);
         await refreshTransportCompanies();
-        return supabaseToTransportCompany(createdTransportCompany);
+        return supabaseToTransportCompany(createdTransportCompany as TransportCompanyDB);
       }
       return null;
     } catch (error) {
@@ -117,7 +126,7 @@ export const TransportCompanyProvider: React.FC<{ children: React.ReactNode }> =
       if (updatedTransportCompany) {
         console.log('Updated transport company record:', updatedTransportCompany);
         await refreshTransportCompanies();
-        return supabaseToTransportCompany(updatedTransportCompany);
+        return supabaseToTransportCompany(updatedTransportCompany as TransportCompanyDB);
       }
       return null;
     } catch (error) {
