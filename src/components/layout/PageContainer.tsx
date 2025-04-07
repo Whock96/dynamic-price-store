@@ -15,6 +15,24 @@ const PageContainer: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     if (!user && !isLoading) {
       navigate('/login');
     }
+    
+    // Set sidebar initial state based on screen size
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setIsExpanded(false);
+      } else {
+        setIsExpanded(true);
+      }
+    };
+    
+    // Call once on mount
+    handleResize();
+    
+    // Add event listener
+    window.addEventListener('resize', handleResize);
+    
+    // Clean up
+    return () => window.removeEventListener('resize', handleResize);
   }, [user, navigate, isLoading]);
 
   if (isLoading) {
@@ -30,7 +48,7 @@ const PageContainer: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   return (
     <div className="flex min-h-screen bg-gray-100">
       <Sidebar isExpanded={isExpanded} setIsExpanded={setIsExpanded} />
-      <div className="flex-1 flex flex-col">
+      <div className={`flex-1 flex flex-col ${isExpanded ? 'md:ml-64' : 'md:ml-16'} transition-all duration-300`}>
         <Navbar />
         <main className="flex-1 p-4 md:p-6 overflow-y-auto">
           {children}

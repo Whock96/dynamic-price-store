@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -185,10 +184,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
     return location.pathname === path;
   };
 
+  // Remove hasPermission from sidebar component and use a more reliable check
   const hasAccessToMenu = (menuItem: typeof MENU_ITEMS[0]) => {
     if (!user) return false;
-
-    // Check if user's role is in the required roles for this menu
+    
+    // If user is administrator, allow access to all items
+    if (user.role === 'administrator') return true;
+    
+    // Otherwise check if user's role is in the required roles
     return menuItem.requiredRoles.includes(user.role) || hasPermission(menuItem.path);
   };
 

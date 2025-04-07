@@ -90,6 +90,8 @@ export const syncUserWithAuth = async (username: string, password: string) => {
  */
 export const authenticateDirectly = async (username: string, password: string) => {
   try {
+    console.log('Authenticating directly with username:', username);
+    
     // Find the user in the custom users table
     const { data: userData, error: userError } = await supabase
       .from('users')
@@ -98,10 +100,17 @@ export const authenticateDirectly = async (username: string, password: string) =
       .eq('password', password)
       .single();
       
-    if (userError || !userData) {
+    if (userError) {
+      console.error('Error in direct authentication:', userError);
       return { success: false, error: 'Credenciais inválidas' };
     }
     
+    if (!userData) {
+      console.log('No user found with these credentials');
+      return { success: false, error: 'Credenciais inválidas' };
+    }
+    
+    console.log('Direct authentication successful, user found:', userData.id);
     return { success: true, user: userData };
   } catch (error: any) {
     console.error('Error authenticating directly:', error);

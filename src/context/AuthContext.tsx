@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -73,6 +74,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     setError(null);
     try {
+      console.log("Fetching user data for ID:", userId);
+      
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
@@ -80,12 +83,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
         
       if (userError) {
+        console.error("Error fetching user:", userError);
         throw new Error(userError.message);
       }
       
       if (!userData) {
+        console.error("User not found for ID:", userId);
         throw new Error('User not found');
       }
+      
+      console.log("User data retrieved:", userData);
       
       const { data: userTypeData, error: userTypeError } = await supabase
         .from('user_types')
@@ -103,6 +110,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('User type not found');
       }
       
+      console.log("User type data retrieved:", userTypeData);
+      
       const fetchedPermissions = await getPermissions(userData.user_type_id);
       setPermissions(fetchedPermissions);
       
@@ -117,6 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userTypeId: userData.user_type_id,
       };
       
+      console.log("Setting user data:", user);
       setUser(user);
       
     } catch (err: any) {
@@ -176,48 +186,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Attempting login with username:', username);
       
+      // Step 1: First try to authenticate directly from users table
       const { success, user: directUser, error: directError } = await authenticateDirectly(username, password);
       
       if (success && directUser) {
-        console.log('Direct authentication successful, now logging in with Supabase Auth');
+        console.log('Direct authentication successful, user found in database:', directUser.id);
         
+        // Step 2: Try to login with Supabase Auth using the username as email
         const { data, error } = await supabase.auth.signInWithPassword({
           email: username,
           password,
         });
         
         if (error) {
-          console.log('Supabase Auth failed, attempting to register user in Auth system');
+          console.log('Supabase Auth login failed with error:', error.message);
+          console.log('User exists in database but not in Auth. Loading user directly');
           
-          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-            email: username,
-            password,
-          });
-          
-          if (signUpError) {
-            console.error('Failed to create Auth account:', signUpError);
-            
-            await fetchUser(directUser.id);
-            toast.success('Login realizado com sucesso!');
-            navigate('/dashboard');
-          } else {
-            const { error: retryError } = await supabase.auth.signInWithPassword({
-              email: username,
-              password,
-            });
-            
-            if (retryError) {
-              console.error('Login failed after registration:', retryError);
-              await fetchUser(directUser.id);
-            }
-            
-            toast.success('Login realizado com sucesso!');
-            navigate('/dashboard');
-          }
+          // Step 3: If login fails, but user exists in database, load user directly
+          await fetchUser(directUser.id);
+          toast.success('Login realizado com sucesso!');
+          navigate('/dashboard');
+          return;
         } else {
           console.log('Login with Supabase Auth successful');
           toast.success('Login realizado com sucesso!');
           navigate('/dashboard');
+          return;
         }
       } else {
         console.error('Direct authentication failed:', directError);
