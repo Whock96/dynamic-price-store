@@ -10,12 +10,6 @@ interface StatsProps {
   customerCount: number | React.ReactNode;
   orderCount: number | React.ReactNode;
   productCount: number | React.ReactNode;
-  monthlyChange: {
-    sales: string;
-    customers: string;
-    orders: string;
-    products: string;
-  };
   formatCurrency: (value: number) => string;
 }
 
@@ -25,33 +19,28 @@ const DashboardStats: React.FC<StatsProps> = ({
   customerCount,
   orderCount,
   productCount,
-  monthlyChange,
   formatCurrency
 }) => {
   const stats = [
     { 
       title: 'Total de Vendas', 
       value: isLoading ? <Skeleton className="h-8 w-28" /> : typeof totalSales === 'number' ? formatCurrency(totalSales) : totalSales, 
-      icon: <DollarSign className="h-5 w-5 text-ferplas-500" />, 
-      change: monthlyChange.sales
+      icon: <DollarSign className="h-5 w-5 text-ferplas-500" />
     },
     { 
       title: 'Clientes', 
       value: isLoading ? <Skeleton className="h-8 w-16" /> : customerCount, 
-      icon: <Users className="h-5 w-5 text-ferplas-500" />, 
-      change: monthlyChange.customers
+      icon: <Users className="h-5 w-5 text-ferplas-500" />
     },
     { 
       title: 'Pedidos', 
       value: isLoading ? <Skeleton className="h-8 w-16" /> : orderCount, 
-      icon: <ShoppingCart className="h-5 w-5 text-ferplas-500" />, 
-      change: monthlyChange.orders
+      icon: <ShoppingCart className="h-5 w-5 text-ferplas-500" />
     },
     { 
       title: 'Produtos', 
       value: isLoading ? <Skeleton className="h-8 w-16" /> : productCount, 
-      icon: <Package className="h-5 w-5 text-ferplas-500" />, 
-      change: monthlyChange.products
+      icon: <Package className="h-5 w-5 text-ferplas-500" />
     },
   ];
 
@@ -65,11 +54,6 @@ const DashboardStats: React.FC<StatsProps> = ({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stat.value}</div>
-            <p className="text-xs text-muted-foreground">
-              <span className={stat.change.startsWith('+') ? 'text-green-500' : 'text-red-500'}>
-                {stat.change}
-              </span>
-            </p>
           </CardContent>
         </Card>
       ))}

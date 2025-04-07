@@ -524,9 +524,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         customer,
         customerId: customer.id,
         items,
-        appliedDiscounts: selectedDiscountOptions.map(id => 
-          discountOptions.find(opt => opt.id === id)
-        ) as DiscountOption[],
+        appliedDiscounts: selectedDiscountOptions.map(id => {
+          const option = discountOptions.find(opt => opt.id === id);
+          return option || null;
+        }).filter(Boolean) as DiscountOption[],
         deliveryLocation,
         deliveryFee,
         halfInvoicePercentage: isDiscountOptionSelected('2') ? halfInvoicePercentage : undefined,
@@ -547,13 +548,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userId: user?.id
       };
       
-      console.log('Sending order:', orderData);
+      console.log('Sending order with data:', orderData);
       
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const orderId = await addOrder(orderData);
       
-      console.log(`Sending order email to ${customer.email} and vendas@ferplas.ind.br`);
-      
-      await addOrder(orderData);
+      if (!orderId) {
+        throw new Error('Erro ao criar pedido: Nenhum ID de pedido retornado');
+      }
       
       toast.success('Pedido enviado com sucesso!');
       clearCart();

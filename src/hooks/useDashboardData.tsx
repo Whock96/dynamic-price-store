@@ -9,12 +9,6 @@ type DashboardData = {
   orderCount: number;
   productCount: number;
   recentOrders: any[];
-  monthlyChange: {
-    sales: string;
-    customers: string;
-    orders: string;
-    products: string;
-  };
 };
 
 export const useDashboardData = () => {
@@ -26,13 +20,7 @@ export const useDashboardData = () => {
     customerCount: 0,
     orderCount: 0,
     productCount: 0,
-    recentOrders: [],
-    monthlyChange: {
-      sales: '+12.5%',
-      customers: '+5.2%',
-      orders: '+8.1%',
-      products: '+3.2%',
-    }
+    recentOrders: []
   });
 
   // Check if user is a salesperson with this specific userTypeId
@@ -108,13 +96,7 @@ export const useDashboardData = () => {
           customerCount: customerCount || 0,
           orderCount: orders?.length || 0,
           productCount: productCount || 0,
-          recentOrders: recentOrders || [],
-          monthlyChange: {
-            sales: '+12.5%',
-            customers: '+5.2%',
-            orders: '+8.1%',
-            products: '+3.2%',
-          }
+          recentOrders: recentOrders || []
         });
         
         console.log('Dashboard data loaded:', {

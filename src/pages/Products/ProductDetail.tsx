@@ -23,7 +23,7 @@ const ProductDetail = () => {
   const [selectedImage, setSelectedImage] = useState(0);
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [cartActions, setCartActions] = useState<{ addItem: Function } | null>(null);
+  const { addItem } = useCart();
   
   // Fetch the specific product using Supabase
   const { 
@@ -42,16 +42,6 @@ const ProductDetail = () => {
     data: subcategories,
     isLoading: subcategoriesLoading
   } = useSupabaseData('subcategories');
-  
-  // Safely try to get cart context
-  useEffect(() => {
-    try {
-      const cartContext = useCart();
-      setCartActions(cartContext);
-    } catch (error) {
-      console.error("CartContext not available yet", error);
-    }
-  }, []);
   
   // Find the product when products are loaded
   useEffect(() => {
@@ -98,32 +88,14 @@ const ProductDetail = () => {
     'https://via.placeholder.com/500/0CAB77',
   ];
   
-  // Safely handle cart operations
+  // Função para adicionar ao carrinho
   const handleAddToCart = () => {
     try {
-      if (cartActions) {
-        cartActions.addItem(product, quantity);
-        toast.success(`${product.name} adicionado ao carrinho`);
-      } else {
-        toast.error('Não foi possível adicionar ao carrinho. Tente novamente mais tarde.');
-      }
+      addItem(product, quantity);
+      toast.success(`${product.name} adicionado ao carrinho`);
     } catch (error) {
       console.error('Erro ao adicionar ao carrinho:', error);
       toast.error('Não foi possível adicionar ao carrinho. Tente novamente mais tarde.');
-    }
-  };
-  
-  const handleBuyNow = () => {
-    try {
-      if (cartActions) {
-        cartActions.addItem(product, quantity);
-        navigate('/cart');
-      } else {
-        toast.error('Não foi possível comprar agora. Tente novamente mais tarde.');
-      }
-    } catch (error) {
-      console.error('Erro ao processar a compra:', error);
-      toast.error('Não foi possível comprar agora. Tente novamente mais tarde.');
     }
   };
   
@@ -292,13 +264,6 @@ const ProductDetail = () => {
               >
                 <ShoppingCart className="h-5 w-5" />
                 Adicionar ao Carrinho
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1 text-ferplas-500 border-ferplas-500 hover:bg-ferplas-50 gap-2 button-transition py-6"
-                onClick={handleBuyNow}
-              >
-                Comprar Agora
               </Button>
             </div>
           </div>

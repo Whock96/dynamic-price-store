@@ -49,7 +49,6 @@ const Dashboard = () => {
             customerCount={data.customerCount}
             orderCount={data.orderCount}
             productCount={data.productCount}
-            monthlyChange={data.monthlyChange}
             formatCurrency={formatCurrency}
           />
 
