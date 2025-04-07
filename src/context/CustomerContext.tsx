@@ -36,10 +36,12 @@ const supabaseToCustomer = (supabaseCustomer: SupabaseCustomer): Customer => ({
   zipCode: supabaseCustomer.zip_code,
   phone: supabaseCustomer.phone || '',
   email: supabaseCustomer.email || '',
+  whatsapp: supabaseCustomer.whatsapp || '',
   defaultDiscount: Number(supabaseCustomer.default_discount),
   maxDiscount: Number(supabaseCustomer.max_discount),
   createdAt: new Date(supabaseCustomer.created_at),
   updatedAt: new Date(supabaseCustomer.updated_at),
+  registerDate: new Date(supabaseCustomer.register_date),
 });
 
 // Função para converter nosso modelo frontend para o formato Supabase
@@ -58,8 +60,12 @@ const customerToSupabase = (customer: Partial<Customer>): Partial<SupabaseCustom
   if ('zipCode' in customer) result.zip_code = customer.zipCode;
   if ('phone' in customer) result.phone = customer.phone;
   if ('email' in customer) result.email = customer.email;
+  if ('whatsapp' in customer) result.whatsapp = customer.whatsapp;
   if ('defaultDiscount' in customer) result.default_discount = customer.defaultDiscount;
   if ('maxDiscount' in customer) result.max_discount = customer.maxDiscount;
+  if ('registerDate' in customer) result.register_date = customer.registerDate instanceof Date 
+    ? customer.registerDate.toISOString().split('T')[0] 
+    : customer.registerDate;
   
   return result;
 };

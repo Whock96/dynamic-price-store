@@ -95,10 +95,12 @@ export type Database = {
           no_number: boolean
           number: string | null
           phone: string | null
+          register_date: string
           sales_person_id: string
           state: string
           street: string
           updated_at: string
+          whatsapp: string | null
           zip_code: string
         }
         Insert: {
@@ -114,10 +116,12 @@ export type Database = {
           no_number?: boolean
           number?: string | null
           phone?: string | null
+          register_date: string
           sales_person_id: string
           state: string
           street: string
           updated_at?: string
+          whatsapp?: string | null
           zip_code: string
         }
         Update: {
@@ -133,10 +137,12 @@ export type Database = {
           no_number?: boolean
           number?: string | null
           phone?: string | null
+          register_date?: string
           sales_person_id?: string
           state?: string
           street?: string
           updated_at?: string
+          whatsapp?: string | null
           zip_code?: string
         }
         Relationships: []

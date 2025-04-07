@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   username: string;
@@ -77,10 +76,12 @@ export interface Customer {
   zipCode: string;
   phone: string;
   email: string;
+  whatsapp?: string; // Novo campo para WhatsApp
   defaultDiscount: number; // Ensuring this is a number
   maxDiscount: number; // Ensuring this is a number
   createdAt: Date;
   updatedAt: Date;
+  registerDate: Date; // Nova data de registro
 }
 
 export interface CartItem {

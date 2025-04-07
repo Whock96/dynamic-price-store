@@ -48,8 +48,10 @@ const CustomerForm = () => {
     zipCode: '',
     phone: '',
     email: '',
+    whatsapp: '',
     defaultDiscount: 0,
-    maxDiscount: 0
+    maxDiscount: 0,
+    registerDate: new Date()
   });
 
   // Fetch salespeople when component mounts
@@ -110,6 +112,11 @@ const CustomerForm = () => {
   // Handles form input changes
   const handleChange = (field: keyof typeof formValues, value: any) => {
     setFormValues(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Date formatting for input
+  const formatDateForInput = (date: Date) => {
+    return date.toISOString().split('T')[0];
   };
 
   // Form submission handler
@@ -231,11 +238,32 @@ const CustomerForm = () => {
                 )}
               </div>
               <div className="space-y-2">
+                <Label htmlFor="registerDate">Data de Cadastro *</Label>
+                <Input 
+                  id="registerDate" 
+                  type="date"
+                  value={formatDateForInput(formValues.registerDate)}
+                  onChange={(e) => handleChange('registerDate', new Date(e.target.value))}
+                  required
+                />
+              </div>
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
                 <Label htmlFor="phone">Telefone</Label>
                 <Input 
                   id="phone" 
                   value={formValues.phone} 
                   onChange={(e) => handleChange('phone', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="whatsapp">WhatsApp</Label>
+                <Input 
+                  id="whatsapp" 
+                  value={formValues.whatsapp} 
+                  onChange={(e) => handleChange('whatsapp', e.target.value)}
                 />
               </div>
             </div>

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit, Trash2, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Eye } from 'lucide-react';
 import { useCustomers } from '@/context/CustomerContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { formatPhoneNumber, formatDocument } from '@/utils/formatters';
 import SortableHeader from '@/components/ui/sortable-header';
+import { supabase } from '@/integrations/supabase/client';
 
 type SortDirection = 'asc' | 'desc' | null;
 
@@ -38,10 +39,40 @@ const CustomerList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [salesPersonNames, setSalesPersonNames] = useState<Record<string, string>>({});
+  const [loadingSalespeople, setLoadingSalespeople] = useState(false);
   
   // Sorting states
   const [sortKey, setSortKey] = useState<string | null>('companyName');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  // Fetch salespeople data
+  useEffect(() => {
+    const fetchSalespeople = async () => {
+      setLoadingSalespeople(true);
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, name');
+        
+        if (error) throw error;
+        
+        if (data) {
+          const namesMap: Record<string, string> = {};
+          data.forEach(user => {
+            namesMap[user.id] = user.name;
+          });
+          setSalesPersonNames(namesMap);
+        }
+      } catch (error) {
+        console.error('Error fetching salesperson names:', error);
+      } finally {
+        setLoadingSalespeople(false);
+      }
+    };
+    
+    fetchSalespeople();
+  }, []);
 
   useEffect(() => {
     if (searchTerm.trim() === '') {
@@ -94,6 +125,10 @@ const CustomerList = () => {
         case 'phone':
           aValue = a.phone || '';
           bValue = b.phone || '';
+          break;
+        case 'salesPerson':
+          aValue = salesPersonNames[a.salesPersonId] || '';
+          bValue = salesPersonNames[b.salesPersonId] || '';
           break;
         default:
           aValue = a[sortKey as keyof typeof a] || '';
@@ -204,6 +239,15 @@ const CustomerList = () => {
                     </TableHead>
                     <TableHead>
                       <SortableHeader
+                        label="Vendedor"
+                        sortKey="salesPerson"
+                        currentSortKey={sortKey}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                    </TableHead>
+                    <TableHead>
+                      <SortableHeader
                         label="Cidade"
                         sortKey="city"
                         currentSortKey={sortKey}
@@ -238,6 +282,7 @@ const CustomerList = () => {
                       <TableRow key={customer.id}>
                         <TableCell className="font-medium">{customer.companyName}</TableCell>
                         <TableCell>{customer.document ? formatDocument(customer.document) : '—'}</TableCell>
+                        <TableCell>{salesPersonNames[customer.salesPersonId] || '—'}</TableCell>
                         <TableCell>{customer.city || '—'}</TableCell>
                         <TableCell>{customer.state || '—'}</TableCell>
                         <TableCell>{customer.phone ? formatPhoneNumber(customer.phone) : '—'}</TableCell>
@@ -246,7 +291,16 @@ const CustomerList = () => {
                             <Button
                               variant="outline"
                               size="icon"
+                              onClick={() => navigate(`/customers/${customer.id}`)}
+                              title="Ver detalhes"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="icon"
                               onClick={() => navigate(`/customers/${customer.id}/edit`)}
+                              title="Editar cliente"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -255,6 +309,7 @@ const CustomerList = () => {
                               size="icon"
                               onClick={() => handleConfirmDelete(customer.id)}
                               className="text-red-500 hover:bg-red-50"
+                              title="Excluir cliente"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -264,7 +319,7 @@ const CustomerList = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center">
+                      <TableCell colSpan={7} className="h-24 text-center">
                         Nenhum cliente encontrado.
                       </TableCell>
                     </TableRow>

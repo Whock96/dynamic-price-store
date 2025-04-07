@@ -17,6 +17,7 @@ import ProductList from "./pages/Products/ProductList";
 import ProductDetail from "./pages/Products/ProductDetail";
 import CustomerList from "./pages/Customers/CustomerList";
 import CustomerForm from "./pages/Customers/CustomerForm";
+import CustomerDetail from "./pages/Customers/CustomerDetail";
 import OrderList from "./pages/Orders/OrderList";
 import OrderDetail from "./pages/Orders/OrderDetail";
 import OrderUpdate from "./pages/Orders/OrderUpdate";
@@ -56,7 +57,7 @@ const App = () => (
                       {/* Customer routes */}
                       <Route path="/customers" element={<PageContainer><CustomerList /></PageContainer>} />
                       <Route path="/customers/new" element={<PageContainer><CustomerForm /></PageContainer>} />
-                      <Route path="/customers/:id" element={<PageContainer><CustomerForm /></PageContainer>} />
+                      <Route path="/customers/:id" element={<PageContainer><CustomerDetail /></PageContainer>} />
                       <Route path="/customers/:id/edit" element={<PageContainer><CustomerForm /></PageContainer>} />
                       
                       {/* Order routes */}
