@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   username: string;
@@ -72,17 +71,19 @@ export interface Customer {
   number: string;
   noNumber: boolean;
   complement: string;
+  neighborhood: string; // New field for neighborhood
   city: string;
   state: string;
   zipCode: string;
   phone: string;
   email: string;
-  whatsapp?: string; // Novo campo para WhatsApp
-  defaultDiscount: number; // Ensuring this is a number
-  maxDiscount: number; // Ensuring this is a number
+  whatsapp?: string;
+  stateRegistration?: string; // New field for state registration
+  defaultDiscount: number;
+  maxDiscount: number;
   createdAt: Date;
   updatedAt: Date;
-  registerDate: Date; // Nova data de registro
+  registerDate: Date;
 }
 
 export interface CartItem {

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ChevronLeft, Edit, Phone, Mail, MapPin } from 'lucide-react';
@@ -151,6 +150,12 @@ const CustomerDetail: React.FC = () => {
                   <p className="text-sm font-medium text-muted-foreground">CNPJ/CPF</p>
                   <p>{formatDocument(customer.document)}</p>
                 </div>
+                {customer.stateRegistration && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Inscrição Estadual</p>
+                    <p>{customer.stateRegistration}</p>
+                  </div>
+                )}
               </div>
 
               <Separator />
@@ -189,6 +194,7 @@ const CustomerDetail: React.FC = () => {
                     {customer.street}
                     {customer.noNumber ? ', S/N' : customer.number ? `, ${customer.number}` : ''}
                     {customer.complement ? ` - ${customer.complement}` : ''}
+                    {customer.neighborhood ? ` - Bairro ${customer.neighborhood}` : ''}
                   </p>
                   <p>
                     {customer.city}, {customer.state} - CEP: {customer.zipCode}

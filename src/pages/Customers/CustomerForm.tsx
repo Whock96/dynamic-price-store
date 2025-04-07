@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ChevronLeft, Save } from 'lucide-react';
@@ -44,12 +43,14 @@ const CustomerForm = () => {
     number: '',
     noNumber: false,
     complement: '',
+    neighborhood: '',
     city: '',
     state: '',
     zipCode: '',
     phone: '',
     email: '',
     whatsapp: '',
+    stateRegistration: '',
     defaultDiscount: 0,
     maxDiscount: 0,
     registerDate: new Date()
@@ -234,6 +235,14 @@ const CustomerForm = () => {
                   required
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="stateRegistration">Inscrição Estadual</Label>
+                <Input 
+                  id="stateRegistration" 
+                  value={formValues.stateRegistration || ''} 
+                  onChange={(e) => handleChange('stateRegistration', e.target.value)}
+                />
+              </div>
             </div>
             
             <div className="grid md:grid-cols-2 gap-4">
@@ -322,6 +331,14 @@ const CustomerForm = () => {
                 value={formValues.street} 
                 onChange={(e) => handleChange('street', e.target.value)}
                 required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="neighborhood">Bairro</Label>
+              <Input 
+                id="neighborhood" 
+                value={formValues.neighborhood} 
+                onChange={(e) => handleChange('neighborhood', e.target.value)}
               />
             </div>
             

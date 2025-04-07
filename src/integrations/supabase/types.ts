@@ -92,12 +92,14 @@ export type Database = {
           email: string | null
           id: string
           max_discount: number
+          neighborhood: string | null
           no_number: boolean
           number: string | null
           phone: string | null
           register_date: string
           sales_person_id: string
           state: string
+          state_registration: string | null
           street: string
           updated_at: string
           whatsapp: string | null
@@ -113,12 +115,14 @@ export type Database = {
           email?: string | null
           id?: string
           max_discount?: number
+          neighborhood?: string | null
           no_number?: boolean
           number?: string | null
           phone?: string | null
           register_date: string
           sales_person_id: string
           state: string
+          state_registration?: string | null
           street: string
           updated_at?: string
           whatsapp?: string | null
@@ -134,12 +138,14 @@ export type Database = {
           email?: string | null
           id?: string
           max_discount?: number
+          neighborhood?: string | null
           no_number?: boolean
           number?: string | null
           phone?: string | null
           register_date?: string
           sales_person_id?: string
           state?: string
+          state_registration?: string | null
           street?: string
           updated_at?: string
           whatsapp?: string | null

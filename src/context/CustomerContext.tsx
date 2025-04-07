@@ -31,12 +31,14 @@ const supabaseToCustomer = (supabaseCustomer: SupabaseCustomer): Customer => ({
   number: supabaseCustomer.number || '',
   noNumber: supabaseCustomer.no_number,
   complement: supabaseCustomer.complement || '',
+  neighborhood: supabaseCustomer.neighborhood || '',
   city: supabaseCustomer.city,
   state: supabaseCustomer.state,
   zipCode: supabaseCustomer.zip_code,
   phone: supabaseCustomer.phone || '',
   email: supabaseCustomer.email || '',
   whatsapp: supabaseCustomer.whatsapp || '',
+  stateRegistration: supabaseCustomer.state_registration || '',
   defaultDiscount: Number(supabaseCustomer.default_discount),
   maxDiscount: Number(supabaseCustomer.max_discount),
   createdAt: new Date(supabaseCustomer.created_at),
@@ -55,12 +57,14 @@ const customerToSupabase = (customer: Partial<Customer>): Partial<SupabaseCustom
   if ('number' in customer) result.number = customer.number;
   if ('noNumber' in customer) result.no_number = customer.noNumber;
   if ('complement' in customer) result.complement = customer.complement;
+  if ('neighborhood' in customer) result.neighborhood = customer.neighborhood;
   if ('city' in customer) result.city = customer.city;
   if ('state' in customer) result.state = customer.state;
   if ('zipCode' in customer) result.zip_code = customer.zipCode;
   if ('phone' in customer) result.phone = customer.phone;
   if ('email' in customer) result.email = customer.email;
   if ('whatsapp' in customer) result.whatsapp = customer.whatsapp;
+  if ('stateRegistration' in customer) result.state_registration = customer.stateRegistration;
   if ('defaultDiscount' in customer) result.default_discount = customer.defaultDiscount;
   if ('maxDiscount' in customer) result.max_discount = customer.maxDiscount;
   if ('registerDate' in customer) result.register_date = customer.registerDate instanceof Date 
