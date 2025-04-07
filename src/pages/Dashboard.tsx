@@ -6,7 +6,6 @@ import { Loader2 } from 'lucide-react';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import DashboardStats from '@/components/dashboard/DashboardStats';
 import QuickActions from '@/components/dashboard/QuickActions';
-import DashboardCharts from '@/components/dashboard/DashboardCharts';
 import RecentActivity from '@/components/dashboard/RecentActivity';
 
 const Dashboard = () => {
@@ -51,9 +50,6 @@ const Dashboard = () => {
             productCount={data.productCount}
             formatCurrency={formatCurrency}
           />
-
-          {/* Charts */}
-          <DashboardCharts />
 
           {/* Recent Activity */}
           <RecentActivity 
