@@ -2,22 +2,7 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Tables } from '@/integrations/supabase/client';
-
-// Define the type that maps to the Supabase table structure
-type TransportCompanyDB = Tables<'transport_companies'>;
-
-// Frontend model
-export interface TransportCompany {
-  id: string;
-  name: string;
-  document: string;
-  phone?: string;
-  email?: string;
-  whatsapp?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import { TransportCompany } from '@/types/types';
 
 interface TransportCompanyContextType {
   companies: TransportCompany[];
@@ -30,8 +15,8 @@ interface TransportCompanyContextType {
   refreshCompanies: () => Promise<void>;
 }
 
-// Función para converter o formato Supabase para nosso modelo frontend
-const supabaseToTransportCompany = (supabaseCompany: TransportCompanyDB): TransportCompany => ({
+// Function to convert Supabase format to our frontend model
+const supabaseToTransportCompany = (supabaseCompany: any): TransportCompany => ({
   id: supabaseCompany.id,
   name: supabaseCompany.name,
   document: supabaseCompany.document,
@@ -42,9 +27,9 @@ const supabaseToTransportCompany = (supabaseCompany: TransportCompanyDB): Transp
   updatedAt: new Date(supabaseCompany.updated_at),
 });
 
-// Función para converter nosso modelo frontend para o formato Supabase
-const transportCompanyToSupabase = (company: Partial<TransportCompany>): Partial<TransportCompanyDB> => {
-  const result: Partial<TransportCompanyDB> = {};
+// Function to convert our frontend model to Supabase format
+const transportCompanyToSupabase = (company: Partial<TransportCompany>): Record<string, any> => {
+  const result: Record<string, any> = {};
   
   if ('name' in company) result.name = company.name;
   if ('document' in company) result.document = company.document;
@@ -116,7 +101,7 @@ export const TransportCompanyProvider: React.FC<{ children: React.ReactNode }> =
       // Add to Supabase
       const { data, error } = await supabase
         .from('transport_companies')
-        .insert(supabaseData as any)
+        .insert(supabaseData)
         .select()
         .single();
       

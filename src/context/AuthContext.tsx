@@ -1,29 +1,18 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User as UserType, MenuItem, Permission } from '../types/types';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { User, Permission } from '@/types/types';
+import { toast } from 'sonner';
 
-interface AuthContextType {
-  user: UserType | null;
-  loading: boolean;
-  error: string | null;
-  login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
-  hasPermission: (permissionCode: string) => boolean;
-  fetchPermissions: () => Promise<void>;
-  fetchUserTypes: () => Promise<any[]>;
-  checkAccess: (menuPath: string) => boolean;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Menu items with permission requirements
-export const MENU_ITEMS: MenuItem[] = [
+// Define the MENU_ITEMS to export for sidebar
+export const MENU_ITEMS = [
   {
-    id: 'home',
-    name: 'Página Inicial',
+    id: 'dashboard',
+    name: 'Dashboard',
     path: '/dashboard',
     icon: 'home',
-    requiredRoles: ['administrator', 'salesperson', 'billing', 'inventory']
+    requiredRoles: ['administrator', 'salesperson', 'billing', 'inventory'],
   },
   {
     id: 'products',
@@ -31,15 +20,6 @@ export const MENU_ITEMS: MenuItem[] = [
     path: '/products',
     icon: 'package',
     requiredRoles: ['administrator', 'salesperson', 'inventory'],
-    submenus: [
-      {
-        id: 'products-list',
-        name: 'Lista de Produtos',
-        path: '/products',
-        icon: 'list',
-        requiredRoles: ['administrator', 'salesperson', 'inventory']
-      }
-    ]
   },
   {
     id: 'customers',
@@ -47,22 +27,6 @@ export const MENU_ITEMS: MenuItem[] = [
     path: '/customers',
     icon: 'users',
     requiredRoles: ['administrator', 'salesperson'],
-    submenus: [
-      {
-        id: 'customers-list',
-        name: 'Lista de Clientes',
-        path: '/customers',
-        icon: 'list',
-        requiredRoles: ['administrator', 'salesperson']
-      },
-      {
-        id: 'customers-new',
-        name: 'Novo Cliente',
-        path: '/customers/new',
-        icon: 'user-plus',
-        requiredRoles: ['administrator', 'salesperson']
-      }
-    ]
   },
   {
     id: 'orders',
@@ -70,22 +34,13 @@ export const MENU_ITEMS: MenuItem[] = [
     path: '/orders',
     icon: 'clipboard',
     requiredRoles: ['administrator', 'salesperson', 'billing'],
-    submenus: [
-      {
-        id: 'orders-list',
-        name: 'Lista de Pedidos',
-        path: '/orders',
-        icon: 'list',
-        requiredRoles: ['administrator', 'salesperson', 'billing']
-      }
-    ]
   },
   {
     id: 'cart',
     name: 'Carrinho',
     path: '/cart',
     icon: 'shopping-cart',
-    requiredRoles: ['administrator', 'salesperson']
+    requiredRoles: ['administrator', 'salesperson'],
   },
   {
     id: 'settings',
@@ -95,354 +50,211 @@ export const MENU_ITEMS: MenuItem[] = [
     requiredRoles: ['administrator'],
     submenus: [
       {
-        id: 'settings-users',
+        id: 'product-management',
+        name: 'Gerenciar Produtos',
+        path: '/settings/products',
+        icon: 'list',
+        requiredRoles: ['administrator'],
+      },
+      {
+        id: 'user-management',
         name: 'Gerenciar Usuários',
         path: '/settings/users',
-        icon: 'users',
-        requiredRoles: ['administrator']
+        icon: 'user-plus',
+        requiredRoles: ['administrator'],
       },
       {
-        id: 'settings-user-types',
-        name: 'Gerenciar Tipos de Usuário',
+        id: 'user-type-management',
+        name: 'Tipos de Usuário',
         path: '/settings/user-types',
         icon: 'shield',
-        requiredRoles: ['administrator']
+        requiredRoles: ['administrator'],
       },
       {
-        id: 'settings-categories',
+        id: 'category-management',
         name: 'Gerenciar Categorias',
         path: '/settings/categories',
         icon: 'tag',
-        requiredRoles: ['administrator']
+        requiredRoles: ['administrator'],
       },
       {
-        id: 'settings-discounts',
+        id: 'discount-management',
         name: 'Gerenciar Descontos',
         path: '/settings/discounts',
         icon: 'percent',
-        requiredRoles: ['administrator']
+        requiredRoles: ['administrator'],
       },
       {
-        id: 'settings-transport-companies',
+        id: 'transport-company-management',
         name: 'Gerenciar Transportadoras',
         path: '/settings/transport-companies',
         icon: 'truck',
-        requiredRoles: ['administrator']
+        requiredRoles: ['administrator'],
       },
       {
-        id: 'settings-company',
-        name: 'Informações da Empresa',
+        id: 'company-settings',
+        name: 'Dados da Empresa',
         path: '/settings/company',
         icon: 'building-2',
-        requiredRoles: ['administrator']
-      }
-    ]
-  }
+        requiredRoles: ['administrator'],
+      },
+    ],
+  },
 ];
 
-// Map of permission codes to menu paths
-const PERMISSION_MENU_MAP: Record<string, string[]> = {
-  'dashboard_access': ['/dashboard'],
-  'products_view': ['/products'],
-  'products_manage': ['/settings/products'],
-  'customers_view': ['/customers'],
-  'customers_manage': ['/customers/new', '/customers/:id/edit'],
-  'orders_view': ['/orders', '/orders/:id'],
-  'orders_manage': ['/orders/:id/edit', '/cart'],
-  'users_view': ['/settings/users'],
-  'users_manage': ['/settings/users'],
-  'user_types_manage': ['/settings/user-types'],
-  'settings_view': ['/settings'],
-  'settings_manage': ['/settings/company'],
-  'categories_manage': ['/settings/categories'],
-  'discounts_manage': ['/settings/discounts']
-};
+interface AuthContextType {
+  user: User | null;
+  login: (email: string, password: string) => Promise<User | null>;
+  logout: () => Promise<void>;
+  hasPermission: (permissionCode: string) => boolean;
+  checkAccess: (path: string) => boolean;
+  isLoading: boolean;
+}
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserType | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
+  children 
+}) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is logged in from localStorage
-    const storedUser = localStorage.getItem('ferplas_user');
-    if (storedUser) {
+    // Check if the user is already logged in
+    const checkAuth = async () => {
+      setIsLoading(true);
       try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
+        // Try to get the session from localStorage
+        const storedUser = localStorage.getItem('user');
         
-        // Fetch fresh permissions if we have a stored user
-        if (parsedUser) {
-          fetchPermissions();
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        } else {
+          // If no stored user, clear any potential session
+          await logout();
         }
-      } catch (err) {
-        console.error("Error parsing stored user:", err);
-        localStorage.removeItem('ferplas_user');
+      } catch (error) {
+        console.error('Error checking auth:', error);
+        await logout();
+      } finally {
+        setIsLoading(false);
       }
-    }
-    setLoading(false);
+    };
+
+    checkAuth();
   }, []);
 
-  const fetchUserTypePermissions = async (userTypeId: string): Promise<Permission[]> => {
+  const login = async (email: string, password: string): Promise<User | null> => {
+    setIsLoading(true);
     try {
-      // Get permissions associated with this user type using direct queries
-      const { data: permLinks, error: permLinksError } = await supabase
-        .from('user_type_permissions')
-        .select('permission_id')
-        .eq('user_type_id', userTypeId);
-        
-      if (permLinksError) throw permLinksError;
-      
-      if (!permLinks || permLinks.length === 0) {
-        return [];
-      }
-      
-      // Get the actual permission details
-      const permissionIds = permLinks.map(p => p.permission_id);
-      const { data: permissions, error: permsError } = await supabase
-        .from('permissions')
-        .select('*')
-        .in('id', permissionIds);
-        
-      if (permsError) throw permsError;
-      
-      return permissions.map(p => ({
-        id: p.id,
-        name: p.name,
-        description: p.description || '',
-        isGranted: true,
-        code: p.code
-      }));
-    } catch (err) {
-      console.error("Error fetching user type permissions:", err);
-      return [];
-    }
-  };
-
-  const fetchPermissions = async () => {
-    if (!user) return;
-
-    try {
-      setLoading(true);
-      
-      // Get user with user type information using direct query
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*, user_type:user_types(*)')
-        .eq('id', user.id)
-        .single();
-        
-      if (userError) throw userError;
-      
-      if (!userData || !userData.user_type) {
-        throw new Error("User or user type not found");
-      }
-      
-      // Fetch permissions for this user type
-      const permissions = await fetchUserTypePermissions(userData.user_type.id);
-      
-      // Ensure the role is one of the allowed values - normalize to lowercase for case-insensitive comparison
-      let userRole = userData.user_type.name.toLowerCase();
-      
-      // Map 'administrador' (Portuguese) to 'administrator' (English) if needed
-      if (userRole === 'administrador') {
-        userRole = 'administrator';
-      }
-      
-      // Update user in state and localStorage
-      const updatedUser: UserType = {
-        ...user,
-        role: userRole as 'administrator' | 'salesperson' | 'billing' | 'inventory',
-        permissions: permissions,
-      };
-      
-      console.log("Updated user role:", updatedUser.role);
-      console.log("User permissions:", permissions);
-      
-      setUser(updatedUser);
-      localStorage.setItem('ferplas_user', JSON.stringify(updatedUser));
-    } catch (err) {
-      console.error("Error fetching permissions:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchUserTypes = async () => {
-    try {
-      // Use direct query to Supabase instead of abstracted hook
-      const { data, error } = await supabase
-        .from('user_types')
-        .select('*')
-        .order('name');
-        
-      if (error) throw error;
-      return data || [];
-    } catch (err) {
-      console.error("Error fetching user types:", err);
-      return [];
-    }
-  };
-
-  const login = async (username: string, password: string) => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      // In a real application, this would be an API call with proper authentication
+      // For demo purposes, using a simple authentication
       const { data, error } = await supabase
         .from('users')
-        .select('*, user_type:user_types(*)')
-        .eq('username', username)
-        .eq('password', password) // Note: In a real app, use proper password hashing
+        .select(`
+          id, name, email, username, user_type_id,
+          user_types:user_type_id (
+            id, name, permissions:user_type_permissions (
+              permissions:permission_id (
+                id, name, description, code
+              )
+            )
+          )
+        `)
+        .eq('email', email)
+        .eq('password', password) // In a real app, you'd use proper password hashing
         .eq('is_active', true)
         .single();
-        
+
       if (error || !data) {
-        throw new Error('Credenciais inválidas ou usuário inativo');
+        console.error('Login error:', error);
+        throw new Error('Credenciais inválidas');
       }
-      
-      if (!data.user_type) {
-        throw new Error('Tipo de usuário não encontrado');
-      }
-      
-      // Make sure we're using the 'administrator' role if needed
-      // This handles the case of users who had the old 'administrador' role
-      let userTypeName = data.user_type.name;
-      if (userTypeName === 'administrador') {
-        userTypeName = 'administrator';
-        
-        // Update the user's role in the database to fix the issue
-        try {
-          // Find the administrator user type
-          const { data: adminTypes } = await supabase
-            .from('user_types')
-            .select('*')
-            .eq('name', 'administrator')
-            .limit(1);
-            
-          if (adminTypes && adminTypes.length > 0) {
-            // Update the user's user_type_id to the administrator type
-            await supabase
-              .from('users')
-              .update({ user_type_id: adminTypes[0].id })
-              .eq('id', data.id);
-          }
-        } catch (updateErr) {
-          console.error("Error updating user role:", updateErr);
-          // Continue with login even if this fails
-        }
-      }
-      
-      // Fetch permissions for this user
-      const permissions = await fetchUserTypePermissions(data.user_type.id);
-      
-      // Ensure the role is one of the allowed values
-      const userRole = userTypeName as 'administrator' | 'salesperson' | 'billing' | 'inventory';
-      
-      // Create user object
-      const userObj: UserType = {
+
+      // Transform the data to match our User type
+      const permissions: Permission[] = data.user_types?.permissions
+        ?.map((p: any) => ({
+          id: p.permissions.id,
+          name: p.permissions.name,
+          description: p.permissions.description,
+          code: p.permissions.code,
+          isGranted: true
+        })) || [];
+
+      const userData: User = {
         id: data.id,
         username: data.username,
         name: data.name,
-        role: userRole,
-        permissions: permissions,
-        email: data.email || '',
-        createdAt: new Date(data.created_at),
-        userTypeId: data.user_type.id
+        email: data.email,
+        role: data.user_types?.name.toLowerCase() as 'administrator' | 'salesperson' | 'billing' | 'inventory',
+        permissions,
+        createdAt: new Date(),
+        userTypeId: data.user_type_id
       };
-      
-      setUser(userObj);
-      localStorage.setItem('ferplas_user', JSON.stringify(userObj));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao fazer login');
-      console.error('Login error:', err);
+
+      // Store user in localStorage for session persistence
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+
+      return userData;
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('Falha na autenticação. Verifique suas credenciais.');
+      return null;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('ferplas_user');
+  const logout = async (): Promise<void> => {
+    // Clear the stored user data
+    localStorage.removeItem('user');
     setUser(null);
   };
 
-  const hasPermission = (permissionCode: string) => {
-    if (!user || !user.permissions) return false;
-    
-    // Added more logging to diagnose permission issues
-    console.log(`Checking permission ${permissionCode} for user with role ${user.role}`);
-    
-    // Admin has all permissions - perform case-insensitive comparison
-    if (user.role.toLowerCase() === 'administrator') {
-      console.log("User is administrator - granting all permissions");
-      return true;
-    }
-    
-    // For other roles, check if they have the required permission
-    const hasPermAccess = user.permissions.some(p => p.code === permissionCode && p.isGranted);
-    console.log(`Permission ${permissionCode} access:`, hasPermAccess);
-    
-    return hasPermAccess;
-  };
-
-  const checkAccess = (menuPath: string) => {
+  const hasPermission = (permissionCode: string): boolean => {
     if (!user) return false;
     
-    // Added more logging to diagnose access control issues
-    console.log(`Checking access to ${menuPath} for user with role ${user.role}`);
+    // For administrator role, grant all permissions
+    if (user.role === 'administrator') return true;
     
-    // Admin has access to everything - perform case-insensitive comparison
-    if (user.role.toLowerCase() === 'administrator') {
-      console.log("User is administrator - granting access to all paths");
-      return true;
-    }
+    // Check if the user has the specific permission
+    return user.permissions.some(permission => 
+      permission.code === permissionCode && permission.isGranted
+    );
+  };
+
+  const checkAccess = (path: string): boolean => {
+    if (!user) return false;
     
-    // For other roles, check if they have the required permission for this path
-    for (const [permCode, paths] of Object.entries(PERMISSION_MENU_MAP)) {
-      // Check if this permission grants access to the requested path
-      const matchesPath = paths.some(path => {
-        if (path.includes(':')) {
-          // Convert dynamic paths like '/orders/:id' to regex pattern
-          const regexPath = path.replace(/:\w+/g, '[^/]+');
-          const pattern = new RegExp(`^${regexPath}$`);
-          return pattern.test(menuPath);
-        }
-        return path === menuPath;
-      });
-      
-      if (matchesPath && hasPermission(permCode)) {
-        console.log(`Access granted to ${menuPath} via permission ${permCode}`);
+    // Check all menu items and their submenus
+    for (const item of MENU_ITEMS) {
+      // Check if the current item matches the path
+      if (item.path === path && item.requiredRoles.includes(user.role)) {
         return true;
       }
+      
+      // Check submenus if they exist
+      if (item.submenus) {
+        for (const submenu of item.submenus) {
+          if (submenu.path === path && submenu.requiredRoles.includes(user.role)) {
+            return true;
+          }
+        }
+      }
     }
     
-    // If no specific permission mapping is found, allow access to unmapped paths
-    // This is a fallback mechanism for paths not explicitly controlled
-    const isPathMapped = Object.values(PERMISSION_MENU_MAP).flat().some(path => {
-      if (path.includes(':')) {
-        const regexPath = path.replace(/:\w+/g, '[^/]+');
-        const pattern = new RegExp(`^${regexPath}$`);
-        return pattern.test(menuPath);
-      }
-      return path === menuPath;
-    });
-    
-    console.log(`Path ${menuPath} is ${isPathMapped ? 'mapped' : 'not mapped'} in permission system`);
-    return !isPathMapped;
+    return false;
   };
 
   return (
     <AuthContext.Provider value={{ 
       user, 
-      loading, 
-      error, 
       login, 
       logout, 
-      hasPermission, 
-      fetchPermissions,
-      fetchUserTypes,
-      checkAccess
+      hasPermission,
+      checkAccess,
+      isLoading
     }}>
       {children}
     </AuthContext.Provider>

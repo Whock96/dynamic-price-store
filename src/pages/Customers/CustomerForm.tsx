@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -32,13 +33,14 @@ const customerSchema = z.object({
   state: z.string().length(2, { message: "Selecione um estado válido." }),
   zipCode: z.string().min(8, { message: "O CEP deve ter pelo menos 8 caracteres." }),
   phone: z.string().optional(),
-  email: z.string().email({ message: "Insira um email válido." }).optional(),
+  email: z.string().email({ message: "Insira um email válido." }).optional().or(z.literal('')),
   whatsapp: z.string().optional(),
   stateRegistration: z.string().optional(),
   defaultDiscount: z.number().min(0, { message: "O desconto padrão deve ser no mínimo 0." }).max(100, { message: "O desconto padrão deve ser no máximo 100." }),
   maxDiscount: z.number().min(0, { message: "O desconto máximo deve ser no mínimo 0." }).max(100, { message: "O desconto máximo deve ser no máximo 100." }),
   registerDate: z.date(),
   transportCompanyId: z.string().optional(),
+  observations: z.string().optional(),
 });
 
 type CustomerFormValues = z.infer<typeof customerSchema>;
@@ -52,7 +54,7 @@ const CustomerForm = () => {
     updateCustomer, 
     isLoading: isCustomerLoading 
   } = useCustomers();
-  const { user, hasPermission, isLoading: isAuthLoading } = useAuth();
+  const { user, hasPermission } = useAuth();
 
   // Add the transport companies context
   const { companies, isLoading: isLoadingCompanies } = useTransportCompanies();
@@ -83,12 +85,14 @@ const CustomerForm = () => {
       maxDiscount: 0,
       registerDate: new Date(),
       transportCompanyId: '',
+      observations: '',
     },
     mode: "onChange"
   });
 
   const { 
     handleSubmit, 
+    register,
     control, 
     setValue, 
     formState: { errors, isValid },
@@ -128,6 +132,11 @@ const CustomerForm = () => {
         setValue('maxDiscount', customer.maxDiscount);
         setValue('registerDate', new Date(customer.registerDate));
         setValue('transportCompanyId', customer.transportCompanyId || '');
+        
+        // If customer has observations, set that too
+        if ('observations' in customer) {
+          setValue('observations', (customer as any).observations || '');
+        }
       }
       setIsLoading(false);
     }
@@ -159,7 +168,7 @@ const CustomerForm = () => {
     try {
       if (id) {
         // Update existing customer
-        const updatedCustomer = await updateCustomer(id, data);
+        const updatedCustomer = await updateCustomer(id, data as any);
         if (updatedCustomer) {
           toast.success('Cliente atualizado com sucesso!');
           navigate('/customers');
@@ -168,7 +177,7 @@ const CustomerForm = () => {
         }
       } else {
         // Create new customer
-        const newCustomer = await addCustomer(data);
+        const newCustomer = await addCustomer(data as any);
         if (newCustomer) {
           toast.success('Cliente criado com sucesso!');
           navigate('/customers');
@@ -192,17 +201,6 @@ const CustomerForm = () => {
       <div className="flex flex-col items-center justify-center h-full py-20">
         <h2 className="text-2xl font-semibold text-gray-800">Acesso Restrito</h2>
         <p className="mt-2 text-gray-600">Você não tem permissão para acessar esta página.</p>
-      </div>
-    );
-  }
-
-  if (isAuthLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-white to-gray-100">
-        <div className="flex flex-col items-center justify-center">
-          <div className="w-16 h-16 border-4 border-ferplas-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="mt-4 text-lg text-gray-600">Carregando...</p>
-        </div>
       </div>
     );
   }
@@ -252,11 +250,10 @@ const CustomerForm = () => {
               <Label htmlFor="companyName">Nome da Empresa <span className="text-red-500">*</span></Label>
               <Input
                 id="companyName"
-                name="companyName"
-                type="text"
-                placeholder="Nome da empresa"
-                {...control("companyName")}
+                {...register("companyName")}
                 className={cn(errors.companyName && "border-red-500")}
+                onChange={handleInputChange}
+                value={formState.companyName || ''}
               />
               {errors.companyName && (
                 <p className="text-red-500 text-sm mt-1">{errors.companyName.message}</p>
@@ -267,10 +264,7 @@ const CustomerForm = () => {
               <Label htmlFor="document">CNPJ/CPF <span className="text-red-500">*</span></Label>
               <Input
                 id="document"
-                name="document"
-                type="text"
-                placeholder="CNPJ ou CPF"
-                {...control("document")}
+                {...register("document")}
                 className={cn(errors.document && "border-red-500")}
                 onChange={(e) => {
                   const value = e.target.value;
@@ -306,12 +300,13 @@ const CustomerForm = () => {
                 </SelectTrigger>
                 <SelectContent>
                   {user.role === 'administrator' ? (
-                    // If admin, show all salespeople
-                    user.users?.map((salesperson) => (
-                      <SelectItem key={salesperson.id} value={salesperson.id}>
-                        {salesperson.name}
+                    // If admin, show mock salespeople data for now
+                    <>
+                      <SelectItem value={user.id}>
+                        {user.name}
                       </SelectItem>
-                    ))
+                      {/* You would replace this with actual salespeople data when available */}
+                    </>
                   ) : (
                     // If salesperson, show only themselves
                     <SelectItem key={user.id} value={user.id}>
@@ -329,10 +324,7 @@ const CustomerForm = () => {
               <Label htmlFor="stateRegistration">Inscrição Estadual</Label>
               <Input
                 id="stateRegistration"
-                name="stateRegistration"
-                type="text"
-                placeholder="Número da Inscrição Estadual"
-                {...control("stateRegistration")}
+                {...register("stateRegistration")}
                 onChange={handleInputChange}
                 value={formState.stateRegistration || ''}
               />
@@ -350,10 +342,7 @@ const CustomerForm = () => {
               <Label htmlFor="street">Rua <span className="text-red-500">*</span></Label>
               <Input
                 id="street"
-                name="street"
-                type="text"
-                placeholder="Rua"
-                {...control("street")}
+                {...register("street")}
                 className={cn(errors.street && "border-red-500")}
                 onChange={handleInputChange}
                 value={formState.street || ''}
@@ -367,10 +356,7 @@ const CustomerForm = () => {
               <Label htmlFor="number">Número <span className="text-muted-foreground">(Opcional)</span></Label>
               <Input
                 id="number"
-                name="number"
-                type="text"
-                placeholder="Número"
-                {...control("number")}
+                {...register("number")}
                 className={cn(errors.number && "border-red-500")}
                 onChange={handleInputChange}
                 value={formState.number || ''}
@@ -384,7 +370,6 @@ const CustomerForm = () => {
             <div className="flex items-center space-x-2 mt-6">
               <Switch
                 id="noNumber"
-                name="noNumber"
                 checked={isNoNumber}
                 onCheckedChange={(checked) => {
                   setIsNoNumber(checked);
@@ -399,10 +384,7 @@ const CustomerForm = () => {
               <Label htmlFor="complement">Complemento <span className="text-muted-foreground">(Opcional)</span></Label>
               <Input
                 id="complement"
-                name="complement"
-                type="text"
-                placeholder="Complemento"
-                {...control("complement")}
+                {...register("complement")}
                 className={cn(errors.complement && "border-red-500")}
                 onChange={handleInputChange}
                 value={formState.complement || ''}
@@ -416,10 +398,7 @@ const CustomerForm = () => {
               <Label htmlFor="neighborhood">Bairro <span className="text-red-500">*</span></Label>
               <Input
                 id="neighborhood"
-                name="neighborhood"
-                type="text"
-                placeholder="Bairro"
-                {...control("neighborhood")}
+                {...register("neighborhood")}
                 className={cn(errors.neighborhood && "border-red-500")}
                 onChange={handleInputChange}
                 value={formState.neighborhood || ''}
@@ -433,10 +412,7 @@ const CustomerForm = () => {
               <Label htmlFor="city">Cidade <span className="text-red-500">*</span></Label>
               <Input
                 id="city"
-                name="city"
-                type="text"
-                placeholder="Cidade"
-                {...control("city")}
+                {...register("city")}
                 className={cn(errors.city && "border-red-500")}
                 onChange={handleInputChange}
                 value={formState.city || ''}
@@ -497,10 +473,7 @@ const CustomerForm = () => {
               <Label htmlFor="zipCode">CEP <span className="text-red-500">*</span></Label>
               <Input
                 id="zipCode"
-                name="zipCode"
-                type="text"
-                placeholder="CEP"
-                {...control("zipCode")}
+                {...register("zipCode")}
                 className={cn(errors.zipCode && "border-red-500")}
                 onChange={handleInputChange}
                 value={formState.zipCode || ''}
@@ -519,10 +492,7 @@ const CustomerForm = () => {
               <Label htmlFor="phone">Telefone <span className="text-muted-foreground">(Opcional)</span></Label>
               <Input
                 id="phone"
-                name="phone"
-                type="text"
-                placeholder="Telefone"
-                {...control("phone")}
+                {...register("phone")}
                 className={cn(errors.phone && "border-red-500")}
                 onChange={(e) => {
                   const value = e.target.value;
@@ -548,10 +518,8 @@ const CustomerForm = () => {
               <Label htmlFor="email">Email <span className="text-muted-foreground">(Opcional)</span></Label>
               <Input
                 id="email"
-                name="email"
                 type="email"
-                placeholder="Email"
-                {...control("email")}
+                {...register("email")}
                 className={cn(errors.email && "border-red-500")}
                 onChange={handleInputChange}
                 value={formState.email || ''}
@@ -565,10 +533,7 @@ const CustomerForm = () => {
               <Label htmlFor="whatsapp">WhatsApp <span className="text-muted-foreground">(Opcional)</span></Label>
               <Input
                 id="whatsapp"
-                name="whatsapp"
-                type="text"
-                placeholder="WhatsApp"
-                {...control("whatsapp")}
+                {...register("whatsapp")}
                 className={cn(errors.whatsapp && "border-red-500")}
                 onChange={(e) => {
                   const value = e.target.value;
@@ -631,17 +596,15 @@ const CustomerForm = () => {
               <Label htmlFor="defaultDiscount">Desconto Padrão (%)</Label>
               <Input
                 id="defaultDiscount"
-                name="defaultDiscount"
                 type="number"
-                placeholder="Desconto Padrão"
-                {...control("defaultDiscount", { valueAsNumber: true })}
+                {...register("defaultDiscount", { valueAsNumber: true })}
                 className={cn(errors.defaultDiscount && "border-red-500")}
                 onChange={(e) => {
                   const value = Number(e.target.value);
                   setValue("defaultDiscount", value);
                   handleInputChange(e);
                 }}
-                value={formState.defaultDiscount || 0}
+                value={formState.defaultDiscount ?? 0}
               />
               {errors.defaultDiscount && (
                 <p className="text-red-500 text-sm mt-1">{errors.defaultDiscount.message}</p>
@@ -652,17 +615,15 @@ const CustomerForm = () => {
               <Label htmlFor="maxDiscount">Desconto Máximo (%)</Label>
               <Input
                 id="maxDiscount"
-                name="maxDiscount"
                 type="number"
-                placeholder="Desconto Máximo"
-                {...control("maxDiscount", { valueAsNumber: true })}
+                {...register("maxDiscount", { valueAsNumber: true })}
                 className={cn(errors.maxDiscount && "border-red-500")}
                 onChange={(e) => {
                   const value = Number(e.target.value);
                   setValue("maxDiscount", value);
                   handleInputChange(e);
                 }}
-                value={formState.maxDiscount || 0}
+                value={formState.maxDiscount ?? 0}
               />
               {errors.maxDiscount && (
                 <p className="text-red-500 text-sm mt-1">{errors.maxDiscount.message}</p>
@@ -678,17 +639,17 @@ const CustomerForm = () => {
               <Label htmlFor="registerDate">Data de Cadastro <span className="text-red-500">*</span></Label>
               <Input
                 id="registerDate"
-                name="registerDate"
                 type="date"
-                placeholder="Data de Cadastro"
-                {...control("registerDate")}
+                {...register("registerDate", {
+                  setValueAs: (value) => new Date(value)
+                })}
                 className={cn(errors.registerDate && "border-red-500")}
                 onChange={(e) => {
                   const value = e.target.value;
                   setValue("registerDate", new Date(value));
                   handleInputChange({ target: { name: 'registerDate', value } } as any);
                 }}
-                value={formState.registerDate ? new Date(formState.registerDate).toISOString().split('T')[0] : ''}
+                value={formState.registerDate ? new Date(formState.registerDate as any).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
               />
               {errors.registerDate && (
                 <p className="text-red-500 text-sm mt-1">{errors.registerDate.message}</p>
@@ -699,15 +660,11 @@ const CustomerForm = () => {
               <Label htmlFor="observations">Observações <span className="text-muted-foreground">(Opcional)</span></Label>
               <Textarea
                 id="observations"
-                name="observations"
+                {...register("observations")}
                 placeholder="Observações"
-                className={cn(errors.observations && "border-red-500")}
                 onChange={handleInputChange}
                 value={formState.observations || ''}
               />
-              {errors.observations && (
-                <p className="text-red-500 text-sm mt-1">{errors.observations.message}</p>
-              )}
             </div>
           </div>
         </div>

@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 type TableName = 
   | 'products' 
   | 'customers' 
+  | 'users' 
   | 'orders' 
   | 'categories' 
   | 'company_settings' 
@@ -14,10 +15,10 @@ type TableName =
   | 'order_discounts' 
   | 'order_items' 
   | 'subcategories'
-  | 'users'
   | 'user_types'
   | 'permissions'
-  | 'user_type_permissions';
+  | 'user_type_permissions'
+  | 'transport_companies';
 
 export function useSupabaseData<T extends Record<string, any>>(
   tableName: TableName, 
@@ -77,8 +78,8 @@ export function useSupabaseData<T extends Record<string, any>>(
 
       console.log(`Successfully fetched ${responseData.length} records from ${tableName}`);
       // Use explicit type casting to avoid TypeScript recursion
-      setData(responseData as unknown as T[]);
-      return responseData as unknown as T[];
+      setData(responseData as T[]);
+      return responseData as T[];
     } catch (err) {
       const error = err as Error;
       setError(error);
@@ -91,7 +92,7 @@ export function useSupabaseData<T extends Record<string, any>>(
   }, [tableName, options.select, options.filterKey, options.filterValue, options.joinTable, options.orderBy, options.isActive]);
 
   // Create a new record
-  const createRecord = async (record: Omit<T, 'id' | 'created_at' | 'updated_at'>) => {
+  const createRecord = async (record: Partial<T>) => {
     try {
       console.log(`Creating record in ${tableName}:`, record);
       
@@ -147,6 +148,11 @@ export function useSupabaseData<T extends Record<string, any>>(
           recordToCreate.max_discount = recordToCreate.maxDiscount;
           delete recordToCreate.maxDiscount;
         }
+
+        if (recordToCreate.transportCompanyId !== undefined) {
+          recordToCreate.transport_company_id = recordToCreate.transportCompanyId;
+          delete recordToCreate.transportCompanyId;
+        }
       }
       
       // Ensure current timestamps are set
@@ -181,7 +187,7 @@ export function useSupabaseData<T extends Record<string, any>>(
       await fetchData();
       
       toast.success('Registro criado com sucesso');
-      return createdData?.[0] as unknown as T;
+      return createdData?.[0] as T;
     } catch (err) {
       const error = err as Error;
       console.error(`Error creating record in ${tableName}:`, error);
@@ -232,6 +238,11 @@ export function useSupabaseData<T extends Record<string, any>>(
           recordToUpdate.max_discount = recordToUpdate.maxDiscount;
           delete recordToUpdate.maxDiscount;
         }
+
+        if (recordToUpdate.transportCompanyId !== undefined) {
+          recordToUpdate.transport_company_id = recordToUpdate.transportCompanyId;
+          delete recordToUpdate.transportCompanyId;
+        }
       }
       
       // Ensure we're using the right field based on the table format
@@ -267,7 +278,7 @@ export function useSupabaseData<T extends Record<string, any>>(
       );
 
       toast.success('Registro atualizado com sucesso');
-      return updatedData?.[0] as unknown as T;
+      return updatedData?.[0] as T;
     } catch (err) {
       const error = err as Error;
       console.error(`Error updating record in ${tableName}:`, error);

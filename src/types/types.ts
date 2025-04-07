@@ -85,7 +85,7 @@ export interface Customer {
   createdAt: Date;
   updatedAt: Date;
   registerDate: Date;
-  transportCompanyId?: string; // New field for transport company
+  transportCompanyId?: string; // Field for transport company
 }
 
 export interface TransportCompany {
