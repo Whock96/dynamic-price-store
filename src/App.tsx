@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from 'react-query';
-import { ThemeProvider } from "@/components/theme-provider"
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "@/components/ui/toaster"
 
 import Index from '@/pages/Index';
@@ -14,8 +15,8 @@ import CustomerDetail from '@/pages/Customers/CustomerDetail';
 import OrderList from '@/pages/Orders/OrderList';
 import OrderDetail from '@/pages/Orders/OrderDetail';
 import OrderUpdate from '@/pages/Orders/OrderUpdate';
-import Cart from '@/pages/Cart';
-import Settings from '@/pages/Settings';
+import Cart from './pages/Cart';
+import Settings from './pages/Settings';
 import CompanySettings from '@/pages/Settings/CompanySettings';
 import CategoryManagement from '@/pages/Settings/CategoryManagement';
 import UserManagement from '@/pages/Settings/UserManagement';
@@ -25,8 +26,8 @@ import ProductManagement from '@/pages/Settings/ProductManagement';
 import Login from '@/pages/Login';
 import NotFound from '@/pages/NotFound';
 
-import Sidebar from '@/components/Sidebar';
-import Navbar from '@/components/Navbar';
+import Sidebar from './components/layout/Sidebar';
+import Navbar from './components/layout/Navbar';
 
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { CompanyProvider } from '@/context/CompanyContext';
@@ -38,7 +39,8 @@ import { CustomerProvider } from '@/context/CustomerContext';
 const queryClient = new QueryClient();
 
 function App() {
-  const { loggedIn } = useAuth();
+  const { user } = useAuth();
+  const loggedIn = !!user; // Check if user exists
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
   const [collapsed, setCollapsed] = useState(isMobileView);
 

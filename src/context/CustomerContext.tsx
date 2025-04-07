@@ -6,7 +6,10 @@ import { supabase, Tables } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 // Define the type that maps to the Supabase table structure
-type SupabaseCustomer = Tables<'customers'>;
+type SupabaseCustomer = Tables<'customers'> & {
+  whatsapp?: string;
+  register_date?: string;
+};
 
 interface CustomerContextType {
   customers: Customer[];

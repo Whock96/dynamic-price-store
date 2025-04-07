@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   username: string;
@@ -75,13 +76,13 @@ export interface Customer {
   state: string;
   zipCode: string;
   phone: string;
-  whatsApp?: string; // New field for WhatsApp
+  whatsApp?: string; // WhatsApp field
   email: string;
   defaultDiscount: number; // Ensuring this is a number
   maxDiscount: number; // Ensuring this is a number
   createdAt: Date;
   updatedAt: Date;
-  registerDate?: Date; // New field for manual register date setting
+  registerDate?: Date; // Manual register date setting
 }
 
 export interface CartItem {
