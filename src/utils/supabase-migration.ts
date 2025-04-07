@@ -25,10 +25,12 @@ export const migrateCustomersToSupabase = async (customers: Customer[]) => {
       zip_code: customer.zipCode,
       phone: customer.phone,
       email: customer.email,
+      whatsapp: customer.whatsapp, // Add whatsapp field
       default_discount: customer.defaultDiscount,
       max_discount: customer.maxDiscount,
       created_at: customer.createdAt.toISOString(),
       updated_at: customer.updatedAt.toISOString(),
+      register_date: customer.registerDate.toISOString().split('T')[0], // Add register_date field with date format
     }));
     
     // Verifique se já existem registros com os mesmos IDs
