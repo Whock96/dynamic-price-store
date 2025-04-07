@@ -76,3 +76,10 @@ export const formatDocument = (document: string | null | undefined) => {
  * Alias for formatPhoneNumber for backward compatibility
  */
 export const formatPhone = formatPhoneNumber;
+
+/**
+ * Checks if a given status is a final status (completed or canceled)
+ */
+export const isFinalOrderStatus = (status: string): boolean => {
+  return status === 'completed' || status === 'canceled';
+};

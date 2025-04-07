@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { Customer } from '@/types/types';
 import { useSupabaseData } from '@/hooks/use-supabase-data';
