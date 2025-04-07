@@ -1,9 +1,9 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { User, UserType, Permission } from '@/types/types';
+import { authenticateDirectly } from '@/utils/auth-helper';
 
 export interface AuthContextType {
   user: User | null;
@@ -103,17 +103,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('User type not found');
       }
       
-      // Fetch permissions
       const fetchedPermissions = await getPermissions(userData.user_type_id);
       setPermissions(fetchedPermissions);
       
-      // Construct user object
       const user: User = {
         id: userData.id,
         username: userData.username,
         name: userData.name,
         email: userData.email || '',
-        role: userTypeData.name as any, // Adjust type assertion as needed
+        role: userTypeData.name as any,
         permissions: fetchedPermissions,
         createdAt: new Date(userData.created_at),
         userTypeId: userData.user_type_id,
@@ -132,7 +130,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const getPermissions = useCallback(async (userTypeId: string): Promise<Permission[]> => {
     try {
-      // Fetch permissions associated with this user type
       const { data: permissionsData, error: permissionsError } = await supabase
         .from('user_type_permissions')
         .select('permission_id')
@@ -147,10 +144,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return [];
       }
       
-      // Extract permission IDs
       const permissionIds = permissionsData.map(p => p.permission_id);
       
-      // Fetch permission details
       const { data: permissions, error: permDetailsError } = await supabase
         .from('permissions')
         .select('*')
@@ -161,7 +156,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return [];
       }
       
-      // Map to Permission type with isGranted set to true
       return (permissions || []).map(p => ({
         id: p.id,
         name: p.name,
@@ -182,72 +176,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Attempting login with username:', username);
       
-      // First, find the user in our custom users table
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('username', username)
-        .single();
+      const { success, user: directUser, error: directError } = await authenticateDirectly(username, password);
       
-      if (userError || !userData) {
-        console.error('User not found:', userError);
-        setError('Usuário não encontrado. Verifique seu nome de usuário.');
-        toast.error('Usuário não encontrado');
-        setIsLoading(false);
-        return;
-      }
-      
-      // Now authenticate with Supabase using the username as email
-      console.log('Found user, authenticating with Supabase Auth');
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: username, // Using username as email for authentication
-        password,
-      });
-      
-      if (error) {
-        console.error('Login error:', error);
+      if (success && directUser) {
+        console.log('Direct authentication successful, now logging in with Supabase Auth');
         
-        // If the error is invalid credentials, it means the user exists in our custom table
-        // but might not be properly set up in Supabase Auth - attempt to fix this
-        if (error.message === 'Invalid login credentials') {
-          console.log('Attempting to register user in Supabase Auth');
-          // Try to register the user in Supabase Auth
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: username,
+          password,
+        });
+        
+        if (error) {
+          console.log('Supabase Auth failed, attempting to register user in Auth system');
+          
           const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
             email: username,
             password,
           });
           
           if (signUpError) {
-            console.error('Failed to register user in Auth:', signUpError);
-            setError('Erro ao sincronizar credenciais. Entre em contato com o suporte.');
-            toast.error('Falha ao sincronizar credenciais');
+            console.error('Failed to create Auth account:', signUpError);
+            
+            await fetchUser(directUser.id);
+            toast.success('Login realizado com sucesso!');
+            navigate('/dashboard');
           } else {
-            // If registration succeeded, try to log in again
             const { error: retryError } = await supabase.auth.signInWithPassword({
               email: username,
               password,
             });
             
             if (retryError) {
-              setError('Credenciais inválidas após sincronização. Verifique seu usuário e senha.');
-              toast.error('Erro após sincronização de credenciais');
-            } else {
-              toast.success('Login realizado com sucesso!');
-              navigate('/dashboard');
+              console.error('Login failed after registration:', retryError);
+              await fetchUser(directUser.id);
             }
+            
+            toast.success('Login realizado com sucesso!');
+            navigate('/dashboard');
           }
         } else {
-          if (error.message === 'Invalid login credentials') {
-            setError('Credenciais inválidas. Verifique seu usuário e senha.');
-          } else {
-            setError(error.message);
-          }
-          toast.error('Erro ao fazer login');
+          console.log('Login with Supabase Auth successful');
+          toast.success('Login realizado com sucesso!');
+          navigate('/dashboard');
         }
       } else {
-        console.log('Login successful:', data);
-        toast.success('Login realizado com sucesso!');
-        navigate('/dashboard');
+        console.error('Direct authentication failed:', directError);
+        setError('Credenciais inválidas. Verifique seu usuário e senha.');
+        toast.error('Erro ao fazer login');
       }
     } catch (err: any) {
       console.error('Login error:', err.message);

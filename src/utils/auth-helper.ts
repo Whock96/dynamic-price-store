@@ -83,3 +83,28 @@ export const syncUserWithAuth = async (username: string, password: string) => {
     return { success: false, error: error.message };
   }
 };
+
+/**
+ * Helper function to authenticate a user directly from the users table
+ * This bypasses Supabase Auth when needed for existing users
+ */
+export const authenticateDirectly = async (username: string, password: string) => {
+  try {
+    // Find the user in the custom users table
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('username', username)
+      .eq('password', password)
+      .single();
+      
+    if (userError || !userData) {
+      return { success: false, error: 'Credenciais inválidas' };
+    }
+    
+    return { success: true, user: userData };
+  } catch (error: any) {
+    console.error('Error authenticating directly:', error);
+    return { success: false, error: error.message };
+  }
+};
