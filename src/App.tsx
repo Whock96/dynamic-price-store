@@ -15,8 +15,8 @@ import CustomerDetail from '@/pages/Customers/CustomerDetail';
 import OrderList from '@/pages/Orders/OrderList';
 import OrderDetail from '@/pages/Orders/OrderDetail';
 import OrderUpdate from '@/pages/Orders/OrderUpdate';
-import Cart from '@/pages/Cart/Cart';
-import Settings from './pages/Settings/Settings';
+import Cart from '@/pages/Cart';
+import Settings from '@/pages/Settings/Settings';
 import CompanySettings from '@/pages/Settings/CompanySettings';
 import CategoryManagement from '@/pages/Settings/CategoryManagement';
 import UserManagement from '@/pages/Settings/UserManagement';
@@ -38,9 +38,10 @@ import { CustomerProvider } from '@/context/CustomerContext';
 
 const queryClient = new QueryClient();
 
-function App() {
+// Create a protected routes wrapper component
+const ProtectedRoutes = () => {
   const { user } = useAuth();
-  const loggedIn = !!user; // Check if user exists
+  const loggedIn = !!user;
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
   const [collapsed, setCollapsed] = useState(isMobileView);
 
@@ -61,10 +62,57 @@ function App() {
     }
   }, [isMobileView]);
 
-  const toggleSidebar = (open: boolean) => {
+  const toggleSidebar = (open) => {
     setCollapsed(!open);
   };
 
+  if (!loggedIn) {
+    return (
+      <Routes>
+        <Route path="*" element={<Login />} />
+      </Routes>
+    );
+  }
+
+  return (
+    <div className="flex">
+      <Sidebar 
+        isExpanded={!collapsed}
+        setIsExpanded={() => toggleSidebar(!collapsed)}
+      />
+      <div className="flex-1 p-8">
+        <Navbar />
+        <div className="mt-4">
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/products" element={<ProductList />} />
+            <Route path="/products/:id" element={<ProductDetail />} />
+            <Route path="/customers" element={<CustomerList />} />
+            <Route path="/customers/new" element={<CustomerForm />} />
+            <Route path="/customers/:id" element={<CustomerDetail />} />
+            <Route path="/customers/:id/edit" element={<CustomerForm />} />
+            <Route path="/orders" element={<OrderList />} />
+            <Route path="/orders/:id" element={<OrderDetail />} />
+            <Route path="/orders/new" element={<Cart />} />
+            <Route path="/orders/:id/update" element={<OrderUpdate />} />
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/settings/company" element={<CompanySettings />} />
+            <Route path="/settings/categories" element={<CategoryManagement />} />
+            <Route path="/settings/users" element={<UserManagement />} />
+            <Route path="/settings/user-types" element={<UserTypeManagement />} />
+            <Route path="/settings/discounts" element={<DiscountManagement />} />
+            <Route path="/settings/products" element={<ProductManagement />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+function App() {
   return (
     <Router>
       <QueryClientProvider client={queryClient}>
@@ -76,46 +124,7 @@ function App() {
                   <CustomerProvider>
                     <ThemeProvider defaultTheme="light" storageKey="ferplas-theme">
                       <div className="min-h-screen">
-                        {loggedIn ? (
-                          <div className="flex">
-                            <Sidebar 
-                              isExpanded={!collapsed}
-                              setIsExpanded={() => toggleSidebar(!collapsed)}
-                            />
-                            <div className="flex-1 p-8">
-                              <Navbar />
-                              <div className="mt-4">
-                                <Routes>
-                                  <Route path="/" element={<Index />} />
-                                  <Route path="/dashboard" element={<Dashboard />} />
-                                  <Route path="/products" element={<ProductList />} />
-                                  <Route path="/products/:id" element={<ProductDetail />} />
-                                  <Route path="/customers" element={<CustomerList />} />
-                                  <Route path="/customers/new" element={<CustomerForm />} />
-                                  <Route path="/customers/:id" element={<CustomerDetail />} />
-                                  <Route path="/customers/:id/edit" element={<CustomerForm />} />
-                                  <Route path="/orders" element={<OrderList />} />
-                                  <Route path="/orders/:id" element={<OrderDetail />} />
-                                  <Route path="/orders/new" element={<Cart />} />
-                                  <Route path="/orders/:id/update" element={<OrderUpdate />} />
-                                  <Route path="/cart" element={<Cart />} />
-                                  <Route path="/settings" element={<Settings />} />
-                                  <Route path="/settings/company" element={<CompanySettings />} />
-                                  <Route path="/settings/categories" element={<CategoryManagement />} />
-                                  <Route path="/settings/users" element={<UserManagement />} />
-                                  <Route path="/settings/user-types" element={<UserTypeManagement />} />
-                                  <Route path="/settings/discounts" element={<DiscountManagement />} />
-                                  <Route path="/settings/products" element={<ProductManagement />} />
-                                  <Route path="*" element={<NotFound />} />
-                                </Routes>
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <Routes>
-                            <Route path="*" element={<Login />} />
-                          </Routes>
-                        )}
+                        <ProtectedRoutes />
                       </div>
                       <Toaster />
                     </ThemeProvider>
