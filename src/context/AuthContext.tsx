@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User as UserType, MenuItem, Permission } from '../types/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -135,6 +134,13 @@ export const MENU_ITEMS: MenuItem[] = [
         name: 'Gerenciar Descontos',
         path: '/settings/discounts',
         icon: 'percent',
+        requiredRoles: ['administrator'],
+      },
+      {
+        id: 'transport-companies',
+        name: 'Gerenciar Transportadoras',
+        path: '/settings/transport-companies',
+        icon: 'truck',
         requiredRoles: ['administrator'],
       },
     ],

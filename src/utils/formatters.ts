@@ -1,4 +1,3 @@
-
 /**
  * Formats a number as currency in Brazilian Real (BRL)
  */
@@ -71,3 +70,19 @@ export const formatDocument = (document: string | null | undefined) => {
   // Return original if it doesn't match expected patterns
   return document;
 };
+
+/**
+ * Formats a CNPJ document number to the Brazilian format
+ */
+export function formatCnpj(cnpj: string): string {
+  // Remove all non-numbers
+  const numbers = cnpj.replace(/\D/g, '');
+  
+  // Format as XX.XXX.XXX/XXXX-XX
+  if (numbers.length === 14) {
+    return numbers.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+  }
+  
+  // Return original if not valid format
+  return cnpj;
+}

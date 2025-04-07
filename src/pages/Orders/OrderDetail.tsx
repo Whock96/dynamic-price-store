@@ -23,6 +23,7 @@ import { useOrders } from '@/context/OrderContext';
 import { useOrderData } from '@/hooks/use-order-data';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import PrintableOrder from '@/components/orders/PrintableOrder';
+import { useTransportCompanies } from '@/context/TransportCompanyContext';
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -32,6 +33,7 @@ const OrderDetail = () => {
   const { order: supabaseOrder, isLoading: isSupabaseLoading } = useOrderData(id);
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const { transportCompanies } = useTransportCompanies();
 
   useEffect(() => {
     if (id) {
@@ -314,6 +316,12 @@ const OrderDetail = () => {
 
   const getStatusBadge = (status: string) => {
     return <OrderStatusBadge status={status as any} />;
+  };
+
+  const getTransportCompanyName = (id?: string) => {
+    if (!id) return null;
+    const transportCompany = transportCompanies.find(tc => tc.id === id);
+    return transportCompany ? transportCompany.name : null;
   };
 
   if (loading || isSupabaseLoading) {
@@ -779,6 +787,14 @@ const OrderDetail = () => {
             </p>
           </CardContent>
         </Card>
+      )}
+      
+      {order.transportCompanyId && (
+        <div className="mt-2">
+          <p className="text-sm text-gray-500">
+            <span className="font-medium">Transportadora:</span> {getTransportCompanyName(order.transportCompanyId)}
+          </p>
+        </div>
       )}
     </div>
   );

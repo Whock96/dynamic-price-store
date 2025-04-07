@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
 import { useOrders } from './OrderContext';
 import { useCustomers } from './CustomerContext';
 import { useDiscountSettings } from '../hooks/use-discount-settings';
 import { useAuth } from './AuthContext';
+import { useTransportCompanies } from './TransportCompanyContext';
 
 interface CartContextType {
   items: CartItem[];
@@ -23,6 +24,7 @@ interface CartContextType {
   deliveryFee: number;
   applyDiscounts: boolean;
   withIPI: boolean;
+  transportCompanyId?: string;
   setCustomer: (customer: Customer | null) => void;
   addItem: (product: Product, quantity: number) => void;
   removeItem: (id: string) => void;
@@ -42,11 +44,12 @@ interface CartContextType {
   toggleIPI: () => void;
   calculateIPIValue: () => number;
   calculateItemTaxSubstitutionValue: (item: CartItem) => number;
+  setTransportCompanyId: (id: string | undefined) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export function CartProvider({ children }: { children: React.ReactNode }) {
   let addOrder: (newOrder: Partial<Order>) => Promise<string | undefined>;
   try {
     const { addOrder: orderContextAddOrder } = useOrders();
@@ -62,9 +65,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { customers } = useCustomers();
   const { settings } = useDiscountSettings();
   const { user } = useAuth();
-  
+  const { transportCompanies } = useTransportCompanies();
+
   const [items, setItems] = useState<CartItem[]>([]);
-  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [customer, setCustomerState] = useState<Customer | null>(null);
   const [discountOptions, setDiscountOptions] = useState<DiscountOption[]>([]);
   const [selectedDiscountOptions, setSelectedDiscountOptions] = useState<string[]>([]);
   const [deliveryLocation, setDeliveryLocation] = useState<'capital' | 'interior' | null>(null);
@@ -74,6 +78,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [paymentTerms, setPaymentTerms] = useState<string>('');
   const [applyDiscounts, setApplyDiscounts] = useState<boolean>(true);
   const [withIPI, setWithIPI] = useState<boolean>(false);
+  const [transportCompanyId, setTransportCompanyId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (settings) {
@@ -124,7 +129,19 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     
-    setCustomer(selectedCustomer);
+    setCustomerState(selectedCustomer);
+    
+    if (selectedCustomer.defaultDiscount) {
+      items.forEach(item => {
+        updateItemDiscount(item.id, selectedCustomer.defaultDiscount);
+      });
+    }
+
+    if (selectedCustomer.transportCompanyId) {
+      setTransportCompanyId(selectedCustomer.transportCompanyId);
+    } else {
+      setTransportCompanyId(undefined);
+    }
   };
 
   const calculateTotalUnits = (item: CartItem): number => {
@@ -492,17 +509,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     setItems([]);
-    setCustomer(null);
+    setCustomerState(null);
     setSelectedDiscountOptions([]);
     setDeliveryLocation(null);
     setHalfInvoicePercentage(50);
     setObservations('');
     setPaymentTerms('');
     setWithIPI(false);
+    setTransportCompanyId(undefined);
     toast.info('Carrinho limpo');
-  };
+  }, []);
 
   const sendOrder = async () => {
     if (!customer) {
@@ -545,7 +563,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ipiValue: withIPI ? ipiValue : undefined,
         status: 'pending',
         notes: observations,
-        userId: user?.id
+        userId: user?.id,
+        transportCompanyId: transportCompanyId
       };
       
       console.log('Sending order with data:', orderData);
@@ -585,6 +604,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       deliveryFee,
       applyDiscounts,
       withIPI,
+      transportCompanyId,
       setCustomer: handleSetCustomer,
       addItem,
       removeItem,
@@ -603,7 +623,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       calculateTaxSubstitutionValue,
       toggleIPI,
       calculateIPIValue,
-      calculateItemTaxSubstitutionValue
+      calculateItemTaxSubstitutionValue,
+      setTransportCompanyId
     }}>
       {children}
     </CartContext.Provider>
