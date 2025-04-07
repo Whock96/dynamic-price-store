@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -34,22 +35,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
   
   useEffect(() => {
-    const session = supabase.auth.getSession();
+    async function checkSession() {
+      const { data, error } = await supabase.auth.getSession();
+      
+      if (data?.session?.user) {
+        await fetchUser(data.session.user.id);
+      } else {
+        setUser(null);
+        setIsLoading(false);
+      }
+    }
     
-    supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.session?.user) {
-        await fetchUser(session.session.user.id);
+    checkSession();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        await fetchUser(session.user.id);
       } else {
         setUser(null);
         setIsLoading(false);
       }
     });
     
-    if (session?.data?.session?.user) {
-      fetchUser(session.data.session.user.id);
-    } else {
-      setIsLoading(false);
-    }
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
   
   const fetchUser = async (userId: string) => {

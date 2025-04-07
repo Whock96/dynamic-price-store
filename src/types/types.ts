@@ -86,6 +86,7 @@ export interface Customer {
   updatedAt: Date;
   registerDate: Date;
   transportCompanyId?: string; // Field for transport company
+  observations?: string; // Optional field for observations
 }
 
 export interface TransportCompany {

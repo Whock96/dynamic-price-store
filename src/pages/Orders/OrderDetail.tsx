@@ -1,740 +1,446 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+
+import React, { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { 
+  Phone, Mail, CreditCard, Calendar, Truck, Tag, Check, Badge, 
+  Clipboard, Hourglass, Loader2
+} from 'lucide-react';
 import { useOrders } from '@/context/OrderContext';
 import { useAuth } from '@/context/AuthContext';
-import { useSupabaseData } from '@/hooks/use-supabase-data';
 import { useTransportCompanies } from '@/context/TransportCompanyContext';
-import { Printer, FileText, Edit, ArrowLeft, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { formatCurrency, formatDocument, formatPhoneNumber } from '@/utils/formatters';
-import { Order } from '@/types/types';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import PrintableOrder from '@/components/orders/PrintableOrder';
+import { cn } from '@/lib/utils';
+import { formatCurrency, formatDate, formatPhone } from '@/utils/formatters';
+import { CartItem, TransportCompany } from '@/types/types';
+import { toast } from 'sonner';
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getOrderById, updateOrder, deleteOrder, isLoading } = useOrders();
+  const { getOrderById, updateOrderStatus, isLoading } = useOrders();
+  const { user, hasPermission } = useAuth();
   const { getCompanyById } = useTransportCompanies();
-  const { user } = useAuth();
-  const [order, setOrder] = useState<Order | null>(null);
-  const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
-  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [transportCompany, setTransportCompany] = useState<TransportCompany | null>(null);
+  const [isPrintMode, setIsPrintMode] = useState(false);
+  const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
 
-  useEffect(() => {
-    if (id) {
-      const foundOrder = getOrderById(id);
-      if (foundOrder) {
-        setOrder(foundOrder);
-        
-        if (foundOrder.transportCompanyId) {
-          const company = getCompanyById(foundOrder.transportCompanyId);
-          if (company) {
-            setTransportCompany(company);
-          }
-        }
-      } else {
-        toast.error("Pedido não encontrado");
-        navigate('/orders');
-      }
-    }
-  }, [id, getOrderById, navigate, getCompanyById]);
+  if (!id) {
+    return <div>Pedido não encontrado</div>;
+  }
 
-  const handleUpdateStatus = (status: string) => {
-    if (order) {
-      updateOrder(order.id, { status });
-    }
-  };
-
-  const handleCancelOrder = () => {
-    if (order) {
-      setIsProcessing(true);
-      deleteOrder(order.id)
-        .then(() => {
-          toast.success("Pedido cancelado com sucesso");
-          navigate('/orders');
-        })
-        .catch((error) => {
-          toast.error("Erro ao cancelar pedido");
-          console.error(error);
-        })
-        .finally(() => {
-          setIsProcessing(false);
-        });
-    }
-  };
-
-  const printOrder = () => {
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Pedido #${order.orderNumber || '1'} - Impressão</title>
-          <style>
-            body { font-family: Arial, sans-serif; }
-            @media print {
-              body { 
-                -webkit-print-color-adjust: exact !important; 
-                print-color-adjust: exact !important;
-                font-size: 11px;
-              }
-            }
-            @page { size: A4; margin: 8mm; }
-          </style>
-          <link rel="stylesheet" href="${window.location.origin}/src/index.css">
-        </head>
-        <body>
-          <div id="printable-content"></div>
-          <script>
-            // This will trigger print when content is loaded
-            window.onload = function() {
-              setTimeout(() => window.print(), 1000);
-            };
-          </script>
-        </body>
-        </html>
-      `);
-      
-      printWindow.document.close();
-      
-      const mountNode = printWindow.document.getElementById('printable-content');
-      if (mountNode) {
-        const iframe = document.createElement('iframe');
-        iframe.style.width = '100%';
-        iframe.style.height = '100vh';
-        iframe.style.border = 'none';
-        
-        mountNode.appendChild(iframe);
-        
-        iframe.onload = function() {
-          const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-          if (iframeDoc) {
-            printWindow.document.title = `Pedido #${order.orderNumber || '1'} - Impressão`;
-            
-            const companyInfo = JSON.parse(localStorage.getItem('ferplas-company-info') || '{}');
-            iframeDoc.body.innerHTML = renderPrintableOrderHTML(order, companyInfo);
-          }
-        };
-        
-        iframe.src = 'about:blank';
-      }
-    } else {
-      toast.error("Não foi possível abrir a janela de impressão. Verifique se o seu navegador está bloqueando pop-ups.");
-    }
-  };
-
-  const renderPrintableOrderHTML = (order: any, companyInfo: any) => {
-    const invoiceTypeText = order.fullInvoice ? 'Nota Cheia' : 'Meia Nota';
-    const halfInvoiceText = !order.fullInvoice && order.halfInvoicePercentage ? 
-      `(${order.halfInvoicePercentage}%)` : '';
-      
-    let taxSubstitutionValue = 0;
-    if (order.taxSubstitution) {
-      taxSubstitutionValue = (7.8 / 100) * order.subtotal;
-    }
-    
-    const ipiValue = (order.withIPI || order.with_ipi) ? (order.ipiValue || order.ipi_value || 0) : 0;
-    
-    return `
-      <div style="max-width: 800px; margin: 0 auto; padding: 12px; font-family: Arial, sans-serif; font-size: 11px;">
-        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-bottom: 8px;">
-          <div>
-            <img src="/lovable-uploads/68daf61d-816f-4f86-8b3f-4f0970296cf0.png" width="150" height="60" style="object-fit: contain;" alt="Ferplas Logo">
-          </div>
-          <div style="text-align: right; font-size: 11px;">
-            <p style="font-weight: bold; font-size: 14px; margin-bottom: 2px; margin-top: 0px;">${companyInfo.name || 'Ferplas Indústria e Comércio'}</p>
-            <p style="margin: 2px 0;">CNPJ: ${companyInfo.document || '00.000.000/0000-00'} | IE: ${companyInfo.stateRegistration || '000.000.000.000'}</p>
-            <p style="margin: 2px 0;">${companyInfo.address || 'Av. Principal, 1234'} - ${companyInfo.city || 'São Paulo'}/${companyInfo.state || 'SP'} - ${companyInfo.zipCode || '00000-000'}</p>
-            <p style="margin: 2px 0;">Tel: ${companyInfo.phone || '(00) 0000-0000'} | ${companyInfo.email || 'contato@ferplas.com.br'}</p>
-            ${companyInfo.website ? `<p style="margin: 2px 0;">${companyInfo.website}</p>` : ''}
-          </div>
-        </div>
-        
-        <div style="text-align: center; margin-bottom: 8px;">
-          <h1 style="font-size: 16px; font-weight: bold; border: 1px solid #ddd; display: inline-block; padding: 4px 12px; margin: 4px 0;">
-            PEDIDO #${order.orderNumber || order.order_number || '1'}
-          </h1>
-          <p style="font-size: 10px; margin: 2px 0;">
-            Emitido em ${format(new Date(order.createdAt || order.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-          </p>
-        </div>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
-          <div style="border: 1px solid #ddd; border-radius: 4px; padding: 8px;">
-            <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Cliente</h2>
-            <p style="font-weight: 600; margin: 2px 0;">${order.customer?.companyName || order.customers?.company_name || 'Cliente não identificado'}</p>
-            <p style="margin: 2px 0;">CNPJ/CPF: ${order.customer?.document || order.customers?.document || 'N/A'}</p>
-            ${(order.customer?.stateRegistration || order.customers?.state_registration) ? 
-              `<p style="margin: 2px 0;">IE: ${order.customer?.stateRegistration || order.customers?.state_registration}</p>` : ''}
-            <p style="margin: 2px 0;">${order.customer?.street || order.customers?.street || ''}, ${order.customer?.number || order.customers?.number || ''} ${order.customer?.complement ? `- ${order.customer.complement}` : (order.customers?.complement ? `- ${order.customers.complement}` : '')}</p>
-            ${(order.customer?.neighborhood || order.customers?.neighborhood) ? 
-              `<p style="margin: 2px 0;">Bairro: ${order.customer?.neighborhood || order.customers?.neighborhood}</p>` : ''}
-            <p style="margin: 2px 0;">${order.customer?.city || order.customers?.city || 'N/A'}/${order.customer?.state || order.customers?.state || 'N/A'} - ${order.customer?.zipCode || order.customers?.zip_code || 'N/A'}</p>
-            <p style="margin: 2px 0;">Tel: ${order.customer?.phone || order.customers?.phone || 'N/A'}</p>
-            ${(order.customer?.whatsapp || order.customers?.whatsapp) ? 
-              `<p style="margin: 2px 0;">WhatsApp: ${order.customer?.whatsapp || order.customers?.whatsapp}</p>` : ''}
-          </div>
-          
-          <div style="border: 1px solid #ddd; border-radius: 4px; padding: 8px;">
-            <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Dados do Pedido</h2>
-            <p style="margin: 2px 0;"><span style="font-weight: 600;">Data:</span> ${format(new Date(order.createdAt || order.created_at), "dd/MM/yyyy", { locale: ptBR })}</p>
-            <p style="margin: 2px 0;"><span style="font-weight: 600;">Vendedor:</span> ${order.user?.name || 'Não informado'}</p>
-            <p style="margin: 2px 0;"><span style="font-weight: 600;">Status:</span> ${
-              order.status === 'pending' ? 'Pendente' : 
-              order.status === 'confirmed' ? 'Confirmado' : 
-              order.status === 'invoiced' ? 'Faturado' : 
-              order.status === 'completed' ? 'Concluído' : 'Cancelado'
-            }</p>
-            <p style="margin: 2px 0;"><span style="font-weight: 600;">Pagamento:</span> ${(order.paymentMethod || order.payment_method) === 'cash' ? 'À Vista' : 'A Prazo'}</p>
-            ${(order.paymentMethod || order.payment_method) === 'credit' && (order.paymentTerms || order.payment_terms) ? 
-              `<p style="margin: 2px 0;"><span style="font-weight: 600;">Prazos:</span> ${order.paymentTerms || order.payment_terms}</p>` : ''}
-            <p style="margin: 2px 0;"><span style="font-weight: 600;">Tipo de Nota:</span> ${invoiceTypeText} ${halfInvoiceText}</p>
-            <p style="margin: 2px 0;"><span style="font-weight: 600;">Substituição Tributária:</span> ${order.taxSubstitution || order.tax_substitution ? 'Sim' : 'Não'}</p>
-            <p style="margin: 2px 0;"><span style="font-weight: 600;">IPI:</span> ${order.withIPI || order.with_ipi ? 'Sim' : 'Não'}</p>
-          </div>
-        </div>
-        
-        <div style="margin-bottom: 8px;">
-          <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Itens do Pedido</h2>
-          <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
-            <thead>
-              <tr style="background-color: #f3f4f6;">
-                <th style="border: 1px solid #ddd; padding: 3px; text-align: left;">Produto</th>
-                <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Preço</th>
-                <th style="border: 1px solid #ddd; padding: 3px; text-align: center;">Desc.</th>
-                <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Final</th>
-                <th style="border: 1px solid #ddd; padding: 3px; text-align: center;">Qtd.</th>
-                <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Subtotal</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${(order.items || []).map((item: any, index: number) => `
-                <tr>
-                  <td style="border: 1px solid #ddd; padding: 3px;">${item?.product?.name || item?.productName || `Produto ${index + 1}`}</td>
-                  <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">
-                    ${formatCurrency(item?.listPrice || item?.product?.listPrice || 0)}
-                  </td>
-                  <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${item?.discount || 0}%</td>
-                  <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.finalPrice || 0)}</td>
-                  <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${item?.quantity || 0}</td>
-                  <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.subtotal || 0)}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
-          <div>
-            <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Entrega</h2>
-            <p style="margin: 2px 0;"><span style="font-weight: 600;">Tipo:</span> ${(order.shipping || order.shipping) === 'delivery' ? 'Entrega' : 'Retirada'}</p>
-            ${(order.shipping || order.shipping) === 'delivery' && (order.deliveryLocation || order.delivery_location) ? 
-              `<p style="margin: 2px 0;"><span style="font-weight: 600;">Região:</span> ${(order.deliveryLocation || order.delivery_location) === 'capital' ? 'Capital' : 'Interior'}</p>` : ''}
-            ${(order.shipping || order.shipping) === 'delivery' && (order.deliveryFee || order.delivery_fee) && (order.deliveryFee || order.delivery_fee) > 0 ? 
-              `<p style="margin: 2px 0;"><span style="font-weight: 600;">Taxa:</span> ${formatCurrency(order.deliveryFee || order.delivery_fee)}</p>` : ''}
-          </div>
-          
-          <div>
-            <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Resumo Financeiro</h2>
-            <table style="width: 100%;">
-              <tr>
-                <td style="padding: 2px 0;">Subtotal:</td>
-                <td style="padding: 2px 0; text-align: right; font-weight: 500;">${formatCurrency(order.subtotal)}</td>
-              </tr>
-              <tr>
-                <td style="padding: 2px 0;">Descontos:</td>
-                <td style="padding: 2px 0; text-align: right; color: #dc2626; font-weight: 500;">
-                  -${formatCurrency(order.totalDiscount || order.total_discount || 0)}
-                </td>
-              </tr>
-              ${(order.taxSubstitution || order.tax_substitution) ? `
-                <tr>
-                  <td style="padding: 2px 0;">Substituição Tributária (7.8%):</td>
-                  <td style="padding: 2px 0; text-align: right; color: #ea580c; font-weight: 500;">
-                    +${formatCurrency(taxSubstitutionValue)}
-                  </td>
-                </tr>
-              ` : ''}
-              ${(order.withIPI || order.with_ipi) && ipiValue > 0 ? `
-                <tr>
-                  <td style="padding: 2px 0;">IPI:</td>
-                  <td style="padding: 2px 0; text-align: right; color: #ea580c; font-weight: 500;">
-                    +${formatCurrency(ipiValue)}
-                  </td>
-                </tr>
-              ` : ''}
-              ${(order.deliveryFee || order.delivery_fee) && (order.deliveryFee || order.delivery_fee) > 0 ? `
-                <tr>
-                  <td style="padding: 2px 0;">Taxa de Entrega:</td>
-                  <td style="padding: 2px 0; text-align: right; font-weight: 500;">${formatCurrency(order.deliveryFee || order.delivery_fee)}</td>
-                </tr>
-              ` : ''}
-              <tr style="border-top: 1px solid #ddd;">
-                <td style="padding: 3px 0; font-weight: bold;">Total:</td>
-                <td style="padding: 3px 0; text-align: right; font-weight: bold;">${formatCurrency(order.total)}</td>
-              </tr>
-            </table>
-          </div>
-        </div>
-        
-        ${(order.notes || order.observations) ? `
-          <div style="margin-bottom: 8px;">
-            <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Observações</h2>
-            <p style="border: 1px solid #ddd; padding: 4px; background-color: #f9f9f9; margin: 0;">${order.notes || order.observations}</p>
-          </div>
-        ` : ''}
-        
-        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd; text-align: center; font-size: 10px; color: #666;">
-          <p style="margin: 0;">Este documento não possui valor fiscal. Para mais informações entre em contato conosco.</p>
-        </div>
-      </div>
-    `;
-  };
-
-  if (isLoading || !order) {
+  const order = getOrderById(id);
+  
+  if (isLoading) {
     return (
-      <div className="flex justify-center items-center py-20">
-        <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-ferplas-500"></div>
       </div>
     );
   }
 
+  if (!order) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64">
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">Pedido não encontrado</h2>
+        <p className="text-gray-600 mb-4">O pedido solicitado não existe ou você não tem permissão para visualizá-lo.</p>
+        <Button 
+          onClick={() => navigate('/orders')}
+          className="bg-ferplas-500 hover:bg-ferplas-600"
+        >
+          Voltar para a lista de pedidos
+        </Button>
+      </div>
+    );
+  }
+
+  const transportCompany = order.transportCompanyId 
+    ? getCompanyById(order.transportCompanyId) 
+    : undefined;
+
+  const handleStatusUpdate = async (status: "pending" | "confirmed" | "invoiced" | "completed" | "canceled") => {
+    if (!id) return;
+    
+    setIsStatusUpdating(true);
+    
+    if (status === 'canceled' && !isConfirmingCancel) {
+      setIsConfirmingCancel(true);
+      setIsStatusUpdating(false);
+      return;
+    }
+    
+    if (status === 'canceled' && isConfirmingCancel) {
+      setIsConfirmingCancel(false);
+    }
+    
+    try {
+      await updateOrderStatus(id, status);
+      toast.success(`Status do pedido atualizado para ${status}`);
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      toast.error('Erro ao atualizar status do pedido');
+    } finally {
+      setIsStatusUpdating(false);
+    }
+  };
+
+  const renderIpiInfo = () => {
+    if (!order.withIPI) return null;
+    
+    return (
+      <div className="mt-2 text-sm">
+        <span className="text-gray-500">IPI:</span> {formatCurrency(order.ipiValue || 0)}
+      </div>
+    );
+  };
+
+  const renderPaymentTerms = () => {
+    if (!order.paymentTerms) return 'Não informado';
+    
+    return order.paymentTerms;
+  };
+
+  const renderHalfInvoiceInfo = () => {
+    if (order.fullInvoice) return null;
+    
+    return (
+      <div className="mt-2 text-sm">
+        <span className="text-gray-500">Faturamento parcial:</span> {order.halfInvoicePercentage || 0}%
+      </div>
+    );
+  };
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center">
-          <Button 
-            variant="ghost" 
-            className="mr-2 p-0 h-9 w-9" 
-            onClick={() => navigate('/orders')}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">
-              Pedido #{order.orderNumber || order.id.substring(0, 8)}
-            </h1>
-            <p className="text-muted-foreground">
-              {new Date(order.createdAt).toLocaleDateString('pt-BR')}
-            </p>
-          </div>
-        </div>
-        
-        <div className="flex flex-wrap gap-2">
-          <Button 
-            variant="outline" 
-            className="gap-1"
-            onClick={() => setIsPrintDialogOpen(true)}
-          >
-            <Printer className="h-4 w-4" /> Imprimir
-          </Button>
-          
-          <Button
-            variant="outline" 
-            className="gap-1"
-            onClick={() => navigate(`/orders/${id}/edit`)}
-          >
-            <Edit className="h-4 w-4" /> Editar
-          </Button>
-          
-          <AlertDialogTrigger asChild>
-            <Button 
-              variant="destructive" 
-              className="gap-1" 
-              disabled={order.status === 'canceled'}
-            >
-              <Trash2 className="h-4 w-4" /> Cancelar
-            </Button>
-          </AlertDialogTrigger>
-        </div>
-      </div>
-      
-      <div className="grid md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 space-y-6">
-          <Card>
-            <CardHeader className="pb-4">
-              <div className="flex justify-between items-center">
-                <CardTitle>Detalhes do Pedido</CardTitle>
-                <OrderStatusBadge status={order.status} />
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <div className="flex justify-between">
-                  <h3 className="font-medium text-base mb-2">Cliente</h3>
-                  <Badge variant="outline">{formatDocument(order.customer.document)}</Badge>
-                </div>
-                <p className="text-lg font-semibold">{order.customer.companyName}</p>
-                <div className="text-sm text-muted-foreground space-y-1 mt-2">
-                  <p className="flex items-center gap-1">
-                    <Phone size={14} /> {formatPhoneNumber(order.customer.phone)}
-                  </p>
-                  <p className="flex items-center gap-1">
-                    <Mail size={14} /> {order.customer.email || 'Não informado'}
-                  </p>
-                </div>
-              </div>
-              
-              <Separator />
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <p className="text-sm text-muted-foreground">Vendedor</p>
-                  <p className="font-medium">{order.user.name}</p>
-                </div>
-                
-                <div>
-                  <p className="text-sm text-muted-foreground">Data do Pedido</p>
-                  <p className="font-medium">{new Date(order.createdAt).toLocaleDateString('pt-BR')}</p>
-                </div>
-                
-                <div>
-                  <p className="text-sm text-muted-foreground">Forma de Pagamento</p>
-                  <div className="flex items-center gap-1">
-                    <CreditCard size={14} />
-                    <span className="font-medium">
-                      {order.paymentMethod === 'cash' ? 'À Vista' : 'A Prazo'}
-                    </span>
-                  </div>
-                </div>
-                
-                {order.paymentTerms && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Condições de Pagamento</p>
-                    <div className="flex items-center gap-1">
-                      <Calendar size={14} />
-                      <span className="font-medium">{order.paymentTerms}</span>
-                    </div>
-                  </div>
-                )}
-                
-                <div>
-                  <p className="text-sm text-muted-foreground">Tipo de Entrega</p>
-                  <div className="flex items-center gap-1">
-                    <Truck size={14} />
-                    <span className="font-medium">
-                      {order.shipping === 'delivery' ? 'Entrega' : 'Retirada'}
-                    </span>
-                  </div>
-                </div>
-                
-                {order.shipping === 'delivery' && order.deliveryLocation && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Local de Entrega</p>
-                    <div className="flex items-center gap-1">
-                      <span className="font-medium">
-                        {order.deliveryLocation === 'capital' ? 'Capital' : 'Interior'}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                
-                {order.transportCompanyId && transportCompany && (
-                  <div className="col-span-2">
-                    <p className="text-sm text-muted-foreground">Transportadora</p>
-                    <div className="flex items-center gap-1">
-                      <Truck size={14} />
-                      <span className="font-medium">{transportCompany.name}</span>
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {formatDocument(transportCompany.document)}
-                      {transportCompany.phone && (
-                        <span className="ml-2">{formatPhoneNumber(transportCompany.phone)}</span>
-                      )}
-                    </div>
-                  </div>
-                )}
-                
-                <div>
-                  <p className="text-sm text-muted-foreground">NF Completa</p>
-                  <div className="flex items-center gap-1">
-                    <FileText size={14} />
-                    <span className="font-medium">
-                      {order.fullInvoice ? 'Sim' : 'Não'}
-                    </span>
-                  </div>
-                </div>
-                
-                <div>
-                  <p className="text-sm text-muted-foreground">Substituição Tributária</p>
-                  <div className="flex items-center gap-1">
-                    <Tag size={14} />
-                    <span className="font-medium">
-                      {order.taxSubstitution ? 'Sim' : 'Não'}
-                    </span>
-                  </div>
-                </div>
-                
-                {order.withIPI && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">IPI Incluso</p>
-                    <div className="flex items-center gap-1">
-                      <Check size={14} />
-                      <span className="font-medium">Sim</span>
-                    </div>
-                  </div>
-                )}
-                
-                {order.ipiValue && order.ipiValue > 0 && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Valor IPI</p>
-                    <span className="font-medium">{formatCurrency(order.ipiValue)}</span>
-                  </div>
-                )}
-              </div>
-              
-              {order.notes && (
-                <>
-                  <Separator />
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Observações</p>
-                    <div className="bg-muted p-3 rounded-md text-sm">
-                      {order.notes}
-                    </div>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Itens do Pedido</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead className="bg-muted">
-                    <tr>
-                      <th className="p-2 text-left font-medium text-sm">Produto</th>
-                      <th className="p-2 text-center font-medium text-sm">Quant.</th>
-                      <th className="p-2 text-right font-medium text-sm">Preço</th>
-                      <th className="p-2 text-right font-medium text-sm">Desc.</th>
-                      <th className="p-2 text-right font-medium text-sm">Subtotal</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {order.items.map((item: CartItem) => (
-                      <tr key={item.id} className="hover:bg-muted/50">
-                        <td className="p-2 text-left">
-                          <div className="font-medium">{item.product.name}</div>
-                          <div className="text-xs text-muted-foreground">{item.product.description}</div>
-                        </td>
-                        <td className="p-2 text-center">{item.quantity}</td>
-                        <td className="p-2 text-right">{formatCurrency(item.finalPrice)}</td>
-                        <td className="p-2 text-right">{item.discount}%</td>
-                        <td className="p-2 text-right font-medium">{formatCurrency(item.subtotal)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Resumo</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal:</span>
-                <span>{formatCurrency(order.subtotal)}</span>
-              </div>
-              
-              {order.totalDiscount > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Desconto:</span>
-                  <span className="text-red-500">-{formatCurrency(order.totalDiscount)}</span>
-                </div>
-              )}
-              
-              {order.deliveryFee && order.deliveryFee > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Taxa de Entrega:</span>
-                  <span>{formatCurrency(order.deliveryFee)}</span>
-                </div>
-              )}
-              
-              <Separator />
-              
-              <div className="flex justify-between font-bold text-lg">
-                <span>Total:</span>
-                <span>{formatCurrency(order.total)}</span>
-              </div>
-              
-              {order.appliedDiscounts && order.appliedDiscounts.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="text-sm font-medium mb-2">Descontos Aplicados</h4>
-                  <ul className="text-sm space-y-1">
-                    {order.appliedDiscounts.map((discount, index) => (
-                      <li key={index} className="flex justify-between">
-                        <span>{discount.name}:</span>
-                        <span className={discount.type === 'discount' ? 'text-red-500' : 'text-green-500'}>
-                          {discount.type === 'discount' ? '-' : '+'}{discount.value}%
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Status do Pedido</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Hourglass className="text-amber-500 h-5 w-5" />
-                    <span className="font-medium">Status Atual:</span>
-                  </div>
-                  <OrderStatusBadge status={order.status} />
-                </div>
-                
-                <Separator />
-                
-                <div className="space-y-3">
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start" 
-                    disabled={order.status !== 'pending'}
-                    onClick={() => handleUpdateStatus('confirmed')}
-                  >
-                    <Check className="mr-2 h-4 w-4 text-green-500" />
-                    Confirmar Pedido
-                  </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start" 
-                    disabled={order.status !== 'confirmed'}
-                    onClick={() => handleUpdateStatus('invoiced')}
-                  >
-                    <FileText className="mr-2 h-4 w-4 text-blue-500" />
-                    Faturar Pedido
-                  </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start" 
-                    disabled={order.status !== 'invoiced'}
-                    onClick={() => handleUpdateStatus('completed')}
-                  >
-                    <Clipboard className="mr-2 h-4 w-4 text-indigo-500" />
-                    Completar Pedido
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-      
-      <Dialog open={isPrintDialogOpen} onOpenChange={setIsPrintDialogOpen}>
-        <DialogContent className="sm:max-w-[900px] max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle>Impressão do Pedido</DialogTitle>
-          </DialogHeader>
-          
-          <ScrollArea className="h-[70vh] mt-6 rounded border p-4">
-            <div className="print-container bg-white p-4" id="printSection">
-              <PrintableOrder order={order} />
-              
-              {order.transportCompanyId && transportCompany && (
-                <div className="mt-2">
-                  <Label className="text-sm font-medium">Transportadora</Label>
-                  <p>{transportCompany.name} - {formatDocument(transportCompany.document)}</p>
-                  {transportCompany.phone && (
-                    <p className="text-sm text-muted-foreground">
-                      Tel: {formatPhoneNumber(transportCompany.phone)}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-          
-          <DialogFooter>
+    <div className="animate-fade-in">
+      {isPrintMode ? (
+        <div className="print-container">
+          <div className="print-controls mb-4 flex justify-between items-center bg-white p-4 rounded-lg shadow-sm print:hidden">
             <Button
               variant="outline"
-              onClick={() => setIsPrintDialogOpen(false)}
+              onClick={() => setIsPrintMode(false)}
             >
-              Cancelar
+              Voltar
             </Button>
             <Button
-              onClick={() => printOrder()}
+              onClick={() => window.print()}
               className="bg-ferplas-500 hover:bg-ferplas-600"
             >
               Imprimir
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      <AlertDialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Cancelar Pedido</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja cancelar este pedido? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Não, manter pedido</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleCancelOrder}
-              disabled={isProcessing}
-              className={cn(
-                "bg-red-500 hover:bg-red-600",
-                isProcessing && "opacity-70 cursor-not-allowed"
+          </div>
+          <PrintableOrder order={order} transportCompany={transportCompany} />
+        </div>
+      ) : (
+        <>
+          <header className="flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0 mb-6">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">
+                Pedido #{order.orderNumber}
+              </h1>
+              <p className="text-muted-foreground">
+                {formatDate(order.createdAt)}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {order.status !== 'completed' && order.status !== 'canceled' && (
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(`/orders/${id}/edit`)}
+                  disabled={!hasPermission('orders_manage')}
+                >
+                  Editar
+                </Button>
               )}
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Cancelando...
-                </>
-              ) : (
-                "Sim, cancelar pedido"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              <Button
+                variant="outline"
+                onClick={() => setIsPrintMode(true)}
+              >
+                Imprimir
+              </Button>
+              <Button
+                className="bg-ferplas-500 hover:bg-ferplas-600"
+                onClick={() => navigate('/orders')}
+              >
+                Voltar
+              </Button>
+            </div>
+          </header>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Status e informações gerais */}
+            <Card className="md:col-span-3">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex justify-between items-center">
+                  <span>Status</span>
+                  <OrderStatusBadge status={order.status} />
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap justify-between items-start gap-4">
+                  {/* Cliente e Vendedor */}
+                  <div className="flex-1 min-w-[250px]">
+                    <h3 className="font-semibold text-lg mb-2">Cliente</h3>
+                    <div className="space-y-2">
+                      <p className="text-lg font-medium">{order.customer.companyName}</p>
+                      <div className="flex items-center text-sm text-gray-500">
+                        <Badge variant="outline" className="mr-2">{order.customer.document}</Badge>
+                      </div>
+                      {order.customer.phone && (
+                        <div className="flex items-center text-sm text-gray-500">
+                          <Phone className="w-4 h-4 mr-2" />
+                          {formatPhone(order.customer.phone)}
+                        </div>
+                      )}
+                      {order.customer.email && (
+                        <div className="flex items-center text-sm text-gray-500">
+                          <Mail className="w-4 h-4 mr-2" />
+                          {order.customer.email}
+                        </div>
+                      )}
+                    </div>
+                    <Separator className="my-3" />
+                    <h3 className="font-semibold text-lg mb-2">Vendedor</h3>
+                    <p className="text-base">{order.user?.name || 'Não informado'}</p>
+                  </div>
+
+                  {/* Pagamento e entrega */}
+                  <div className="flex-1 min-w-[250px]">
+                    <h3 className="font-semibold text-lg mb-2">Pagamento</h3>
+                    <div className="space-y-2">
+                      <div className="flex items-center text-sm">
+                        <CreditCard className="w-4 h-4 mr-2" />
+                        <span className="text-gray-500">Forma de pagamento:</span>
+                        <span className="ml-2">
+                          {order.paymentMethod === 'cash' ? 'À vista' : 'A prazo'}
+                        </span>
+                      </div>
+                      <div className="flex items-center text-sm">
+                        <Calendar className="w-4 h-4 mr-2" />
+                        <span className="text-gray-500">Condições:</span>
+                        <span className="ml-2">{renderPaymentTerms()}</span>
+                      </div>
+                    </div>
+                    <Separator className="my-3" />
+                    <h3 className="font-semibold text-lg mb-2">Entrega</h3>
+                    <div className="space-y-2">
+                      <div className="flex items-center text-sm">
+                        <Truck className="w-4 h-4 mr-2" />
+                        <span className="text-gray-500">Tipo:</span>
+                        <span className="ml-2">
+                          {order.shipping === 'delivery' ? 'Entrega' : 'Retirada'}
+                        </span>
+                      </div>
+                      {order.shipping === 'delivery' && (
+                        <>
+                          <div className="flex items-center text-sm">
+                            <span className="text-gray-500 ml-6">Local:</span>
+                            <span className="ml-2">
+                              {order.deliveryLocation === 'capital' ? 'Capital' : 
+                               order.deliveryLocation === 'interior' ? 'Interior' : 
+                               'Não especificado'}
+                            </span>
+                          </div>
+                          {transportCompany && (
+                            <div className="flex items-center text-sm">
+                              <Truck className="w-4 h-4 mr-2" />
+                              <span className="text-gray-500">Transportadora:</span>
+                              <span className="ml-2">
+                                {transportCompany.name}
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Faturamento e taxas */}
+                  <div className="flex-1 min-w-[250px]">
+                    <h3 className="font-semibold text-lg mb-2">Faturamento</h3>
+                    <div className="space-y-2">
+                      <div className="flex items-center text-sm">
+                        <Tag className="w-4 h-4 mr-2" />
+                        <span className="text-gray-500">Nota fiscal:</span>
+                        <span className="ml-2">
+                          {order.fullInvoice ? 'Completa' : 'Parcial'}
+                        </span>
+                      </div>
+                      {renderHalfInvoiceInfo()}
+                      <div className="flex items-center text-sm">
+                        <Check className="w-4 h-4 mr-2" />
+                        <span className="text-gray-500">Substituição tributária:</span>
+                        <span className="ml-2">
+                          {order.taxSubstitution ? 'Sim' : 'Não'}
+                        </span>
+                      </div>
+                      {renderIpiInfo()}
+                    </div>
+                  </div>
+                </div>
+                <Separator className="my-4" />
+                
+                {/* Gerenciamento de Status */}
+                {hasPermission('orders_manage') && order.status !== 'completed' && order.status !== 'canceled' && (
+                  <div className="mt-4">
+                    <h3 className="font-semibold text-lg mb-2">Gerenciar Status</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {order.status !== 'pending' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleStatusUpdate('pending')}
+                          disabled={isStatusUpdating}
+                        >
+                          {isStatusUpdating ? <Hourglass className="w-4 h-4 mr-2 animate-spin" /> : null}
+                          Pendente
+                        </Button>
+                      )}
+                      <Separator orientation="vertical" className="h-8" />
+                      {order.status !== 'confirmed' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleStatusUpdate('confirmed')}
+                          disabled={isStatusUpdating}
+                          className="border-green-500 text-green-600 hover:bg-green-50"
+                        >
+                          {isStatusUpdating ? <Hourglass className="w-4 h-4 mr-2 animate-spin" /> : null}
+                          Confirmar
+                        </Button>
+                      )}
+                      {order.status !== 'invoiced' && order.status !== 'pending' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleStatusUpdate('invoiced')}
+                          disabled={isStatusUpdating}
+                          className="border-blue-500 text-blue-600 hover:bg-blue-50"
+                        >
+                          {isStatusUpdating ? <Hourglass className="w-4 h-4 mr-2 animate-spin" /> : null}
+                          Faturado
+                        </Button>
+                      )}
+                      {order.status !== 'completed' && order.status !== 'pending' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleStatusUpdate('completed')}
+                          disabled={isStatusUpdating}
+                          className="border-purple-500 text-purple-600 hover:bg-purple-50"
+                        >
+                          {isStatusUpdating ? <Hourglass className="w-4 h-4 mr-2 animate-spin" /> : null}
+                          Concluído
+                        </Button>
+                      )}
+                      <Separator orientation="vertical" className="h-8" />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleStatusUpdate('canceled')}
+                        disabled={isStatusUpdating}
+                        className={cn(
+                          "border-red-500 text-red-600 hover:bg-red-50",
+                          isConfirmingCancel && "bg-red-50"
+                        )}
+                      >
+                        {isStatusUpdating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                        {isConfirmingCancel ? 'Confirmar Cancelamento?' : 'Cancelar Pedido'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Items do pedido */}
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle>Itens do Pedido</CardTitle>
+              </CardHeader>
+              <ScrollArea className="h-[500px] md:h-auto md:max-h-[600px]">
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="py-2 text-left">Produto</th>
+                          <th className="py-2 text-right">Preço</th>
+                          <th className="py-2 text-right">Qtd</th>
+                          <th className="py-2 text-right">Desc.</th>
+                          <th className="py-2 text-right">Subtotal</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {order.items.map((item: CartItem) => (
+                          <tr key={item.id} className="border-b">
+                            <td className="py-2">
+                              <div className="font-medium">{item.product.name}</div>
+                            </td>
+                            <td className="py-2 text-right">{formatCurrency(item.finalPrice)}</td>
+                            <td className="py-2 text-right">{item.quantity}</td>
+                            <td className="py-2 text-right">{item.discount ? `${item.discount}%` : '-'}</td>
+                            <td className="py-2 text-right">{formatCurrency(item.subtotal)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <Separator className="my-4" />
+                  <div className="flex flex-col items-end space-y-1">
+                    <div className="flex justify-between w-60">
+                      <span className="text-gray-500">Subtotal:</span>
+                      <span>{formatCurrency(order.subtotal)}</span>
+                    </div>
+                    <div className="flex justify-between w-60">
+                      <span className="text-gray-500">Descontos:</span>
+                      <span>-{formatCurrency(order.totalDiscount)}</span>
+                    </div>
+                    {order.deliveryFee && order.deliveryFee > 0 && (
+                      <div className="flex justify-between w-60">
+                        <span className="text-gray-500">Taxa de entrega:</span>
+                        <span>{formatCurrency(order.deliveryFee)}</span>
+                      </div>
+                    )}
+                    <Separator className="w-60 my-1" />
+                    <div className="flex justify-between w-60 font-bold">
+                      <span>Total:</span>
+                      <span>{formatCurrency(order.total)}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </ScrollArea>
+            </Card>
+
+            {/* Observações e notas */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Observações</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-semibold mb-1">Observações do Pedido</h3>
+                    <p className="text-gray-700 whitespace-pre-wrap">
+                      {order.observations || 'Nenhuma observação registrada.'}
+                    </p>
+                  </div>
+                  <Separator />
+                  <div>
+                    <h3 className="font-semibold mb-1">Notas Internas</h3>
+                    <p className="text-gray-700 whitespace-pre-wrap">
+                      {order.notes || 'Nenhuma nota registrada.'}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
     </div>
   );
 };

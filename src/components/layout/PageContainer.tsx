@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import Navbar from './Navbar';
@@ -8,6 +8,7 @@ import Sidebar from './Sidebar';
 const PageContainer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
+  const [isExpanded, setIsExpanded] = useState(true);
 
   useEffect(() => {
     // If user is not authenticated and we're not loading, redirect to login
@@ -28,7 +29,7 @@ const PageContainer: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      <Sidebar />
+      <Sidebar isExpanded={isExpanded} setIsExpanded={setIsExpanded} />
       <div className="flex-1 flex flex-col">
         <Navbar />
         <main className="flex-1 p-4 md:p-6 overflow-y-auto">

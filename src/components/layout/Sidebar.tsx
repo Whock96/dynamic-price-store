@@ -6,9 +6,99 @@ import {
   ChevronRight, List, UserPlus, Search, Edit, Menu, Building2, LogOut,
   Tag, Percent, Shield
 } from 'lucide-react';
-import { useAuth, MENU_ITEMS } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+
+// Define menu items
+const MENU_ITEMS = [
+  {
+    id: 'dashboard',
+    name: 'Dashboard',
+    path: '/dashboard',
+    icon: 'home',
+    requiredRoles: ['administrator', 'salesperson', 'billing', 'inventory'],
+  },
+  {
+    id: 'products',
+    name: 'Produtos',
+    path: '/products',
+    icon: 'package',
+    requiredRoles: ['administrator', 'salesperson', 'inventory'],
+  },
+  {
+    id: 'customers',
+    name: 'Clientes',
+    path: '/customers',
+    icon: 'users',
+    requiredRoles: ['administrator', 'salesperson'],
+  },
+  {
+    id: 'orders',
+    name: 'Pedidos',
+    path: '/orders',
+    icon: 'clipboard',
+    requiredRoles: ['administrator', 'salesperson', 'billing'],
+  },
+  {
+    id: 'cart',
+    name: 'Carrinho',
+    path: '/cart',
+    icon: 'shopping-cart',
+    requiredRoles: ['administrator', 'salesperson'],
+  },
+  {
+    id: 'settings',
+    name: 'Configurações',
+    path: '/settings',
+    icon: 'settings',
+    requiredRoles: ['administrator'],
+    submenus: [
+      {
+        id: 'settings-products',
+        name: 'Produtos',
+        path: '/settings/products',
+        icon: 'package',
+      },
+      {
+        id: 'settings-users',
+        name: 'Usuários',
+        path: '/settings/users',
+        icon: 'user-plus',
+      },
+      {
+        id: 'settings-user-types',
+        name: 'Tipos de Usuário',
+        path: '/settings/user-types',
+        icon: 'shield',
+      },
+      {
+        id: 'settings-categories',
+        name: 'Categorias',
+        path: '/settings/categories',
+        icon: 'list',
+      },
+      {
+        id: 'settings-discounts',
+        name: 'Descontos',
+        path: '/settings/discounts',
+        icon: 'percent',
+      },
+      {
+        id: 'settings-transport-companies',
+        name: 'Transportadoras',
+        path: '/settings/transport-companies',
+        icon: 'building-2',
+      },
+      {
+        id: 'settings-company',
+        name: 'Empresa',
+        path: '/settings/company',
+        icon: 'tag',
+      },
+    ],
+  },
+];
 
 interface SidebarProps {
   isExpanded: boolean;
@@ -16,7 +106,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
-  const { user, logout, hasPermission, checkAccess } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -99,7 +189,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
     if (!user) return false;
 
     // Check if user's role is in the required roles for this menu
-    return menuItem.requiredRoles.includes(user.role) || checkAccess(menuItem.path);
+    return menuItem.requiredRoles.includes(user.role) || hasPermission(menuItem.path);
   };
 
   if (!user) return null;
@@ -168,7 +258,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
                 {isExpanded && item.submenus && expandedMenu === item.id && (
                   <div className="pl-10 mt-1 space-y-1 animate-accordion-down">
                     {item.submenus
-                      .filter(submenu => checkAccess(submenu.path))
+                      .filter(submenu => hasPermission(submenu.path) || user.role === 'administrator')
                       .map((submenu) => (
                         <button
                           key={submenu.id}

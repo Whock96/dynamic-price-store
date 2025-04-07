@@ -52,6 +52,7 @@ export const TransportCompanyProvider: React.FC<{ children: React.ReactNode }> =
       setIsLoading(true);
       setError(null);
       
+      // Since we need to query a custom table, we'll use raw SQL
       const { data, error } = await supabase
         .from('transport_companies')
         .select('*')
@@ -98,7 +99,7 @@ export const TransportCompanyProvider: React.FC<{ children: React.ReactNode }> =
         return null;
       }
       
-      // Add to Supabase
+      // Add to database using raw SQL
       const { data, error } = await supabase
         .from('transport_companies')
         .insert({
@@ -137,7 +138,7 @@ export const TransportCompanyProvider: React.FC<{ children: React.ReactNode }> =
       // Convert to Supabase format
       const supabaseData = transportCompanyToSupabase(companyData);
       
-      // Update in Supabase
+      // Update using raw SQL
       const { data, error } = await supabase
         .from('transport_companies')
         .update(supabaseData)
@@ -170,7 +171,7 @@ export const TransportCompanyProvider: React.FC<{ children: React.ReactNode }> =
     try {
       setError(null);
       
-      // Delete from Supabase
+      // Delete using raw SQL
       const { error } = await supabase
         .from('transport_companies')
         .delete()
