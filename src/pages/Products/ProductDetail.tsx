@@ -87,7 +87,8 @@ const ProductDetail = () => {
   
   const addToCart = () => {
     if (product) {
-      addItem(product, 1);
+      const appProduct = supabaseProductToAppProduct(product);
+      addItem(appProduct, quantity);
       navigate(`/cart?product=${id}`);
     }
   };
