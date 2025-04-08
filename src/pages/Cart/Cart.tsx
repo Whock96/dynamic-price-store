@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
-  Trash2, ShoppingCart, Package, Search, Send, MapPin, Percent, Tags
+  Trash2, ShoppingCart, Package, Search, Send, MapPin, Percent, Tags, Truck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,6 +54,16 @@ import { formatCurrency } from '@/utils/formatters';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 
 type SupabaseProduct = Tables<'products'>;
+type TransportCompany = {
+  id: string;
+  name: string;
+  document: string;
+  phone: string | null;
+  email: string | null;
+  whatsapp: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
 const Cart = () => {
   const navigate = useNavigate();
@@ -83,8 +92,10 @@ const Cart = () => {
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [products, setProducts] = useState<SupabaseProduct[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [transportCompanies, setTransportCompanies] = useState<TransportCompany[]>([]);
+  const [selectedTransportCompany, setSelectedTransportCompany] = useState<string | undefined>(undefined);
+  const [isLoadingTransportCompanies, setIsLoadingTransportCompanies] = useState(true);
   
-  // Check if current user is a salesperson
   const isSalesperson = user?.userTypeId === 'c5ee0433-3faf-46a4-a516-be7261bfe575';
   
   const fetchProducts = async () => {
@@ -112,22 +123,45 @@ const Cart = () => {
     }
   };
   
+  const fetchTransportCompanies = async () => {
+    try {
+      setIsLoadingTransportCompanies(true);
+      const { data, error } = await supabase
+        .from('transport_companies')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (error) {
+        console.error('Error fetching transport companies:', error);
+        toast.error('Erro ao carregar transportadoras');
+        return;
+      }
+      
+      if (data) {
+        console.log("Transportadoras carregadas:", data);
+        setTransportCompanies(data as TransportCompany[]);
+      }
+    } catch (error) {
+      console.error('Error fetching transport companies:', error);
+      toast.error('Erro ao carregar transportadoras');
+    } finally {
+      setIsLoadingTransportCompanies(false);
+    }
+  };
+  
   useEffect(() => {
     fetchProducts();
+    fetchTransportCompanies();
   }, []);
   
-  // Filter customers based on user role
   const filteredCustomers = customers.filter(c => {
-    // First apply search filter
     const matchesSearch = c.companyName.toLowerCase().includes(customerSearch.toLowerCase()) ||
       c.document.includes(customerSearch);
     
-    // If user is a salesperson, only show their customers
     if (isSalesperson) {
       return matchesSearch && c.salesPersonId === user?.id;
     }
     
-    // For other user types, show all customers that match the search
     return matchesSearch;
   });
   
@@ -174,6 +208,15 @@ const Cart = () => {
       loadProduct();
     }
   }, [customerParam, productParam, customer, addItem, navigate, setCustomer, customers]);
+  
+  useEffect(() => {
+    if (customer && customer.transportCompanyId) {
+      console.log('Setting transport company from customer:', customer.transportCompanyId);
+      setSelectedTransportCompany(customer.transportCompanyId === 'none' ? undefined : customer.transportCompanyId);
+    } else {
+      setSelectedTransportCompany(undefined);
+    }
+  }, [customer]);
   
   const handleSubmitOrder = async () => {
     if (!customer) {
@@ -697,7 +740,7 @@ const Cart = () => {
                       </div>
                       
                       {option.id === '1' && !isDiscountOptionSelected(option.id) && (
-                        <div className="ml-6 p-3 border-l-2 border-ferplas-100 bg-gray-50 rounded-md">
+                        <div className="ml-6 p-3 border-l-2 border-ferplas-100 bg-gray-50 rounded-md space-y-4">
                           <div className="flex items-center mb-1">
                             <MapPin className="h-4 w-4 text-ferplas-500 mr-1" />
                             <span className="text-sm font-medium text-gray-700">Local de entrega:</span>
@@ -716,6 +759,33 @@ const Cart = () => {
                               <Label htmlFor="interior" className="text-sm">Interior</Label>
                             </div>
                           </RadioGroup>
+                          
+                          <div className="pt-3 border-t border-gray-200 mt-3">
+                            <div className="flex items-center mb-2">
+                              <Truck className="h-4 w-4 text-ferplas-500 mr-1" />
+                              <span className="text-sm font-medium text-gray-700">Transportadora:</span>
+                            </div>
+                            
+                            <Select
+                              value={selectedTransportCompany || ""}
+                              onValueChange={(value) => setSelectedTransportCompany(value === "" ? undefined : value)}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Selecione uma transportadora" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="">Nenhuma</SelectItem>
+                                {transportCompanies.map((company) => (
+                                  <SelectItem key={company.id} value={company.id}>
+                                    {company.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Selecione a transportadora responsável pela entrega
+                            </p>
+                          </div>
                         </div>
                       )}
                     </div>

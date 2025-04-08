@@ -545,7 +545,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ipiValue: withIPI ? ipiValue : undefined,
         status: 'pending',
         notes: observations,
-        userId: user?.id
+        userId: user?.id,
+        transportCompanyId: !isDiscountOptionSelected('1') ? customer.transportCompanyId : undefined
       };
       
       console.log('Sending order with data:', orderData);
