@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState } from 'react';
-import { Order } from '@/types/types';
+import { Order, Customer } from '@/types/types';
 
 interface OrderContextType {
   orders: Order[];
@@ -39,13 +39,17 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         phone: '',
         email: '',
         defaultDiscount: 0,
+        maxDiscount: 0,
         salesPersonId: null,
         noNumber: false,
         complement: '',
         neighborhood: '',
         whatsapp: '',
         stateRegistration: '',
-        transportCompanyId: null
+        transportCompanyId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        registerDate: new Date()
       },
       items: newOrder.items || [],
       status: newOrder.status || 'pending',

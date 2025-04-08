@@ -14,13 +14,14 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order }) => {
 
   const handlePrint = useReactToPrint({
     documentTitle: `Pedido #${order.id}`,
+    // Use the function to return the element to print
     content: () => printRef.current,
   });
 
   return (
     <div>
       <h1>Order Details</h1>
-      <Button onClick={() => handlePrint()}>Print Order</Button>
+      <Button onClick={handlePrint}>Print Order</Button>
       
       <div className="hidden">
         <div ref={printRef}>

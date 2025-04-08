@@ -12,6 +12,7 @@ import { TransportCompanyProvider } from './context/TransportCompanyContext';
 import DiscountManagement from './pages/Settings/DiscountManagement';
 import Cart from './pages/Cart/Cart';
 import OrderDetailsPage from './pages/Orders/OrderDetailsPage';
+import TransportCompaniesPage from './pages/Settings/TransportCompanies/TransportCompaniesPage';
 
 function App() {
   return (
@@ -20,9 +21,9 @@ function App() {
         <Toaster closeButton position="top-right" theme="light" />
         <BrowserRouter>
           <AuthProvider>
-            <OrderProvider>
-              <CustomerProvider>
-                <TransportCompanyProvider>
+            <TransportCompanyProvider>
+              <OrderProvider>
+                <CustomerProvider>
                   <CartProvider>
                     <Routes>
                       <Route path="/login" element={<Login />} />
@@ -71,14 +72,14 @@ function App() {
                       <Route path="/settings/permissions/new" element={<div>New Permission</div>} />
                       <Route path="/settings/permissions/:id" element={<div>Edit Permission</div>} />
 
-                      <Route path="/settings/transport-companies" element={<div>Transport Companies</div>} />
+                      <Route path="/settings/transport-companies" element={<TransportCompaniesPage />} />
                       <Route path="/settings/transport-companies/new" element={<div>New Transport Company</div>} />
                       <Route path="/settings/transport-companies/:id" element={<div>Edit Transport Company</div>} />
                     </Routes>
                   </CartProvider>
-                </TransportCompanyProvider>
-              </CustomerProvider>
-            </OrderProvider>
+                </CustomerProvider>
+              </OrderProvider>
+            </TransportCompanyProvider>
           </AuthProvider>
         </BrowserRouter>
       </React.Fragment>
