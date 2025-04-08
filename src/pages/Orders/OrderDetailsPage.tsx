@@ -27,7 +27,36 @@ const OrderDetailsPage = () => {
     status: 'pending',
     total: 0,
     subtotal: 0,
-    totalDiscount: 0
+    totalDiscount: 0,
+    // Add missing properties required by Order type
+    userId: '1',
+    user: {
+      id: '1',
+      name: 'Test User',
+      username: 'testuser',
+      role: 'administrator',
+      permissions: [],
+      email: 'test@example.com',
+      createdAt: new Date(),
+      userTypeId: '1'
+    },
+    appliedDiscounts: [],
+    shipping: 'delivery',
+    paymentMethod: 'cash',
+    paymentTerms: 'Net 30',
+    fullInvoice: true,
+    taxSubstitution: false,
+    notes: '',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    observations: '',
+    deliveryLocation: 'capital',
+    halfInvoicePercentage: 50,
+    halfInvoiceType: 'quantity',
+    deliveryFee: 0,
+    withIPI: false,
+    ipiValue: 0,
+    transportCompanyId: null
   };
 
   return <OrderDetails order={mockOrder} />;

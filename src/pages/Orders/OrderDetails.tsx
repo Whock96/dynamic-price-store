@@ -14,15 +14,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order }) => {
 
   const handlePrint = useReactToPrint({
     documentTitle: `Pedido #${order.id}`,
-    onBeforeGetContent: () => {
-      return new Promise<void>((resolve) => {
-        resolve();
-      });
-    },
-    onPrintError: () => {
-      console.error('Failed to print');
-    },
-    removeAfterPrint: true,
+    content: () => printRef.current,
   });
 
   return (
