@@ -3,9 +3,60 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Tables } from '@/integrations/supabase/client';
-import { TableName, OrderByOption, FilterOption, SupabaseDataOptions } from '@/types/supabase-types';
-import { generateCacheKey, getCachedData, setCacheData, clearCacheItem } from '@/utils/supabase-cache';
-import { prepareRecordForSupabase } from '@/utils/supabase-record-transformer';
+
+// Define the table names explicitly without recursive types
+type TableName = 
+  | 'products' 
+  | 'customers' 
+  | 'orders' 
+  | 'categories' 
+  | 'company_settings' 
+  | 'discount_options' 
+  | 'order_discounts' 
+  | 'order_items' 
+  | 'subcategories'
+  | 'users'
+  | 'user_types'
+  | 'permissions'
+  | 'user_type_permissions'
+  | 'transport_companies';
+
+type OrderByOption = {
+  column: string;
+  ascending: boolean;
+};
+
+type FilterOption = {
+  key: string;
+  value: string | number;
+};
+
+interface SupabaseDataOptions<T> {
+  initialData?: T[];
+  select?: string;
+  orderBy?: OrderByOption;
+  joinTable?: string;
+  filterKey?: string;
+  filterValue?: string | number;
+  filters?: FilterOption[]; // Suporte para múltiplos filtros
+  isActive?: boolean;
+  cacheTimeout?: number; // Tempo em ms para expirar o cache
+}
+
+// Implementar uma memória cache simples
+interface CacheItem<T> {
+  data: T[];
+  timestamp: number;
+  queryKey: string;
+}
+
+// Cache global para compartilhar entre instâncias do hook
+const globalCache: Record<string, CacheItem<any>> = {};
+
+// Helper para gerar uma chave de cache baseada nas opções
+const generateCacheKey = (tableName: string, options: any): string => {
+  return `${tableName}-${JSON.stringify(options)}`;
+};
 
 export function useSupabaseData<T extends Record<string, any>>(
   tableName: TableName, 
@@ -20,7 +71,7 @@ export function useSupabaseData<T extends Record<string, any>>(
   // Cache timeout padronizado (30 segundos) ou personalizado
   const cacheTimeout = options.cacheTimeout || 30000;
   
-  // Generate a cache key based on tableName and options
+  // Gere uma chave de cache baseada no tableName e nas opções
   const cacheKey = useMemo(() => 
     generateCacheKey(tableName, {
       select: options.select,
@@ -37,14 +88,17 @@ export function useSupabaseData<T extends Record<string, any>>(
 
   // Simplified fetch data function with explicit type casting and cache support
   const fetchData = useCallback(async (skipCache = false) => {
-    // Check for valid cached data
-    if (!skipCache) {
-      const cachedData = getCachedData<T>(cacheKey, cacheTimeout);
-      if (cachedData) {
-        setData(cachedData);
+    // Verificar se há dados em cache válidos
+    if (!skipCache && globalCache[cacheKey]) {
+      const cachedItem = globalCache[cacheKey];
+      const now = Date.now();
+      
+      if (now - cachedItem.timestamp < cacheTimeout) {
+        console.log(`Using cached data for ${tableName}`);
+        setData(cachedItem.data as T[]);
         setIsLoading(false);
         setError(null);
-        return cachedData;
+        return cachedItem.data;
       }
     }
     
@@ -66,7 +120,7 @@ export function useSupabaseData<T extends Record<string, any>>(
         query = query.eq(options.filterKey, options.filterValue);
       }
       
-      // Support for multiple filters
+      // Suporte para múltiplos filtros
       if (options.filters && options.filters.length > 0) {
         options.filters.forEach(filter => {
           query = query.eq(filter.key, filter.value);
@@ -93,7 +147,11 @@ export function useSupabaseData<T extends Record<string, any>>(
       console.log(`Successfully fetched ${responseData.length} records from ${tableName}`);
       
       // Save to cache
-      setCacheData(cacheKey, responseData);
+      globalCache[cacheKey] = {
+        data: responseData,
+        timestamp: Date.now(),
+        queryKey: cacheKey
+      };
       
       // Update state with the fetched data
       setData(responseData as unknown as T[]);
@@ -110,10 +168,11 @@ export function useSupabaseData<T extends Record<string, any>>(
   }, [tableName, cacheKey, cacheTimeout, options.select, options.filterKey, options.filterValue, 
       options.filters, options.joinTable, options.orderBy, options.isActive]);
 
-  // Function to clear the cache
+  // Função para limpar o cache
   const clearCache = useCallback(() => {
-    clearCacheItem(cacheKey);
-  }, [cacheKey]);
+    delete globalCache[cacheKey];
+    console.log(`Cache cleared for ${tableName}`);
+  }, [cacheKey, tableName]);
 
   // Create a new record with optimized code and fixed TypeScript typing
   const createRecord = async (record: Omit<T, 'id' | 'created_at' | 'updated_at'>) => {
@@ -126,6 +185,7 @@ export function useSupabaseData<T extends Record<string, any>>(
       console.log('Prepared record to create:', recordToCreate);
 
       // Type assertion to any is needed here to bypass the strict type checking
+      // This is safer than before as we've prepared the record correctly
       const { data: createdData, error: createError } = await supabase
         .from(tableName)
         .insert(recordToCreate as any)
@@ -169,7 +229,7 @@ export function useSupabaseData<T extends Record<string, any>>(
 
       console.log('Prepared record to update:', recordToUpdate);
 
-      // Type assertion needed here
+      // Similar type assertion is needed here
       const { data: updatedData, error: updateError } = await supabase
         .from(tableName)
         .update(recordToUpdate as any)
@@ -231,6 +291,82 @@ export function useSupabaseData<T extends Record<string, any>>(
       toast.error(`Erro ao excluir registro: ${error.message}`);
       return false;
     }
+  };
+
+  // Helper function to prepare records for Supabase
+  const prepareRecordForSupabase = (record: Record<string, any>): Record<string, any> => {
+    const result: Record<string, any> = { ...record };
+    
+    // Handle common conversions
+    if (result.createdAt !== undefined && result.created_at === undefined) {
+      result.created_at = result.createdAt instanceof Date 
+        ? result.createdAt.toISOString() 
+        : result.createdAt;
+      delete result.createdAt;
+    }
+    
+    if (result.updatedAt !== undefined && result.updated_at === undefined) {
+      result.updated_at = result.updatedAt instanceof Date 
+        ? result.updatedAt.toISOString() 
+        : result.updatedAt;
+      delete result.updatedAt;
+    }
+    
+    // Handle table-specific conversions
+    if (tableName === 'customers') {
+      // Handle salesPersonId specifically
+      if (result.salesPersonId !== undefined) {
+        result.sales_person_id = result.salesPersonId;
+        delete result.salesPersonId;
+      }
+      
+      // Handle other customer-specific conversions
+      if (result.companyName !== undefined) {
+        result.company_name = result.companyName;
+        delete result.companyName;
+      }
+      
+      if (result.zipCode !== undefined) {
+        result.zip_code = result.zipCode;
+        delete result.zipCode;
+      }
+      
+      if (result.noNumber !== undefined) {
+        result.no_number = result.noNumber;
+        delete result.noNumber;
+      }
+      
+      if (result.defaultDiscount !== undefined) {
+        result.default_discount = result.defaultDiscount;
+        delete result.defaultDiscount;
+      }
+      
+      if (result.maxDiscount !== undefined) {
+        result.max_discount = result.maxDiscount;
+        delete result.maxDiscount;
+      }
+      
+      if (result.stateRegistration !== undefined) {
+        result.state_registration = result.stateRegistration;
+        delete result.stateRegistration;
+      }
+    }
+    
+    // Ensure timestamps are set
+    if (!result.created_at && result.id === undefined) {
+      result.created_at = new Date().toISOString();
+    }
+    
+    if (!result.updated_at) {
+      result.updated_at = new Date().toISOString();
+    }
+    
+    // Never send an empty ID, let Supabase generate one
+    if (result.id === undefined || result.id === null || result.id === '') {
+      delete result.id;
+    }
+    
+    return result;
   };
 
   // Get a record by ID with enhanced performance
@@ -329,7 +465,7 @@ export function useSupabaseData<T extends Record<string, any>>(
     updateRecord,
     deleteRecord,
     getRecordById,
-    clearCache,
-    refresh: () => fetchData(true) // Convenience method to force refresh
+    clearCache, // Expor a função para limpar o cache
+    refresh: () => fetchData(true) // Adicionar um método de conveniência para forçar atualização
   };
 }
