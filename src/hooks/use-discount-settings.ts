@@ -1,138 +1,156 @@
 
 import { useState, useEffect } from 'react';
-import { DiscountOption } from '@/types/types';
 import { toast } from 'sonner';
 
 export interface DiscountSettings {
-  deliveryFees: {
-    capital: number;
-    interior: number;
-  };
-  ipiRate: number;
-  discountOptions: DiscountOption[];
-  // Additional fields needed by DiscountManagement.tsx
   pickup: number;
   cashPayment: number;
   halfInvoice: number;
-  taxSubstitution: number;
+  taxSubstitution: number; // This represents ICMS ST rate
+  deliveryFees: {
+    capital: number;
+    interior: number;
+  }
+  ipiRate: number;
 }
 
+// Default values
 const DEFAULT_SETTINGS: DiscountSettings = {
+  pickup: 1,
+  cashPayment: 1,
+  halfInvoice: 3,
+  taxSubstitution: 20, // Changed default to 20 (representing 20% ICMS ST)
   deliveryFees: {
-    capital: 20,
-    interior: 35,
+    capital: 25,
+    interior: 50
   },
-  ipiRate: 10,
-  discountOptions: [
-    {
-      id: '1',
-      name: 'Retirada',
-      description: 'Cliente retira na empresa',
-      value: 5,
-      type: 'discount',
-      isActive: true,
-    },
-    {
-      id: '2',
-      name: 'Meia Nota',
-      description: 'Emissão parcial de nota fiscal',
-      value: 0,
-      type: 'discount',
-      isActive: true,
-    },
-    {
-      id: '3',
-      name: 'Substituição Tributária',
-      description: 'Aplicar taxa de substituição tributária',
-      value: 18,
-      type: 'surcharge',
-      isActive: true,
-    },
-    {
-      id: '4',
-      name: 'À vista',
-      description: 'Pagamento à vista',
-      value: 3,
-      type: 'discount',
-      isActive: true,
-    },
-  ],
-  pickup: 5,
-  cashPayment: 3,
-  halfInvoice: 0,
-  taxSubstitution: 18
+  ipiRate: 10
 };
+
+// LocalStorage key
+const STORAGE_KEY = 'discount_settings';
 
 export const useDiscountSettings = () => {
   const [settings, setSettings] = useState<DiscountSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const updateSetting = (key: keyof DiscountSettings, value: any) => {
-    setSettings(prev => ({
-      ...prev,
-      [key]: value
-    }));
-    return true;
-  };
-
-  const updateDeliveryFee = (location: 'capital' | 'interior', value: number) => {
-    setSettings(prev => ({
-      ...prev,
-      deliveryFees: {
-        ...prev.deliveryFees,
-        [location]: value
+  // Load settings from localStorage
+  useEffect(() => {
+    const loadSettings = () => {
+      try {
+        const storedSettings = localStorage.getItem(STORAGE_KEY);
+        if (storedSettings) {
+          const parsedSettings = JSON.parse(storedSettings);
+          // Ensure all required fields exist
+          const mergedSettings = {
+            ...DEFAULT_SETTINGS,
+            ...parsedSettings,
+            // Ensure nested objects are properly merged
+            deliveryFees: {
+              ...DEFAULT_SETTINGS.deliveryFees,
+              ...(parsedSettings.deliveryFees || {})
+            }
+          };
+          setSettings(mergedSettings);
+        }
+      } catch (error) {
+        console.error('Error loading discount settings:', error);
+        // Fallback to default settings
+        setSettings(DEFAULT_SETTINGS);
+      } finally {
+        setIsLoading(false);
       }
-    }));
-    return true;
-  };
+    };
 
-  const resetSettings = async () => {
-    setSettings(DEFAULT_SETTINGS);
-    toast.success('Configurações restauradas com sucesso!');
-    return true;
-  };
+    loadSettings();
 
-  const saveSettings = async (updatedSettings: Partial<DiscountSettings>) => {
+    // Add event listener to detect changes in localStorage from other tabs/windows
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === STORAGE_KEY && event.newValue) {
+        try {
+          const parsedSettings = JSON.parse(event.newValue);
+          // Ensure all required fields exist
+          const mergedSettings = {
+            ...DEFAULT_SETTINGS,
+            ...parsedSettings,
+            // Ensure nested objects are properly merged
+            deliveryFees: {
+              ...DEFAULT_SETTINGS.deliveryFees,
+              ...(parsedSettings.deliveryFees || {})
+            }
+          };
+          setSettings(mergedSettings);
+        } catch (error) {
+          console.error('Error parsing updated settings:', error);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  // Save settings to localStorage and trigger an event for other components
+  const saveSettings = (newSettings: DiscountSettings) => {
     try {
-      // In a real app, this would save to the backend
-      setSettings(prev => ({
-        ...prev,
-        ...updatedSettings
-      }));
+      // Ensure all fields are present before saving
+      const settingsToSave = {
+        ...DEFAULT_SETTINGS,
+        ...newSettings,
+        // Ensure nested objects are properly merged
+        deliveryFees: {
+          ...DEFAULT_SETTINGS.deliveryFees,
+          ...(newSettings.deliveryFees || {})
+        }
+      };
+      
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(settingsToSave));
+      
+      // Update local state
+      setSettings(settingsToSave);
+      
+      // Dispatch a custom event to notify other components about the change
+      const event = new CustomEvent('discount-settings-changed', { 
+        detail: { settings: settingsToSave } 
+      });
+      window.dispatchEvent(event);
+      
+      toast.success('Configurações de descontos salvas com sucesso');
       return true;
     } catch (error) {
-      console.error('Error saving settings:', error);
+      console.error('Error saving discount settings:', error);
+      toast.error('Erro ao salvar configurações de descontos');
       return false;
     }
   };
 
-  useEffect(() => {
-    const fetchSettings = async () => {
-      setIsLoading(true);
-      try {
-        // Simulate API call with a timeout
-        setTimeout(() => {
-          setSettings(DEFAULT_SETTINGS);
-          setIsLoading(false);
-        }, 500);
-      } catch (err) {
-        console.error('Error fetching discount settings:', err);
-        setError('Failed to load discount settings');
-        setIsLoading(false);
-      }
-    };
-    
-    fetchSettings();
-  }, []);
-  
-  return { 
-    settings, 
-    isLoading, 
-    error, 
-    updateSetting, 
-    updateDeliveryFee, 
-    resetSettings, 
-    saveSettings 
+  // Update specific setting
+  const updateSetting = (key: keyof DiscountSettings, value: any) => {
+    const newSettings = { ...settings, [key]: value };
+    return saveSettings(newSettings);
+  };
+
+  // Update delivery fee
+  const updateDeliveryFee = (location: 'capital' | 'interior', value: number) => {
+    const newDeliveryFees = { ...settings.deliveryFees, [location]: value };
+    const newSettings = { ...settings, deliveryFees: newDeliveryFees };
+    return saveSettings(newSettings);
+  };
+
+  // Reset to default settings
+  const resetSettings = () => {
+    return saveSettings(DEFAULT_SETTINGS);
+  };
+
+  return {
+    settings,
+    isLoading,
+    updateSetting,
+    updateDeliveryFee,
+    resetSettings,
+    saveSettings
   };
 };

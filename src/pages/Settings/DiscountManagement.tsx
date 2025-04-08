@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -21,7 +22,6 @@ interface FormState {
 const DiscountManagement = () => {
   const navigate = useNavigate();
   const { settings, updateSetting, updateDeliveryFee, resetSettings, isLoading, saveSettings } = useDiscountSettings();
-  
   const [formData, setFormData] = useState<FormState>({
     pickup: 0,
     cashPayment: 0,
@@ -44,6 +44,7 @@ const DiscountManagement = () => {
         interiorDeliveryFee: settings.deliveryFees.interior,
         ipiRate: settings.ipiRate,
       });
+      console.log('Loaded settings:', settings);
     }
   }, [settings]);
 
@@ -60,6 +61,7 @@ const DiscountManagement = () => {
     setIsSaving(true);
     
     try {
+      // Instead of making individual updates, build the complete settings object
       const updatedSettings = {
         pickup: formData.pickup,
         cashPayment: formData.cashPayment,
@@ -72,6 +74,7 @@ const DiscountManagement = () => {
         }
       };
       
+      console.log('Saving settings:', updatedSettings);
       const success = await saveSettings(updatedSettings);
       
       if (success) {

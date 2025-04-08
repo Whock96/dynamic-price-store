@@ -1,9 +1,8 @@
-
 export interface User {
   id: string;
   username: string;
   name: string;
-  role: 'administrator' | 'salesperson' | 'billing' | 'inventory' | 'admin';
+  role: 'administrator' | 'salesperson' | 'billing' | 'inventory';
   permissions: Permission[];
   email: string;
   createdAt: Date;
@@ -63,17 +62,6 @@ export interface Subcategory {
   categoryId: string;
 }
 
-export interface TransportCompany {
-  id: string;
-  name: string;
-  document: string; // CNPJ
-  email?: string;
-  phone?: string;
-  whatsapp?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export interface Customer {
   id: string;
   companyName: string;
@@ -93,7 +81,6 @@ export interface Customer {
   stateRegistration?: string; // New field for state registration
   defaultDiscount: number;
   maxDiscount: number;
-  transportCompanyId?: string; // Reference to the transport company
   createdAt: Date;
   updatedAt: Date;
   registerDate: Date;
@@ -152,7 +139,6 @@ export interface Order {
   deliveryFee?: number;
   withIPI?: boolean; // IPI flag
   ipiValue?: number; // IPI value
-  transportCompanyId?: string; // Reference to the transport company
 }
 
 export interface MenuItem {

@@ -19,22 +19,22 @@ import { Customer, User } from '@/types/types';
 import { supabase } from '@/integrations/supabase/client';
 import { adaptUserData } from '@/utils/adapters';
 import { useAuth } from '@/context/AuthContext';
-import { useTransportCompanies } from '@/context/TransportCompanyContext';
 
 const CustomerForm = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { addCustomer, updateCustomer, getCustomerById } = useCustomers();
   const { user: currentUser } = useAuth();
-  const { transportCompanies, isLoading: isLoadingTransportCompanies } = useTransportCompanies();
   const isEditing = !!id;
   const [isLoading, setIsLoading] = useState(false);
   const [salespeople, setSalespeople] = useState<User[]>([]);
   const [isLoadingSalespeople, setIsLoadingSalespeople] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   
+  // Check if current user is a salesperson by user type ID
   const isSalesperson = currentUser?.userTypeId === 'c5ee0433-3faf-46a4-a516-be7261bfe575';
   
+  // Default form values - Set salesPersonId to current user's ID if available
   const [formValues, setFormValues] = useState<Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>>({
     companyName: '',
     document: '',
@@ -53,14 +53,15 @@ const CustomerForm = () => {
     stateRegistration: '',
     defaultDiscount: 0,
     maxDiscount: 0,
-    transportCompanyId: '',
     registerDate: new Date()
   });
 
+  // Fetch salespeople when component mounts
   useEffect(() => {
     const fetchSalespeople = async () => {
       setIsLoadingSalespeople(true);
       try {
+        // Get all users with role 'salesperson'
         const { data, error } = await supabase
           .from('users')
           .select('*, user_type:user_types(*)')
@@ -95,14 +96,17 @@ const CustomerForm = () => {
     fetchSalespeople();
   }, []);
 
+  // Load customer data if editing
   useEffect(() => {
     if (isEditing && id) {
       const customer = getCustomerById(id);
       if (customer) {
         console.log('Loading customer data:', customer);
         
+        // Remove id, createdAt, and updatedAt from customer object
         const { id: customerId, createdAt, updatedAt, ...customerValues } = customer;
         
+        // Ensure the salesPersonId is set properly
         if (customerValues.salesPersonId) {
           console.log('Setting salesPersonId to:', customerValues.salesPersonId);
         } else {
@@ -117,23 +121,28 @@ const CustomerForm = () => {
     }
   }, [isEditing, id, getCustomerById, navigate, salespeople]);
 
+  // Handles form input changes
   const handleChange = (field: keyof typeof formValues, value: any) => {
     setFormValues(prev => ({ ...prev, [field]: value }));
     
+    // Clear validation error when salesPersonId is selected
     if (field === 'salesPersonId' && value) {
       setValidationError(null);
     }
   };
 
+  // Date formatting for input
   const formatDateForInput = (date: Date) => {
     return date.toISOString().split('T')[0];
   };
 
+  // Form submission handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
+      // Validate that salesPersonId is not empty
       if (!formValues.salesPersonId) {
         setValidationError('É necessário selecionar um vendedor');
         setIsLoading(false);
@@ -141,6 +150,7 @@ const CustomerForm = () => {
         return;
       }
       
+      // Ensure the phone and number fields are strings
       const customerData = {
         ...formValues,
         phone: formValues.phone.toString(),
@@ -151,12 +161,14 @@ const CustomerForm = () => {
 
       let result;
       if (isEditing && id) {
+        // Update existing customer
         result = await updateCustomer(id, customerData);
         if (result) {
           toast.success('Cliente atualizado com sucesso!');
           navigate(`/customers/${id}`);
         }
       } else {
+        // Add new customer
         result = await addCustomer(customerData);
         if (result) {
           toast.success('Cliente adicionado com sucesso!');
@@ -175,6 +187,7 @@ const CustomerForm = () => {
     }
   };
 
+  // Get Brazilian states for the dropdown
   const brStates = [
     'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
     'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
@@ -434,35 +447,6 @@ const CustomerForm = () => {
                   value={formValues.maxDiscount} 
                   onChange={(e) => handleChange('maxDiscount', parseFloat(e.target.value) || 0)}
                 />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Transportadora Padrão</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="transportCompany">Transportadora Padrão</Label>
-                <Select 
-                  value={formValues.transportCompanyId || ''} 
-                  onValueChange={(value) => handleChange('transportCompanyId', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma transportadora" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Nenhuma</SelectItem>
-                    {!isLoadingTransportCompanies && transportCompanies.map(company => (
-                      <SelectItem key={company.id} value={company.id}>
-                        {company.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
             </div>
           </CardContent>
