@@ -36,17 +36,17 @@ export const transportCompanyToSupabase = (
   if ('phone' in company) result.phone = company.phone;
   if ('whatsapp' in company) result.whatsapp = company.whatsapp;
   
-  // Add timestamps if needed
-  if ('createdAt' in company) {
+  // Fix type errors with proper type handling for dates
+  if ('createdAt' in company && company.createdAt) {
     result.created_at = company.createdAt instanceof Date 
       ? company.createdAt.toISOString() 
-      : company.createdAt?.toString();
+      : String(company.createdAt);
   }
   
-  if ('updatedAt' in company) {
+  if ('updatedAt' in company && company.updatedAt) {
     result.updated_at = company.updatedAt instanceof Date 
       ? company.updatedAt.toISOString() 
-      : company.updatedAt?.toString();
+      : String(company.updatedAt);
   }
   
   return result;
