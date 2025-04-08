@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ChevronLeft, Save } from 'lucide-react';
@@ -15,7 +16,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { useCustomers } from '@/context/CustomerContext';
-import { Customer, User } from '@/types/types';
+import { Customer, User, TransportCompany } from '@/types/types';
 import { supabase } from '@/integrations/supabase/client';
 import { adaptUserData } from '@/utils/adapters';
 import { useAuth } from '@/context/AuthContext';
@@ -28,7 +29,9 @@ const CustomerForm = () => {
   const isEditing = !!id;
   const [isLoading, setIsLoading] = useState(false);
   const [salespeople, setSalespeople] = useState<User[]>([]);
+  const [transportCompanies, setTransportCompanies] = useState<TransportCompany[]>([]);
   const [isLoadingSalespeople, setIsLoadingSalespeople] = useState(false);
+  const [isLoadingTransportCompanies, setIsLoadingTransportCompanies] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   
   // Check if current user is a salesperson by user type ID
@@ -53,7 +56,8 @@ const CustomerForm = () => {
     stateRegistration: '',
     defaultDiscount: 0,
     maxDiscount: 0,
-    registerDate: new Date()
+    registerDate: new Date(),
+    transportCompanyId: undefined
   });
 
   // Fetch salespeople when component mounts
@@ -93,7 +97,33 @@ const CustomerForm = () => {
       }
     };
 
+    // Fetch transport companies
+    const fetchTransportCompanies = async () => {
+      setIsLoadingTransportCompanies(true);
+      try {
+        const { data, error } = await supabase
+          .from('transport_companies')
+          .select('*')
+          .order('name', { ascending: true });
+
+        if (error) {
+          throw error;
+        }
+
+        if (data) {
+          setTransportCompanies(data as TransportCompany[]);
+          console.log('Fetched transport companies:', data);
+        }
+      } catch (error) {
+        console.error('Error fetching transport companies:', error);
+        toast.error('Erro ao carregar transportadoras');
+      } finally {
+        setIsLoadingTransportCompanies(false);
+      }
+    };
+
     fetchSalespeople();
+    fetchTransportCompanies();
   }, []);
 
   // Load customer data if editing
@@ -315,6 +345,26 @@ const CustomerForm = () => {
                 value={formValues.email} 
                 onChange={(e) => handleChange('email', e.target.value)}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="transportCompany">Transportadora padrão</Label>
+              <Select 
+                value={formValues.transportCompanyId} 
+                onValueChange={(value) => handleChange('transportCompanyId', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma transportadora" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Nenhuma</SelectItem>
+                  {!isLoadingTransportCompanies && transportCompanies.map(company => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>
