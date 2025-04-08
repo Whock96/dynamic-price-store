@@ -1,10 +1,15 @@
+
 import { Tables } from "@/integrations/supabase/client";
 import { Product, Order, CartItem, DiscountOption, Customer, User } from "@/types/types";
 
 /**
- * Converts a Supabase product record to our application's Product interface
+ * Converte um registro de produto do Supabase para o formato da aplicação
  */
 export const supabaseProductToAppProduct = (supabaseProduct: Tables<'products'>): Product => {
+  if (!supabaseProduct) {
+    throw new Error('Product data is null or undefined');
+  }
+  
   return {
     id: supabaseProduct.id,
     name: supabaseProduct.name,
@@ -29,14 +34,18 @@ export const supabaseProductToAppProduct = (supabaseProduct: Tables<'products'>)
 };
 
 /**
- * Converts an order with related data from Supabase format to our application's Order interface
+ * Converte um pedido com dados relacionados do formato Supabase para o formato da aplicação
  */
 export const supabaseOrderToAppOrder = (
   order: any, 
   items: any[] = [], 
   discounts: DiscountOption[] = [],
-  userData?: { name: string } // Optional parameter to provide user data
+  userData?: { name: string }
 ): Order => {
+  if (!order) {
+    throw new Error('Order data is null or undefined');
+  }
+  
   // Ensure customer is properly formatted
   const customer: Customer = order.customers ? {
     id: order.customers.id,
@@ -45,7 +54,7 @@ export const supabaseOrderToAppOrder = (
     salesPersonId: order.customers.sales_person_id,
     street: order.customers.street,
     number: order.customers.number || '',
-    noNumber: order.customers.no_number,
+    noNumber: Boolean(order.customers.no_number),
     complement: order.customers.complement || '',
     neighborhood: order.customers.neighborhood || '',
     city: order.customers.city,
@@ -62,44 +71,57 @@ export const supabaseOrderToAppOrder = (
     registerDate: new Date(order.customers.register_date || order.customers.created_at),
   } : {} as Customer;
 
-  // Format order items
-  const formattedItems: CartItem[] = items.map(item => ({
-    id: item.id,
-    productId: item.product_id,
-    product: item.products ? {
-      id: item.products.id,
-      name: item.products.name,
-      description: item.products.description || '',
-      listPrice: Number(item.products.list_price),
-      weight: Number(item.products.weight),
-      quantity: Number(item.products.quantity),
-      quantityPerVolume: Number(item.products.quantity_per_volume),
-      dimensions: {
-        width: Number(item.products.width),
-        height: Number(item.products.height),
-        length: Number(item.products.length),
+  // Format order items with improved safety checks
+  const formattedItems: CartItem[] = items.map(item => {
+    if (!item || !item.products) {
+      console.warn('Invalid item or missing product data in order item');
+      return {} as CartItem;
+    }
+    
+    return {
+      id: item.id,
+      productId: item.product_id,
+      product: {
+        id: item.products.id,
+        name: item.products.name,
+        description: item.products.description || '',
+        listPrice: Number(item.products.list_price),
+        weight: Number(item.products.weight),
+        quantity: Number(item.products.quantity),
+        quantityPerVolume: Number(item.products.quantity_per_volume),
+        dimensions: {
+          width: Number(item.products.width),
+          height: Number(item.products.height),
+          length: Number(item.products.length),
+        },
+        cubicVolume: Number(item.products.cubic_volume),
+        categoryId: item.products.category_id || '',
+        subcategoryId: item.products.subcategory_id || '',
+        imageUrl: item.products.image_url || '',
+        mva: Number(item.products.mva || 39), // Ensure MVA is included with a default value
+        createdAt: new Date(item.products.created_at),
+        updatedAt: new Date(item.products.updated_at),
       },
-      cubicVolume: Number(item.products.cubic_volume),
-      categoryId: item.products.category_id || '',
-      subcategoryId: item.products.subcategory_id || '',
-      imageUrl: item.products.image_url || '',
-      mva: Number(item.products.mva || 39), // Ensure MVA is included with a default value
-      createdAt: new Date(item.products.created_at),
-      updatedAt: new Date(item.products.updated_at),
-    } : {} as Product,
-    quantity: Number(item.quantity),
-    discount: Number(item.discount),
-    finalPrice: Number(item.final_price),
-    subtotal: Number(item.subtotal),
-  }));
+      quantity: Number(item.quantity),
+      discount: Number(item.discount),
+      finalPrice: Number(item.final_price),
+      subtotal: Number(item.subtotal),
+    };
+  }).filter(item => Object.keys(item).length > 0);
 
-  // Ensure user.role is always one of the allowed values
-  const userRole: 'administrator' | 'salesperson' | 'billing' | 'inventory' = 'salesperson';
+  // Ensure user.role is always one of the allowed values with stricter validation
+  const validRoles: ('administrator' | 'salesperson' | 'billing' | 'inventory')[] = [
+    'administrator', 'salesperson', 'billing', 'inventory'
+  ];
+  const defaultRole = 'salesperson';
+  const userRole = validRoles.includes(order.user_role as any) 
+    ? order.user_role as 'administrator' | 'salesperson' | 'billing' | 'inventory'
+    : defaultRole;
 
   // Create a properly formatted user object for the order
   const user: User = {
-    id: order.user_id,
-    // If userData is provided, use its name, otherwise use empty string (calling code should handle this)
+    id: order.user_id || '',
+    // If userData is provided, use its name, otherwise use empty string
     name: userData?.name || '',
     username: '',
     role: userRole,
@@ -108,6 +130,24 @@ export const supabaseOrderToAppOrder = (
     createdAt: new Date(),
     userTypeId: '' // Ensure userTypeId is provided with a default empty string
   };
+
+  // Convert order status and shipping to proper types with validation
+  const validStatus: ('pending' | 'confirmed' | 'invoiced' | 'completed' | 'canceled')[] = [
+    'pending', 'confirmed', 'invoiced', 'completed', 'canceled'
+  ];
+  const status = validStatus.includes(order.status as any) 
+    ? order.status as 'pending' | 'confirmed' | 'invoiced' | 'completed' | 'canceled'
+    : 'pending';
+
+  const validShipping: ('delivery' | 'pickup')[] = ['delivery', 'pickup'];
+  const shipping = validShipping.includes(order.shipping as any) 
+    ? order.shipping as 'delivery' | 'pickup'
+    : 'delivery';
+
+  const validPaymentMethod: ('cash' | 'credit')[] = ['cash', 'credit'];
+  const paymentMethod = validPaymentMethod.includes(order.payment_method as any)
+    ? order.payment_method as 'cash' | 'credit'
+    : 'cash';
 
   return {
     id: order.id,
@@ -121,11 +161,11 @@ export const supabaseOrderToAppOrder = (
     totalDiscount: Number(order.total_discount) || 0,
     subtotal: Number(order.subtotal) || 0,
     total: Number(order.total) || 0,
-    status: order.status as any,
-    shipping: order.shipping as any,
+    status,
+    shipping,
     fullInvoice: Boolean(order.full_invoice),
     taxSubstitution: Boolean(order.tax_substitution),
-    paymentMethod: order.payment_method as any,
+    paymentMethod,
     paymentTerms: order.payment_terms || '',
     notes: order.notes || '',
     observations: order.observations || '',
@@ -139,8 +179,12 @@ export const supabaseOrderToAppOrder = (
   };
 };
 
-// Adaptar o formato dos dados do usuário enviados pelo backend
+// Adaptar o formato dos dados do usuário enviados pelo backend com validações adicionais
 export const adaptUserData = (userData: any): User => {
+  if (!userData) {
+    throw new Error('User data is null or undefined');
+  }
+  
   // Map the role to one of the allowed values in our User type
   let normalizedRole: 'administrator' | 'salesperson' | 'billing' | 'inventory' = 'salesperson';
   
@@ -163,11 +207,11 @@ export const adaptUserData = (userData: any): User => {
   }
   
   return {
-    id: userData.id,
+    id: userData.id || '',
     name: userData.name || '',
     username: userData.username || '',
     role: normalizedRole,
-    permissions: userData.permissions || [],
+    permissions: Array.isArray(userData.permissions) ? userData.permissions : [],
     email: userData.email || '',
     createdAt: new Date(userData.created_at || userData.createdAt || new Date()),
     userTypeId: userData.user_type_id || userData.userTypeId || ''

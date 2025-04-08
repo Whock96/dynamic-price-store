@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   username: string;
@@ -84,6 +85,7 @@ export interface Customer {
   createdAt: Date;
   updatedAt: Date;
   registerDate: Date;
+  transportCompanyId?: string; // Adicionando campo para empresa transportadora
 }
 
 export interface CartItem {
@@ -139,6 +141,7 @@ export interface Order {
   deliveryFee?: number;
   withIPI?: boolean; // IPI flag
   ipiValue?: number; // IPI value
+  transportCompanyId?: string | null; // Referência à empresa transportadora
 }
 
 export interface MenuItem {
@@ -148,4 +151,15 @@ export interface MenuItem {
   icon: string;
   requiredRoles: string[];
   submenus?: MenuItem[];
+}
+
+export interface TransportCompany {
+  id: string;
+  name: string;
+  document: string;
+  email?: string;
+  phone?: string;
+  whatsapp?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
