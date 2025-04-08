@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -5,7 +6,8 @@ import {
   ChevronRight, List, UserPlus, Search, Edit, Menu, Building2, LogOut,
   Tag, Percent, Shield, Truck
 } from 'lucide-react';
-import { useAuth, MENU_ITEMS } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
+import { MENU_ITEMS } from '../../constants/menuItems';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
