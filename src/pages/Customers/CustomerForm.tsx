@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ChevronLeft, Save } from 'lucide-react';
@@ -135,6 +134,8 @@ const CustomerForm = () => {
           console.log('No salesPersonId found in customer data');
         }
         
+        console.log('Transport company ID from customer data:', customerValues.transportCompanyId);
+        
         setFormValues(customerValues);
       } else {
         toast.error('Cliente não encontrado');
@@ -144,10 +145,20 @@ const CustomerForm = () => {
   }, [isEditing, id, getCustomerById, navigate, salespeople]);
 
   const handleChange = (field: keyof typeof formValues, value: any) => {
+    if (field === 'transportCompanyId' && value === 'none') {
+      setFormValues(prev => ({ ...prev, [field]: undefined }));
+      console.log('Setting transportCompanyId to undefined');
+      return;
+    }
+    
     setFormValues(prev => ({ ...prev, [field]: value }));
     
     if (field === 'salesPersonId' && value) {
       setValidationError(null);
+    }
+    
+    if (field === 'transportCompanyId') {
+      console.log(`Setting transportCompanyId to: ${value}`);
     }
   };
 
@@ -167,12 +178,15 @@ const CustomerForm = () => {
         return;
       }
       
+      console.log('Submitting customer data with transportCompanyId:', formValues.transportCompanyId);
+      
       const customerData = {
         ...formValues,
         phone: formValues.phone.toString(),
         number: formValues.number.toString(),
         defaultDiscount: Number(formValues.defaultDiscount),
-        maxDiscount: Number(formValues.maxDiscount)
+        maxDiscount: Number(formValues.maxDiscount),
+        transportCompanyId: formValues.transportCompanyId
       };
 
       let result;
@@ -333,7 +347,7 @@ const CustomerForm = () => {
             <div className="space-y-2">
               <Label htmlFor="transportCompany">Transportadora padrão</Label>
               <Select 
-                value={formValues.transportCompanyId} 
+                value={formValues.transportCompanyId || 'none'} 
                 onValueChange={(value) => handleChange('transportCompanyId', value)}
               >
                 <SelectTrigger>

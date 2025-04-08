@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { Customer } from '@/types/types';
 import { useSupabaseData } from '@/hooks/use-supabase-data';
@@ -44,6 +43,7 @@ const supabaseToCustomer = (supabaseCustomer: SupabaseCustomer): Customer => ({
   createdAt: new Date(supabaseCustomer.created_at),
   updatedAt: new Date(supabaseCustomer.updated_at),
   registerDate: new Date(supabaseCustomer.register_date),
+  transportCompanyId: supabaseCustomer.transport_company_id || undefined,
 });
 
 // Função para converter nosso modelo frontend para o formato Supabase
@@ -71,15 +71,19 @@ const customerToSupabase = (customer: Partial<Customer>): Partial<SupabaseCustom
     ? customer.registerDate.toISOString().split('T')[0] 
     : customer.registerDate;
   
+  if ('transportCompanyId' in customer) {
+    result.transport_company_id = customer.transportCompanyId === 'none' || customer.transportCompanyId === undefined 
+      ? null 
+      : customer.transportCompanyId;
+    console.log('Setting transport_company_id in Supabase to:', result.transport_company_id);
+  }
+  
   return result;
 };
 
 export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Removemos a lógica de verificação de localStorage vs Supabase
-  // Agora sempre usamos Supabase
   const [localCustomers, setLocalCustomers] = useState<Customer[]>([]);
 
-  // Use our custom hook for Supabase data
   const { 
     data: supabaseCustomers, 
     isLoading,
@@ -92,7 +96,6 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     orderBy: { column: 'company_name', ascending: true }
   });
 
-  // Convert Supabase customers to our frontend model
   const customers = React.useMemo(() => {
     return supabaseCustomers.map(supabaseToCustomer);
   }, [supabaseCustomers]);
@@ -113,16 +116,13 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       console.log('Adding customer with data:', customerData);
       
-      // Validate required field
       if (!customerData.salesPersonId) {
         toast.error('Erro: Um vendedor deve ser selecionado');
         return null;
       }
       
-      // Add to Supabase
       const supabaseData = customerToSupabase(customerData);
       
-      // Ensure salesPersonId is explicitly set as sales_person_id
       supabaseData.sales_person_id = customerData.salesPersonId;
       
       console.log('Final Supabase data for insert:', supabaseData);
@@ -146,21 +146,21 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       console.log('Updating customer with data:', customerData);
       
-      // Validate required field if it's being updated
       if ('salesPersonId' in customerData && !customerData.salesPersonId) {
         console.error('salesPersonId cannot be empty - this is a required field');
         toast.error('Erro: Um vendedor deve ser selecionado');
         return null;
       }
       
-      // Update in Supabase
       const supabaseData = customerToSupabase(customerData);
       
-      // Ensure salesPersonId is explicitly set as sales_person_id if it exists
       if (customerData.salesPersonId) {
         console.log('Setting sales_person_id to:', customerData.salesPersonId);
         supabaseData.sales_person_id = customerData.salesPersonId;
       }
+      
+      console.log('Transport company ID being saved:', customerData.transportCompanyId, 
+                  'Transformed to:', supabaseData.transport_company_id);
       
       console.log('Final Supabase data for update:', supabaseData);
       
@@ -181,7 +181,6 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const deleteCustomer = async (id: string) => {
     try {
-      // Delete from Supabase
       const result = await deleteRecord(id);
       if (result) {
         await refreshCustomers();

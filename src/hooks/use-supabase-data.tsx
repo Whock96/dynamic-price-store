@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -318,6 +317,17 @@ export function useSupabaseData<T extends Record<string, any>>(
       if (result.salesPersonId !== undefined) {
         result.sales_person_id = result.salesPersonId;
         delete result.salesPersonId;
+      }
+      
+      // Handle transportCompanyId specifically
+      if (result.transportCompanyId !== undefined) {
+        // Se for 'none' ou undefined, devemos armazenar como null
+        result.transport_company_id = result.transportCompanyId === 'none' || result.transportCompanyId === undefined 
+          ? null 
+          : result.transportCompanyId;
+        
+        console.log('In prepareRecordForSupabase: Setting transport_company_id to', result.transport_company_id);
+        delete result.transportCompanyId;
       }
       
       // Handle other customer-specific conversions
