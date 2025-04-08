@@ -3,7 +3,7 @@ import { Tables } from "@/integrations/supabase/client";
 import { Product, Order, CartItem, DiscountOption, Customer, User } from "@/types/types";
 
 /**
- * Converte um registro de produto do Supabase para o formato da aplicação
+ * Converts a Supabase product record to application format with improved type safety
  */
 export const supabaseProductToAppProduct = (supabaseProduct: Tables<'products'>): Product => {
   if (!supabaseProduct) {
@@ -27,52 +27,53 @@ export const supabaseProductToAppProduct = (supabaseProduct: Tables<'products'>)
     categoryId: supabaseProduct.category_id || "",
     subcategoryId: supabaseProduct.subcategory_id || "",
     imageUrl: supabaseProduct.image_url || "",
-    mva: Number(supabaseProduct.mva || 39), // Ensure we have a default MVA value
+    mva: Number(supabaseProduct.mva || 39), // Default MVA value
     createdAt: new Date(supabaseProduct.created_at),
     updatedAt: new Date(supabaseProduct.updated_at),
   };
 };
 
 /**
- * Converte um pedido com dados relacionados do formato Supabase para o formato da aplicação
+ * Extracts and validates customer data from order record
  */
-export const supabaseOrderToAppOrder = (
-  order: any, 
-  items: any[] = [], 
-  discounts: DiscountOption[] = [],
-  userData?: { name: string }
-): Order => {
-  if (!order) {
-    throw new Error('Order data is null or undefined');
+export const extractCustomerFromOrder = (orderData: any): Customer => {
+  if (!orderData?.customers) {
+    throw new Error('Customer data is missing from order');
   }
   
-  // Ensure customer is properly formatted
-  const customer: Customer = order.customers ? {
-    id: order.customers.id,
-    companyName: order.customers.company_name,
-    document: order.customers.document,
-    salesPersonId: order.customers.sales_person_id,
-    street: order.customers.street,
-    number: order.customers.number || '',
-    noNumber: Boolean(order.customers.no_number),
-    complement: order.customers.complement || '',
-    neighborhood: order.customers.neighborhood || '',
-    city: order.customers.city,
-    state: order.customers.state,
-    zipCode: order.customers.zip_code,
-    phone: order.customers.phone || '',
-    email: order.customers.email || '',
-    whatsapp: order.customers.whatsapp || '',
-    stateRegistration: order.customers.state_registration || '',
-    defaultDiscount: Number(order.customers.default_discount) || 0,
-    maxDiscount: Number(order.customers.max_discount) || 0,
-    createdAt: new Date(order.customers.created_at),
-    updatedAt: new Date(order.customers.updated_at),
-    registerDate: new Date(order.customers.register_date || order.customers.created_at),
-  } : {} as Customer;
+  const customerData = orderData.customers;
+  
+  return {
+    id: customerData.id,
+    companyName: customerData.company_name,
+    document: customerData.document,
+    salesPersonId: customerData.sales_person_id,
+    street: customerData.street,
+    number: customerData.number || '',
+    noNumber: Boolean(customerData.no_number),
+    complement: customerData.complement || '',
+    neighborhood: customerData.neighborhood || '',
+    city: customerData.city,
+    state: customerData.state,
+    zipCode: customerData.zip_code,
+    phone: customerData.phone || '',
+    email: customerData.email || '',
+    whatsapp: customerData.whatsapp || '',
+    stateRegistration: customerData.state_registration || '',
+    defaultDiscount: Number(customerData.default_discount) || 0,
+    maxDiscount: Number(customerData.max_discount) || 0,
+    createdAt: new Date(customerData.created_at),
+    updatedAt: new Date(customerData.updated_at),
+    registerDate: new Date(customerData.register_date || customerData.created_at),
+    transportCompanyId: customerData.transport_company_id,
+  };
+};
 
-  // Format order items with improved safety checks
-  const formattedItems: CartItem[] = items.map(item => {
+/**
+ * Formats order items from raw data with improved safety
+ */
+export const formatOrderItems = (items: any[] = []): CartItem[] => {
+  return items.map(item => {
     if (!item || !item.products) {
       console.warn('Invalid item or missing product data in order item');
       return {} as CartItem;
@@ -98,7 +99,7 @@ export const supabaseOrderToAppOrder = (
         categoryId: item.products.category_id || '',
         subcategoryId: item.products.subcategory_id || '',
         imageUrl: item.products.image_url || '',
-        mva: Number(item.products.mva || 39), // Ensure MVA is included with a default value
+        mva: Number(item.products.mva || 39),
         createdAt: new Date(item.products.created_at),
         updatedAt: new Date(item.products.updated_at),
       },
@@ -108,30 +109,55 @@ export const supabaseOrderToAppOrder = (
       subtotal: Number(item.subtotal),
     };
   }).filter(item => Object.keys(item).length > 0);
+};
 
-  // Ensure user.role is always one of the allowed values with stricter validation
+/**
+ * Creates a normalized user object for orders with proper validation
+ */
+export const createOrderUser = (userData: { name?: string } | undefined, userRole: string, userId: string): User => {
+  // Validate user role
   const validRoles: ('administrator' | 'salesperson' | 'billing' | 'inventory')[] = [
     'administrator', 'salesperson', 'billing', 'inventory'
   ];
-  const defaultRole = 'salesperson';
-  const userRole = validRoles.includes(order.user_role as any) 
-    ? order.user_role as 'administrator' | 'salesperson' | 'billing' | 'inventory'
-    : defaultRole;
+  const normalizedRole = validRoles.includes(userRole as any) 
+    ? userRole as 'administrator' | 'salesperson' | 'billing' | 'inventory'
+    : 'salesperson';
 
-  // Create a properly formatted user object for the order
-  const user: User = {
-    id: order.user_id || '',
-    // If userData is provided, use its name, otherwise use empty string
+  return {
+    id: userId || '',
     name: userData?.name || '',
     username: '',
-    role: userRole,
+    role: normalizedRole,
     permissions: [],
     email: '',
     createdAt: new Date(),
-    userTypeId: '' // Ensure userTypeId is provided with a default empty string
+    userTypeId: ''
   };
+};
 
-  // Convert order status and shipping to proper types with validation
+/**
+ * Converts an order with related data from Supabase format to application format
+ */
+export const supabaseOrderToAppOrder = (
+  order: any, 
+  items: any[] = [], 
+  discounts: DiscountOption[] = [],
+  userData?: { name: string }
+): Order => {
+  if (!order) {
+    throw new Error('Order data is null or undefined');
+  }
+  
+  // Extract validated customer data
+  const customer = extractCustomerFromOrder(order);
+  
+  // Format order items safely
+  const formattedItems = formatOrderItems(items);
+  
+  // Create properly validated user object
+  const user = createOrderUser(userData, order.user_role || '', order.user_id || '');
+
+  // Validate order status
   const validStatus: ('pending' | 'confirmed' | 'invoiced' | 'completed' | 'canceled')[] = [
     'pending', 'confirmed', 'invoiced', 'completed', 'canceled'
   ];
@@ -139,11 +165,13 @@ export const supabaseOrderToAppOrder = (
     ? order.status as 'pending' | 'confirmed' | 'invoiced' | 'completed' | 'canceled'
     : 'pending';
 
+  // Validate shipping type
   const validShipping: ('delivery' | 'pickup')[] = ['delivery', 'pickup'];
   const shipping = validShipping.includes(order.shipping as any) 
     ? order.shipping as 'delivery' | 'pickup'
     : 'delivery';
 
+  // Validate payment method
   const validPaymentMethod: ('cash' | 'credit')[] = ['cash', 'credit'];
   const paymentMethod = validPaymentMethod.includes(order.payment_method as any)
     ? order.payment_method as 'cash' | 'credit'
@@ -173,26 +201,30 @@ export const supabaseOrderToAppOrder = (
     updatedAt: new Date(order.updated_at),
     deliveryLocation: order.delivery_location as 'capital' | 'interior' | null,
     halfInvoicePercentage: Number(order.half_invoice_percentage),
+    halfInvoiceType: order.half_invoice_type as 'quantity' | 'price' || undefined,
     deliveryFee: Number(order.delivery_fee) || 0,
     withIPI: Boolean(order.with_ipi) || false,
     ipiValue: Number(order.ipi_value) || 0,
+    transportCompanyId: order.transport_company_id,
   };
 };
 
-// Adaptar o formato dos dados do usuário enviados pelo backend com validações adicionais
+/**
+ * Adapts user data from backend format with improved validation
+ */
 export const adaptUserData = (userData: any): User => {
   if (!userData) {
     throw new Error('User data is null or undefined');
   }
   
-  // Map the role to one of the allowed values in our User type
+  // Normalize role name
   let normalizedRole: 'administrator' | 'salesperson' | 'billing' | 'inventory' = 'salesperson';
   
-  // Handle both raw string values and user_type object from database
+  // Handle both raw string values and user_type object
   const roleValue = typeof userData.role === 'string' ? userData.role : 
-                    (userData.user_type ? userData.user_type.name : 'salesperson');
-                    
-  // Normalize role names to match our enum
+                   (userData.user_type ? userData.user_type.name : 'salesperson');
+                   
+  // Map role to normalized value
   if (roleValue) {
     const roleLower = roleValue.toLowerCase();
     if (roleLower.includes('admin')) {
