@@ -1,12 +1,13 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
+import React, { createContext, useContext, useReducer, useState, useEffect } from 'react';
+import { Customer, Product, CartItem, DiscountOption, Order } from '@/types/types';
+import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
-import { useOrders } from './OrderContext';
-import { useCustomers } from './CustomerContext';
-import { useDiscountSettings } from '../hooks/use-discount-settings';
 import { useAuth } from './AuthContext';
+import { useOrders } from './OrderContext';
+import { useDiscountSettings } from '@/hooks/use-discount-settings';
+import { useTransportCompanies } from './TransportCompanyContext';
 
-interface CartContextType {
+export interface CartState {
   items: CartItem[];
   customer: Customer | null;
   discountOptions: DiscountOption[];
@@ -16,595 +17,664 @@ interface CartContextType {
   halfInvoiceType: 'quantity' | 'price';
   observations: string;
   paymentTerms: string;
+  deliveryFee: number;
+  applyDiscounts: boolean;
+  withIPI: boolean;
+  ipiValue: number;
+  transportCompanyId: string | null;
+}
+
+export interface CartContextType {
+  items: CartItem[];
+  customer: Customer | null;
+  setCustomer: (customer: Customer | null) => void;
+  addItem: (product: Product, quantity: number) => void;
+  removeItem: (itemId: string) => void;
+  updateItemQuantity: (itemId: string, quantity: number) => void;
+  updateItemDiscount: (itemId: string, discount: number) => void;
+  clearCart: () => void;
   totalItems: number;
   subtotal: number;
   totalDiscount: number;
   total: number;
-  deliveryFee: number;
-  applyDiscounts: boolean;
-  withIPI: boolean;
-  setCustomer: (customer: Customer | null) => void;
-  addItem: (product: Product, quantity: number) => void;
-  removeItem: (id: string) => void;
-  updateItemQuantity: (id: string, quantity: number) => void;
-  updateItemDiscount: (id: string, discount: number) => void;
-  toggleDiscountOption: (id: string) => void;
+  discountOptions: DiscountOption[];
+  selectedDiscountOptions: string[];
+  toggleDiscountOption: (optionId: string) => void;
+  isDiscountOptionSelected: (optionId: string) => boolean;
+  deliveryLocation: 'capital' | 'interior' | null;
   setDeliveryLocation: (location: 'capital' | 'interior' | null) => void;
+  halfInvoicePercentage: number;
   setHalfInvoicePercentage: (percentage: number) => void;
+  halfInvoiceType: 'quantity' | 'price';
   setHalfInvoiceType: (type: 'quantity' | 'price') => void;
+  observations: string;
   setObservations: (text: string) => void;
+  paymentTerms: string;
   setPaymentTerms: (terms: string) => void;
-  clearCart: () => void;
-  sendOrder: () => Promise<void>;
-  isDiscountOptionSelected: (id: string) => boolean;
+  deliveryFee: number;
+  sendOrder: () => Promise<Order | null>;
+  applyDiscounts: boolean;
   toggleApplyDiscounts: () => void;
   calculateTaxSubstitutionValue: () => number;
+  calculateItemTaxSubstitutionValue: (item: CartItem) => number;
+  withIPI: boolean;
   toggleIPI: () => void;
   calculateIPIValue: () => number;
-  calculateItemTaxSubstitutionValue: (item: CartItem) => number;
+  transportCompanyId: string | null;
+  setTransportCompanyId: (id: string | null) => void;
 }
+
+type CartAction =
+  | { type: 'ADD_ITEM'; payload: { product: Product; quantity: number } }
+  | { type: 'REMOVE_ITEM'; payload: string }
+  | { type: 'UPDATE_ITEM_QUANTITY'; payload: { itemId: string; quantity: number } }
+  | { type: 'UPDATE_ITEM_DISCOUNT'; payload: { itemId: string; discount: number } }
+  | { type: 'SET_CUSTOMER'; payload: Customer | null }
+  | { type: 'CLEAR_CART' }
+  | { type: 'SET_DISCOUNT_OPTIONS'; payload: DiscountOption[] }
+  | { type: 'TOGGLE_DISCOUNT_OPTION'; payload: string }
+  | { type: 'SET_DELIVERY_LOCATION'; payload: 'capital' | 'interior' | null }
+  | { type: 'SET_HALF_INVOICE_PERCENTAGE'; payload: number }
+  | { type: 'SET_HALF_INVOICE_TYPE'; payload: 'quantity' | 'price' }
+  | { type: 'SET_OBSERVATIONS'; payload: string }
+  | { type: 'SET_PAYMENT_TERMS'; payload: string }
+  | { type: 'SET_DELIVERY_FEE'; payload: number }
+  | { type: 'TOGGLE_APPLY_DISCOUNTS' }
+  | { type: 'SET_WITH_IPI'; payload: boolean }
+  | { type: 'SET_IPI_VALUE'; payload: number }
+  | { type: 'SET_TRANSPORT_COMPANY_ID'; payload: string | null };
+
+const initialState: CartState = {
+  items: [],
+  customer: null,
+  discountOptions: [],
+  selectedDiscountOptions: [],
+  deliveryLocation: null,
+  halfInvoicePercentage: 50,
+  halfInvoiceType: 'quantity',
+  observations: '',
+  paymentTerms: '',
+  deliveryFee: 0,
+  applyDiscounts: true,
+  withIPI: false,
+  ipiValue: 0,
+  transportCompanyId: null
+};
+
+const cartReducer = (state: CartState, action: CartAction): CartState => {
+  switch (action.type) {
+    case 'ADD_ITEM': {
+      const { product, quantity } = action.payload;
+      const existingItemIndex = state.items.findIndex(item => item.productId === product.id);
+
+      if (existingItemIndex >= 0) {
+        // Item already exists, update quantity
+        const updatedItems = [...state.items];
+        const existingItem = updatedItems[existingItemIndex];
+        
+        // Calculate the new quantity
+        const newQuantity = existingItem.quantity + quantity;
+        
+        // Calculate the new subtotal
+        const finalPrice = product.listPrice * (1 - existingItem.discount / 100);
+        const subtotal = finalPrice * newQuantity;
+        
+        updatedItems[existingItemIndex] = {
+          ...existingItem,
+          quantity: newQuantity,
+          subtotal
+        };
+        
+        return { ...state, items: updatedItems };
+      } else {
+        // Add new item
+        const discount = state.customer?.defaultDiscount || 0;
+        const finalPrice = product.listPrice * (1 - discount / 100);
+        const subtotal = finalPrice * quantity;
+        
+        const newItem: CartItem = {
+          id: uuidv4(),
+          productId: product.id,
+          product,
+          quantity,
+          discount,
+          finalPrice,
+          subtotal
+        };
+        
+        return { ...state, items: [...state.items, newItem] };
+      }
+    }
+    
+    case 'REMOVE_ITEM':
+      return {
+        ...state,
+        items: state.items.filter(item => item.id !== action.payload)
+      };
+      
+    case 'UPDATE_ITEM_QUANTITY': {
+      const { itemId, quantity } = action.payload;
+      
+      if (quantity <= 0) {
+        return {
+          ...state,
+          items: state.items.filter(item => item.id !== itemId)
+        };
+      }
+      
+      return {
+        ...state,
+        items: state.items.map(item => {
+          if (item.id === itemId) {
+            const finalPrice = item.product.listPrice * (1 - item.discount / 100);
+            return {
+              ...item,
+              quantity,
+              subtotal: finalPrice * quantity
+            };
+          }
+          return item;
+        })
+      };
+    }
+    
+    case 'UPDATE_ITEM_DISCOUNT': {
+      const { itemId, discount } = action.payload;
+      
+      return {
+        ...state,
+        items: state.items.map(item => {
+          if (item.id === itemId) {
+            const finalPrice = item.product.listPrice * (1 - discount / 100);
+            return {
+              ...item,
+              discount,
+              finalPrice,
+              subtotal: finalPrice * item.quantity
+            };
+          }
+          return item;
+        })
+      };
+    }
+    
+    case 'SET_CUSTOMER':
+      return {
+        ...state,
+        customer: action.payload
+      };
+      
+    case 'CLEAR_CART':
+      return {
+        ...initialState,
+        discountOptions: state.discountOptions
+      };
+      
+    case 'SET_DISCOUNT_OPTIONS':
+      return {
+        ...state,
+        discountOptions: action.payload
+      };
+      
+    case 'TOGGLE_DISCOUNT_OPTION': {
+      const optionId = action.payload;
+      const isSelected = state.selectedDiscountOptions.includes(optionId);
+      
+      if (isSelected) {
+        return {
+          ...state,
+          selectedDiscountOptions: state.selectedDiscountOptions.filter(id => id !== optionId)
+        };
+      } else {
+        return {
+          ...state,
+          selectedDiscountOptions: [...state.selectedDiscountOptions, optionId]
+        };
+      }
+    }
+    
+    case 'SET_DELIVERY_LOCATION':
+      return {
+        ...state,
+        deliveryLocation: action.payload
+      };
+      
+    case 'SET_HALF_INVOICE_PERCENTAGE':
+      return {
+        ...state,
+        halfInvoicePercentage: action.payload
+      };
+      
+    case 'SET_HALF_INVOICE_TYPE':
+      return {
+        ...state,
+        halfInvoiceType: action.payload
+      };
+      
+    case 'SET_OBSERVATIONS':
+      return {
+        ...state,
+        observations: action.payload
+      };
+      
+    case 'SET_PAYMENT_TERMS':
+      return {
+        ...state,
+        paymentTerms: action.payload
+      };
+      
+    case 'SET_DELIVERY_FEE':
+      return {
+        ...state,
+        deliveryFee: action.payload
+      };
+      
+    case 'TOGGLE_APPLY_DISCOUNTS':
+      return {
+        ...state,
+        applyDiscounts: !state.applyDiscounts
+      };
+      
+    case 'SET_WITH_IPI':
+      return {
+        ...state,
+        withIPI: action.payload
+      };
+      
+    case 'SET_IPI_VALUE':
+      return {
+        ...state,
+        ipiValue: action.payload
+      };
+      
+    case 'SET_TRANSPORT_COMPANY_ID':
+      return {
+        ...state,
+        transportCompanyId: action.payload
+      };
+      
+    default:
+      return state;
+  }
+};
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  let addOrder: (newOrder: Partial<Order>) => Promise<string | undefined>;
-  try {
-    const { addOrder: orderContextAddOrder } = useOrders();
-    addOrder = orderContextAddOrder;
-  } catch (error) {
-    console.error("OrderContext not available:", error);
-    addOrder = async () => {
-      toast.error("Erro: Sistema de pedidos não está disponível");
-      return undefined;
-    };
-  }
-  
-  const { customers } = useCustomers();
+  const [state, dispatch] = useReducer(cartReducer, initialState);
   const { settings } = useDiscountSettings();
-  const { user } = useAuth();
+  const { addOrder } = useOrders();
+  const auth = useAuth();
+  const { transportCompanies } = useTransportCompanies();
   
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [customer, setCustomer] = useState<Customer | null>(null);
-  const [discountOptions, setDiscountOptions] = useState<DiscountOption[]>([]);
-  const [selectedDiscountOptions, setSelectedDiscountOptions] = useState<string[]>([]);
-  const [deliveryLocation, setDeliveryLocation] = useState<'capital' | 'interior' | null>(null);
-  const [halfInvoicePercentage, setHalfInvoicePercentage] = useState<number>(50);
-  const [halfInvoiceType, setHalfInvoiceType] = useState<'quantity' | 'price'>('quantity');
-  const [observations, setObservations] = useState<string>('');
-  const [paymentTerms, setPaymentTerms] = useState<string>('');
-  const [applyDiscounts, setApplyDiscounts] = useState<boolean>(true);
-  const [withIPI, setWithIPI] = useState<boolean>(false);
-
+  // Load discount options from settings
   useEffect(() => {
-    if (settings) {
-      const updatedDiscountOptions: DiscountOption[] = [
-        {
-          id: '1',
-          name: 'Retirada',
-          description: 'Desconto para retirada na loja',
-          value: settings.pickup,
-          type: 'discount',
-          isActive: true,
-        },
-        {
-          id: '2',
-          name: 'Meia nota',
-          description: 'Desconto para meia nota fiscal',
-          value: settings.halfInvoice,
-          type: 'discount',
-          isActive: true,
-        },
-        {
-          id: '3',
-          name: 'Substituição tributária',
-          description: 'Acréscimo para substituição tributária',
-          value: settings.taxSubstitution,
-          type: 'surcharge',
-          isActive: true,
-        },
-        {
-          id: '4',
-          name: 'A Vista',
-          description: 'Desconto para pagamento à vista',
-          value: settings.cashPayment,
-          type: 'discount',
-          isActive: true,
-        }
-      ];
-      
-      setDiscountOptions(updatedDiscountOptions);
+    if (settings && settings.discountOptions) {
+      dispatch({ type: 'SET_DISCOUNT_OPTIONS', payload: settings.discountOptions });
     }
   }, [settings]);
-
-  const handleSetCustomer = (selectedCustomer: Customer | null) => {
-    const isSalesperson = user?.userTypeId === 'c5ee0433-3faf-46a4-a516-be7261bfe575';
-    
-    if (isSalesperson && selectedCustomer && selectedCustomer.salesPersonId !== user.id) {
-      toast.error('Você só pode selecionar clientes atribuídos a você.');
-      return;
-    }
-    
-    setCustomer(selectedCustomer);
-  };
-
-  const calculateTotalUnits = (item: CartItem): number => {
-    return item.quantity * (item.product.quantityPerVolume || 1);
-  };
-
-  const isDiscountOptionSelected = (id: string) => {
-    return selectedDiscountOptions.includes(id);
-  };
-
-  const totalItems = items.reduce((total, item) => total + item.quantity, 0);
   
-  const subtotal = items.reduce((total, item) => {
-    const totalUnits = calculateTotalUnits(item);
-    return total + (item.product.listPrice * totalUnits);
-  }, 0);
-
-  const getNetDiscountPercentage = () => {
-    if (!applyDiscounts) return 0;
-    
-    let discountPercentage = 0;
-    
-    selectedDiscountOptions.forEach(id => {
-      const option = discountOptions.find(opt => opt.id === id);
-      if (!option) return;
-
-      if (option.id === '3') return;
-      
-      if (option.type === 'discount') {
-        discountPercentage += option.value;
-      }
-    });
-    
-    return discountPercentage;
-  };
-
-  const getTaxSubstitutionRate = () => {
-    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
-    
-    const taxOption = discountOptions.find(opt => opt.id === '3');
-    if (!taxOption) return 0;
-    
-    if (isDiscountOptionSelected('2')) {
-      return taxOption.value * (halfInvoicePercentage / 100);
-    }
-    
-    return taxOption.value;
-  };
-
-  const deliveryFee = settings && deliveryLocation === 'capital' 
-    ? settings.deliveryFees.capital 
-    : deliveryLocation === 'interior' && settings 
-      ? settings.deliveryFees.interior 
-      : 0;
-
-  const calculateTaxSubstitutionValue = () => {
-    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
-    
-    return items.reduce((total, item) => {
-      const unitTaxValue = calculateItemTaxSubstitutionValue(item);
-      const totalUnits = calculateTotalUnits(item);
-      return total + (unitTaxValue * totalUnits);
-    }, 0);
-  };
-
-  const calculateItemTaxSubstitutionValue = (item: CartItem) => {
-    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
-    
-    const taxOption = discountOptions.find(opt => opt.id === '3');
-    if (!taxOption) return 0;
-    
-    const icmsStRate = taxOption.value / 100;
-    const mva = (item.product.mva ?? 39) / 100;
-    const basePrice = item.finalPrice;
-    
-    let taxValue = basePrice * mva * icmsStRate;
-    
-    if (isDiscountOptionSelected('2')) {
-      taxValue = taxValue * (halfInvoicePercentage / 100);
-    }
-    
-    return taxValue;
-  };
-
-  const calculateIPIValue = () => {
-    if (!withIPI || !applyDiscounts || !settings) return 0;
-    
-    const standardRate = settings.ipiRate / 100;
-    
-    return items.reduce((total, item) => {
-      const totalUnits = calculateTotalUnits(item);
-      
-      let adjustedRate = standardRate;
-      if (isDiscountOptionSelected('2')) {
-        adjustedRate = standardRate * (halfInvoicePercentage / 100);
-      }
-      
-      return total + (item.finalPrice * adjustedRate * totalUnits);
-    }, 0);
-  };
-
-  const recalculateCart = () => {
-    const discountPercentage = getNetDiscountPercentage();
-    
-    const updatedItems = items.map(item => {
-      let itemDiscount = item.discount || 0;
-      let netDiscount = applyDiscounts ? itemDiscount + discountPercentage : itemDiscount;
-      
-      let finalPrice = item.product.listPrice * (1 - (netDiscount / 100));
-      const totalUnits = calculateTotalUnits(item);
-      
-      const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('3') ? 
-        calculateItemTaxSubstitutionValue(item) : 0;
-      
-      const subtotal = (finalPrice + taxValuePerUnit) * totalUnits;
-      
-      return {
-        ...item,
-        finalPrice,
-        subtotal
-      };
-    });
-    
-    setItems(updatedItems);
-  };
-
+  // Calculate delivery fee when location changes
   useEffect(() => {
-    recalculateCart();
-  }, [selectedDiscountOptions, applyDiscounts, halfInvoicePercentage, discountOptions]);
-
-  useEffect(() => {
-    if (customer) {
-      setItems(prevItems => 
-        prevItems.map(item => {
-          const finalPrice = item.product.listPrice * (1 - customer.defaultDiscount / 100);
-          
-          const taxValue = applyDiscounts && isDiscountOptionSelected('3') ? 
-            calculateItemTaxSubstitutionValue({...item, finalPrice}) : 0;
-          
-          const totalUnits = calculateTotalUnits(item);
-          
-          const subtotal = (finalPrice + taxValue) * totalUnits;
-          
-          return {
-            ...item,
-            discount: customer.defaultDiscount,
-            finalPrice,
-            subtotal
-          };
-        })
-      );
+    if (state.deliveryLocation && settings) {
+      const fee = state.deliveryLocation === 'capital' 
+        ? settings.deliveryFees.capital 
+        : settings.deliveryFees.interior;
+      
+      dispatch({ type: 'SET_DELIVERY_FEE', payload: fee });
     } else {
-      setItems(prevItems => 
-        prevItems.map(item => {
-          const finalPrice = item.product.listPrice;
-          
-          const taxValue = applyDiscounts && isDiscountOptionSelected('3') ? 
-            calculateItemTaxSubstitutionValue({...item, finalPrice}) : 0;
-          
-          const totalUnits = calculateTotalUnits(item);
-          
-          const subtotal = (finalPrice + taxValue) * totalUnits;
-          
-          return {
-            ...item,
-            discount: 0,
-            finalPrice,
-            subtotal
-          };
-        })
-      );
+      dispatch({ type: 'SET_DELIVERY_FEE', payload: 0 });
     }
-  }, [customer, discountOptions]);
-
-  useEffect(() => {
-    if (settings) {
-      recalculateCart();
-    }
-  }, [settings]);
-
-  const totalDiscount = items.reduce((total, item) => {
-    const totalUnits = calculateTotalUnits(item);
-    const fullPrice = item.product.listPrice * totalUnits;
-    const discountValue = fullPrice - (item.finalPrice * totalUnits);
-    return total + discountValue;
-  }, 0);
-
-  const taxSubstitutionValue = calculateTaxSubstitutionValue();
-  const ipiValue = calculateIPIValue();
+  }, [state.deliveryLocation, settings]);
   
-  const total = items.reduce((total, item) => total + item.subtotal, 0) + deliveryFee + ipiValue;
-
-  const toggleApplyDiscounts = () => {
-    setApplyDiscounts(prev => !prev);
+  // Update the setCustomer function to also set the default transport company
+  const setCustomer = (selectedCustomer: Customer | null) => {
+    dispatch({ type: 'SET_CUSTOMER', payload: selectedCustomer });
+    
+    // If customer has a default transport company, set it
+    if (selectedCustomer?.transportCompanyId) {
+      setTransportCompanyId(selectedCustomer.transportCompanyId);
+    } else {
+      setTransportCompanyId(null);
+    }
   };
-
-  const toggleIPI = () => {
-    setWithIPI(prev => !prev);
-  };
-
+  
   const addItem = (product: Product, quantity: number) => {
-    if (!product || !product.id) {
-      toast.error("Produto inválido");
-      return;
-    }
-    
-    console.log("Adicionando produto ao carrinho:", product);
-    
-    const existingItemIndex = items.findIndex(item => item.productId === product.id);
-    
-    if (existingItemIndex >= 0) {
-      const newItems = [...items];
-      const existingItem = newItems[existingItemIndex];
-      const newQuantity = existingItem.quantity + quantity;
-      const totalUnits = newQuantity * (existingItem.product.quantityPerVolume || 1);
-      
-      const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('3') ? 
-        calculateItemTaxSubstitutionValue({...existingItem, quantity: newQuantity}) : 0;
-      
-      const subtotal = (existingItem.finalPrice + taxValuePerUnit) * totalUnits;
-      
-      newItems[existingItemIndex] = {
-        ...existingItem,
-        quantity: newQuantity,
-        subtotal
-      };
-      
-      setItems(newItems);
-      toast.success(`Quantidade de ${product.name} atualizada no carrinho`);
-    } else {
-      const listPrice = Number(product.listPrice) || 0;
-      const initialDiscount = customer ? Number(customer.defaultDiscount) || 0 : 0;
-      const discountPercentage = getNetDiscountPercentage();
-      const combinedDiscount = initialDiscount + discountPercentage;
-      
-      const finalPrice = listPrice * (1 - combinedDiscount / 100);
-      const totalUnits = quantity * (product.quantityPerVolume || 1);
-      
-      const tempItem: CartItem = {
-        id: '',
-        productId: product.id,
-        product,
-        quantity,
-        discount: initialDiscount,
-        finalPrice,
-        subtotal: 0
-      };
-      
-      const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('3') ? 
-        calculateItemTaxSubstitutionValue(tempItem) : 0;
-      
-      const subtotal = (finalPrice + taxValuePerUnit) * totalUnits;
-      
-      console.log("Valores calculados:", {
-        listPrice,
-        initialDiscount,
-        discountPercentage,
-        combinedDiscount,
-        finalPrice,
-        taxValuePerUnit,
-        subtotal,
-        quantityPerVolume: product.quantityPerVolume || 1,
-        totalUnits
-      });
-      
-      const newItem: CartItem = {
-        id: Date.now().toString(),
-        productId: product.id,
-        product: { ...product },
-        quantity,
-        discount: initialDiscount,
-        finalPrice,
-        subtotal
-      };
-      
-      setItems(prevItems => [...prevItems, newItem]);
-      toast.success(`${product.name} adicionado ao carrinho`);
-    }
+    dispatch({ type: 'ADD_ITEM', payload: { product, quantity } });
   };
-
-  const removeItem = (id: string) => {
-    const itemToRemove = items.find(item => item.id === id);
-    if (itemToRemove) {
-      setItems(prevItems => prevItems.filter(item => item.id !== id));
-      toast.info(`${itemToRemove.product.name} removido do carrinho`);
-    }
+  
+  const removeItem = (itemId: string) => {
+    dispatch({ type: 'REMOVE_ITEM', payload: itemId });
   };
-
-  const updateItemQuantity = (id: string, quantity: number) => {
-    if (quantity < 1) return;
-    
-    setItems(prevItems => prevItems.map(item => {
-      if (item.id === id) {
-        const totalUnits = quantity * (item.product.quantityPerVolume || 1);
-        
-        const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('3') ? 
-          calculateItemTaxSubstitutionValue({...item, quantity}) : 0;
-        
-        const subtotal = (item.finalPrice + taxValuePerUnit) * totalUnits;
-        
-        return { 
-          ...item, 
-          quantity, 
-          subtotal
-        };
-      }
-      return item;
-    }));
+  
+  const updateItemQuantity = (itemId: string, quantity: number) => {
+    dispatch({ type: 'UPDATE_ITEM_QUANTITY', payload: { itemId, quantity } });
   };
-
-  const updateItemDiscount = (id: string, discount: number) => {
-    if (discount < 0) return;
-    
-    let appliedDiscount = discount;
-    
-    if (customer && discount > customer.maxDiscount) {
-      toast.warning(`Desconto limitado a ${customer.maxDiscount}% para o cliente ${customer.companyName}`);
-      appliedDiscount = customer.maxDiscount;
-    }
-    
-    const discountPercentage = getNetDiscountPercentage();
-    
-    setItems(prevItems => prevItems.map(item => {
-      if (item.id === id) {
-        const combinedDiscount = appliedDiscount + discountPercentage;
-        
-        const finalPrice = item.product.listPrice * (1 - combinedDiscount / 100);
-        const totalUnits = item.quantity * (item.product.quantityPerVolume || 1);
-        
-        const updatedItem = {...item, finalPrice, discount: appliedDiscount};
-        
-        const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('3') ? 
-          calculateItemTaxSubstitutionValue(updatedItem) : 0;
-        
-        const subtotal = (finalPrice + taxValuePerUnit) * totalUnits;
-        
-        return {
-          ...item,
-          discount: appliedDiscount,
-          finalPrice,
-          subtotal
-        };
-      }
-      return item;
-    }));
+  
+  const updateItemDiscount = (itemId: string, discount: number) => {
+    dispatch({ type: 'UPDATE_ITEM_DISCOUNT', payload: { itemId, discount } });
   };
-
-  const toggleDiscountOption = (id: string) => {
-    setSelectedDiscountOptions(prev => {
-      if (prev.includes(id)) {
-        if (id === '1') {
-          setDeliveryLocation(null);
-        }
-        if (id === '2') {
-          setHalfInvoicePercentage(50);
-          setHalfInvoiceType('quantity');
-        }
-        if (id === '4') {
-          setPaymentTerms('');
-        }
-        return prev.filter(optId => optId !== id);
-      } else {
-        return [...prev, id];
-      }
-    });
-  };
-
+  
   const clearCart = () => {
-    setItems([]);
-    setCustomer(null);
-    setSelectedDiscountOptions([]);
-    setDeliveryLocation(null);
-    setHalfInvoicePercentage(50);
-    setObservations('');
-    setPaymentTerms('');
-    setWithIPI(false);
-    toast.info('Carrinho limpo');
+    dispatch({ type: 'CLEAR_CART' });
   };
-
-  const sendOrder = async () => {
-    if (!customer) {
-      toast.error('Selecione um cliente para continuar');
-      return Promise.reject('No customer selected');
+  
+  const toggleDiscountOption = (optionId: string) => {
+    dispatch({ type: 'TOGGLE_DISCOUNT_OPTION', payload: optionId });
+  };
+  
+  const isDiscountOptionSelected = (optionId: string) => {
+    return state.selectedDiscountOptions.includes(optionId);
+  };
+  
+  const setDeliveryLocation = (location: 'capital' | 'interior' | null) => {
+    dispatch({ type: 'SET_DELIVERY_LOCATION', payload: location });
+  };
+  
+  const setHalfInvoicePercentage = (percentage: number) => {
+    dispatch({ type: 'SET_HALF_INVOICE_PERCENTAGE', payload: percentage });
+  };
+  
+  const setHalfInvoiceType = (type: 'quantity' | 'price') => {
+    dispatch({ type: 'SET_HALF_INVOICE_TYPE', payload: type });
+  };
+  
+  const setObservations = (text: string) => {
+    dispatch({ type: 'SET_OBSERVATIONS', payload: text });
+  };
+  
+  const setPaymentTerms = (terms: string) => {
+    dispatch({ type: 'SET_PAYMENT_TERMS', payload: terms });
+  };
+  
+  const toggleApplyDiscounts = () => {
+    dispatch({ type: 'TOGGLE_APPLY_DISCOUNTS' });
+  };
+  
+  const toggleIPI = () => {
+    dispatch({ type: 'SET_WITH_IPI', payload: !state.withIPI });
+  };
+  
+  const setTransportCompanyId = (id: string | null) => {
+    dispatch({ type: 'SET_TRANSPORT_COMPANY_ID', payload: id });
+  };
+  
+  // Calculate subtotal (before discounts)
+  const calculateSubtotal = () => {
+    return state.items.reduce((total, item) => {
+      return total + (item.product.listPrice * item.quantity);
+    }, 0);
+  };
+  
+  // Calculate total discount amount
+  const calculateTotalDiscount = () => {
+    // Base discount from items
+    const itemDiscounts = state.items.reduce((total, item) => {
+      const fullPrice = item.product.listPrice * item.quantity;
+      const discountedPrice = item.finalPrice * item.quantity;
+      return total + (fullPrice - discountedPrice);
+    }, 0);
+    
+    // Additional discounts from selected options
+    let additionalDiscount = 0;
+    
+    if (state.applyDiscounts) {
+      const subtotal = calculateSubtotal() - itemDiscounts;
+      
+      state.selectedDiscountOptions.forEach(optionId => {
+        const option = state.discountOptions.find(opt => opt.id === optionId);
+        if (option) {
+          if (option.type === 'discount') {
+            additionalDiscount += subtotal * (option.value / 100);
+          }
+        }
+      });
     }
     
-    if (items.length === 0) {
-      toast.error('Adicione produtos ao carrinho para continuar');
-      return Promise.reject('Cart is empty');
+    return itemDiscounts + additionalDiscount;
+  };
+  
+  // Calculate tax substitution value
+  const calculateTaxSubstitutionValue = () => {
+    if (!state.applyDiscounts || !isDiscountOptionSelected('3')) {
+      return 0;
     }
+    
+    const taxOption = state.discountOptions.find(opt => opt.id === '3');
+    if (!taxOption) return 0;
+    
+    // Calculate base for tax
+    const subtotal = calculateSubtotal();
+    const totalDiscount = calculateTotalDiscount();
+    const baseForTax = subtotal - totalDiscount;
+    
+    // Apply half invoice adjustment if needed
+    let effectiveTaxRate = taxOption.value;
+    if (isDiscountOptionSelected('2')) {
+      effectiveTaxRate = effectiveTaxRate * (state.halfInvoicePercentage / 100);
+    }
+    
+    return baseForTax * (effectiveTaxRate / 100);
+  };
+  
+  // Calculate tax substitution value for a specific item
+  const calculateItemTaxSubstitutionValue = (item: CartItem) => {
+    if (!state.applyDiscounts || !isDiscountOptionSelected('3')) {
+      return 0;
+    }
+    
+    const taxOption = state.discountOptions.find(opt => opt.id === '3');
+    if (!taxOption) return 0;
+    
+    // Calculate base for tax
+    const itemSubtotal = item.finalPrice * item.quantity;
+    
+    // Apply half invoice adjustment if needed
+    let effectiveTaxRate = taxOption.value;
+    if (isDiscountOptionSelected('2')) {
+      effectiveTaxRate = effectiveTaxRate * (state.halfInvoicePercentage / 100);
+    }
+    
+    return itemSubtotal * (effectiveTaxRate / 100);
+  };
+  
+  // Calculate IPI value
+  const calculateIPIValue = () => {
+    if (!state.applyDiscounts || !state.withIPI || !settings) {
+      return 0;
+    }
+    
+    // Calculate base for IPI
+    const subtotal = calculateSubtotal();
+    const totalDiscount = calculateTotalDiscount();
+    const baseForIPI = subtotal - totalDiscount;
+    
+    // Apply half invoice adjustment if needed
+    let effectiveIPIRate = settings.ipiRate || 10;
+    if (isDiscountOptionSelected('2')) {
+      effectiveIPIRate = effectiveIPIRate * (state.halfInvoicePercentage / 100);
+    }
+    
+    const ipiValue = baseForIPI * (effectiveIPIRate / 100);
+    dispatch({ type: 'SET_IPI_VALUE', payload: ipiValue });
+    
+    return ipiValue;
+  };
+  
+  // Calculate total (after discounts and taxes)
+  const calculateTotal = () => {
+    const subtotal = calculateSubtotal();
+    const totalDiscount = calculateTotalDiscount();
+    const taxSubstitution = calculateTaxSubstitutionValue();
+    const ipiValue = calculateIPIValue();
+    
+    return subtotal - totalDiscount + taxSubstitution + ipiValue + state.deliveryFee;
+  };
+  
+  // Send order to backend
+  const sendOrder = async () => {
+    if (!state.customer) return null;
     
     try {
-      const shippingValue: 'pickup' | 'delivery' = isDiscountOptionSelected('1') ? 'pickup' : 'delivery';
+      const orderItems = state.items.map(item => ({
+        product_id: item.productId,
+        quantity: item.quantity,
+        discount: item.discount,
+        final_price: item.finalPrice,
+        subtotal: item.subtotal
+      }));
       
-      const paymentMethodValue: 'cash' | 'credit' = isDiscountOptionSelected('4') ? 'cash' : 'credit';
+      const discountIds = state.discountOptions
+        .filter(option => state.selectedDiscountOptions.includes(option.id))
+        .map(option => option.id);
+
+      // Calculate totals
+      const subtotal = calculateSubtotal();
+      const totalDiscount = calculateTotalDiscount();
+      const total = calculateTotal();
       
-      const orderData: Partial<Order> = {
-        customer,
-        customerId: customer.id,
-        items,
-        appliedDiscounts: selectedDiscountOptions.map(id => {
-          const option = discountOptions.find(opt => opt.id === id);
-          return option || null;
-        }).filter(Boolean) as DiscountOption[],
-        deliveryLocation,
-        deliveryFee,
-        halfInvoicePercentage: isDiscountOptionSelected('2') ? halfInvoicePercentage : undefined,
-        halfInvoiceType: isDiscountOptionSelected('2') ? halfInvoiceType : undefined,
-        observations,
+      // Prepare order data
+      const orderData = {
+        customer_id: state.customer.id,
+        user_id: auth.user?.id,
+        items: orderItems,
+        discount_ids: discountIds,
+        subtotal,
+        total_discount: totalDiscount,
+        total,
+        status: 'pending',
+        shipping: state.selectedDiscountOptions.includes('1') ? 'pickup' : 'delivery',
+        payment_method: state.selectedDiscountOptions.includes('4') ? 'cash' : 'credit',
+        payment_terms: state.paymentTerms,
+        full_invoice: !state.selectedDiscountOptions.includes('2'),
+        half_invoice_percentage: state.halfInvoicePercentage,
+        half_invoice_type: state.halfInvoiceType,
+        tax_substitution: state.selectedDiscountOptions.includes('3'),
+        notes: '',
+        observations: state.observations,
+        delivery_location: state.deliveryLocation,
+        delivery_fee: state.deliveryFee,
+        with_ipi: state.withIPI,
+        ipi_value: state.ipiValue,
+        transport_company_id: state.transportCompanyId || null  // Include transport company ID
+      };
+      
+      // Create new order
+      const newOrderId = await addOrder({
+        customerId: state.customer.id,
+        customer: state.customer,
+        userId: auth.user?.id || '',
+        user: auth.user || { id: '', name: '', username: '', role: 'administrator', permissions: [], email: '', createdAt: new Date(), userTypeId: '' },
+        items: state.items,
+        appliedDiscounts: state.discountOptions.filter(option => state.selectedDiscountOptions.includes(option.id)),
         subtotal,
         totalDiscount,
         total,
-        shipping: shippingValue,
-        paymentMethod: paymentMethodValue,
-        paymentTerms: !isDiscountOptionSelected('4') ? paymentTerms : undefined,
-        fullInvoice: !isDiscountOptionSelected('2'),
-        taxSubstitution: isDiscountOptionSelected('3'),
-        withIPI,
-        ipiValue: withIPI ? ipiValue : undefined,
         status: 'pending',
-        notes: observations,
-        userId: user?.id
-      };
+        shipping: state.selectedDiscountOptions.includes('1') ? 'pickup' : 'delivery',
+        paymentMethod: state.selectedDiscountOptions.includes('4') ? 'cash' : 'credit',
+        paymentTerms: state.paymentTerms,
+        fullInvoice: !state.selectedDiscountOptions.includes('2'),
+        halfInvoicePercentage: state.halfInvoicePercentage,
+        halfInvoiceType: state.halfInvoiceType,
+        taxSubstitution: state.selectedDiscountOptions.includes('3'),
+        notes: '',
+        observations: state.observations,
+        deliveryLocation: state.deliveryLocation,
+        deliveryFee: state.deliveryFee,
+        withIPI: state.withIPI,
+        ipiValue: state.ipiValue,
+        transportCompanyId: state.transportCompanyId
+      });
       
-      console.log('Sending order with data:', orderData);
-      
-      const orderId = await addOrder(orderData);
-      
-      if (!orderId) {
-        throw new Error('Erro ao criar pedido: Nenhum ID de pedido retornado');
+      if (newOrderId) {
+        // Clear cart after successful order
+        clearCart();
+        
+        // Return the new order
+        const newOrder: Order = {
+          id: newOrderId,
+          customerId: state.customer.id,
+          customer: state.customer,
+          userId: auth.user?.id || '',
+          user: auth.user || { id: '', name: '', username: '', role: 'administrator', permissions: [], email: '', createdAt: new Date(), userTypeId: '' },
+          items: state.items,
+          appliedDiscounts: state.discountOptions.filter(option => state.selectedDiscountOptions.includes(option.id)),
+          subtotal,
+          totalDiscount,
+          total,
+          status: 'pending',
+          shipping: state.selectedDiscountOptions.includes('1') ? 'pickup' : 'delivery',
+          paymentMethod: state.selectedDiscountOptions.includes('4') ? 'cash' : 'credit',
+          paymentTerms: state.paymentTerms,
+          fullInvoice: !state.selectedDiscountOptions.includes('2'),
+          taxSubstitution: state.selectedDiscountOptions.includes('3'),
+          notes: '',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          observations: state.observations,
+          deliveryLocation: state.deliveryLocation,
+          halfInvoicePercentage: state.halfInvoicePercentage,
+          halfInvoiceType: state.halfInvoiceType,
+          deliveryFee: state.deliveryFee,
+          withIPI: state.withIPI,
+          ipiValue: state.ipiValue,
+          transportCompanyId: state.transportCompanyId
+        };
+        
+        return newOrder;
       }
       
-      toast.success('Pedido enviado com sucesso!');
-      clearCart();
-      
-      return Promise.resolve();
+      return null;
     } catch (error) {
       console.error('Error sending order:', error);
-      toast.error('Erro ao enviar pedido. Tente novamente.');
-      return Promise.reject(error);
+      toast.error('Erro ao enviar pedido');
+      return null;
     }
   };
-
+  
   return (
-    <CartContext.Provider value={{
-      items,
-      customer,
-      discountOptions,
-      selectedDiscountOptions,
-      deliveryLocation,
-      halfInvoicePercentage,
-      halfInvoiceType,
-      observations,
-      paymentTerms,
-      totalItems,
-      subtotal,
-      totalDiscount,
-      total,
-      deliveryFee,
-      applyDiscounts,
-      withIPI,
-      setCustomer: handleSetCustomer,
-      addItem,
-      removeItem,
-      updateItemQuantity,
-      updateItemDiscount,
-      toggleDiscountOption,
-      setDeliveryLocation,
-      setHalfInvoicePercentage,
-      setHalfInvoiceType,
-      setObservations,
-      setPaymentTerms,
-      clearCart,
-      sendOrder,
-      isDiscountOptionSelected,
-      toggleApplyDiscounts,
-      calculateTaxSubstitutionValue,
-      toggleIPI,
-      calculateIPIValue,
-      calculateItemTaxSubstitutionValue
-    }}>
+    <CartContext.Provider
+      value={{
+        items: state.items,
+        customer: state.customer,
+        setCustomer,
+        addItem,
+        removeItem,
+        updateItemQuantity,
+        updateItemDiscount,
+        clearCart,
+        totalItems: state.items.reduce((total, item) => total + item.quantity, 0),
+        subtotal: calculateSubtotal(),
+        totalDiscount: calculateTotalDiscount(),
+        total: calculateTotal(),
+        discountOptions: state.discountOptions,
+        selectedDiscountOptions: state.selectedDiscountOptions,
+        toggleDiscountOption,
+        isDiscountOptionSelected,
+        deliveryLocation: state.deliveryLocation,
+        setDeliveryLocation,
+        halfInvoicePercentage: state.halfInvoicePercentage,
+        setHalfInvoicePercentage,
+        halfInvoiceType: state.halfInvoiceType,
+        setHalfInvoiceType,
+        observations: state.observations,
+        setObservations,
+        paymentTerms: state.paymentTerms,
+        setPaymentTerms,
+        deliveryFee: state.deliveryFee,
+        sendOrder,
+        applyDiscounts: state.applyDiscounts,
+        toggleApplyDiscounts,
+        calculateTaxSubstitutionValue,
+        calculateItemTaxSubstitutionValue,
+        withIPI: state.withIPI,
+        toggleIPI,
+        calculateIPIValue,
+        transportCompanyId: state.transportCompanyId,
+        setTransportCompanyId,
+      }}
+    >
       {children}
     </CartContext.Provider>
   );

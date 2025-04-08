@@ -101,6 +101,7 @@ export type Database = {
           state: string
           state_registration: string | null
           street: string
+          transport_company_id: string | null
           updated_at: string
           whatsapp: string | null
           zip_code: string
@@ -124,6 +125,7 @@ export type Database = {
           state: string
           state_registration?: string | null
           street: string
+          transport_company_id?: string | null
           updated_at?: string
           whatsapp?: string | null
           zip_code: string
@@ -147,11 +149,20 @@ export type Database = {
           state?: string
           state_registration?: string | null
           street?: string
+          transport_company_id?: string | null
           updated_at?: string
           whatsapp?: string | null
           zip_code?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "customers_transport_company_id_fkey"
+            columns: ["transport_company_id"]
+            isOneToOne: false
+            referencedRelation: "transport_companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       discount_options: {
         Row: {
@@ -291,6 +302,7 @@ export type Database = {
           tax_substitution: boolean
           total: number
           total_discount: number
+          transport_company_id: string | null
           updated_at: string
           user_id: string
           with_ipi: boolean | null
@@ -315,6 +327,7 @@ export type Database = {
           tax_substitution?: boolean
           total?: number
           total_discount?: number
+          transport_company_id?: string | null
           updated_at?: string
           user_id: string
           with_ipi?: boolean | null
@@ -339,6 +352,7 @@ export type Database = {
           tax_substitution?: boolean
           total?: number
           total_discount?: number
+          transport_company_id?: string | null
           updated_at?: string
           user_id?: string
           with_ipi?: boolean | null
@@ -349,6 +363,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_transport_company_id_fkey"
+            columns: ["transport_company_id"]
+            isOneToOne: false
+            referencedRelation: "transport_companies"
             referencedColumns: ["id"]
           },
         ]
@@ -489,6 +510,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      transport_companies: {
+        Row: {
+          created_at: string
+          document: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          updated_at: string
+          whatsapp: string | null
+        }
+        Insert: {
+          created_at?: string
+          document: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Update: {
+          created_at?: string
+          document?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Relationships: []
       }
       user_type_permissions: {
         Row: {
