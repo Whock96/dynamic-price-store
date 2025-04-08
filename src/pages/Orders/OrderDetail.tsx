@@ -23,6 +23,7 @@ import { useOrders } from '@/context/OrderContext';
 import { useOrderData } from '@/hooks/use-order-data';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import PrintableOrder from '@/components/orders/PrintableOrder';
+import { supabase } from '@/integrations/supabase/client';
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -32,6 +33,8 @@ const OrderDetail = () => {
   const { order: supabaseOrder, isLoading: isSupabaseLoading } = useOrderData(id);
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [transportCompany, setTransportCompany] = useState<any>(null);
+  const [isLoadingTransport, setIsLoadingTransport] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -44,11 +47,21 @@ const OrderDetail = () => {
         console.log(`Found order in context:`, contextOrder);
         setOrder(contextOrder);
         setLoading(false);
+        
+        // If order has transport company ID, fetch transport company details
+        if (contextOrder.transportCompanyId) {
+          fetchTransportCompany(contextOrder.transportCompanyId);
+        }
       } else if (supabaseOrder) {
         // If not in context, use the one fetched directly from Supabase
         console.log(`Found order in Supabase:`, supabaseOrder);
         setOrder(supabaseOrder);
         setLoading(false);
+        
+        // If order has transport company ID, fetch transport company details
+        if (supabaseOrder.transportCompanyId) {
+          fetchTransportCompany(supabaseOrder.transportCompanyId);
+        }
       } else if (!isSupabaseLoading) {
         // If we've tried both and still don't have it, show error
         console.error(`Order with ID ${id} not found`);
@@ -57,6 +70,27 @@ const OrderDetail = () => {
       }
     }
   }, [id, getOrderById, supabaseOrder, isSupabaseLoading]);
+
+  const fetchTransportCompany = async (transportCompanyId: string) => {
+    if (!transportCompanyId || transportCompanyId === 'none') return;
+    
+    setIsLoadingTransport(true);
+    try {
+      const { data, error } = await supabase
+        .from('transport_companies')
+        .select('*')
+        .eq('id', transportCompanyId)
+        .single();
+        
+      if (error) throw error;
+      
+      setTransportCompany(data);
+    } catch (error) {
+      console.error('Error fetching transport company:', error);
+    } finally {
+      setIsLoadingTransport(false);
+    }
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -339,7 +373,6 @@ const OrderDetail = () => {
     );
   }
 
-  // Get correct values from order object
   const orderNumber = order.orderNumber || order.order_number || 1;
   const totalDiscount = order.totalDiscount || order.total_discount || 0;
   const appliedDiscounts = order.appliedDiscounts || order.discountOptions || [];
@@ -356,7 +389,6 @@ const OrderDetail = () => {
   const withIPI = order.withIPI !== undefined ? order.withIPI : (order.with_ipi !== undefined ? order.with_ipi : false);
   const ipiValue = order.ipiValue || order.ipi_value || 0;
   
-  // Get correct user name to display in the order history
   const userName = order.user?.name || 'Usuário do Sistema';
   console.log("OrderDetail - Order user details:", {
     userId: order.userId || order.user_id,
@@ -364,7 +396,6 @@ const OrderDetail = () => {
     userObject: order.user
   });
   
-  // Calculate tax substitution value
   const taxSubstitutionValue = taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
 
   return (
@@ -765,6 +796,32 @@ const OrderDetail = () => {
               </div>
             )}
           </div>
+          
+          {(order.transportCompanyId || transportCompany) && (
+            <>
+              <Separator className="my-4" />
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Transportadora</h3>
+                
+                {isLoadingTransport ? (
+                  <div className="h-6 bg-gray-100 animate-pulse rounded w-48"></div>
+                ) : transportCompany ? (
+                  <div className="space-y-2">
+                    <p className="text-lg font-medium">{transportCompany.name}</p>
+                    <p className="text-sm text-gray-500">CNPJ: {transportCompany.document}</p>
+                    {transportCompany.phone && (
+                      <p className="text-sm text-gray-500">Telefone: {transportCompany.phone}</p>
+                    )}
+                    {transportCompany.email && (
+                      <p className="text-sm text-gray-500">Email: {transportCompany.email}</p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-gray-500">Informações da transportadora não disponíveis</p>
+                )}
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
