@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ChevronLeft, Save } from 'lucide-react';
@@ -339,7 +340,7 @@ const CustomerForm = () => {
                   <SelectValue placeholder="Selecione uma transportadora" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhuma</SelectItem>
+                  <SelectItem key="no-company" value="none">Nenhuma</SelectItem>
                   {!isLoadingTransportCompanies && transportCompanies.map(company => (
                     <SelectItem key={company.id} value={company.id}>
                       {company.name}
