@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
@@ -25,6 +26,25 @@ interface CartContextType {
   withIPI: boolean;
   selectedTransportCompany: string | undefined;
   setSelectedTransportCompany: (id: string | undefined) => void;
+  setCustomer: (customer: Customer | null) => void;
+  addItem: (product: Product, quantity: number) => void;
+  removeItem: (id: string) => void;
+  updateItemQuantity: (id: string, quantity: number) => void;
+  updateItemDiscount: (id: string, discount: number) => void;
+  toggleDiscountOption: (id: string) => void;
+  setDeliveryLocation: (location: 'capital' | 'interior' | null) => void;
+  setHalfInvoicePercentage: (percentage: number) => void;
+  setHalfInvoiceType: (type: 'quantity' | 'price') => void;
+  setObservations: (text: string) => void;
+  setPaymentTerms: (terms: string) => void;
+  clearCart: () => void;
+  sendOrder: () => Promise<void>;
+  isDiscountOptionSelected: (id: string) => boolean;
+  toggleApplyDiscounts: () => void;
+  calculateTaxSubstitutionValue: () => number;
+  toggleIPI: () => void;
+  calculateIPIValue: () => number;
+  calculateItemTaxSubstitutionValue: (item: CartItem) => number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -581,6 +601,25 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       withIPI,
       selectedTransportCompany,
       setSelectedTransportCompany,
+      setCustomer: handleSetCustomer,
+      addItem,
+      removeItem,
+      updateItemQuantity,
+      updateItemDiscount,
+      toggleDiscountOption,
+      setDeliveryLocation,
+      setHalfInvoicePercentage,
+      setHalfInvoiceType,
+      setObservations,
+      setPaymentTerms,
+      clearCart,
+      sendOrder,
+      isDiscountOptionSelected,
+      toggleApplyDiscounts,
+      calculateTaxSubstitutionValue,
+      toggleIPI,
+      calculateIPIValue,
+      calculateItemTaxSubstitutionValue
     }}>
       {children}
     </CartContext.Provider>

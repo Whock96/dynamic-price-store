@@ -1,5 +1,5 @@
-
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -27,14 +27,12 @@ const ProductDetail = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { addItem } = useCart();
   
-  // Fetch the specific product using Supabase
   const { 
     data: products, 
     isLoading: productsLoading,
     error: productsError 
   } = useSupabaseData<SupabaseProduct>('products');
   
-  // Get categories and subcategories
   const { 
     data: categories,
     isLoading: categoriesLoading
@@ -45,7 +43,6 @@ const ProductDetail = () => {
     isLoading: subcategoriesLoading
   } = useSupabaseData('subcategories');
   
-  // Find the product when products are loaded
   useEffect(() => {
     if (!productsLoading && products.length > 0 && id) {
       const foundProduct = products.find(p => p.id === id);
@@ -54,7 +51,6 @@ const ProductDetail = () => {
     }
   }, [id, products, productsLoading]);
   
-  // Helper functions to get category and subcategory names
   const getCategoryName = (categoryId: string | null) => {
     if (!categoryId) return 'Sem categoria';
     const category = categories.find(cat => cat.id === categoryId);
@@ -67,7 +63,6 @@ const ProductDetail = () => {
     return subcategory ? subcategory.name : 'Sem subcategoria';
   };
   
-  // If there's an error or product not found, go back to products page
   useEffect(() => {
     if (!isLoading && !product) {
       toast.error("Produto não encontrado");
@@ -90,20 +85,13 @@ const ProductDetail = () => {
     'https://via.placeholder.com/500/0CAB77',
   ];
   
-  // Function to convert Supabase Product to our App's Product interface
-  const handleAddToCart = () => {
-    try {
-      // Convert the Supabase product to our application's Product interface
-      const appProduct = supabaseProductToAppProduct(product);
-      addItem(appProduct, quantity);
-      toast.success(`${product.name} adicionado ao carrinho`);
-    } catch (error) {
-      console.error('Erro ao adicionar ao carrinho:', error);
-      toast.error('Não foi possível adicionar ao carrinho. Tente novamente mais tarde.');
+  const addToCart = () => {
+    if (product) {
+      addItem(product, 1);
+      navigate(`/cart?product=${id}`);
     }
   };
   
-  // Build product specifications dynamically based on available data
   const specifications = [
     { name: "Dimensões", value: `${product.width || 0} × ${product.height || 0} × ${product.length || 0} mm` },
     { name: "Volume Cúbico", value: `${product.cubic_volume || 0} m³` },
@@ -262,7 +250,7 @@ const ProductDetail = () => {
             <div className="flex flex-col sm:flex-row gap-3">
               <Button 
                 className="flex-1 bg-ferplas-500 hover:bg-ferplas-600 gap-2 button-transition py-6"
-                onClick={handleAddToCart}
+                onClick={addToCart}
               >
                 <ShoppingCart className="h-5 w-5" />
                 Adicionar ao Carrinho

@@ -82,7 +82,8 @@ const Cart = () => {
     halfInvoiceType, setHalfInvoiceType,
     observations, setObservations, totalItems, subtotal, totalDiscount, total, sendOrder, clearCart, 
     deliveryFee, applyDiscounts, toggleApplyDiscounts, paymentTerms, setPaymentTerms,
-    calculateTaxSubstitutionValue, withIPI, toggleIPI, calculateIPIValue, calculateItemTaxSubstitutionValue
+    calculateTaxSubstitutionValue, withIPI, toggleIPI, calculateIPIValue, calculateItemTaxSubstitutionValue,
+    selectedTransportCompany, setSelectedTransportCompany
   } = useCart();
   
   const [customerSearch, setCustomerSearch] = useState('');
@@ -93,7 +94,6 @@ const Cart = () => {
   const [products, setProducts] = useState<SupabaseProduct[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [transportCompanies, setTransportCompanies] = useState<TransportCompany[]>([]);
-  const [selectedTransportCompany, setSelectedTransportCompany] = useState<string | undefined>(undefined);
   const [isLoadingTransportCompanies, setIsLoadingTransportCompanies] = useState(true);
   
   const isSalesperson = user?.userTypeId === 'c5ee0433-3faf-46a4-a516-be7261bfe575';
