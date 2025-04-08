@@ -8,6 +8,8 @@ import { CartProvider } from './context/CartContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import { TransportCompanyProvider } from './context/TransportCompanyContext';
+import DiscountManagement from './pages/Settings/DiscountManagement';
+import Cart from './pages/Cart/Cart';
 
 function App() {
   return (
@@ -43,13 +45,13 @@ function App() {
                   <Route path="/orders/:id" element={<div>Order Details</div>} />
                   
                   {/* Cart Route */}
-                  <Route path="/cart" element={<div>Cart</div>} />
+                  <Route path="/cart" element={<Cart />} />
                   
                   {/* Settings Routes */}
                   <Route path="/settings" element={<div>Settings Page</div>} />
                   <Route path="/settings/company" element={<div>Company Settings</div>} />
                   
-                  <Route path="/settings/discounts" element={<div>Discount Options</div>} />
+                  <Route path="/settings/discounts" element={<DiscountManagement />} />
                   <Route path="/settings/discounts/new" element={<div>New Discount Option</div>} />
                   <Route path="/settings/discounts/:id" element={<div>Edit Discount Option</div>} />
                   
