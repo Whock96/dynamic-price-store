@@ -18,7 +18,7 @@ export const PERMISSION_MENU_MAP: Record<string, string[]> = {
   'transport_companies_manage': ['/settings/transport-companies']
 };
 
-// Função para verificar se um usuário é administrador
+// Function to check if a user is an administrator
 export const isAdministrator = (role: string): boolean => {
   return role.toLowerCase() === 'administrator' || role.toLowerCase() === 'administrador';
 };
