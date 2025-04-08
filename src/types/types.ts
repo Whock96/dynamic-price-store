@@ -159,17 +159,6 @@ export interface TransportCompany {
   email?: string;
   phone?: string;
   whatsapp?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface TransportCompany {
-  id: string;
-  name: string;
-  document: string;
-  email?: string;
-  phone?: string;
-  whatsapp?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  created_at: Date;
+  updated_at: Date;
 }

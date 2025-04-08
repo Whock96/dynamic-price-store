@@ -51,7 +51,7 @@ const TransportCompanyDetailDialog: React.FC<TransportCompanyDetailDialogProps> 
             
             <div className="space-y-1">
               <p className="text-sm font-medium text-muted-foreground">Data de Cadastro</p>
-              <p className="text-sm font-semibold">{formatDate(company.createdAt)}</p>
+              <p className="text-sm font-semibold">{formatDate(company.created_at)}</p>
             </div>
           </div>
           
@@ -74,7 +74,7 @@ const TransportCompanyDetailDialog: React.FC<TransportCompanyDetailDialogProps> 
           
           <div className="space-y-1">
             <p className="text-sm font-medium text-muted-foreground">Última Atualização</p>
-            <p className="text-sm font-semibold">{formatDate(company.updatedAt)}</p>
+            <p className="text-sm font-semibold">{formatDate(company.updated_at)}</p>
           </div>
         </div>
         

@@ -40,7 +40,7 @@ const TransportCompanyManagement = () => {
     (company.email && company.email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const handleAddCompany = (company: Omit<TransportCompany, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const handleAddCompany = (company: Omit<TransportCompany, 'id' | 'created_at' | 'updated_at'>) => {
     createRecord(company)
       .then(() => {
         toast.success('Transportadora cadastrada com sucesso');
@@ -154,7 +154,7 @@ const TransportCompanyManagement = () => {
                       <TableCell>{company.document}</TableCell>
                       <TableCell>{company.email || '-'}</TableCell>
                       <TableCell>{company.phone || '-'}</TableCell>
-                      <TableCell>{formatDate(company.createdAt)}</TableCell>
+                      <TableCell>{formatDate(company.created_at)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button

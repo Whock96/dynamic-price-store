@@ -31,66 +31,72 @@ import TransportCompanyManagement from "./pages/Settings/TransportCompanyManagem
 import Cart from "./pages/Cart/Cart";
 import Settings from "./pages/Settings/Settings";
 import NotFound from "./pages/NotFound";
+import React from "react";
 
+// Create a new QueryClient instance outside of the component
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          <CompanyProvider>
-            <ProductProvider>
-              <CustomerProvider>
-                <OrderProvider>
-                  <CartProvider>
-                    <Toaster />
-                    <Sonner />
-                    <Routes>
-                      <Route path="/login" element={<Login />} />
-                      <Route path="/" element={<PageContainer><Dashboard /></PageContainer>} />
-                      <Route path="/dashboard" element={<PageContainer><Dashboard /></PageContainer>} />
-                      
-                      {/* Product routes */}
-                      <Route path="/products" element={<PageContainer><ProductList /></PageContainer>} />
-                      <Route path="/products/:id" element={<PageContainer><ProductDetail /></PageContainer>} />
-                      
-                      {/* Customer routes */}
-                      <Route path="/customers" element={<PageContainer><CustomerList /></PageContainer>} />
-                      <Route path="/customers/new" element={<PageContainer><CustomerForm /></PageContainer>} />
-                      <Route path="/customers/:id" element={<PageContainer><CustomerDetail /></PageContainer>} />
-                      <Route path="/customers/:id/edit" element={<PageContainer><CustomerForm /></PageContainer>} />
-                      
-                      {/* Order routes */}
-                      <Route path="/orders" element={<PageContainer><OrderList /></PageContainer>} />
-                      <Route path="/orders/:id" element={<PageContainer><OrderDetail /></PageContainer>} />
-                      <Route path="/orders/:id/edit" element={<PageContainer><OrderUpdate /></PageContainer>} />
-                      
-                      {/* Cart route */}
-                      <Route path="/cart" element={<PageContainer><Cart /></PageContainer>} />
-                      
-                      {/* Settings routes */}
-                      <Route path="/settings" element={<PageContainer><Settings /></PageContainer>} />
-                      <Route path="/settings/products" element={<PageContainer><ProductManagement /></PageContainer>} />
-                      <Route path="/settings/users" element={<PageContainer><UserManagement /></PageContainer>} />
-                      <Route path="/settings/user-types" element={<PageContainer><UserTypeManagement /></PageContainer>} />
-                      <Route path="/settings/categories" element={<PageContainer><CategoryManagement /></PageContainer>} />
-                      <Route path="/settings/discounts" element={<PageContainer><DiscountManagement /></PageContainer>} />
-                      <Route path="/settings/company" element={<PageContainer><CompanySettings /></PageContainer>} />
-                      <Route path="/settings/transport-companies" element={<PageContainer><TransportCompanyManagement /></PageContainer>} />
-                      
-                      {/* Catch-all route */}
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </CartProvider>
-                </OrderProvider>
-              </CustomerProvider>
-            </ProductProvider>
-          </CompanyProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  return (
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <BrowserRouter>
+            <AuthProvider>
+              <CompanyProvider>
+                <ProductProvider>
+                  <CustomerProvider>
+                    <OrderProvider>
+                      <CartProvider>
+                        <Toaster />
+                        <Sonner />
+                        <Routes>
+                          <Route path="/login" element={<Login />} />
+                          <Route path="/" element={<PageContainer><Dashboard /></PageContainer>} />
+                          <Route path="/dashboard" element={<PageContainer><Dashboard /></PageContainer>} />
+                          
+                          {/* Product routes */}
+                          <Route path="/products" element={<PageContainer><ProductList /></PageContainer>} />
+                          <Route path="/products/:id" element={<PageContainer><ProductDetail /></PageContainer>} />
+                          
+                          {/* Customer routes */}
+                          <Route path="/customers" element={<PageContainer><CustomerList /></PageContainer>} />
+                          <Route path="/customers/new" element={<PageContainer><CustomerForm /></PageContainer>} />
+                          <Route path="/customers/:id" element={<PageContainer><CustomerDetail /></PageContainer>} />
+                          <Route path="/customers/:id/edit" element={<PageContainer><CustomerForm /></PageContainer>} />
+                          
+                          {/* Order routes */}
+                          <Route path="/orders" element={<PageContainer><OrderList /></PageContainer>} />
+                          <Route path="/orders/:id" element={<PageContainer><OrderDetail /></PageContainer>} />
+                          <Route path="/orders/:id/edit" element={<PageContainer><OrderUpdate /></PageContainer>} />
+                          
+                          {/* Cart route */}
+                          <Route path="/cart" element={<PageContainer><Cart /></PageContainer>} />
+                          
+                          {/* Settings routes */}
+                          <Route path="/settings" element={<PageContainer><Settings /></PageContainer>} />
+                          <Route path="/settings/products" element={<PageContainer><ProductManagement /></PageContainer>} />
+                          <Route path="/settings/users" element={<PageContainer><UserManagement /></PageContainer>} />
+                          <Route path="/settings/user-types" element={<PageContainer><UserTypeManagement /></PageContainer>} />
+                          <Route path="/settings/categories" element={<PageContainer><CategoryManagement /></PageContainer>} />
+                          <Route path="/settings/discounts" element={<PageContainer><DiscountManagement /></PageContainer>} />
+                          <Route path="/settings/company" element={<PageContainer><CompanySettings /></PageContainer>} />
+                          <Route path="/settings/transport-companies" element={<PageContainer><TransportCompanyManagement /></PageContainer>} />
+                          
+                          {/* Catch-all route */}
+                          <Route path="*" element={<NotFound />} />
+                        </Routes>
+                      </CartProvider>
+                    </OrderProvider>
+                  </CustomerProvider>
+                </ProductProvider>
+              </CompanyProvider>
+            </AuthProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </React.StrictMode>
+  );
+};
 
 export default App;
