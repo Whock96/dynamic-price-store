@@ -767,14 +767,14 @@ const Cart = () => {
                             </div>
                             
                             <Select
-                              value={selectedTransportCompany || ""}
-                              onValueChange={(value) => setSelectedTransportCompany(value === "" ? undefined : value)}
+                              value={selectedTransportCompany || "none"}
+                              onValueChange={(value) => setSelectedTransportCompany(value === "none" ? undefined : value)}
                             >
                               <SelectTrigger className="w-full">
                                 <SelectValue placeholder="Selecione uma transportadora" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="">Nenhuma</SelectItem>
+                                <SelectItem value="none">Nenhuma</SelectItem>
                                 {transportCompanies.map((company) => (
                                   <SelectItem key={company.id} value={company.id}>
                                     {company.name}

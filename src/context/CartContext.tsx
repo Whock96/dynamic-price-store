@@ -23,25 +23,8 @@ interface CartContextType {
   deliveryFee: number;
   applyDiscounts: boolean;
   withIPI: boolean;
-  setCustomer: (customer: Customer | null) => void;
-  addItem: (product: Product, quantity: number) => void;
-  removeItem: (id: string) => void;
-  updateItemQuantity: (id: string, quantity: number) => void;
-  updateItemDiscount: (id: string, discount: number) => void;
-  toggleDiscountOption: (id: string) => void;
-  setDeliveryLocation: (location: 'capital' | 'interior' | null) => void;
-  setHalfInvoicePercentage: (percentage: number) => void;
-  setHalfInvoiceType: (type: 'quantity' | 'price') => void;
-  setObservations: (text: string) => void;
-  setPaymentTerms: (terms: string) => void;
-  clearCart: () => void;
-  sendOrder: () => Promise<void>;
-  isDiscountOptionSelected: (id: string) => boolean;
-  toggleApplyDiscounts: () => void;
-  calculateTaxSubstitutionValue: () => number;
-  toggleIPI: () => void;
-  calculateIPIValue: () => number;
-  calculateItemTaxSubstitutionValue: (item: CartItem) => number;
+  selectedTransportCompany: string | undefined;
+  setSelectedTransportCompany: (id: string | undefined) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -74,6 +57,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [paymentTerms, setPaymentTerms] = useState<string>('');
   const [applyDiscounts, setApplyDiscounts] = useState<boolean>(true);
   const [withIPI, setWithIPI] = useState<boolean>(false);
+  const [selectedTransportCompany, setSelectedTransportCompany] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (settings) {
@@ -304,6 +288,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       recalculateCart();
     }
   }, [settings]);
+
+  useEffect(() => {
+    if (customer && customer.transportCompanyId) {
+      console.log('Setting transport company from customer:', customer.transportCompanyId);
+      setSelectedTransportCompany(customer.transportCompanyId === 'none' ? undefined : customer.transportCompanyId);
+    } else {
+      setSelectedTransportCompany(undefined);
+    }
+  }, [customer]);
 
   const totalDiscount = items.reduce((total, item) => {
     const totalUnits = calculateTotalUnits(item);
@@ -546,7 +539,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         status: 'pending',
         notes: observations,
         userId: user?.id,
-        transportCompanyId: !isDiscountOptionSelected('1') ? customer.transportCompanyId : undefined
+        transportCompanyId: !isDiscountOptionSelected('1') ? selectedTransportCompany : undefined
       };
       
       console.log('Sending order with data:', orderData);
@@ -586,25 +579,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       deliveryFee,
       applyDiscounts,
       withIPI,
-      setCustomer: handleSetCustomer,
-      addItem,
-      removeItem,
-      updateItemQuantity,
-      updateItemDiscount,
-      toggleDiscountOption,
-      setDeliveryLocation,
-      setHalfInvoicePercentage,
-      setHalfInvoiceType,
-      setObservations,
-      setPaymentTerms,
-      clearCart,
-      sendOrder,
-      isDiscountOptionSelected,
-      toggleApplyDiscounts,
-      calculateTaxSubstitutionValue,
-      toggleIPI,
-      calculateIPIValue,
-      calculateItemTaxSubstitutionValue
+      selectedTransportCompany,
+      setSelectedTransportCompany,
     }}>
       {children}
     </CartContext.Provider>
