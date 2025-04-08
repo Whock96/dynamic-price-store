@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -97,8 +98,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
   const hasAccessToMenu = (menuItem: typeof MENU_ITEMS[0]) => {
     if (!user) return false;
 
+    // Check if user has access based on role or permissions
     return menuItem.requiredRoles.includes(user.role) || checkAccess(menuItem.path);
   };
+
+  console.log("MENU_ITEMS:", MENU_ITEMS);
+  console.log("User Role:", user?.role);
+  console.log("Transport Companies Permission:", hasPermission('transport_companies_manage'));
+  console.log("Settings Menu Expanded:", expandedMenu === 'settings');
 
   if (!user) return null;
 
@@ -167,23 +174,26 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
                   <div className="pl-10 mt-1 space-y-1 animate-accordion-down">
                     {item.submenus
                       .filter(submenu => checkAccess(submenu.path))
-                      .map((submenu) => (
-                        <button
-                          key={submenu.id}
-                          onClick={() => handleNavigate(submenu.path)}
-                          className={cn(
-                            "w-full flex items-center py-2 px-2 rounded-md transition-colors duration-200",
-                            isActive(submenu.path) 
-                              ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                          )}
-                        >
-                          <div className="flex items-center justify-center w-5 h-5">
-                            {getIcon(submenu.icon)}
-                          </div>
-                          <span className="ml-2 text-sm">{submenu.name}</span>
-                        </button>
-                      ))}
+                      .map((submenu) => {
+                        console.log(`Rendering submenu: ${submenu.name}, Path: ${submenu.path}, Access: ${checkAccess(submenu.path)}`);
+                        return (
+                          <button
+                            key={submenu.id}
+                            onClick={() => handleNavigate(submenu.path)}
+                            className={cn(
+                              "w-full flex items-center py-2 px-2 rounded-md transition-colors duration-200",
+                              isActive(submenu.path) 
+                                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                            )}
+                          >
+                            <div className="flex items-center justify-center w-5 h-5">
+                              {getIcon(submenu.icon)}
+                            </div>
+                            <span className="ml-2 text-sm">{submenu.name}</span>
+                          </button>
+                        );
+                      })}
                   </div>
                 )}
               </div>
