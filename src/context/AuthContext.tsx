@@ -1,8 +1,9 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User as UserType } from '../types/types';
 import { AuthContextType } from '../types/auth';
 import { MENU_ITEMS } from '../constants/menuItems';
-import { PERMISSION_MENU_MAP } from '../utils/permissionUtils';
+import { PERMISSION_MENU_MAP, isAdministrator } from '../utils/permissionUtils';
 import { useAuthService } from '../hooks/useAuthService';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -89,7 +90,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     console.log(`Checking permission ${permissionCode} for user with role ${user.role}`);
     
-    if (user.role.toLowerCase() === 'administrator') {
+    // Administradores têm acesso total a todas as permissões
+    if (isAdministrator(user.role)) {
       console.log("User is administrator - granting all permissions");
       return true;
     }
@@ -105,7 +107,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     console.log(`Checking access to ${menuPath} for user with role ${user.role}`);
     
-    if (user.role.toLowerCase() === 'administrator') {
+    // Administradores têm acesso total a todos os caminhos
+    if (isAdministrator(user.role)) {
       console.log("User is administrator - granting access to all paths");
       return true;
     }

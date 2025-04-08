@@ -1,6 +1,5 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import { PlusCircle, Truck, Search } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,10 +13,12 @@ import { Separator } from '@/components/ui/separator';
 import { formatDate } from '@/utils/formatters';
 import TransportCompanyDetailDialog from '@/components/transport-companies/TransportCompanyDetailDialog';
 import { useAuth } from '@/context/AuthContext';
+import { isAdministrator } from '@/utils/permissionUtils';
+import { useNavigate } from 'react-router-dom';
 
 const TransportCompanyManagement = () => {
   const navigate = useNavigate();
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -30,9 +31,18 @@ const TransportCompanyManagement = () => {
     createRecord,
     updateRecord,
     deleteRecord,
+    error
   } = useSupabaseData<TransportCompany>('transport_companies', {
     orderBy: { column: 'name', ascending: true }
   });
+
+  useEffect(() => {
+    // Verificar se houve erro ao carregar os dados
+    if (error) {
+      console.error("Erro ao carregar transportadoras:", error);
+      toast.error(`Erro ao carregar transportadoras: ${error.message}`);
+    }
+  }, [error]);
 
   const filteredCompanies = transportCompanies.filter(company => 
     company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -86,7 +96,8 @@ const TransportCompanyManagement = () => {
     setIsDetailDialogOpen(true);
   };
 
-  const canManageTransportCompanies = hasPermission('transport_companies_manage');
+  // Verifica se o usuário tem permissão para gerenciar transportadoras ou é administrador
+  const canManageTransportCompanies = user && (isAdministrator(user.role) || hasPermission('transport_companies_manage'));
 
   return (
     <div className="space-y-6">
