@@ -22,15 +22,87 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Simplified mock implementation
   const addOrder = async (newOrder: Partial<Order>) => {
     const orderId = `order-${Date.now()}`;
+    
+    // Create a new order object with the generated ID
+    const order: Order = {
+      id: orderId,
+      customerId: newOrder.customerId || '',
+      customer: newOrder.customer || {
+        id: '',
+        companyName: '',
+        document: '',
+        street: '',
+        number: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        phone: '',
+        email: '',
+        defaultDiscount: 0,
+        salesPersonId: null,
+        noNumber: false,
+        complement: '',
+        neighborhood: '',
+        whatsapp: '',
+        stateRegistration: '',
+        transportCompanyId: null
+      },
+      items: newOrder.items || [],
+      status: newOrder.status || 'pending',
+      total: newOrder.total || 0,
+      subtotal: newOrder.subtotal || 0,
+      totalDiscount: newOrder.totalDiscount || 0,
+      userId: newOrder.userId || '',
+      user: newOrder.user || {
+        id: '',
+        name: '',
+        username: '',
+        role: 'administrator',
+        permissions: [],
+        email: '',
+        createdAt: new Date(),
+        userTypeId: ''
+      },
+      appliedDiscounts: newOrder.appliedDiscounts || [],
+      shipping: newOrder.shipping || 'delivery',
+      paymentMethod: newOrder.paymentMethod || 'cash',
+      paymentTerms: newOrder.paymentTerms || '',
+      fullInvoice: newOrder.fullInvoice !== undefined ? newOrder.fullInvoice : true,
+      taxSubstitution: newOrder.taxSubstitution || false,
+      notes: newOrder.notes || '',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      observations: newOrder.observations || '',
+      deliveryLocation: newOrder.deliveryLocation || null,
+      halfInvoicePercentage: newOrder.halfInvoicePercentage || 50,
+      halfInvoiceType: newOrder.halfInvoiceType || 'quantity',
+      deliveryFee: newOrder.deliveryFee || 0,
+      withIPI: newOrder.withIPI || false,
+      ipiValue: newOrder.ipiValue || 0,
+      transportCompanyId: newOrder.transportCompanyId || null,
+      orderNumber: orders.length + 1
+    };
+    
+    // Add the new order to the list
+    setOrders(prevOrders => [...prevOrders, order]);
+    
     return orderId;
   };
 
   const updateOrderStatus = (orderId: string, status: Order['status']) => {
-    // Mock implementation
+    setOrders(prevOrders => 
+      prevOrders.map(order => 
+        order.id === orderId ? { ...order, status, updatedAt: new Date() } : order
+      )
+    );
   };
   
   const updateOrder = (orderId: string, orderData: Partial<Order>) => {
-    // Mock implementation
+    setOrders(prevOrders => 
+      prevOrders.map(order => 
+        order.id === orderId ? { ...order, ...orderData, updatedAt: new Date() } : order
+      )
+    );
   };
 
   const getOrderById = (id: string) => {

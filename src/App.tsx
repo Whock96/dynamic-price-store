@@ -20,10 +20,10 @@ function App() {
         <Toaster closeButton position="top-right" theme="light" />
         <BrowserRouter>
           <AuthProvider>
-            <CustomerProvider>
-              <OrderProvider>
-                <CartProvider>
-                  <TransportCompanyProvider>
+            <OrderProvider>
+              <CustomerProvider>
+                <TransportCompanyProvider>
+                  <CartProvider>
                     <Routes>
                       <Route path="/login" element={<Login />} />
                       <Route path="/" element={<Dashboard />} />
@@ -75,10 +75,10 @@ function App() {
                       <Route path="/settings/transport-companies/new" element={<div>New Transport Company</div>} />
                       <Route path="/settings/transport-companies/:id" element={<div>Edit Transport Company</div>} />
                     </Routes>
-                  </TransportCompanyProvider>
-                </CartProvider>
-              </OrderProvider>
-            </CustomerProvider>
+                  </CartProvider>
+                </TransportCompanyProvider>
+              </CustomerProvider>
+            </OrderProvider>
           </AuthProvider>
         </BrowserRouter>
       </React.Fragment>
