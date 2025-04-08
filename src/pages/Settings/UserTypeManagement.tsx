@@ -121,6 +121,8 @@ const PAGE_GROUPS = [
       { code: 'settings_manage', name: 'Gerenciar Configurações', description: 'Alterar configurações da empresa' },
       { code: 'categories_manage', name: 'Gerenciar Categorias', description: 'Configurar categorias de produtos' },
       { code: 'discounts_manage', name: 'Gerenciar Descontos', description: 'Configurar opções de desconto' },
+      { code: 'transport_companies_view', name: 'Visualizar Transportadoras', description: 'Ver lista de transportadoras' },
+      { code: 'transport_companies_manage', name: 'Gerenciar Transportadoras', description: 'Adicionar, editar e excluir transportadoras' },
       { code: 'users_view', name: 'Visualizar Usuários', description: 'Ver lista de usuários' },
       { code: 'users_manage', name: 'Gerenciar Usuários', description: 'Adicionar, editar e excluir usuários' },
       { code: 'user_types_manage', name: 'Gerenciar Tipos de Usuário', description: 'Configurar tipos de usuário e permissões' }

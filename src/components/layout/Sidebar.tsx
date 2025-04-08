@@ -40,7 +40,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
   }, [isExpanded, setIsExpanded]);
 
   useEffect(() => {
-    // Check if any parent menu of the current path should be expanded
     const currentPath = location.pathname;
     
     MENU_ITEMS.forEach(item => {
@@ -98,7 +97,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
   const hasAccessToMenu = (menuItem: typeof MENU_ITEMS[0]) => {
     if (!user) return false;
 
-    // Check if user's role is in the required roles for this menu
     return menuItem.requiredRoles.includes(user.role) || checkAccess(menuItem.path);
   };
 
@@ -191,7 +189,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
               </div>
             ))}
 
-          {/* Botão de Sair - Movido para dentro da navegação principal */}
           <div className="relative mt-2">
             <button
               onClick={handleLogout}
