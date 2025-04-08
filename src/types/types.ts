@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   username: string;
@@ -159,6 +160,6 @@ export interface TransportCompany {
   email?: string;
   phone?: string;
   whatsapp?: string;
-  created_at: Date;
-  updated_at: Date;
+  created_at: string;
+  updated_at: string;
 }
