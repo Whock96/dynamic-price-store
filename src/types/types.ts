@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   username: string;
@@ -151,6 +150,17 @@ export interface MenuItem {
   icon: string;
   requiredRoles: string[];
   submenus?: MenuItem[];
+}
+
+export interface TransportCompany {
+  id: string;
+  name: string;
+  document: string;
+  email?: string;
+  phone?: string;
+  whatsapp?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface TransportCompany {

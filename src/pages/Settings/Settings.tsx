@@ -2,7 +2,7 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings as SettingsIcon, User, Package, Tags, Percent, Building, Database, Shield } from 'lucide-react';
+import { Settings as SettingsIcon, User, Package, Tags, Percent, Building, Database, Shield, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import MigrationTool from '@/components/settings/MigrationTool';
@@ -47,6 +47,13 @@ const Settings = () => {
       description: 'Configurar opções de desconto',
       path: '/settings/discounts',
       permission: 'discounts_manage'
+    },
+    { 
+      icon: <Truck className="h-5 w-5" />,
+      title: 'Transportadoras',
+      description: 'Gerenciar transportadoras',
+      path: '/settings/transport-companies',
+      permission: 'transport_companies_manage'
     },
     { 
       icon: <Building className="h-5 w-5" />,

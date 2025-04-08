@@ -27,6 +27,7 @@ import UserTypeManagement from "./pages/Settings/UserTypeManagement";
 import CategoryManagement from "./pages/Settings/CategoryManagement";
 import DiscountManagement from "./pages/Settings/DiscountManagement";
 import CompanySettings from "./pages/Settings/CompanySettings";
+import TransportCompanyManagement from "./pages/Settings/TransportCompanyManagement";
 import Cart from "./pages/Cart/Cart";
 import Settings from "./pages/Settings/Settings";
 import NotFound from "./pages/NotFound";
@@ -76,6 +77,7 @@ const App = () => (
                       <Route path="/settings/categories" element={<PageContainer><CategoryManagement /></PageContainer>} />
                       <Route path="/settings/discounts" element={<PageContainer><DiscountManagement /></PageContainer>} />
                       <Route path="/settings/company" element={<PageContainer><CompanySettings /></PageContainer>} />
+                      <Route path="/settings/transport-companies" element={<PageContainer><TransportCompanyManagement /></PageContainer>} />
                       
                       {/* Catch-all route */}
                       <Route path="*" element={<NotFound />} />

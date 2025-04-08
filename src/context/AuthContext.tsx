@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User as UserType, MenuItem, Permission } from '../types/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -137,6 +136,13 @@ export const MENU_ITEMS: MenuItem[] = [
         icon: 'percent',
         requiredRoles: ['administrator'],
       },
+      {
+        id: 'transport-company-management',
+        name: 'Gerenciar Transportadoras',
+        path: '/settings/transport-companies',
+        icon: 'truck',
+        requiredRoles: ['administrator'],
+      },
     ],
   },
 ];
@@ -156,7 +162,9 @@ const PERMISSION_MENU_MAP: Record<string, string[]> = {
   'settings_view': ['/settings'],
   'settings_manage': ['/settings/company'],
   'categories_manage': ['/settings/categories'],
-  'discounts_manage': ['/settings/discounts']
+  'discounts_manage': ['/settings/discounts'],
+  'transport_companies_view': ['/settings/transport-companies'],
+  'transport_companies_manage': ['/settings/transport-companies']
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

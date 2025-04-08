@@ -1,10 +1,9 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home, ShoppingCart, Users, Package, Clipboard, Settings, 
   ChevronRight, List, UserPlus, Search, Edit, Menu, Building2, LogOut,
-  Tag, Percent, Shield
+  Tag, Percent, Shield, Truck
 } from 'lucide-react';
 import { useAuth, MENU_ITEMS } from '../../context/AuthContext';
 import { cn } from '@/lib/utils';
@@ -87,6 +86,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
       case 'shield': return <Shield size={20} />;
       case 'tag': return <Tag size={20} />;
       case 'percent': return <Percent size={20} />;
+      case 'truck': return <Truck size={20} />;
       default: return <Home size={20} />;
     }
   };
