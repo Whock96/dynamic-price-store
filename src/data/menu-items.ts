@@ -1,6 +1,6 @@
 import {
   Building2,
-  Category,
+  Boxes,
   CheckCircle2,
   LayoutDashboard,
   Percent,
@@ -38,7 +38,7 @@ export const menuItems: MenuItem[] = [
     id: "categories",
     name: "Categorias",
     path: "/categories",
-    icon: "category",
+    icon: "boxes",
     requiredRoles: ["administrator", "inventory", "admin"],
   },
   {

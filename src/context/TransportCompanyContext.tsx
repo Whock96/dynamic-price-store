@@ -55,7 +55,7 @@ export const TransportCompanyProvider: React.FC<{ children: React.ReactNode }> =
     deleteRecord,
     getRecordById: getSupabaseTransportCompanyById,
     fetchData: fetchSupabaseData
-  } = useSupabaseData<SupabaseTransportCompany>('transport_companies', {
+  } = useSupabaseData<SupabaseTransportCompany>('transport_companies' as any, {
     orderBy: { column: 'name', ascending: true }
   });
 

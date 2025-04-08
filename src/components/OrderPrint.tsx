@@ -1,9 +1,14 @@
-import React from 'react';
+
+import React, { forwardRef } from 'react';
 import { Order } from '@/types/types';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { useTransportCompanies } from '@/context/TransportCompanyContext';
 
-const OrderPrint = ({ order }: { order: Order }) => {
+interface OrderPrintProps {
+  order: Order;
+}
+
+const OrderPrint = forwardRef<HTMLDivElement, OrderPrintProps>(({ order }, ref) => {
   const { transportCompanies } = useTransportCompanies();
   
   // Add a function to get transport company name
@@ -14,7 +19,7 @@ const OrderPrint = ({ order }: { order: Order }) => {
   };
   
   return (
-    <div className="p-6 bg-white print:p-0">
+    <div className="p-6 bg-white print:p-0" ref={ref}>
       <div className="text-center mb-8">
         <h1 className="text-2xl font-bold">Pedido #{order.orderNumber}</h1>
         <p className="text-sm text-gray-500">
@@ -115,6 +120,8 @@ const OrderPrint = ({ order }: { order: Order }) => {
       </div>
     </div>
   );
-};
+});
+
+OrderPrint.displayName = 'OrderPrint';
 
 export default OrderPrint;

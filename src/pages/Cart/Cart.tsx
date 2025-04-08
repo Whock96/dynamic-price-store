@@ -723,7 +723,7 @@ const Cart = () => {
                           
                           <div className="mt-4">
                             <div className="flex items-center mb-1">
-                              <truck className="h-4 w-4 text-ferplas-500 mr-1" />
+                              <Truck className="h-5 w-5 text-ferplas-500 mr-1" />
                               <span className="text-sm font-medium text-gray-700">Transportadora:</span>
                             </div>
                             <Select 
