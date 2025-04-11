@@ -1,20 +1,27 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { ChevronLeft, Edit, Phone, Mail, MapPin } from 'lucide-react';
+import { ChevronLeft, Edit, Phone, Mail, MapPin, Truck, CalendarClock, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useCustomers } from '@/context/CustomerContext';
-import { Customer } from '@/types/types';
-import { formatPhoneNumber, formatDocument, formatCurrency } from '@/utils/formatters';
+import { Customer, Order } from '@/types/types';
+import { formatPhoneNumber, formatDocument, formatCurrency, formatDate } from '@/utils/formatters';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
+import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 
 interface SalesPersonInfo {
   name: string;
   email: string;
   phone?: string;
+}
+
+interface TransportCompanyInfo {
+  id: string;
+  name: string;
 }
 
 const CustomerDetail: React.FC = () => {
@@ -23,7 +30,10 @@ const CustomerDetail: React.FC = () => {
   const { getCustomerById } = useCustomers();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [salesPerson, setSalesPerson] = useState<SalesPersonInfo | null>(null);
+  const [transportCompany, setTransportCompany] = useState<TransportCompanyInfo | null>(null);
+  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingOrders, setLoadingOrders] = useState(true);
 
   useEffect(() => {
     const fetchCustomerData = async () => {
@@ -62,6 +72,24 @@ const CustomerDetail: React.FC = () => {
             });
           }
         }
+
+        // Fetch transport company information
+        if (foundCustomer.transportCompanyId) {
+          const { data, error } = await supabase
+            .from('transport_companies')
+            .select('id, name')
+            .eq('id', foundCustomer.transportCompanyId)
+            .single();
+          
+          if (error) {
+            console.error('Error fetching transport company:', error);
+          } else if (data) {
+            setTransportCompany({
+              id: data.id,
+              name: data.name
+            });
+          }
+        }
       } catch (error) {
         console.error('Error fetching customer data:', error);
       } finally {
@@ -71,6 +99,54 @@ const CustomerDetail: React.FC = () => {
     
     fetchCustomerData();
   }, [id, getCustomerById, navigate]);
+
+  // Fetch recent orders for this customer
+  useEffect(() => {
+    const fetchRecentOrders = async () => {
+      if (!id) return;
+      
+      setLoadingOrders(true);
+      
+      try {
+        const { data, error } = await supabase
+          .from('orders')
+          .select(`
+            id,
+            order_number,
+            status,
+            total,
+            created_at
+          `)
+          .eq('customer_id', id)
+          .order('created_at', { ascending: false })
+          .limit(6);
+        
+        if (error) {
+          console.error('Error fetching recent orders:', error);
+          throw error;
+        }
+        
+        if (data) {
+          // Transform the raw data to match our Order type
+          const formattedOrders = data.map(order => ({
+            id: order.id,
+            orderNumber: order.order_number,
+            status: order.status as 'pending' | 'confirmed' | 'invoiced' | 'completed' | 'canceled',
+            total: order.total,
+            createdAt: new Date(order.created_at)
+          })) as Order[];
+          
+          setRecentOrders(formattedOrders);
+        }
+      } catch (error) {
+        console.error('Error fetching recent orders:', error);
+      } finally {
+        setLoadingOrders(false);
+      }
+    };
+    
+    fetchRecentOrders();
+  }, [id]);
 
   if (loading) {
     return (
@@ -97,15 +173,6 @@ const CustomerDetail: React.FC = () => {
       </div>
     );
   }
-
-  // Format register date
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    }).format(date);
-  };
 
   return (
     <div className="space-y-6">
@@ -154,6 +221,15 @@ const CustomerDetail: React.FC = () => {
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Inscrição Estadual</p>
                     <p>{customer.stateRegistration}</p>
+                  </div>
+                )}
+                {transportCompany && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Transportadora Padrão</p>
+                    <div className="flex items-center gap-2">
+                      <Truck className="h-4 w-4 text-muted-foreground" />
+                      <span>{transportCompany.name}</span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -252,6 +328,49 @@ const CustomerDetail: React.FC = () => {
           </Card>
         </div>
       </div>
+
+      {/* Recent Orders Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Últimos Pedidos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loadingOrders ? (
+            <div className="flex justify-center py-4">
+              <div className="h-6 w-6 rounded-full border-2 border-t-transparent border-ferplas-500 animate-spin" />
+            </div>
+          ) : recentOrders.length > 0 ? (
+            <div className="space-y-4">
+              {recentOrders.map((order) => (
+                <div key={order.id} className="flex justify-between items-center border-b pb-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <CalendarClock className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Pedido #{order.orderNumber}</span>
+                      <OrderStatusBadge status={order.status} />
+                    </div>
+                    <div className="flex gap-4 mt-1 text-sm text-muted-foreground">
+                      <span>{formatDate(order.createdAt)}</span>
+                      <span>{formatCurrency(order.total)}</span>
+                    </div>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => navigate(`/orders/${order.id}`)}
+                  >
+                    Ver Detalhes <ArrowRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-4">
+              Nenhum pedido encontrado para este cliente.
+            </p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

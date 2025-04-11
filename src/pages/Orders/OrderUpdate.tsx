@@ -106,8 +106,11 @@ const OrderUpdate = () => {
       setPaymentTerms(order.paymentTerms || '');
       // Set to 'none' if no salesperson is assigned
       setSelectedSalespersonId(order.userId || 'none');
-      // Set transport company if present
-      setSelectedTransportCompanyId(order.transportCompanyId || 'none');
+      
+      // Fix for transportCompanyId - add debugger to troubleshoot
+      console.log("Order transportCompanyId:", order.transportCompanyId);
+      // Set transport company if present, ensuring we properly handle null/undefined values
+      setSelectedTransportCompanyId(order.transportCompanyId ? order.transportCompanyId : 'none');
     }
   }, [order]);
 
