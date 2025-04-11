@@ -1,3 +1,71 @@
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { useOrders } from '@/context/OrderContext';
+import { useOrderData } from '@/hooks/use-order-data';
+import { useCompany } from '@/context/CompanyContext';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Printer, ArrowLeft, Edit } from 'lucide-react';
+import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { formatCurrency } from '@/utils/formatters';
+
+const OrderDetail = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { getOrderById } = useOrders();
+  const { companyInfo } = useCompany();
+  const { order, isLoading, error, fetchOrderData } = useOrderData(id);
+  const [isPrinting, setIsPrinting] = useState(false);
+
+  useEffect(() => {
+    if (error) {
+      console.error("Error fetching order:", error);
+    }
+  }, [error]);
+
+  const handlePrint = () => {
+    setIsPrinting(true);
+    const printContent = renderPrintableOrderHTML(order, companyInfo);
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.open();
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Pedido #${order?.orderNumber || order?.order_number || '1'}</title>
+            <style>
+              @media print {
+                body {
+                  font-size: 10px;
+                }
+                /* Add more print-specific styles here */
+              }
+            </style>
+          </head>
+          <body>${printContent}</body>
+        </html>
+      `);
+      printWindow.document.close();
+
+      printWindow.onload = () => {
+        printWindow.focus();
+        printWindow.print();
+        printWindow.onafterprint = () => {
+          printWindow.close();
+          setIsPrinting(false);
+        };
+      };
+    } else {
+      console.error("Failed to open print window!");
+      setIsPrinting(false);
+    }
+  };
 
   const renderPrintableOrderHTML = (order: any, companyInfo: any) => {
     // Determine invoice type text based on fullInvoice flag
@@ -200,3 +268,123 @@
       </div>
     `;
   };
+
+  return (
+    <PageContainer>
+      <Card>
+        <CardHeader>
+          <CardTitle>Detalhes do Pedido</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading && <p>Carregando detalhes do pedido...</p>}
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error.message}</AlertDescription>
+            </Alert>
+          )}
+          {order && (
+            <>
+              <div className="mb-4 flex justify-between items-center">
+                <div>
+                  <Button variant="outline" size="sm" onClick={() => navigate('/orders')}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Voltar para a lista
+                  </Button>
+                </div>
+                <div>
+                  <Button variant="secondary" size="sm" onClick={handlePrint} disabled={isPrinting}>
+                    <Printer className="mr-2 h-4 w-4" />
+                    Imprimir
+                  </Button>
+                  <Button variant="default" size="sm" onClick={() => navigate(`/orders/${id}/edit`)} className="ml-2">
+                    <Edit className="mr-2 h-4 w-4" />
+                    Editar
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <strong>Número do Pedido:</strong> {order.orderNumber || order.order_number}
+                </div>
+                <div>
+                  <strong>Status:</strong> <OrderStatusBadge status={order.status} />
+                </div>
+                <div>
+                  <strong>Data do Pedido:</strong> {format(new Date(order.createdAt || order.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                </div>
+                <div>
+                  <strong>Cliente:</strong> {order.customer?.companyName || order.customers?.company_name || 'Cliente não identificado'}
+                </div>
+              </div>
+
+              <Separator className="my-4" />
+
+              <div>
+                <h3>Itens do Pedido</h3>
+                {order.items && order.items.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Produto
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Quantidade
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Preço Unitário
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Subtotal
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {order.items.map((item) => (
+                          <tr key={item.id}>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {item.product?.name || item.productName}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {item.quantity}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {formatCurrency(item.finalPrice)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {formatCurrency(item.subtotal)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p>Nenhum item neste pedido.</p>
+                )}
+              </div>
+
+              <Separator className="my-4" />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <strong>Subtotal:</strong> {formatCurrency(order.subtotal)}
+                </div>
+                <div>
+                  <strong>Desconto:</strong> {formatCurrency(order.totalDiscount || order.total_discount || 0)}
+                </div>
+                <div>
+                  <strong>Total:</strong> {formatCurrency(order.total)}
+                </div>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </PageContainer>
+  );
+};
+
+export default OrderDetail;
