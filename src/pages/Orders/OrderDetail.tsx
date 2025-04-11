@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatCurrency } from '@/utils/formatters';
+import PageContainer from '@/components/layout/PageContainer';
 
 const OrderDetail = () => {
   const { id } = useParams();
@@ -38,7 +40,7 @@ const OrderDetail = () => {
       printWindow.document.write(`
         <html>
           <head>
-            <title>Pedido #${order?.orderNumber || order?.order_number || '1'}</title>
+            <title>Pedido #${order?.orderNumber || '1'}</title>
             <style>
               @media print {
                 body {
@@ -115,7 +117,7 @@ const OrderDetail = () => {
         <!-- Order title -->
         <div style="text-align: center; margin-bottom: 8px;">
           <h1 style="font-size: 16px; font-weight: bold; border: 1px solid #ddd; display: inline-block; padding: 4px 12px; margin: 4px 0;">
-            PEDIDO #${order.orderNumber || order.order_number || '1'}
+            PEDIDO #${order.orderNumber || '1'}
           </h1>
           <p style="font-size: 10px; margin: 2px 0;">
             Emitido em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
@@ -126,22 +128,22 @@ const OrderDetail = () => {
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
           <div style="border: 1px solid #ddd; border-radius: 4px; padding: 8px;">
             <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Cliente</h2>
-            <p style="font-weight: 600; margin: 2px 0;">${order.customer?.companyName || order.customers?.company_name || 'Cliente não identificado'}</p>
-            <p style="margin: 2px 0;">CNPJ/CPF: ${order.customer?.document || order.customers?.document || 'N/A'}</p>
-            ${(order.customer?.stateRegistration || order.customers?.state_registration) ? 
-              `<p style="margin: 2px 0;">IE: ${order.customer?.stateRegistration || order.customers?.state_registration}</p>` : ''}
-            <p style="margin: 2px 0;">${order.customer?.street || order.customers?.street || ''}, ${order.customer?.number || order.customers?.number || ''} ${order.customer?.complement ? `- ${order.customer.complement}` : (order.customers?.complement ? `- ${order.customers.complement}` : '')}</p>
-            ${(order.customer?.neighborhood || order.customers?.neighborhood) ? 
-              `<p style="margin: 2px 0;">Bairro: ${order.customer?.neighborhood || order.customers?.neighborhood}</p>` : ''}
-            <p style="margin: 2px 0;">${order.customer?.city || order.customers?.city || 'N/A'}/${order.customer?.state || order.customers?.state || 'N/A'} - ${order.customer?.zipCode || order.customers?.zip_code || 'N/A'}</p>
-            <p style="margin: 2px 0;">Tel: ${order.customer?.phone || order.customers?.phone || 'N/A'}</p>
-            ${(order.customer?.whatsapp || order.customers?.whatsapp) ? 
-              `<p style="margin: 2px 0;">WhatsApp: ${order.customer?.whatsapp || order.customers?.whatsapp}</p>` : ''}
+            <p style="font-weight: 600; margin: 2px 0;">${order.customer?.companyName || 'Cliente não identificado'}</p>
+            <p style="margin: 2px 0;">CNPJ/CPF: ${order.customer?.document || 'N/A'}</p>
+            ${(order.customer?.stateRegistration) ? 
+              `<p style="margin: 2px 0;">IE: ${order.customer?.stateRegistration}</p>` : ''}
+            <p style="margin: 2px 0;">${order.customer?.street || ''}, ${order.customer?.number || ''} ${order.customer?.complement ? `- ${order.customer.complement}` : ''}</p>
+            ${(order.customer?.neighborhood) ? 
+              `<p style="margin: 2px 0;">Bairro: ${order.customer?.neighborhood}</p>` : ''}
+            <p style="margin: 2px 0;">${order.customer?.city || 'N/A'}/${order.customer?.state || 'N/A'} - ${order.customer?.zipCode || 'N/A'}</p>
+            <p style="margin: 2px 0;">Tel: ${order.customer?.phone || 'N/A'}</p>
+            ${(order.customer?.whatsapp) ? 
+              `<p style="margin: 2px 0;">WhatsApp: ${order.customer?.whatsapp}</p>` : ''}
           </div>
           
           <div style="border: 1px solid #ddd; border-radius: 4px; padding: 8px;">
             <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Dados do Pedido</h2>
-            <p style="margin: 2px 0;"><span style="font-weight: 600;">Data:</span> ${format(new Date(order.createdAt || order.created_at), "dd/MM/yyyy", { locale: ptBR })}</p>
+            <p style="margin: 2px 0;"><span style="font-weight: 600;">Data:</span> ${format(new Date(order.createdAt || new Date()), "dd/MM/yyyy", { locale: ptBR })}</p>
             <p style="margin: 2px 0;"><span style="font-weight: 600;">Vendedor:</span> ${order.user?.name || 'Não informado'}</p>
             <p style="margin: 2px 0;"><span style="font-weight: 600;">Status:</span> ${
               order.status === 'pending' ? 'Pendente' : 
@@ -149,12 +151,12 @@ const OrderDetail = () => {
               order.status === 'invoiced' ? 'Faturado' : 
               order.status === 'completed' ? 'Concluído' : 'Cancelado'
             }</p>
-            <p style="margin: 2px 0;"><span style="font-weight: 600;">Pagamento:</span> ${(order.paymentMethod || order.payment_method) === 'cash' ? 'À Vista' : 'A Prazo'}</p>
-            ${(order.paymentMethod || order.payment_method) === 'credit' && (order.paymentTerms || order.payment_terms) ? 
-              `<p style="margin: 2px 0;"><span style="font-weight: 600;">Prazos:</span> ${order.paymentTerms || order.payment_terms}</p>` : ''}
+            <p style="margin: 2px 0;"><span style="font-weight: 600;">Pagamento:</span> ${order.paymentMethod === 'cash' ? 'À Vista' : 'A Prazo'}</p>
+            ${order.paymentMethod === 'credit' && order.paymentTerms ? 
+              `<p style="margin: 2px 0;"><span style="font-weight: 600;">Prazos:</span> ${order.paymentTerms}</p>` : ''}
             <p style="margin: 2px 0;"><span style="font-weight: 600;">Tipo de Nota:</span> ${invoiceTypeText} ${halfInvoiceText}</p>
-            <p style="margin: 2px 0;"><span style="font-weight: 600;">Substituição Tributária:</span> ${order.taxSubstitution || order.tax_substitution ? 'Sim' : 'Não'}</p>
-            <p style="margin: 2px 0;"><span style="font-weight: 600;">IPI:</span> ${order.withIPI || order.with_ipi ? 'Sim' : 'Não'}</p>
+            <p style="margin: 2px 0;"><span style="font-weight: 600;">Substituição Tributária:</span> ${order.taxSubstitution ? 'Sim' : 'Não'}</p>
+            <p style="margin: 2px 0;"><span style="font-weight: 600;">IPI:</span> ${order.withIPI ? 'Sim' : 'Não'}</p>
           </div>
         </div>
         
@@ -181,7 +183,7 @@ const OrderDetail = () => {
                 
                 return `
                 <tr>
-                  <td style="border: 1px solid #ddd; padding: 3px;">${item?.product?.name || item?.productName || `Produto ${index + 1}`}</td>
+                  <td style="border: 1px solid #ddd; padding: 3px;">${item?.product?.name || `Produto ${index + 1}`}</td>
                   <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">
                     ${formatCurrency(item?.listPrice || item?.product?.listPrice || 0)}
                   </td>
@@ -202,11 +204,11 @@ const OrderDetail = () => {
           <!-- Delivery info -->
           <div>
             <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Entrega</h2>
-            <p style="margin: 2px 0;"><span style="font-weight: 600;">Tipo:</span> ${(order.shipping || order.shipping) === 'delivery' ? 'Entrega' : 'Retirada'}</p>
-            ${(order.shipping || order.shipping) === 'delivery' && (order.deliveryLocation || order.delivery_location) ? 
-              `<p style="margin: 2px 0;"><span style="font-weight: 600;">Região:</span> ${(order.deliveryLocation || order.delivery_location) === 'capital' ? 'Capital' : 'Interior'}</p>` : ''}
-            ${(order.shipping || order.shipping) === 'delivery' && (order.deliveryFee || order.delivery_fee) && (order.deliveryFee || order.delivery_fee) > 0 ? 
-              `<p style="margin: 2px 0;"><span style="font-weight: 600;">Taxa:</span> ${formatCurrency(order.deliveryFee || order.delivery_fee)}</p>` : ''}
+            <p style="margin: 2px 0;"><span style="font-weight: 600;">Tipo:</span> ${order.shipping === 'delivery' ? 'Entrega' : 'Retirada'}</p>
+            ${order.shipping === 'delivery' && order.deliveryLocation ? 
+              `<p style="margin: 2px 0;"><span style="font-weight: 600;">Região:</span> ${order.deliveryLocation === 'capital' ? 'Capital' : 'Interior'}</p>` : ''}
+            ${order.shipping === 'delivery' && order.deliveryFee && order.deliveryFee > 0 ? 
+              `<p style="margin: 2px 0;"><span style="font-weight: 600;">Taxa:</span> ${formatCurrency(order.deliveryFee)}</p>` : ''}
             <p style="margin: 2px 0;"><span style="font-weight: 600;">Peso Total:</span> ${totalWeight.toFixed(2)} kg</p>
             <p style="margin: 2px 0;"><span style="font-weight: 600;">Total de Volumes:</span> ${totalVolumes}</p>
           </div>
@@ -222,10 +224,10 @@ const OrderDetail = () => {
               <tr>
                 <td style="padding: 2px 0;">Descontos:</td>
                 <td style="padding: 2px 0; text-align: right; color: #dc2626; font-weight: 500;">
-                  -${formatCurrency(order.totalDiscount || order.total_discount || 0)}
+                  -${formatCurrency(order.totalDiscount || 0)}
                 </td>
               </tr>
-              ${(order.taxSubstitution || order.tax_substitution) ? `
+              ${order.taxSubstitution ? `
                 <tr>
                   <td style="padding: 2px 0;">Substituição Tributária (7.8%):</td>
                   <td style="padding: 2px 0; text-align: right; color: #ea580c; font-weight: 500;">
@@ -233,7 +235,7 @@ const OrderDetail = () => {
                   </td>
                 </tr>
               ` : ''}
-              ${(order.withIPI || order.with_ipi) && ipiValue > 0 ? `
+              ${order.withIPI && ipiValue > 0 ? `
                 <tr>
                   <td style="padding: 2px 0;">IPI:</td>
                   <td style="padding: 2px 0; text-align: right; color: #ea580c; font-weight: 500;">
@@ -241,10 +243,10 @@ const OrderDetail = () => {
                   </td>
                 </tr>
               ` : ''}
-              ${(order.deliveryFee || order.delivery_fee) && (order.deliveryFee || order.delivery_fee) > 0 ? `
+              ${order.deliveryFee && order.deliveryFee > 0 ? `
                 <tr>
                   <td style="padding: 2px 0;">Taxa de Entrega:</td>
-                  <td style="padding: 2px 0; text-align: right; font-weight: 500;">${formatCurrency(order.deliveryFee || order.delivery_fee)}</td>
+                  <td style="padding: 2px 0; text-align: right; font-weight: 500;">${formatCurrency(order.deliveryFee)}</td>
                 </tr>
               ` : ''}
               <tr style="border-top: 1px solid #ddd;">
@@ -255,10 +257,10 @@ const OrderDetail = () => {
           </div>
         </div>
         
-        ${(order.notes || order.observations) ? `
+        ${(order.notes) ? `
           <div style="margin-bottom: 8px;">
             <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Observações</h2>
-            <p style="border: 1px solid #ddd; padding: 4px; background-color: #f9f9f9; margin: 0;">${order.notes || order.observations}</p>
+            <p style="border: 1px solid #ddd; padding: 4px; background-color: #f9f9f9; margin: 0;">${order.notes}</p>
           </div>
         ` : ''}
         
@@ -267,6 +269,38 @@ const OrderDetail = () => {
         </div>
       </div>
     `;
+  };
+
+  // Calculate total weight for the entire order
+  const calculateTotalWeight = () => {
+    if (!order || !order.items || order.items.length === 0) return 0;
+    
+    let totalWeight = 0;
+    order.items.forEach((item) => {
+      totalWeight += (item.quantity || 0) * (item.product?.weight || 0);
+    });
+    return totalWeight.toFixed(2);
+  };
+
+  // Calculate total volumes
+  const calculateTotalVolumes = () => {
+    if (!order || !order.items || order.items.length === 0) return 0;
+    
+    let totalVolumes = 0;
+    order.items.forEach((item) => {
+      totalVolumes += (item.quantity || 0);
+    });
+    return totalVolumes;
+  };
+
+  // Calculate total units for an item
+  const calculateTotalUnits = (item: any) => {
+    return (item.quantity || 0) * (item.product?.quantityPerVolume || 1);
+  };
+
+  // Calculate total weight for an item
+  const calculateItemWeight = (item: any) => {
+    return ((item.quantity || 0) * (item.product?.weight || 0)).toFixed(2);
   };
 
   return (
@@ -305,16 +339,16 @@ const OrderDetail = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <strong>Número do Pedido:</strong> {order.orderNumber || order.order_number}
+                  <strong>Número do Pedido:</strong> {order.orderNumber}
                 </div>
                 <div>
                   <strong>Status:</strong> <OrderStatusBadge status={order.status} />
                 </div>
                 <div>
-                  <strong>Data do Pedido:</strong> {format(new Date(order.createdAt || order.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  <strong>Data do Pedido:</strong> {format(new Date(order.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                 </div>
                 <div>
-                  <strong>Cliente:</strong> {order.customer?.companyName || order.customers?.company_name || 'Cliente não identificado'}
+                  <strong>Cliente:</strong> {order.customer?.companyName || 'Cliente não identificado'}
                 </div>
               </div>
 
@@ -334,6 +368,12 @@ const OrderDetail = () => {
                             Quantidade
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Unidades Total
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Peso Total
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Preço Unitário
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -345,10 +385,16 @@ const OrderDetail = () => {
                         {order.items.map((item) => (
                           <tr key={item.id}>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              {item.product?.name || item.productName}
+                              {item.product?.name}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               {item.quantity}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {calculateTotalUnits(item)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {calculateItemWeight(item)} kg
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               {formatCurrency(item.finalPrice)}
@@ -370,13 +416,22 @@ const OrderDetail = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <strong>Subtotal:</strong> {formatCurrency(order.subtotal)}
+                  <h3>Entrega</h3>
+                  <p><strong>Tipo:</strong> {order.shipping === 'delivery' ? 'Entrega' : 'Retirada'}</p>
+                  {order.shipping === 'delivery' && order.deliveryLocation && (
+                    <p><strong>Região:</strong> {order.deliveryLocation === 'capital' ? 'Capital' : 'Interior'}</p>
+                  )}
+                  {order.shipping === 'delivery' && order.deliveryFee && order.deliveryFee > 0 && (
+                    <p><strong>Taxa de Entrega:</strong> {formatCurrency(order.deliveryFee)}</p>
+                  )}
+                  <p><strong>Peso Total do Pedido:</strong> {calculateTotalWeight()} kg</p>
+                  <p><strong>Total de Volumes:</strong> {calculateTotalVolumes()}</p>
                 </div>
                 <div>
-                  <strong>Desconto:</strong> {formatCurrency(order.totalDiscount || order.total_discount || 0)}
-                </div>
-                <div>
-                  <strong>Total:</strong> {formatCurrency(order.total)}
+                  <h3>Resumo Financeiro</h3>
+                  <p><strong>Subtotal:</strong> {formatCurrency(order.subtotal)}</p>
+                  <p><strong>Desconto:</strong> {formatCurrency(order.totalDiscount || 0)}</p>
+                  <p><strong>Total:</strong> {formatCurrency(order.total)}</p>
                 </div>
               </div>
             </>
@@ -388,3 +443,4 @@ const OrderDetail = () => {
 };
 
 export default OrderDetail;
+
