@@ -35,6 +35,8 @@ const OrderDetail = () => {
   const [loading, setLoading] = useState(true);
   const [transportCompany, setTransportCompany] = useState<any>(null);
   const [isLoadingTransport, setIsLoadingTransport] = useState(false);
+  const [totalOrderWeight, setTotalOrderWeight] = useState(0);
+  const [totalVolumes, setTotalVolumes] = useState(0);
 
   useEffect(() => {
     if (id) {
@@ -52,6 +54,9 @@ const OrderDetail = () => {
         if (contextOrder.transportCompanyId) {
           fetchTransportCompany(contextOrder.transportCompanyId);
         }
+        
+        // Calculate total weight and volumes
+        calculateOrderTotals(contextOrder.items);
       } else if (supabaseOrder) {
         // If not in context, use the one fetched directly from Supabase
         console.log(`Found order in Supabase:`, supabaseOrder);
@@ -62,6 +67,9 @@ const OrderDetail = () => {
         if (supabaseOrder.transportCompanyId) {
           fetchTransportCompany(supabaseOrder.transportCompanyId);
         }
+        
+        // Calculate total weight and volumes
+        calculateOrderTotals(supabaseOrder.items);
       } else if (!isSupabaseLoading) {
         // If we've tried both and still don't have it, show error
         console.error(`Order with ID ${id} not found`);
@@ -70,6 +78,29 @@ const OrderDetail = () => {
       }
     }
   }, [id, getOrderById, supabaseOrder, isSupabaseLoading]);
+
+  const calculateOrderTotals = (items: any[]) => {
+    if (!items || items.length === 0) {
+      setTotalOrderWeight(0);
+      setTotalVolumes(0);
+      return;
+    }
+
+    let weight = 0;
+    let volumes = 0;
+
+    items.forEach(item => {
+      // Calculate total weight
+      const itemWeight = (item.quantity || 0) * (item.product?.weight || 0);
+      weight += itemWeight;
+      
+      // Calculate total volumes
+      volumes += (item.quantity || 0);
+    });
+
+    setTotalOrderWeight(weight);
+    setTotalVolumes(volumes);
+  };
 
   const fetchTransportCompany = async (transportCompanyId: string) => {
     if (!transportCompanyId || transportCompanyId === 'none') return;
@@ -97,6 +128,10 @@ const OrderDetail = () => {
       style: 'currency',
       currency: 'BRL',
     }).format(value);
+  };
+
+  const formatWeight = (weight: number) => {
+    return `${weight.toFixed(2)} kg`;
   };
 
   const handlePrintOrder = () => {
@@ -685,22 +720,31 @@ const OrderDetail = () => {
                 <TableHead>Desconto</TableHead>
                 <TableHead>Preço Final</TableHead>
                 <TableHead>Quantidade</TableHead>
+                <TableHead>Total de Unidades</TableHead>
+                <TableHead>Peso Total</TableHead>
                 <TableHead>Subtotal</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((item: any, index: number) => (
-                <TableRow key={item?.id || `item-${index}`}>
-                  <TableCell className="font-medium">
-                    {item?.product?.name || "Produto não encontrado"}
-                  </TableCell>
-                  <TableCell>{formatCurrency(item?.listPrice || item?.product?.listPrice || 0)}</TableCell>
-                  <TableCell>{item?.discount || 0}%</TableCell>
-                  <TableCell>{formatCurrency(item?.finalPrice || 0)}</TableCell>
-                  <TableCell>{item?.quantity || 0}</TableCell>
-                  <TableCell>{formatCurrency(item?.subtotal || 0)}</TableCell>
-                </TableRow>
-              ))}
+              {items.map((item: any, index: number) => {
+                const totalUnits = (item?.quantity || 0) * (item?.product?.quantityPerVolume || 1);
+                const totalWeight = (item?.quantity || 0) * (item?.product?.weight || 0);
+                
+                return (
+                  <TableRow key={item?.id || `item-${index}`}>
+                    <TableCell className="font-medium">
+                      {item?.product?.name || "Produto não encontrado"}
+                    </TableCell>
+                    <TableCell>{formatCurrency(item?.product?.listPrice || 0)}</TableCell>
+                    <TableCell>{item?.discount || 0}%</TableCell>
+                    <TableCell>{formatCurrency(item?.finalPrice || 0)}</TableCell>
+                    <TableCell>{item?.quantity || 0}</TableCell>
+                    <TableCell>{totalUnits}</TableCell>
+                    <TableCell>{formatWeight(totalWeight)}</TableCell>
+                    <TableCell>{formatCurrency(item?.subtotal || 0)}</TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
           
@@ -795,6 +839,17 @@ const OrderDetail = () => {
                 <p className="text-lg">{formatCurrency(deliveryFee)}</p>
               </div>
             )}
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Peso Total do Pedido</h3>
+              <p className="text-lg">{formatWeight(totalOrderWeight)}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Total de Volumes</h3>
+              <p className="text-lg">{totalVolumes}</p>
+            </div>
           </div>
           
           {(order.transportCompanyId || transportCompany) && (

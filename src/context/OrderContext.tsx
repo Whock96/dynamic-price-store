@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Order, CartItem } from '@/types/types';
 import { format } from 'date-fns';
@@ -389,6 +390,18 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (orderData.withIPI !== undefined) supabaseOrderData.with_ipi = orderData.withIPI;
       if (orderData.ipiValue !== undefined) supabaseOrderData.ipi_value = orderData.ipiValue;
       if (orderData.userId !== undefined) supabaseOrderData.user_id = orderData.userId;
+      if (orderData.transportCompanyId !== undefined) {
+        // If transportCompanyId is 'none', set it to null in the database
+        if (orderData.transportCompanyId === 'none') {
+          supabaseOrderData.transport_company_id = null;
+          console.log("Setting transport_company_id to null");
+        } else {
+          supabaseOrderData.transport_company_id = orderData.transportCompanyId;
+          console.log(`Setting transport_company_id to ${orderData.transportCompanyId}`);
+        }
+      }
+      
+      console.log("Final Supabase order data for update:", supabaseOrderData);
       
       const { error } = await supabase
         .from('orders')

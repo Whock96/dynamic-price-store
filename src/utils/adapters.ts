@@ -176,6 +176,7 @@ export const supabaseOrderToAppOrder = (
     deliveryFee: Number(order.delivery_fee) || 0,
     withIPI: Boolean(order.with_ipi) || false,
     ipiValue: Number(order.ipi_value) || 0,
+    transportCompanyId: order.transport_company_id || null, // Ensure transportCompanyId is always properly mapped
   };
 };
 

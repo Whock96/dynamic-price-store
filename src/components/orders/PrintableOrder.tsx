@@ -21,6 +21,10 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
     }).format(Math.max(value, 0));
   };
 
+  const formatWeight = (weight: number) => {
+    return `${weight.toFixed(2)} kg`;
+  };
+
   useEffect(() => {
     const printTimeout = setTimeout(() => {
       window.print();
@@ -57,6 +61,16 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
   
   const effectiveTaxRate = getTaxSubstitutionRate();
   const taxSubstitutionValue = order.taxSubstitution ? (effectiveTaxRate / 100) * order.subtotal : 0;
+
+  // Calculate total units and total weight for the order
+  let totalOrderWeight = 0;
+  let totalVolumes = 0;
+
+  order.items.forEach(item => {
+    const itemWeight = (item.quantity || 0) * (item.product?.weight || 0);
+    totalOrderWeight += itemWeight;
+    totalVolumes += (item.quantity || 0);
+  });
 
   return (
     <div className="bg-white p-4 max-w-4xl mx-auto print:p-2">
@@ -134,20 +148,29 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
               <th className="border p-1 text-center">Desc.</th>
               <th className="border p-1 text-right">Final</th>
               <th className="border p-1 text-center">Qtd.</th>
+              <th className="border p-1 text-center">Unidades</th>
+              <th className="border p-1 text-right">Peso</th>
               <th className="border p-1 text-right">Subtotal</th>
             </tr>
           </thead>
           <tbody>
-            {order.items.map((item, index) => (
-              <tr key={item?.id || `item-${index}`}>
-                <td className="border p-1">{item?.product?.name || (item as any).productName || `Produto ${index + 1}`}</td>
-                <td className="border p-1 text-right">{formatCurrency((item as any).listPrice || item?.product?.listPrice || 0)}</td>
-                <td className="border p-1 text-center">{item?.discount || 0}%</td>
-                <td className="border p-1 text-right">{formatCurrency(item?.finalPrice || 0)}</td>
-                <td className="border p-1 text-center">{item?.quantity || 0}</td>
-                <td className="border p-1 text-right">{formatCurrency(item?.subtotal || 0)}</td>
-              </tr>
-            ))}
+            {order.items.map((item, index) => {
+              const totalUnits = (item.quantity || 0) * (item.product?.quantityPerVolume || 1);
+              const totalWeight = (item.quantity || 0) * (item.product?.weight || 0);
+              
+              return (
+                <tr key={item?.id || `item-${index}`}>
+                  <td className="border p-1">{item?.product?.name || (item as any).productName || `Produto ${index + 1}`}</td>
+                  <td className="border p-1 text-right">{formatCurrency((item as any).listPrice || item?.product?.listPrice || 0)}</td>
+                  <td className="border p-1 text-center">{item?.discount || 0}%</td>
+                  <td className="border p-1 text-right">{formatCurrency(item?.finalPrice || 0)}</td>
+                  <td className="border p-1 text-center">{item?.quantity || 0}</td>
+                  <td className="border p-1 text-center">{totalUnits}</td>
+                  <td className="border p-1 text-right">{formatWeight(totalWeight)}</td>
+                  <td className="border p-1 text-right">{formatCurrency(item?.subtotal || 0)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -191,6 +214,9 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
           {order.shipping === 'delivery' && order.deliveryFee && order.deliveryFee > 0 && (
             <p><span className="font-semibold">Taxa de Entrega:</span> {formatCurrency(order.deliveryFee)}</p>
           )}
+          
+          <p><span className="font-semibold">Peso Total do Pedido:</span> {formatWeight(totalOrderWeight)}</p>
+          <p><span className="font-semibold">Total de Volumes:</span> {totalVolumes}</p>
         </div>
 
         {/* Financial Summary */}
