@@ -107,10 +107,18 @@ const OrderUpdate = () => {
       // Set to 'none' if no salesperson is assigned
       setSelectedSalespersonId(order.userId || 'none');
       
-      // Fix for transportCompanyId - add debugger to troubleshoot
+      // Debug for transportCompanyId
       console.log("Order transportCompanyId:", order.transportCompanyId);
-      // Set transport company if present, ensuring we properly handle null/undefined values
-      setSelectedTransportCompanyId(order.transportCompanyId ? order.transportCompanyId : 'none');
+      console.log("Order transportCompanyId type:", typeof order.transportCompanyId);
+      
+      // Improved transport company handling
+      if (order.transportCompanyId) {
+        console.log("Setting transport company ID to:", order.transportCompanyId);
+        setSelectedTransportCompanyId(order.transportCompanyId);
+      } else {
+        console.log("No transport company ID found, setting to 'none'");
+        setSelectedTransportCompanyId('none');
+      }
     }
   }, [order]);
 
@@ -152,14 +160,17 @@ const OrderUpdate = () => {
       updates.userId = selectedSalespersonId === 'none' ? null : selectedSalespersonId;
     }
     
-    // Update transport company if it was changed
+    // Update transport company logic - fixed
+    console.log(`Comparing transport company IDs: order=${order.transportCompanyId}, selected=${selectedTransportCompanyId}`);
     if (selectedTransportCompanyId !== order.transportCompanyId) {
-      // If 'none' is selected, set transportCompanyId to null
+      console.log(`Updating transport company from ${order.transportCompanyId} to ${selectedTransportCompanyId}`);
+      // If 'none' is selected, set transportCompanyId to null, otherwise use the selected ID
       updates.transportCompanyId = selectedTransportCompanyId === 'none' ? null : selectedTransportCompanyId;
     }
 
     // Only call updateOrder if there are changes to make
     if (Object.keys(updates).length > 0) {
+      console.log("Submitting updates:", updates);
       updateOrder(id, updates);
     }
 
