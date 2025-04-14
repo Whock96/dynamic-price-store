@@ -559,7 +559,7 @@ const OrderDetail = () => {
                 <div>
                   <p className="font-medium">Pedido Criado</p>
                   <p className="text-sm text-gray-500">
-                    {format(new Date(order.createdAt || order.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    {format(new Date(order.createdAt || order.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                   </p>
                   <p className="text-sm text-gray-500">Por {userName}</p>
                 </div>
@@ -642,18 +642,14 @@ const OrderDetail = () => {
                 <span>Descontos:</span>
                 <span>-{formatCurrency(totalDiscount)}</span>
               </div>
-              {withIPI && ipiValue > 0 && (
-                <div className="flex justify-between text-sm text-blue-600">
-                  <span>IPI:</span>
-                  <span>+{formatCurrency(ipiValue)}</span>
-                </div>
-              )}
-              {taxSubstitution && taxSubstitutionValue > 0 && (
-                <div className="flex justify-between text-sm text-orange-600">
-                  <span>Substituição Tributária (7.8%):</span>
-                  <span>+{formatCurrency(taxSubstitutionValue)}</span>
-                </div>
-              )}
+              <div className="flex justify-between text-sm">
+                <span>Substituição Tributária:</span>
+                <span>{taxSubstitution ? 'Sim' : 'Não'}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>IPI:</span>
+                <span>{withIPI ? 'Sim' : 'Não'}</span>
+              </div>
               {deliveryFee > 0 && (
                 <div className="flex justify-between text-sm">
                   <span>Taxa de Entrega:</span>
@@ -696,18 +692,14 @@ const OrderDetail = () => {
                     </div>
                   </>
                 )}
-                {taxSubstitution && taxSubstitutionValue > 0 && (
-                  <div className="flex justify-between text-sm text-orange-600">
-                    <span>Substituição Tributária (7.8%):</span>
-                    <span>+{formatCurrency(taxSubstitutionValue)}</span>
-                  </div>
-                )}
-                {withIPI && ipiValue > 0 && (
-                  <div className="flex justify-between text-sm text-blue-600">
-                    <span>IPI:</span>
-                    <span>+{formatCurrency(ipiValue)}</span>
-                  </div>
-                )}
+                <div className="flex justify-between text-sm">
+                  <span>Substituição Tributária:</span>
+                  <span>{taxSubstitution ? 'Sim' : 'Não'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>IPI:</span>
+                  <span>{withIPI ? 'Sim' : 'Não'}</span>
+                </div>
                 {deliveryFee > 0 && (
                   <div className="flex justify-between text-sm">
                     <span>Taxa de Entrega:</span>
@@ -731,16 +723,16 @@ const OrderDetail = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[300px]">Produto</TableHead>
-                <TableHead>Preço Unit.</TableHead>
-                <TableHead className="text-center">Qtd.</TableHead>
-                <TableHead>Total Unid.</TableHead>
-                <TableHead>Preço Total</TableHead>
-                <TableHead>Desc.</TableHead>
+                <TableHead>Produto</TableHead>
+                <TableHead>Preço Unitário</TableHead>
+                <TableHead>Desconto (%)</TableHead>
                 <TableHead>Preço Final</TableHead>
-                <TableHead>ICMS-ST</TableHead>
+                <TableHead>Substituição Tributária</TableHead>
                 <TableHead>IPI</TableHead>
-                <TableHead>Total</TableHead>
+                <TableHead>Total com Impostos</TableHead>
+                <TableHead>Quantidade Volumes</TableHead>
+                <TableHead>Total de Unidades</TableHead>
+                <TableHead>Subtotal</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -751,7 +743,7 @@ const OrderDetail = () => {
                 const mva = (item?.product?.mva || 39) / 100;
                 const icmsStValue = taxSubstitution ? finalPrice * mva * 0.078 : 0;
                 const itemIpiValue = withIPI ? finalPrice * (ipiValue / order.subtotal) : 0;
-                const total = finalPrice + icmsStValue + itemIpiValue;
+                const totalWithTaxes = finalPrice + icmsStValue + itemIpiValue;
                 
                 return (
                   <TableRow key={item?.id || `item-${index}`}>
@@ -759,14 +751,14 @@ const OrderDetail = () => {
                       {item?.product?.name || "Produto não encontrado"}
                     </TableCell>
                     <TableCell>{formatCurrency(item?.product?.listPrice || 0)}</TableCell>
-                    <TableCell className="text-center">{item?.quantity || 0}</TableCell>
-                    <TableCell>{totalUnits}</TableCell>
-                    <TableCell>{formatCurrency(priceTotal)}</TableCell>
                     <TableCell>{item?.discount || 0}%</TableCell>
                     <TableCell>{formatCurrency(finalPrice)}</TableCell>
                     <TableCell>{formatCurrency(icmsStValue)}</TableCell>
                     <TableCell>{formatCurrency(itemIpiValue)}</TableCell>
-                    <TableCell>{formatCurrency(total)}</TableCell>
+                    <TableCell>{formatCurrency(totalWithTaxes)}</TableCell>
+                    <TableCell>{item?.quantity || 0}</TableCell>
+                    <TableCell>{totalUnits}</TableCell>
+                    <TableCell>{formatCurrency(item?.subtotal || 0)}</TableCell>
                   </TableRow>
                 );
               })}
