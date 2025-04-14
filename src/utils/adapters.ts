@@ -69,7 +69,6 @@ export const supabaseOrderToAppOrder = (
     createdAt: new Date(order.customers.created_at),
     updatedAt: new Date(order.customers.updated_at),
     registerDate: new Date(order.customers.register_date || order.customers.created_at),
-    transportCompanyId: order.customers.transport_company_id || undefined
   } : {} as Customer;
 
   // Format order items with improved safety checks
@@ -132,9 +131,6 @@ export const supabaseOrderToAppOrder = (
     userTypeId: '' // Ensure userTypeId is provided with a default empty string
   };
 
-  // Properly map applied discounts
-  const appliedDiscounts = Array.isArray(discounts) ? discounts : [];
-  
   // Convert order status and shipping to proper types with validation
   const validStatus: ('pending' | 'confirmed' | 'invoiced' | 'completed' | 'canceled')[] = [
     'pending', 'confirmed', 'invoiced', 'completed', 'canceled'
@@ -161,7 +157,7 @@ export const supabaseOrderToAppOrder = (
     userId: order.user_id,
     user,
     items: formattedItems,
-    appliedDiscounts: appliedDiscounts,
+    appliedDiscounts: discounts,
     totalDiscount: Number(order.total_discount) || 0,
     subtotal: Number(order.subtotal) || 0,
     total: Number(order.total) || 0,

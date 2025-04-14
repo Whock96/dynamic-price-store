@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
@@ -6,7 +5,6 @@ import { useOrders } from './OrderContext';
 import { useCustomers } from './CustomerContext';
 import { useDiscountSettings } from '../hooks/use-discount-settings';
 import { useAuth } from './AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 
 interface CartContextType {
   items: CartItem[];
@@ -70,7 +68,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [items, setItems] = useState<CartItem[]>([]);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [discountOptions, setDiscountOptions] = useState<DiscountOption[]>([]);
-  const [isLoadingDiscounts, setIsLoadingDiscounts] = useState<boolean>(true);
   const [selectedDiscountOptions, setSelectedDiscountOptions] = useState<string[]>([]);
   const [deliveryLocation, setDeliveryLocation] = useState<'capital' | 'interior' | null>(null);
   const [halfInvoicePercentage, setHalfInvoicePercentage] = useState<number>(50);
@@ -81,86 +78,45 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [withIPI, setWithIPI] = useState<boolean>(false);
   const [selectedTransportCompany, setSelectedTransportCompany] = useState<string | undefined>(undefined);
 
-  // Fetch discount options from database
   useEffect(() => {
-    const fetchDiscountOptions = async () => {
-      try {
-        setIsLoadingDiscounts(true);
-        const { data, error } = await supabase
-          .from('discount_options')
-          .select('*')
-          .order('name');
-        
-        if (error) {
-          console.error('Error fetching discount options:', error);
-          toast.error('Erro ao carregar opções de desconto');
-          return;
+    if (settings) {
+      const updatedDiscountOptions: DiscountOption[] = [
+        {
+          id: '1',
+          name: 'Retirada',
+          description: 'Desconto para retirada na loja',
+          value: settings.pickup,
+          type: 'discount',
+          isActive: true,
+        },
+        {
+          id: '2',
+          name: 'Meia nota',
+          description: 'Desconto para meia nota fiscal',
+          value: settings.halfInvoice,
+          type: 'discount',
+          isActive: true,
+        },
+        {
+          id: '3',
+          name: 'Substituição tributária',
+          description: 'Acréscimo para substituição tributária',
+          value: settings.taxSubstitution,
+          type: 'surcharge',
+          isActive: true,
+        },
+        {
+          id: '4',
+          name: 'A Vista',
+          description: 'Desconto para pagamento à vista',
+          value: settings.cashPayment,
+          type: 'discount',
+          isActive: true,
         }
-        
-        if (data && data.length > 0) {
-          const mappedOptions: DiscountOption[] = data.map(option => ({
-            id: option.id,
-            name: option.name,
-            description: option.description || '',
-            value: Number(option.value),
-            type: option.type === 'discount' ? 'discount' : 'surcharge',
-            isActive: option.is_active,
-          }));
-          
-          console.log('Loaded discount options from database:', mappedOptions);
-          setDiscountOptions(mappedOptions);
-        } else {
-          console.log('No discount options found in database, using settings fallback');
-          // Fallback to settings if no database options found
-          if (settings) {
-            const updatedDiscountOptions: DiscountOption[] = [
-              {
-                id: 'pickup-discount',
-                name: 'Retirada',
-                description: 'Desconto para retirada na loja',
-                value: settings.pickup,
-                type: 'discount',
-                isActive: true,
-              },
-              {
-                id: 'half-invoice-discount',
-                name: 'Meia nota',
-                description: 'Desconto para meia nota fiscal',
-                value: settings.halfInvoice,
-                type: 'discount',
-                isActive: true,
-              },
-              {
-                id: 'tax-substitution',
-                name: 'Substituição tributária',
-                description: 'Acréscimo para substituição tributária',
-                value: settings.taxSubstitution,
-                type: 'surcharge',
-                isActive: true,
-              },
-              {
-                id: 'cash-payment-discount',
-                name: 'A Vista',
-                description: 'Desconto para pagamento à vista',
-                value: settings.cashPayment,
-                type: 'discount',
-                isActive: true,
-              }
-            ];
-            
-            console.log('Using fallback discount options from settings:', updatedDiscountOptions);
-            setDiscountOptions(updatedDiscountOptions);
-          }
-        }
-      } catch (error) {
-        console.error('Unexpected error loading discount options:', error);
-        toast.error('Erro ao carregar opções de desconto');
-      } finally {
-        setIsLoadingDiscounts(false);
-      }
-    };
-    
-    fetchDiscountOptions();
+      ];
+      
+      setDiscountOptions(updatedDiscountOptions);
+    }
   }, [settings]);
 
   const handleSetCustomer = (selectedCustomer: Customer | null) => {
@@ -198,7 +154,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const option = discountOptions.find(opt => opt.id === id);
       if (!option) return;
 
-      if (option.id === 'tax-substitution' || option.type === 'surcharge') return;
+      if (option.id === '3') return;
       
       if (option.type === 'discount') {
         discountPercentage += option.value;
@@ -209,12 +165,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getTaxSubstitutionRate = () => {
-    if (!isDiscountOptionSelected('tax-substitution') || !applyDiscounts) return 0;
+    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
     
-    const taxOption = discountOptions.find(opt => opt.id === 'tax-substitution' || opt.name === 'Substituição tributária');
+    const taxOption = discountOptions.find(opt => opt.id === '3');
     if (!taxOption) return 0;
     
-    if (isDiscountOptionSelected('half-invoice-discount')) {
+    if (isDiscountOptionSelected('2')) {
       return taxOption.value * (halfInvoicePercentage / 100);
     }
     
@@ -228,9 +184,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       : 0;
 
   const calculateTaxSubstitutionValue = () => {
-    if (!isDiscountOptionSelected('tax-substitution') && !discountOptions.some(opt => 
-      opt.name === 'Substituição tributária' && isDiscountOptionSelected(opt.id)
-    ) || !applyDiscounts) return 0;
+    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
     
     return items.reduce((total, item) => {
       const unitTaxValue = calculateItemTaxSubstitutionValue(item);
@@ -240,13 +194,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const calculateItemTaxSubstitutionValue = (item: CartItem) => {
-    if (!isDiscountOptionSelected('tax-substitution') && !discountOptions.some(opt => 
-      opt.name === 'Substituição tributária' && isDiscountOptionSelected(opt.id)
-    ) || !applyDiscounts) return 0;
+    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
     
-    const taxOption = discountOptions.find(opt => 
-      opt.id === 'tax-substitution' || opt.name === 'Substituição tributária'
-    );
+    const taxOption = discountOptions.find(opt => opt.id === '3');
     if (!taxOption) return 0;
     
     const icmsStRate = taxOption.value / 100;
@@ -255,9 +205,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     let taxValue = basePrice * mva * icmsStRate;
     
-    if (isDiscountOptionSelected('half-invoice-discount') || discountOptions.some(opt => 
-      opt.name === 'Meia nota' && isDiscountOptionSelected(opt.id)
-    )) {
+    if (isDiscountOptionSelected('2')) {
       taxValue = taxValue * (halfInvoicePercentage / 100);
     }
     
@@ -273,9 +221,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const totalUnits = calculateTotalUnits(item);
       
       let adjustedRate = standardRate;
-      if (isDiscountOptionSelected('half-invoice-discount') || discountOptions.some(opt => 
-        opt.name === 'Meia nota' && isDiscountOptionSelected(opt.id)
-      )) {
+      if (isDiscountOptionSelected('2')) {
         adjustedRate = standardRate * (halfInvoicePercentage / 100);
       }
       
@@ -293,8 +239,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let finalPrice = item.product.listPrice * (1 - (netDiscount / 100));
       const totalUnits = calculateTotalUnits(item);
       
-      const taxValuePerUnit = applyDiscounts && (isDiscountOptionSelected('tax-substitution') || 
-        discountOptions.some(opt => opt.name === 'Substituição tributária' && isDiscountOptionSelected(opt.id))) ? 
+      const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('3') ? 
         calculateItemTaxSubstitutionValue(item) : 0;
       
       const subtotal = (finalPrice + taxValuePerUnit) * totalUnits;
@@ -540,50 +485,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const toggleDiscountOption = (id: string) => {
-    console.log('Toggling discount option:', id);
-    
-    // Make sure the discount option exists before toggling
-    const discountOption = discountOptions.find(opt => opt.id === id);
-    if (!discountOption) {
-      console.warn(`Attempted to toggle non-existent discount option with id: ${id}`);
-      // Check if we're trying to toggle a hardcoded ID but have real options loaded
-      if (!isLoadingDiscounts && discountOptions.length > 0) {
-        // Find by name instead of ID
-        let foundByName: DiscountOption | undefined;
-        
-        if (id === 'pickup-discount') {
-          foundByName = discountOptions.find(opt => opt.name === 'Retirada');
-        } else if (id === 'half-invoice-discount') {
-          foundByName = discountOptions.find(opt => opt.name === 'Meia nota');
-        } else if (id === 'tax-substitution') {
-          foundByName = discountOptions.find(opt => opt.name === 'Substituição tributária');
-        } else if (id === 'cash-payment-discount') {
-          foundByName = discountOptions.find(opt => opt.name === 'A Vista');
-        }
-        
-        if (foundByName) {
-          console.log(`Found discount option by name instead of ID: ${foundByName.id} (${foundByName.name})`);
-          id = foundByName.id;
-        } else {
-          toast.error('Opção de desconto não encontrada');
-          return;
-        }
-      } else {
-        // Continue with the hardcoded ID if we're still loading or have no real options
-        console.log('Using hardcoded ID while discount options are loading or unavailable');
-      }
-    }
-    
     setSelectedDiscountOptions(prev => {
       if (prev.includes(id)) {
-        if (id === 'pickup-discount' || discountOptions.some(opt => opt.name === 'Retirada' && opt.id === id)) {
+        if (id === '1') {
           setDeliveryLocation(null);
         }
-        if (id === 'half-invoice-discount' || discountOptions.some(opt => opt.name === 'Meia nota' && opt.id === id)) {
+        if (id === '2') {
           setHalfInvoicePercentage(50);
           setHalfInvoiceType('quantity');
         }
-        if (id === 'cash-payment-discount' || discountOptions.some(opt => opt.name === 'A Vista' && opt.id === id)) {
+        if (id === '4') {
           setPaymentTerms('');
         }
         return prev.filter(optId => optId !== id);
@@ -617,80 +528,37 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     try {
-      const shippingValue: 'pickup' | 'delivery' = selectedDiscountOptions.some(id => {
-        const option = discountOptions.find(opt => opt.id === id);
-        return option?.name === 'Retirada' || id === 'pickup-discount';
-      }) ? 'pickup' : 'delivery';
+      const shippingValue: 'pickup' | 'delivery' = isDiscountOptionSelected('1') ? 'pickup' : 'delivery';
       
-      const paymentMethodValue: 'cash' | 'credit' = selectedDiscountOptions.some(id => {
-        const option = discountOptions.find(opt => opt.id === id);
-        return option?.name === 'A Vista' || id === 'cash-payment-discount';
-      }) ? 'cash' : 'credit';
-      
-      // Get applied discount options
-      const appliedDiscounts: DiscountOption[] = selectedDiscountOptions
-        .map(id => {
-          const option = discountOptions.find(opt => opt.id === id);
-          if (!option) {
-            console.warn(`Applied discount with ID ${id} not found in available options`);
-            
-            // Try to find a fallback by name if using hardcoded IDs
-            if (id === 'pickup-discount') {
-              const fallback = discountOptions.find(opt => opt.name === 'Retirada');
-              if (fallback) return fallback;
-            } else if (id === 'half-invoice-discount') {
-              const fallback = discountOptions.find(opt => opt.name === 'Meia nota');
-              if (fallback) return fallback;
-            } else if (id === 'tax-substitution') {
-              const fallback = discountOptions.find(opt => opt.name === 'Substituição tributária');
-              if (fallback) return fallback;
-            } else if (id === 'cash-payment-discount') {
-              const fallback = discountOptions.find(opt => opt.name === 'A Vista');
-              if (fallback) return fallback;
-            }
-          }
-          return option;
-        })
-        .filter((option): option is DiscountOption => option !== undefined);
-      
-      console.log('Applied discount options:', appliedDiscounts);
-      
-      // Determine if tax substitution is enabled
-      const taxSubstitutionEnabled = selectedDiscountOptions.some(id => {
-        const option = discountOptions.find(opt => opt.id === id);
-        return option?.name === 'Substituição tributária' || id === 'tax-substitution';
-      });
-      
-      // Determine if half invoice is enabled
-      const halfInvoiceEnabled = selectedDiscountOptions.some(id => {
-        const option = discountOptions.find(opt => opt.id === id);
-        return option?.name === 'Meia nota' || id === 'half-invoice-discount';
-      });
+      const paymentMethodValue: 'cash' | 'credit' = isDiscountOptionSelected('4') ? 'cash' : 'credit';
       
       const orderData: Partial<Order> = {
         customer,
         customerId: customer.id,
         items,
-        appliedDiscounts,
+        appliedDiscounts: selectedDiscountOptions.map(id => {
+          const option = discountOptions.find(opt => opt.id === id);
+          return option || null;
+        }).filter(Boolean) as DiscountOption[],
         deliveryLocation,
         deliveryFee,
-        halfInvoicePercentage: halfInvoiceEnabled ? halfInvoicePercentage : undefined,
-        halfInvoiceType: halfInvoiceEnabled ? halfInvoiceType : undefined,
+        halfInvoicePercentage: isDiscountOptionSelected('2') ? halfInvoicePercentage : undefined,
+        halfInvoiceType: isDiscountOptionSelected('2') ? halfInvoiceType : undefined,
         observations,
         subtotal,
         totalDiscount,
         total,
         shipping: shippingValue,
         paymentMethod: paymentMethodValue,
-        paymentTerms: paymentMethodValue === 'credit' ? paymentTerms : undefined,
-        fullInvoice: !halfInvoiceEnabled,
-        taxSubstitution: taxSubstitutionEnabled,
+        paymentTerms: !isDiscountOptionSelected('4') ? paymentTerms : undefined,
+        fullInvoice: !isDiscountOptionSelected('2'),
+        taxSubstitution: isDiscountOptionSelected('3'),
         withIPI,
         ipiValue: withIPI ? ipiValue : undefined,
         status: 'pending',
         notes: observations,
         userId: user?.id,
-        transportCompanyId: shippingValue === 'delivery' ? selectedTransportCompany : undefined
+        transportCompanyId: !isDiscountOptionSelected('1') ? selectedTransportCompany : undefined
       };
       
       console.log('Sending order with data:', orderData);
