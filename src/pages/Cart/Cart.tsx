@@ -595,6 +595,8 @@ const Cart = () => {
                       <TableHead>Desconto (%)</TableHead>
                       <TableHead>Preço Final</TableHead>
                       <TableHead>Substituição Tributária</TableHead>
+                      <TableHead>IPI</TableHead>
+                      <TableHead>Total com Impostos</TableHead>
                       <TableHead>Quantidade Volumes</TableHead>
                       <TableHead>Total de Unidades</TableHead>
                       <TableHead>Subtotal</TableHead>
@@ -604,8 +606,11 @@ const Cart = () => {
                   <TableBody>
                     {items.map(item => {
                       const totalUnits = calculateTotalUnits(item);
-                      const taxValue = isDiscountOptionSelected('3') && applyDiscounts ? 
+                      const taxValue = isDiscountOptionSelected('icms-st') && applyDiscounts ? 
                         calculateItemTaxSubstitutionValue(item) : 0;
+                      const ipiValue = withIPI && applyDiscounts ? 
+                        item.finalPrice * (getIPIRate() / 100) : 0;
+                      const totalWithTaxes = item.finalPrice + taxValue + ipiValue;
                       
                       return (
                         <TableRow key={item.id}>
@@ -623,11 +628,18 @@ const Cart = () => {
                           </TableCell>
                           <TableCell>{formatCurrency(item.finalPrice)}</TableCell>
                           <TableCell>
-                            {isDiscountOptionSelected('3') && applyDiscounts ? 
+                            {isDiscountOptionSelected('icms-st') && applyDiscounts ? 
                               formatCurrency(taxValue) : 
                               formatCurrency(0)
                             }
                           </TableCell>
+                          <TableCell>
+                            {withIPI && applyDiscounts ? 
+                              formatCurrency(ipiValue) : 
+                              formatCurrency(0)
+                            }
+                          </TableCell>
+                          <TableCell>{formatCurrency(totalWithTaxes)}</TableCell>
                           <TableCell>
                             <div className="flex items-center">
                               <Button
