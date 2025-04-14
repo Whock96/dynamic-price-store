@@ -1,4 +1,3 @@
-
 import { Tables } from "@/integrations/supabase/client";
 import { Product, Order, CartItem, DiscountOption, Customer, User } from "@/types/types";
 
@@ -70,8 +69,6 @@ export const supabaseOrderToAppOrder = (
     discount: Number(item.discount || 0),
     finalPrice: Number(item.final_price || 0),
     subtotal: Number(item.subtotal || 0),
-    ipiValue: Number(item.ipi_value || 0),
-    taxSubstitutionValue: Number(item.tax_substitution_value || 0),
   }));
 
   // Parse applied_discounts from JSONB to DiscountOption[] type
@@ -172,9 +169,6 @@ export const supabaseOrderToAppOrder = (
     withIPI: supabaseOrder.with_ipi || false,
     ipiValue: Number(supabaseOrder.ipi_value || 0),
     transportCompanyId: supabaseOrder.transport_company_id || null,
-    // Add new fields for tax values
-    taxSubstitutionValue: Number(supabaseOrder.tax_substitution_value || 0),
-    totalProducts: Number(supabaseOrder.total_products || 0),
   };
 };
 

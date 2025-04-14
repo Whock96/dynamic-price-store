@@ -45,7 +45,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
   const halfInvoiceText = !order.fullInvoice && order.halfInvoicePercentage ? 
     `(${order.halfInvoicePercentage}%)` : '';
     
-  // Calculate tax substitution rate
+  // Calculate tax substitution value if applicable
   const getTaxSubstitutionRate = () => {
     const standardRate = 7.8;
     
@@ -59,51 +59,18 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
     return standardRate;
   };
   
-  // Calculate IPI rate
-  const getIPIRate = () => {
-    const standardRate = 10; // Standard IPI rate
-    
-    if (!order.withIPI) return 0;
-    
-    if (!order.fullInvoice && order.halfInvoicePercentage) {
-      // Adjust rate based on invoice percentage
-      return standardRate * (order.halfInvoicePercentage / 100);
-    }
-    
-    return standardRate;
-  };
-  
   const effectiveTaxRate = getTaxSubstitutionRate();
-  const effectiveIPIRate = getIPIRate();
+  const taxSubstitutionValue = order.taxSubstitution ? (effectiveTaxRate / 100) * order.subtotal : 0;
 
   // Calculate total units and total weight for the order
   let totalOrderWeight = 0;
   let totalVolumes = 0;
-  let totalProducts = 0;
 
   order.items.forEach(item => {
     const itemWeight = (item.quantity || 0) * (item.product?.weight || 0);
-    const totalUnits = (item.quantity || 0) * (item.product?.quantityPerVolume || 1);
     totalOrderWeight += itemWeight;
     totalVolumes += (item.quantity || 0);
-    totalProducts += (item.product?.listPrice || 0) * totalUnits;
   });
-
-  // Calculate item tax values
-  const calculateItemIPIValue = (item: any) => {
-    if (!order.withIPI) return 0;
-    
-    const ipiRate = effectiveIPIRate / 100;
-    return (item.finalPrice || 0) * ipiRate;
-  };
-
-  const calculateItemTaxSubstitutionValue = (item: any) => {
-    if (!order.taxSubstitution) return 0;
-    
-    const icmsRate = effectiveTaxRate / 100;
-    const mva = ((item.product?.mva ?? 39) / 100);
-    return (item.finalPrice || 0) * mva * icmsRate;
-  };
 
   return (
     <div className="bg-white p-4 max-w-4xl mx-auto print:p-2">
@@ -167,11 +134,10 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
           )}
           <p><span className="font-semibold">Tipo de Nota:</span> {invoiceTypeText} {halfInvoiceText}</p>
           <p><span className="font-semibold">Substituição Tributária:</span> {order.taxSubstitution ? `Sim (${effectiveTaxRate.toFixed(2)}%)` : 'Não'}</p>
-          <p><span className="font-semibold">IPI:</span> {order.withIPI ? `Sim (${effectiveIPIRate.toFixed(2)}%)` : 'Não'}</p>
         </div>
       </div>
 
-      {/* Items Table - Updated with tax columns */}
+      {/* Items Table - More compact */}
       <div className="mb-3">
         <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Itens do Pedido</h2>
         <table className="w-full border-collapse text-xs">
@@ -181,12 +147,6 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
               <th className="border p-1 text-right">Preço</th>
               <th className="border p-1 text-center">Desc.</th>
               <th className="border p-1 text-right">Final</th>
-              {order.withIPI && (
-                <th className="border p-1 text-right">IPI</th>
-              )}
-              {order.taxSubstitution && (
-                <th className="border p-1 text-right">ICMS-ST</th>
-              )}
               <th className="border p-1 text-center">Qtd.</th>
               <th className="border p-1 text-center">Unidades</th>
               <th className="border p-1 text-right">Peso</th>
@@ -197,21 +157,13 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
             {order.items.map((item, index) => {
               const totalUnits = (item.quantity || 0) * (item.product?.quantityPerVolume || 1);
               const totalWeight = (item.quantity || 0) * (item.product?.weight || 0);
-              const ipiValue = calculateItemIPIValue(item);
-              const taxValue = calculateItemTaxSubstitutionValue(item);
               
               return (
                 <tr key={item?.id || `item-${index}`}>
                   <td className="border p-1">{item?.product?.name || (item as any).productName || `Produto ${index + 1}`}</td>
-                  <td className="border p-1 text-right">{formatCurrency((item.product?.listPrice || 0))}</td>
+                  <td className="border p-1 text-right">{formatCurrency((item as any).listPrice || item?.product?.listPrice || 0)}</td>
                   <td className="border p-1 text-center">{item?.discount || 0}%</td>
                   <td className="border p-1 text-right">{formatCurrency(item?.finalPrice || 0)}</td>
-                  {order.withIPI && (
-                    <td className="border p-1 text-right">{formatCurrency(ipiValue)}</td>
-                  )}
-                  {order.taxSubstitution && (
-                    <td className="border p-1 text-right">{formatCurrency(taxValue)}</td>
-                  )}
                   <td className="border p-1 text-center">{item?.quantity || 0}</td>
                   <td className="border p-1 text-center">{totalUnits}</td>
                   <td className="border p-1 text-right">{formatWeight(totalWeight)}</td>
@@ -267,33 +219,29 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
           <p><span className="font-semibold">Total de Volumes:</span> {totalVolumes}</p>
         </div>
 
-        {/* Financial Summary - Updated with new calculations */}
+        {/* Financial Summary */}
         <div className="text-xs">
           <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Resumo Financeiro</h2>
           <table className="w-full">
             <tbody>
               <tr>
-                <td className="py-0.5">Total Produtos:</td>
-                <td className="py-0.5 text-right font-medium">{formatCurrency(order.totalProducts || totalProducts)}</td>
+                <td className="py-0.5">Subtotal:</td>
+                <td className="py-0.5 text-right font-medium">{formatCurrency(order.subtotal)}</td>
               </tr>
               <tr>
                 <td className="py-0.5">Descontos:</td>
-                <td className="py-0.5 text-right text-red-600 font-medium">-{formatCurrency((order.totalProducts || totalProducts) - order.subtotal)}</td>
-              </tr>
-              <tr>
-                <td className="py-0.5">Subtotal Pedido:</td>
-                <td className="py-0.5 text-right font-medium">{formatCurrency(order.subtotal)}</td>
+                <td className="py-0.5 text-right text-red-600 font-medium">-{formatCurrency(order.totalDiscount || 0)}</td>
               </tr>
               {order.withIPI && (order.ipiValue || 0) > 0 && (
                 <tr>
-                  <td className="py-0.5">IPI ({effectiveIPIRate.toFixed(2)}%):</td>
+                  <td className="py-0.5">IPI:</td>
                   <td className="py-0.5 text-right text-blue-600 font-medium">+{formatCurrency(order.ipiValue || 0)}</td>
                 </tr>
               )}
-              {order.taxSubstitution && (order.taxSubstitutionValue || 0) > 0 && (
+              {order.taxSubstitution && taxSubstitutionValue > 0 && (
                 <tr>
                   <td className="py-0.5">Substituição Tributária ({effectiveTaxRate.toFixed(2)}%):</td>
-                  <td className="py-0.5 text-right text-orange-600 font-medium">+{formatCurrency(order.taxSubstitutionValue || 0)}</td>
+                  <td className="py-0.5 text-right text-orange-600 font-medium">+{formatCurrency(taxSubstitutionValue)}</td>
                 </tr>
               )}
               {order.deliveryFee && order.deliveryFee > 0 && (
