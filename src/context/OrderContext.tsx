@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Order, CartItem, DiscountOption } from '@/types/types';
 import { format } from 'date-fns';
@@ -90,7 +89,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (order.applied_discounts) {
           console.log("Applied discounts from DB:", order.applied_discounts);
           if (Array.isArray(order.applied_discounts)) {
-            discounts = order.applied_discounts as DiscountOption[];
+            discounts = (order.applied_discounts as unknown) as DiscountOption[];
           }
         }
         
@@ -128,6 +127,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             name: userName
           };
         }
+        
+        processedOrder.appliedDiscounts = discounts;
         
         console.log("OrderContext - Pedido processado para usuário:", {
           orderId: processedOrder.id,
@@ -225,7 +226,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.log("Using user ID for order:", userId);
       
       // Convert appliedDiscounts to raw JSON for Supabase
-      // We need to convert the DiscountOption[] to a format that Supabase can store in JSONB
       const appliedDiscounts = newOrder.appliedDiscounts || [];
       console.log("Applied discounts to be saved:", appliedDiscounts);
       
@@ -248,7 +248,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         total: newOrder.total || 0,
         with_ipi: newOrder.withIPI || false,
         ipi_value: newOrder.ipiValue || 0,
-        applied_discounts: appliedDiscounts as any // Cast to any to satisfy TypeScript
+        applied_discounts: (appliedDiscounts as unknown) as Tables<'orders'>['applied_discounts']
       };
       
       console.log("Order data being inserted:", orderInsert);
@@ -370,7 +370,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
       }
       if (orderData.appliedDiscounts !== undefined) {
-        supabaseOrderData.applied_discounts = orderData.appliedDiscounts as any;
+        supabaseOrderData.applied_discounts = (orderData.appliedDiscounts as unknown) as Tables<'orders'>['applied_discounts'];
       }
       
       console.log("Final Supabase order data for update:", supabaseOrderData);

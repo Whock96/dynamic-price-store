@@ -1,4 +1,3 @@
-
 import { Tables } from "@/integrations/supabase/client";
 import { Product, Order, CartItem, DiscountOption, Customer, User } from "@/types/types";
 
@@ -79,7 +78,8 @@ export const supabaseOrderToAppOrder = (
   if (supabaseOrder.applied_discounts) {
     console.log("Processing discounts in adapter:", supabaseOrder.applied_discounts);
     if (Array.isArray(supabaseOrder.applied_discounts)) {
-      appliedDiscounts = supabaseOrder.applied_discounts as DiscountOption[];
+      // Safely convert the JSON data to our DiscountOption type
+      appliedDiscounts = (supabaseOrder.applied_discounts as unknown) as DiscountOption[];
     } else {
       // If it's not an array but some other JSON structure, initialize as empty array
       console.warn("Applied discounts is not an array:", supabaseOrder.applied_discounts);
