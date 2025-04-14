@@ -574,9 +574,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const taxSubstitutionValue = calculateItemTaxSubstitutionValue(item);
         
         const ipiRate = getIPIRate() / 100;
-        const itemIpiValue = withIPI && applyDiscounts ? (item.finalPrice * totalUnits * ipiRate) : 0;
+        const itemIpiValue = withIPI && applyDiscounts ? (item.finalPrice * ipiRate) : 0;
         
-        const totalWithTaxes = item.subtotal + taxSubstitutionValue + itemIpiValue;
+        const totalWithTaxes = item.finalPrice + taxSubstitutionValue + itemIpiValue;
         
         return {
           ...item,
