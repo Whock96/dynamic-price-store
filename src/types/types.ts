@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   username: string;
@@ -96,6 +95,11 @@ export interface CartItem {
   discount: number; // Individual discount percentage
   finalPrice: number; // After all discounts, without tax substitution
   subtotal: number; // (finalPrice + tax) * quantity
+  totalDiscountPercentage?: number; // Total discount including global options
+  taxSubstitutionValue?: number; // ICMS-ST value for this item
+  ipiValue?: number; // IPI value for this item
+  totalWithTaxes?: number; // Subtotal including all taxes
+  totalUnits?: number; // Total units (quantity * quantityPerVolume)
 }
 
 export interface DiscountOption {

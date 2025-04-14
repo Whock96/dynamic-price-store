@@ -69,6 +69,11 @@ export const supabaseOrderToAppOrder = (
     discount: Number(item.discount || 0),
     finalPrice: Number(item.final_price || 0),
     subtotal: Number(item.subtotal || 0),
+    totalDiscountPercentage: Number(item.total_discount_percentage || 0),
+    taxSubstitutionValue: Number(item.tax_substitution_value || 0),
+    ipiValue: Number(item.ipi_value || 0),
+    totalWithTaxes: Number(item.total_with_taxes || 0),
+    totalUnits: Number(item.total_units || (item.quantity * (item.products.quantity_per_volume || 1)))
   }));
 
   // Parse applied_discounts from JSONB to DiscountOption[] type

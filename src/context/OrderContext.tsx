@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Order, CartItem, DiscountOption } from '@/types/types';
 import { format } from 'date-fns';
@@ -278,7 +279,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           quantity: item.quantity,
           discount: item.discount || 0,
           final_price: item.finalPrice,
-          subtotal: item.subtotal
+          subtotal: item.subtotal,
+          // Add the new fields to the database insert
+          total_discount_percentage: item.totalDiscountPercentage || 0,
+          tax_substitution_value: item.taxSubstitutionValue || 0,
+          ipi_value: item.ipiValue || 0,
+          total_with_taxes: item.totalWithTaxes || 0,
+          total_units: item.totalUnits || (item.quantity * (item.product.quantityPerVolume || 1))
         }));
         
         console.log("Inserting order items:", orderItems);

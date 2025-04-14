@@ -565,10 +565,30 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log('Applied discounts for order:', appliedDiscounts);
       
+      const itemsWithCalculatedValues = items.map(item => {
+        const totalUnits = calculateTotalUnits(item);
+        const totalDiscountPercentage = getTotalDiscountPercentage(item.discount);
+        const taxSubstitutionValue = calculateItemTaxSubstitutionValue(item);
+        
+        const ipiRate = getIPIRate() / 100;
+        const itemIpiValue = withIPI && applyDiscounts ? (item.finalPrice * totalUnits * ipiRate) : 0;
+        
+        const totalWithTaxes = item.subtotal + taxSubstitutionValue + itemIpiValue;
+        
+        return {
+          ...item,
+          totalDiscountPercentage,
+          taxSubstitutionValue,
+          ipiValue: itemIpiValue,
+          totalWithTaxes,
+          totalUnits
+        };
+      });
+      
       const orderData: Partial<Order> = {
         customer,
         customerId: customer.id,
-        items,
+        items: itemsWithCalculatedValues,
         appliedDiscounts,
         deliveryLocation,
         deliveryFee,
