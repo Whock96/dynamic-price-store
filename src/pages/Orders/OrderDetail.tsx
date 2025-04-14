@@ -685,19 +685,35 @@ const OrderDetail = () => {
                   <span>{fullInvoice ? 'Nota Cheia' : 'Meia Nota'}</span>
                 </div>
                 {!fullInvoice && halfInvoicePercentage && (
-                  <div className="flex justify-between text-sm">
-                    <span>Percentual da Nota:</span>
-                    <span>{halfInvoicePercentage}%</span>
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span>Percentual da Nota:</span>
+                      <span>{halfInvoicePercentage}%</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Tipo de Meia Nota:</span>
+                      <span>{order.halfInvoiceType === 'quantity' ? 'Na Quantidade' : 'No Preço'}</span>
+                    </div>
+                  </>
+                )}
+                {taxSubstitution && taxSubstitutionValue > 0 && (
+                  <div className="flex justify-between text-sm text-orange-600">
+                    <span>Substituição Tributária (7.8%):</span>
+                    <span>+{formatCurrency(taxSubstitutionValue)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-sm">
-                  <span>Substituição Tributária:</span>
-                  <span>{taxSubstitution ? 'Sim' : 'Não'}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>IPI:</span>
-                  <span>{withIPI ? 'Sim' : 'Não'}</span>
-                </div>
+                {withIPI && ipiValue > 0 && (
+                  <div className="flex justify-between text-sm text-blue-600">
+                    <span>IPI:</span>
+                    <span>+{formatCurrency(ipiValue)}</span>
+                  </div>
+                )}
+                {deliveryFee > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span>Taxa de Entrega:</span>
+                    <span>{formatCurrency(deliveryFee)}</span>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -715,20 +731,27 @@ const OrderDetail = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Produto</TableHead>
-                <TableHead>Preço Unitário</TableHead>
-                <TableHead>Desconto</TableHead>
+                <TableHead className="w-[300px]">Produto</TableHead>
+                <TableHead>Preço Unit.</TableHead>
+                <TableHead className="text-center">Qtd.</TableHead>
+                <TableHead>Total Unid.</TableHead>
+                <TableHead>Preço Total</TableHead>
+                <TableHead>Desc.</TableHead>
                 <TableHead>Preço Final</TableHead>
-                <TableHead>Quantidade</TableHead>
-                <TableHead>Total de Unidades</TableHead>
-                <TableHead>Peso Total</TableHead>
-                <TableHead>Subtotal</TableHead>
+                <TableHead>ICMS-ST</TableHead>
+                <TableHead>IPI</TableHead>
+                <TableHead>Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {items.map((item: any, index: number) => {
                 const totalUnits = (item?.quantity || 0) * (item?.product?.quantityPerVolume || 1);
-                const totalWeight = (item?.quantity || 0) * (item?.product?.weight || 0);
+                const priceTotal = (item?.product?.listPrice || 0) * (item?.quantity || 0);
+                const finalPrice = priceTotal * (1 - (item?.discount || 0) / 100);
+                const mva = (item?.product?.mva || 39) / 100;
+                const icmsStValue = taxSubstitution ? finalPrice * mva * 0.078 : 0;
+                const ipiValue = withIPI ? finalPrice * (ipiValue / order.subtotal) : 0;
+                const total = finalPrice + icmsStValue + ipiValue;
                 
                 return (
                   <TableRow key={item?.id || `item-${index}`}>
@@ -736,12 +759,14 @@ const OrderDetail = () => {
                       {item?.product?.name || "Produto não encontrado"}
                     </TableCell>
                     <TableCell>{formatCurrency(item?.product?.listPrice || 0)}</TableCell>
-                    <TableCell>{item?.discount || 0}%</TableCell>
-                    <TableCell>{formatCurrency(item?.finalPrice || 0)}</TableCell>
-                    <TableCell>{item?.quantity || 0}</TableCell>
+                    <TableCell className="text-center">{item?.quantity || 0}</TableCell>
                     <TableCell>{totalUnits}</TableCell>
-                    <TableCell>{formatWeight(totalWeight)}</TableCell>
-                    <TableCell>{formatCurrency(item?.subtotal || 0)}</TableCell>
+                    <TableCell>{formatCurrency(priceTotal)}</TableCell>
+                    <TableCell>{item?.discount || 0}%</TableCell>
+                    <TableCell>{formatCurrency(finalPrice)}</TableCell>
+                    <TableCell>{formatCurrency(icmsStValue)}</TableCell>
+                    <TableCell>{formatCurrency(ipiValue)}</TableCell>
+                    <TableCell>{formatCurrency(total)}</TableCell>
                   </TableRow>
                 );
               })}
@@ -869,6 +894,9 @@ const OrderDetail = () => {
                     )}
                     {transportCompany.email && (
                       <p className="text-sm text-gray-500">Email: {transportCompany.email}</p>
+                    )}
+                    {transportCompany.whatsapp && (
+                      <p className="text-sm text-gray-500">WhatsApp: {transportCompany.whatsapp}</p>
                     )}
                   </div>
                 ) : (
