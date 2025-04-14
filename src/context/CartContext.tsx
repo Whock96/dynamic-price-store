@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
@@ -242,12 +241,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const netDiscount = applyDiscounts ? itemDiscount + globalDiscountPercentage : itemDiscount;
       
       const finalPrice = listPrice * (1 - (netDiscount / 100));
-      
-      const taxPerUnit = calculateItemTaxSubstitutionValue(item);
-      const ipiPerUnit = withIPI && applyDiscounts ? finalPrice * (getIPIRate() / 100) : 0;
-      
       const totalUnits = calculateTotalUnits(item);
-      const subtotal = (finalPrice + taxPerUnit + ipiPerUnit) * totalUnits;
+      const subtotal = finalPrice * totalUnits; // Changed: removed taxes from subtotal
       
       return {
         ...item,
@@ -277,7 +272,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const taxPerUnit = finalPrice * mva * taxRate;
           
           const totalUnits = calculateTotalUnits(item);
-          const subtotal = (finalPrice + taxPerUnit) * totalUnits;
+          const subtotal = finalPrice * totalUnits; // Changed: simplified subtotal calculation
           
           return {
             ...item,
@@ -299,7 +294,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const taxPerUnit = finalPrice * mva * taxRate;
           
           const totalUnits = calculateTotalUnits(item);
-          const subtotal = (finalPrice + taxPerUnit) * totalUnits;
+          const subtotal = finalPrice * totalUnits; // Changed: simplified subtotal calculation
           
           return {
             ...item,
@@ -387,10 +382,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const netDiscount = applyDiscounts ? itemDiscount + globalDiscount : itemDiscount;
       const finalPrice = product.listPrice * (1 - (netDiscount / 100));
       
-      const taxPerUnit = calculateItemTaxSubstitutionValue(existingItem);
-      const ipiPerUnit = withIPI && applyDiscounts ? finalPrice * (getIPIRate() / 100) : 0;
-      
-      const subtotal = (finalPrice + taxPerUnit + ipiPerUnit) * totalUnits;
+      const subtotal = finalPrice * totalUnits; // Changed: removed taxes from subtotal
       
       newItems[existingItemIndex] = {
         ...existingItem,
@@ -417,13 +409,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         quantity,
         discount: initialDiscount,
         finalPrice,
-        subtotal: 0 // Will be calculated properly after adding
+        subtotal: finalPrice * totalUnits // Changed: simplified subtotal calculation
       };
-      
-      const taxPerUnit = calculateItemTaxSubstitutionValue(newItem);
-      const ipiPerUnit = withIPI && applyDiscounts ? finalPrice * (getIPIRate() / 100) : 0;
-      
-      const subtotal = (finalPrice + taxPerUnit + ipiPerUnit) * totalUnits;
       
       console.log("Valores calculados:", {
         listPrice,
@@ -431,13 +418,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         globalDiscount,
         netDiscount,
         finalPrice,
-        taxPerUnit,
-        subtotal,
         quantityPerVolume: product.quantityPerVolume || 1,
         totalUnits
       });
-      
-      newItem.subtotal = subtotal;
       
       setItems(prevItems => [...prevItems, newItem]);
       toast.success(`${product.name} adicionado ao carrinho`);
@@ -458,11 +441,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setItems(prevItems => prevItems.map(item => {
       if (item.id === id) {
         const totalUnits = quantity * (item.product.quantityPerVolume || 1);
-        
-        const taxPerUnit = calculateItemTaxSubstitutionValue(item);
-        const ipiPerUnit = withIPI && applyDiscounts ? item.finalPrice * (getIPIRate() / 100) : 0;
-        
-        const subtotal = (item.finalPrice + taxPerUnit + ipiPerUnit) * totalUnits;
+        const subtotal = item.finalPrice * totalUnits; // Changed: removed taxes from subtotal
         
         return { 
           ...item, 
@@ -491,11 +470,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const netDiscount = applyDiscounts ? appliedDiscount + globalDiscount : appliedDiscount;
         const finalPrice = item.product.listPrice * (1 - netDiscount / 100);
         
-        const taxPerUnit = calculateItemTaxSubstitutionValue(item);
-        const ipiPerUnit = withIPI && applyDiscounts ? finalPrice * (getIPIRate() / 100) : 0;
-        
         const totalUnits = item.quantity * (item.product.quantityPerVolume || 1);
-        const subtotal = (finalPrice + taxPerUnit + ipiPerUnit) * totalUnits;
+        const subtotal = finalPrice * totalUnits; // Changed: simplified subtotal calculation
         
         return {
           ...item,
