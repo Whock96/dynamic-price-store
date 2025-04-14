@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
@@ -149,7 +148,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const totalItems = items.reduce((total, item) => total + item.quantity, 0);
   
-  const subtotal = items.reduce((total, item) => {
+  const rawSubtotal = items.reduce((total, item) => {
     const totalUnits = calculateTotalUnits(item);
     return total + (item.product.listPrice * totalUnits);
   }, 0);
@@ -206,50 +205,48 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const taxOption = discountOptions.find(opt => opt.id === 'icms-st');
     if (!taxOption) return 0;
     
-    const icmsStRate = taxOption.value / 100;
-    const mva = (item.product.mva ?? 39) / 100;
-    const basePrice = item.finalPrice;
-    
-    let taxValue = basePrice * mva * icmsStRate;
-    
+    let icmsRate = taxOption.value / 100;
     if (isDiscountOptionSelected('meia-nota')) {
-      taxValue = taxValue * (halfInvoicePercentage / 100);
+      icmsRate = icmsRate * (halfInvoicePercentage / 100);
     }
     
-    return taxValue;
+    const mva = (item.product.mva ?? 39) / 100;
+    
+    return item.finalPrice * mva * icmsRate;
   };
 
   const calculateIPIValue = () => {
     if (!withIPI || !applyDiscounts || !settings) return 0;
     
-    const standardRate = settings.ipiRate / 100;
+    let ipiRate = settings.ipiRate / 100;
+    
+    if (isDiscountOptionSelected('meia-nota')) {
+      ipiRate = ipiRate * (halfInvoicePercentage / 100);
+    }
     
     return items.reduce((total, item) => {
       const totalUnits = calculateTotalUnits(item);
-      
-      let adjustedRate = standardRate;
-      if (isDiscountOptionSelected('meia-nota')) {
-        adjustedRate = standardRate * (halfInvoicePercentage / 100);
-      }
-      
-      return total + (item.finalPrice * adjustedRate * totalUnits);
+      return total + (item.finalPrice * totalUnits * ipiRate);
     }, 0);
   };
 
   const recalculateCart = () => {
-    const discountPercentage = getNetDiscountPercentage();
+    const globalDiscountPercentage = getNetDiscountPercentage();
     
     const updatedItems = items.map(item => {
-      let itemDiscount = item.discount || 0;
-      let netDiscount = applyDiscounts ? itemDiscount + discountPercentage : itemDiscount;
+      const listPrice = item.product.listPrice;
       
-      let finalPrice = item.product.listPrice * (1 - (netDiscount / 100));
+      const itemDiscount = item.discount || 0;
+      const netDiscount = applyDiscounts ? itemDiscount + globalDiscountPercentage : itemDiscount;
+      
+      const finalPrice = listPrice * (1 - (netDiscount / 100));
+      
+      const taxPerUnit = applyDiscounts && isDiscountOptionSelected('icms-st') ? 
+        finalPrice * (item.product.mva / 100) * (getTaxSubstitutionRate() / 100) : 0;
+      
       const totalUnits = calculateTotalUnits(item);
       
-      const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('icms-st') ? 
-        calculateItemTaxSubstitutionValue(item) : 0;
-      
-      const subtotal = (finalPrice + taxValuePerUnit) * totalUnits;
+      const subtotal = (finalPrice + taxPerUnit) * totalUnits;
       
       return {
         ...item,
@@ -269,18 +266,21 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (customer) {
       setItems(prevItems => 
         prevItems.map(item => {
-          const finalPrice = item.product.listPrice * (1 - customer.defaultDiscount / 100);
+          const defaultDiscount = customer.defaultDiscount || 0;
+          const finalPrice = item.product.listPrice * (1 - defaultDiscount / 100);
           
-          const taxValue = applyDiscounts && isDiscountOptionSelected('icms-st') ? 
-            calculateItemTaxSubstitutionValue({...item, finalPrice}) : 0;
+          const taxRate = applyDiscounts && isDiscountOptionSelected('icms-st') ? 
+            getTaxSubstitutionRate() / 100 : 0;
+          
+          const mva = (item.product.mva ?? 39) / 100;
+          const taxPerUnit = finalPrice * mva * taxRate;
           
           const totalUnits = calculateTotalUnits(item);
-          
-          const subtotal = (finalPrice + taxValue) * totalUnits;
+          const subtotal = (finalPrice + taxPerUnit) * totalUnits;
           
           return {
             ...item,
-            discount: customer.defaultDiscount,
+            discount: defaultDiscount,
             finalPrice,
             subtotal
           };
@@ -291,12 +291,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         prevItems.map(item => {
           const finalPrice = item.product.listPrice;
           
-          const taxValue = applyDiscounts && isDiscountOptionSelected('icms-st') ? 
-            calculateItemTaxSubstitutionValue({...item, finalPrice}) : 0;
+          const taxRate = applyDiscounts && isDiscountOptionSelected('icms-st') ? 
+            getTaxSubstitutionRate() / 100 : 0;
+          
+          const mva = (item.product.mva ?? 39) / 100;
+          const taxPerUnit = finalPrice * mva * taxRate;
           
           const totalUnits = calculateTotalUnits(item);
-          
-          const subtotal = (finalPrice + taxValue) * totalUnits;
+          const subtotal = (finalPrice + taxPerUnit) * totalUnits;
           
           return {
             ...item,
@@ -327,14 +329,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const totalDiscount = items.reduce((total, item) => {
     const totalUnits = calculateTotalUnits(item);
     const fullPrice = item.product.listPrice * totalUnits;
-    const discountValue = fullPrice - (item.finalPrice * totalUnits);
-    return total + discountValue;
+    const discountedPrice = item.finalPrice * totalUnits;
+    return total + (fullPrice - discountedPrice);
   }, 0);
 
   const taxSubstitutionValue = calculateTaxSubstitutionValue();
+  
   const ipiValue = calculateIPIValue();
   
-  const total = items.reduce((total, item) => total + item.subtotal, 0) + deliveryFee + ipiValue;
+  const subtotal = items.reduce((total, item) => {
+    const totalUnits = calculateTotalUnits(item);
+    return total + (item.finalPrice * totalUnits);
+  }, 0);
+  
+  const total = subtotal + taxSubstitutionValue + ipiValue + deliveryFee;
 
   const toggleApplyDiscounts = () => {
     setApplyDiscounts(prev => !prev);
@@ -371,16 +379,22 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const newItems = [...items];
       const existingItem = newItems[existingItemIndex];
       const newQuantity = existingItem.quantity + quantity;
-      const totalUnits = newQuantity * (existingItem.product.quantityPerVolume || 1);
       
-      const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('icms-st') ? 
-        calculateItemTaxSubstitutionValue({...existingItem, quantity: newQuantity}) : 0;
+      const totalUnits = newQuantity * (product.quantityPerVolume || 1);
+      const itemDiscount = existingItem.discount || 0;
+      const globalDiscount = getNetDiscountPercentage();
+      const netDiscount = applyDiscounts ? itemDiscount + globalDiscount : itemDiscount;
+      const finalPrice = product.listPrice * (1 - (netDiscount / 100));
       
-      const subtotal = (existingItem.finalPrice + taxValuePerUnit) * totalUnits;
+      const taxPerUnit = applyDiscounts && isDiscountOptionSelected('icms-st') ? 
+        finalPrice * (product.mva / 100) * (getTaxSubstitutionRate() / 100) : 0;
+      
+      const subtotal = (finalPrice + taxPerUnit) * totalUnits;
       
       newItems[existingItemIndex] = {
         ...existingItem,
         quantity: newQuantity,
+        finalPrice,
         subtotal
       };
       
@@ -389,34 +403,24 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else {
       const listPrice = Number(product.listPrice) || 0;
       const initialDiscount = customer ? Number(customer.defaultDiscount) || 0 : 0;
-      const discountPercentage = getNetDiscountPercentage();
-      const combinedDiscount = initialDiscount + discountPercentage;
+      const globalDiscount = getNetDiscountPercentage();
+      const netDiscount = applyDiscounts ? initialDiscount + globalDiscount : initialDiscount;
       
-      const finalPrice = listPrice * (1 - combinedDiscount / 100);
+      const finalPrice = listPrice * (1 - netDiscount / 100);
       const totalUnits = quantity * (product.quantityPerVolume || 1);
       
-      const tempItem: CartItem = {
-        id: '',
-        productId: product.id,
-        product,
-        quantity,
-        discount: initialDiscount,
-        finalPrice,
-        subtotal: 0
-      };
+      const taxPerUnit = applyDiscounts && isDiscountOptionSelected('icms-st') ? 
+        finalPrice * (product.mva / 100) * (getTaxSubstitutionRate() / 100) : 0;
       
-      const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('icms-st') ? 
-        calculateItemTaxSubstitutionValue(tempItem) : 0;
-      
-      const subtotal = (finalPrice + taxValuePerUnit) * totalUnits;
+      const subtotal = (finalPrice + taxPerUnit) * totalUnits;
       
       console.log("Valores calculados:", {
         listPrice,
         initialDiscount,
-        discountPercentage,
-        combinedDiscount,
+        globalDiscount,
+        netDiscount,
         finalPrice,
-        taxValuePerUnit,
+        taxPerUnit,
         subtotal,
         quantityPerVolume: product.quantityPerVolume || 1,
         totalUnits
@@ -452,10 +456,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (item.id === id) {
         const totalUnits = quantity * (item.product.quantityPerVolume || 1);
         
-        const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('icms-st') ? 
-          calculateItemTaxSubstitutionValue({...item, quantity}) : 0;
+        const taxPerUnit = applyDiscounts && isDiscountOptionSelected('icms-st') ? 
+          item.finalPrice * (item.product.mva / 100) * (getTaxSubstitutionRate() / 100) : 0;
         
-        const subtotal = (item.finalPrice + taxValuePerUnit) * totalUnits;
+        const subtotal = (item.finalPrice + taxPerUnit) * totalUnits;
         
         return { 
           ...item, 
@@ -477,21 +481,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       appliedDiscount = customer.maxDiscount;
     }
     
-    const discountPercentage = getNetDiscountPercentage();
+    const globalDiscount = getNetDiscountPercentage();
     
     setItems(prevItems => prevItems.map(item => {
       if (item.id === id) {
-        const combinedDiscount = appliedDiscount + discountPercentage;
+        const netDiscount = applyDiscounts ? appliedDiscount + globalDiscount : appliedDiscount;
+        const finalPrice = item.product.listPrice * (1 - netDiscount / 100);
         
-        const finalPrice = item.product.listPrice * (1 - combinedDiscount / 100);
+        const taxPerUnit = applyDiscounts && isDiscountOptionSelected('icms-st') ? 
+          finalPrice * (item.product.mva / 100) * (getTaxSubstitutionRate() / 100) : 0;
+        
         const totalUnits = item.quantity * (item.product.quantityPerVolume || 1);
-        
-        const updatedItem = {...item, finalPrice, discount: appliedDiscount};
-        
-        const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('icms-st') ? 
-          calculateItemTaxSubstitutionValue(updatedItem) : 0;
-        
-        const subtotal = (finalPrice + taxValuePerUnit) * totalUnits;
+        const subtotal = (finalPrice + taxPerUnit) * totalUnits;
         
         return {
           ...item,
@@ -522,7 +523,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         return prev.filter(optId => optId !== id);
       } else {
-        // Special handling for IPI
         if (id === 'ipi') {
           setWithIPI(true);
         }
@@ -559,32 +559,30 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       const paymentMethodValue: 'cash' | 'credit' = isDiscountOptionSelected('a-vista') ? 'cash' : 'credit';
       
-      // Convert selected discount options to full discount objects
-      const appliedDiscounts = selectedDiscountOptions.map(id => {
-        const option = discountOptions.find(opt => opt.id === id);
-        if (!option) return null;
-        
-        // Create a formatted discount object with additional context for saving
-        // This will be stored as JSONB in the database
-        return {
-          id: option.id,
-          name: option.name,
-          description: option.description,
-          value: option.value,
-          type: option.type,
-          isActive: option.isActive,
-          // Add additional context for specific discount types
-          context: id === 'meia-nota' ? {
-            halfInvoicePercentage,
-            halfInvoiceType
-          } : id === 'retirada' ? {
-            deliveryLocation,
-            transportCompanyId: selectedTransportCompany
-          } : id === 'a-vista' ? {
-            paymentTerms: !isDiscountOptionSelected('a-vista') ? paymentTerms : undefined
-          } : {}
-        };
-      }).filter(Boolean);
+      const appliedDiscounts = selectedDiscountOptions
+        .map(id => {
+          const option = discountOptions.find(opt => opt.id === id);
+          if (!option) return null;
+          
+          return {
+            id: option.id,
+            name: option.name,
+            description: option.description,
+            value: option.value,
+            type: option.type,
+            isActive: option.isActive,
+            context: id === 'meia-nota' ? {
+              halfInvoicePercentage,
+              halfInvoiceType
+            } : id === 'retirada' ? {
+              deliveryLocation,
+              transportCompanyId: selectedTransportCompany
+            } : id === 'a-vista' ? {
+              paymentTerms: !isDiscountOptionSelected('a-vista') ? paymentTerms : undefined
+            } : {}
+          };
+        })
+        .filter(Boolean) as DiscountOption[];
       
       console.log('Applied discounts for order:', appliedDiscounts);
       

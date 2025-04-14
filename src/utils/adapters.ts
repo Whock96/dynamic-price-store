@@ -48,7 +48,7 @@ export const supabaseOrderToAppOrder = (
       id: item.products.id,
       name: item.products.name,
       description: item.products.description || '',
-      listPrice: item.products.list_price,
+      listPrice: Number(item.products.list_price),
       weight: item.products.weight,
       quantity: item.products.quantity,
       quantityPerVolume: item.products.quantity_per_volume,
@@ -71,18 +71,20 @@ export const supabaseOrderToAppOrder = (
     subtotal: Number(item.subtotal || 0),
   }));
 
-  // Use the applied_discounts directly from the JSONB column
-  // Ensure we're processing it as an array
+  // Parse applied_discounts from JSONB to DiscountOption[] type
   let appliedDiscounts: DiscountOption[] = [];
   
   if (supabaseOrder.applied_discounts) {
-    console.log("Processing discounts in adapter:", supabaseOrder.applied_discounts);
-    if (Array.isArray(supabaseOrder.applied_discounts)) {
-      // Safely convert the JSON data to our DiscountOption type
-      appliedDiscounts = (supabaseOrder.applied_discounts as unknown) as DiscountOption[];
-    } else {
-      // If it's not an array but some other JSON structure, initialize as empty array
-      console.warn("Applied discounts is not an array:", supabaseOrder.applied_discounts);
+    try {
+      // Ensure we're handling the applied_discounts correctly
+      if (Array.isArray(supabaseOrder.applied_discounts)) {
+        // We need to cast this as unknown first and then as DiscountOption[] to satisfy TypeScript
+        appliedDiscounts = (supabaseOrder.applied_discounts as unknown) as DiscountOption[];
+      } else {
+        console.warn("Applied discounts is not an array:", supabaseOrder.applied_discounts);
+      }
+    } catch (error) {
+      console.error("Error parsing applied discounts:", error);
     }
   }
 

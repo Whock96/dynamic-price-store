@@ -245,13 +245,13 @@ const Cart = () => {
   const ipiValue = calculateIPIValue();
   
   const getTaxSubstitutionRate = () => {
-    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
+    if (!isDiscountOptionSelected('icms-st') || !applyDiscounts) return 0;
     
-    const taxOption = discountOptions.find(opt => opt.id === '3');
+    const taxOption = discountOptions.find(opt => opt.id === 'icms-st');
     if (!taxOption) return 0;
     
-    if (isDiscountOptionSelected('2')) {
-      return taxOption.value * halfInvoicePercentage / 100;
+    if (isDiscountOptionSelected('meia-nota')) {
+      return taxOption.value * (halfInvoicePercentage / 100);
     }
     
     return taxOption.value;
@@ -260,12 +260,12 @@ const Cart = () => {
   const effectiveTaxRate = getTaxSubstitutionRate();
   
   const getIPIRate = () => {
-    if (!withIPI || !applyDiscounts) return 0;
+    if (!withIPI || !applyDiscounts || !settings) return 0;
     
     const ipiRate = settings ? settings.ipiRate : 10;
     
-    if (isDiscountOptionSelected('2')) {
-      return ipiRate * halfInvoicePercentage / 100;
+    if (isDiscountOptionSelected('meia-nota')) {
+      return ipiRate * (halfInvoicePercentage / 100);
     }
     
     return ipiRate;
