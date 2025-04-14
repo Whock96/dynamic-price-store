@@ -432,6 +432,7 @@ const OrderDetail = () => {
   });
   
   const taxSubstitutionValue = taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
+  const ipiValue = withIPI ? (order.ipiValue || 0) : 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -642,14 +643,18 @@ const OrderDetail = () => {
                 <span>Descontos:</span>
                 <span>-{formatCurrency(totalDiscount)}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span>Substituição Tributária:</span>
-                <span>{taxSubstitution ? 'Sim' : 'Não'}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>IPI:</span>
-                <span>{withIPI ? 'Sim' : 'Não'}</span>
-              </div>
+              {taxSubstitution && (
+                <div className="flex justify-between text-sm text-amber-600">
+                  <span>Substituição Tributária (7.8%):</span>
+                  <span>+{formatCurrency(taxSubstitutionValue)}</span>
+                </div>
+              )}
+              {withIPI && (
+                <div className="flex justify-between text-sm text-amber-600">
+                  <span>IPI:</span>
+                  <span>+{formatCurrency(ipiValue)}</span>
+                </div>
+              )}
               {deliveryFee > 0 && (
                 <div className="flex justify-between text-sm">
                   <span>Taxa de Entrega:</span>
@@ -694,11 +699,11 @@ const OrderDetail = () => {
                 )}
                 <div className="flex justify-between text-sm">
                   <span>Substituição Tributária:</span>
-                  <span>{taxSubstitution ? 'Sim' : 'Não'}</span>
+                  <span>{taxSubstitution ? 'sim' : 'não'}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>IPI:</span>
-                  <span>{withIPI ? 'Sim' : 'Não'}</span>
+                  <span>{withIPI ? 'sim' : 'não'}</span>
                 </div>
                 {deliveryFee > 0 && (
                   <div className="flex justify-between text-sm">
