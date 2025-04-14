@@ -529,17 +529,24 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     try {
       const shippingValue: 'pickup' | 'delivery' = isDiscountOptionSelected('1') ? 'pickup' : 'delivery';
-      
       const paymentMethodValue: 'cash' | 'credit' = isDiscountOptionSelected('4') ? 'cash' : 'credit';
+      
+      const selectedDiscountData = discountOptions
+        .filter(option => selectedDiscountOptions.includes(option.id))
+        .map(option => ({
+          id: option.id,
+          name: option.name,
+          description: option.description,
+          value: option.value,
+          type: option.type,
+          isActive: true
+        }));
       
       const orderData: Partial<Order> = {
         customer,
         customerId: customer.id,
         items,
-        appliedDiscounts: selectedDiscountOptions.map(id => {
-          const option = discountOptions.find(opt => opt.id === id);
-          return option || null;
-        }).filter(Boolean) as DiscountOption[],
+        appliedDiscounts: selectedDiscountData,
         deliveryLocation,
         deliveryFee,
         halfInvoicePercentage: isDiscountOptionSelected('2') ? halfInvoicePercentage : undefined,
