@@ -737,7 +737,7 @@ const OrderDetail = () => {
               <TableRow>
                 <TableHead>Produto</TableHead>
                 <TableHead>Preço Unitário</TableHead>
-                <TableHead>Desconto (%)</TableHead>
+                <TableHead>Desconto Total (%)</TableHead>
                 <TableHead>Preço Final</TableHead>
                 <TableHead>Substituição Tributária</TableHead>
                 <TableHead>IPI</TableHead>
@@ -748,32 +748,22 @@ const OrderDetail = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((item: any, index: number) => {
-                const totalUnits = (item?.quantity || 0) * (item?.product?.quantityPerVolume || 1);
-                const priceTotal = (item?.product?.listPrice || 0) * (item?.quantity || 0);
-                const finalPrice = priceTotal * (1 - (item?.discount || 0) / 100);
-                const mva = (item?.product?.mva || 39) / 100;
-                const icmsStValue = taxSubstitution ? finalPrice * mva * 0.078 : 0;
-                const itemIpiValue = withIPI ? finalPrice * (ipiValue / order.subtotal) : 0;
-                const totalWithTaxes = finalPrice + icmsStValue + itemIpiValue;
-                
-                return (
-                  <TableRow key={item?.id || `item-${index}`}>
-                    <TableCell className="font-medium">
-                      {item?.product?.name || "Produto não encontrado"}
-                    </TableCell>
-                    <TableCell>{formatCurrency(item?.product?.listPrice || 0)}</TableCell>
-                    <TableCell>{item?.discount || 0}%</TableCell>
-                    <TableCell>{formatCurrency(finalPrice)}</TableCell>
-                    <TableCell>{formatCurrency(icmsStValue)}</TableCell>
-                    <TableCell>{formatCurrency(itemIpiValue)}</TableCell>
-                    <TableCell>{formatCurrency(totalWithTaxes)}</TableCell>
-                    <TableCell>{item?.quantity || 0}</TableCell>
-                    <TableCell>{totalUnits}</TableCell>
-                    <TableCell>{formatCurrency(item?.subtotal || 0)}</TableCell>
-                  </TableRow>
-                );
-              })}
+              {items.map((item: any, index: number) => (
+                <TableRow key={item?.id || `item-${index}`}>
+                  <TableCell className="font-medium">
+                    {item?.product?.name || "Produto não encontrado"}
+                  </TableCell>
+                  <TableCell>{formatCurrency(item?.product?.listPrice || 0)}</TableCell>
+                  <TableCell>{item?.totalDiscountPercentage || item?.discount || 0}%</TableCell>
+                  <TableCell>{formatCurrency(item?.finalPrice || 0)}</TableCell>
+                  <TableCell>{formatCurrency(item?.taxSubstitutionValue || 0)}</TableCell>
+                  <TableCell>{formatCurrency(item?.ipiValue || 0)}</TableCell>
+                  <TableCell>{formatCurrency(item?.totalWithTaxes || 0)}</TableCell>
+                  <TableCell>{item?.quantity || 0}</TableCell>
+                  <TableCell>{item?.totalUnits || 0}</TableCell>
+                  <TableCell>{formatCurrency(item?.subtotal || 0)}</TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
           

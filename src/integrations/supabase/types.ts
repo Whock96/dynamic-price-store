@@ -239,30 +239,45 @@ export type Database = {
           discount: number
           final_price: number
           id: string
+          ipi_value: number | null
           order_id: string
           product_id: string
           quantity: number
           subtotal: number
+          tax_substitution_value: number | null
+          total_discount_percentage: number | null
+          total_units: number | null
+          total_with_taxes: number | null
         }
         Insert: {
           created_at?: string
           discount?: number
           final_price?: number
           id?: string
+          ipi_value?: number | null
           order_id: string
           product_id: string
           quantity?: number
           subtotal?: number
+          tax_substitution_value?: number | null
+          total_discount_percentage?: number | null
+          total_units?: number | null
+          total_with_taxes?: number | null
         }
         Update: {
           created_at?: string
           discount?: number
           final_price?: number
           id?: string
+          ipi_value?: number | null
           order_id?: string
           product_id?: string
           quantity?: number
           subtotal?: number
+          tax_substitution_value?: number | null
+          total_discount_percentage?: number | null
+          total_units?: number | null
+          total_with_taxes?: number | null
         }
         Relationships: [
           {
