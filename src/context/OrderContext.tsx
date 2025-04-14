@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Order, CartItem } from '@/types/types';
 import { format } from 'date-fns';
@@ -85,7 +84,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           `)
           .eq('order_id', order.id);
         
-        // Process discounts from the applied_discounts JSONB field if it exists
         let discounts = [];
         if (order.applied_discounts) {
           console.log("Applied discounts from DB:", order.applied_discounts);
@@ -95,7 +93,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         let userName = null;
         if (order.user_id) {
           console.log("OrderContext - Verificando ID de usuário do pedido:", order.user_id, "(tipo:", typeof order.user_id, ")");
-
+          
           if (user && String(user.id) === String(order.user_id)) {
             userName = user.name;
             console.log("OrderContext - Usando nome do usuário atual para o pedido:", userName);
@@ -173,7 +171,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setOrders(filteredOrders);
       console.log(`Loaded ${filteredOrders.length} orders from Supabase`);
     } catch (error) {
-      console.error('Error loading orders from Supabase:', error);
+      console.error('Error loading orders:', error);
       toast.error('Erro ao carregar pedidos');
     } finally {
       setIsLoading(false);
@@ -222,7 +220,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.log("Current user information:", user);
       console.log("Using user ID for order:", userId);
       
-      // Store applied discounts directly in the order
       const appliedDiscounts = newOrder.appliedDiscounts || [];
       console.log("Applied discounts to be saved:", appliedDiscounts);
       
@@ -358,7 +355,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (orderData.ipiValue !== undefined) supabaseOrderData.ipi_value = orderData.ipiValue;
       if (orderData.userId !== undefined) supabaseOrderData.user_id = orderData.userId;
       if (orderData.transportCompanyId !== undefined) {
-        // If transportCompanyId is 'none', set it to null in the database
         if (orderData.transportCompanyId === 'none') {
           supabaseOrderData.transport_company_id = null;
           console.log("Setting transport_company_id to null");

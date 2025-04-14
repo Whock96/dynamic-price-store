@@ -71,8 +71,8 @@ export const supabaseOrderToAppOrder = (
     subtotal: Number(item.subtotal || 0),
   }));
 
-  // Use the discounts directly from the parameter or from the applied_discounts field if available
-  const appliedDiscounts = discounts || supabaseOrder.applied_discounts || [];
+  // Use the applied_discounts directly from the JSONB column
+  const appliedDiscounts = supabaseOrder.applied_discounts || [];
   
   console.log("Processing discounts in adapter:", appliedDiscounts);
 

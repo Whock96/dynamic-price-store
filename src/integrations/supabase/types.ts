@@ -283,6 +283,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          applied_discounts: Json | null
           created_at: string
           customer_id: string
           delivery_fee: number | null
@@ -308,6 +309,7 @@ export type Database = {
           with_ipi: boolean | null
         }
         Insert: {
+          applied_discounts?: Json | null
           created_at?: string
           customer_id: string
           delivery_fee?: number | null
@@ -333,6 +335,7 @@ export type Database = {
           with_ipi?: boolean | null
         }
         Update: {
+          applied_discounts?: Json | null
           created_at?: string
           customer_id?: string
           delivery_fee?: number | null
