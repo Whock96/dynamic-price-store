@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
@@ -386,7 +387,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const netDiscount = applyDiscounts ? itemDiscount + globalDiscount : itemDiscount;
       const finalPrice = product.listPrice * (1 - (netDiscount / 100));
       
-      const taxPerUnit = calculateItemTaxSubstitutionValue(item);
+      const taxPerUnit = calculateItemTaxSubstitutionValue(existingItem);
       const ipiPerUnit = withIPI && applyDiscounts ? finalPrice * (getIPIRate() / 100) : 0;
       
       const subtotal = (finalPrice + taxPerUnit + ipiPerUnit) * totalUnits;
@@ -409,7 +410,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const finalPrice = listPrice * (1 - netDiscount / 100);
       const totalUnits = quantity * (product.quantityPerVolume || 1);
       
-      const taxPerUnit = calculateItemTaxSubstitutionValue(item);
+      const newItem: CartItem = {
+        id: Date.now().toString(),
+        productId: product.id,
+        product: { ...product },
+        quantity,
+        discount: initialDiscount,
+        finalPrice,
+        subtotal: 0 // Will be calculated properly after adding
+      };
+      
+      const taxPerUnit = calculateItemTaxSubstitutionValue(newItem);
       const ipiPerUnit = withIPI && applyDiscounts ? finalPrice * (getIPIRate() / 100) : 0;
       
       const subtotal = (finalPrice + taxPerUnit + ipiPerUnit) * totalUnits;
@@ -426,15 +437,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         totalUnits
       });
       
-      const newItem: CartItem = {
-        id: Date.now().toString(),
-        productId: product.id,
-        product: { ...product },
-        quantity,
-        discount: initialDiscount,
-        finalPrice,
-        subtotal
-      };
+      newItem.subtotal = subtotal;
       
       setItems(prevItems => [...prevItems, newItem]);
       toast.success(`${product.name} adicionado ao carrinho`);
