@@ -305,24 +305,27 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         console.log("Order items inserted successfully");
       }
       
+      // Salvar os descontos aplicados diretamente como JSON no pedido
       if (newOrder.appliedDiscounts && newOrder.appliedDiscounts.length > 0) {
-        const orderDiscounts = newOrder.appliedDiscounts.map(discount => ({
-          order_id: orderData.id,
-          discount_id: discount.id
-        }));
+        // Armazenar os descontos aplicados como uma coluna JSON no pedido
+        const appliedDiscountsString = JSON.stringify(newOrder.appliedDiscounts);
         
-        console.log("Inserting order discounts:", orderDiscounts);
+        console.log("Storing applied discounts as JSON:", appliedDiscountsString);
         
-        const { error: discountsError } = await supabase
-          .from('order_discounts')
-          .insert(orderDiscounts);
+        // Atualizar o pedido com os descontos aplicados como JSON
+        const { error: updateError } = await supabase
+          .from('orders')
+          .update({ 
+            applied_discounts: appliedDiscountsString 
+          })
+          .eq('id', orderData.id);
           
-        if (discountsError) {
-          console.error("Order discounts insert error:", discountsError);
-          throw discountsError;
+        if (updateError) {
+          console.error("Error storing applied discounts:", updateError);
+          console.warn("Continuing despite error saving discount details");
+        } else {
+          console.log("Applied discounts stored successfully");
         }
-        
-        console.log("Order discounts inserted successfully");
       }
       
       await fetchOrders();

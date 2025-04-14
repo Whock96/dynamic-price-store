@@ -82,7 +82,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (settings) {
       const updatedDiscountOptions: DiscountOption[] = [
         {
-          id: '1',
+          id: 'pickup-discount',
           name: 'Retirada',
           description: 'Desconto para retirada na loja',
           value: settings.pickup,
@@ -90,7 +90,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isActive: true,
         },
         {
-          id: '2',
+          id: 'half-invoice-discount',
           name: 'Meia nota',
           description: 'Desconto para meia nota fiscal',
           value: settings.halfInvoice,
@@ -98,7 +98,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isActive: true,
         },
         {
-          id: '3',
+          id: 'tax-substitution-surcharge',
           name: 'Substituição tributária',
           description: 'Acréscimo para substituição tributária',
           value: settings.taxSubstitution,
@@ -106,7 +106,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isActive: true,
         },
         {
-          id: '4',
+          id: 'cash-payment-discount',
           name: 'A Vista',
           description: 'Desconto para pagamento à vista',
           value: settings.cashPayment,
@@ -240,7 +240,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const totalUnits = calculateTotalUnits(item);
       
       const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('3') ? 
-        calculateItemTaxSubstitutionValue(item) : 0;
+        calculateItemTaxSubstitutionValue({...item, finalPrice}) : 0;
       
       const subtotal = (finalPrice + taxValuePerUnit) * totalUnits;
       
@@ -528,11 +528,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     try {
-      const shippingValue: 'pickup' | 'delivery' = isDiscountOptionSelected('1') ? 'pickup' : 'delivery';
-      const paymentMethodValue: 'cash' | 'credit' = isDiscountOptionSelected('4') ? 'cash' : 'credit';
+      const shippingValue: 'pickup' | 'delivery' = isDiscountOptionSelected('pickup-discount') ? 'pickup' : 'delivery';
+      const paymentMethodValue: 'cash' | 'credit' = isDiscountOptionSelected('cash-payment-discount') ? 'cash' : 'credit';
       
       const selectedDiscountData = discountOptions
-        .filter(option => selectedDiscountOptions.includes(option.id))
+        .filter(option => {
+          if (option.id === 'pickup-discount') return isDiscountOptionSelected('pickup-discount');
+          if (option.id === 'half-invoice-discount') return isDiscountOptionSelected('half-invoice-discount');
+          if (option.id === 'tax-substitution-surcharge') return isDiscountOptionSelected('tax-substitution-surcharge');
+          if (option.id === 'cash-payment-discount') return isDiscountOptionSelected('cash-payment-discount');
+          return false;
+        })
         .map(option => ({
           id: option.id,
           name: option.name,
@@ -542,6 +548,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isActive: true
         }));
       
+      console.log('Prepared discount data:', selectedDiscountData);
+      
       const orderData: Partial<Order> = {
         customer,
         customerId: customer.id,
@@ -549,23 +557,23 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         appliedDiscounts: selectedDiscountData,
         deliveryLocation,
         deliveryFee,
-        halfInvoicePercentage: isDiscountOptionSelected('2') ? halfInvoicePercentage : undefined,
-        halfInvoiceType: isDiscountOptionSelected('2') ? halfInvoiceType : undefined,
+        halfInvoicePercentage: isDiscountOptionSelected('half-invoice-discount') ? halfInvoicePercentage : undefined,
+        halfInvoiceType: isDiscountOptionSelected('half-invoice-discount') ? halfInvoiceType : undefined,
         observations,
         subtotal,
         totalDiscount,
         total,
         shipping: shippingValue,
         paymentMethod: paymentMethodValue,
-        paymentTerms: !isDiscountOptionSelected('4') ? paymentTerms : undefined,
-        fullInvoice: !isDiscountOptionSelected('2'),
-        taxSubstitution: isDiscountOptionSelected('3'),
+        paymentTerms: !isDiscountOptionSelected('cash-payment-discount') ? paymentTerms : undefined,
+        fullInvoice: !isDiscountOptionSelected('half-invoice-discount'),
+        taxSubstitution: isDiscountOptionSelected('tax-substitution-surcharge'),
         withIPI,
         ipiValue: withIPI ? calculateIPIValue() : undefined,
         status: 'pending',
         notes: observations,
         userId: user?.id,
-        transportCompanyId: !isDiscountOptionSelected('1') ? selectedTransportCompany : undefined
+        transportCompanyId: !isDiscountOptionSelected('pickup-discount') ? selectedTransportCompany : undefined
       };
       
       console.log('Sending order with data:', orderData);
