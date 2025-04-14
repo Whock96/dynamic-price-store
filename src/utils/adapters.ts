@@ -69,7 +69,6 @@ export const supabaseOrderToAppOrder = (
     createdAt: new Date(order.customers.created_at),
     updatedAt: new Date(order.customers.updated_at),
     registerDate: new Date(order.customers.register_date || order.customers.created_at),
-    transportCompanyId: order.customers.transport_company_id || undefined,
   } : {} as Customer;
 
   // Format order items with improved safety checks
@@ -109,21 +108,6 @@ export const supabaseOrderToAppOrder = (
       subtotal: Number(item.subtotal),
     };
   }).filter(item => Object.keys(item).length > 0);
-
-  // Ensure discounts are properly formatted with valid UUIDs
-  const validatedDiscounts: DiscountOption[] = discounts.map(discount => {
-    // Ensure discount has a valid ID (UUID)
-    if (!discount.id || typeof discount.id !== 'string' || discount.id.length < 10) {
-      console.warn('Invalid discount ID detected:', discount);
-      // Generate a fallback UUID if needed
-      const fallbackId = crypto.randomUUID();
-      return {
-        ...discount,
-        id: fallbackId
-      };
-    }
-    return discount;
-  });
 
   // Ensure user.role is always one of the allowed values with stricter validation
   const validRoles: ('administrator' | 'salesperson' | 'billing' | 'inventory')[] = [
@@ -173,7 +157,7 @@ export const supabaseOrderToAppOrder = (
     userId: order.user_id,
     user,
     items: formattedItems,
-    appliedDiscounts: validatedDiscounts,
+    appliedDiscounts: discounts,
     totalDiscount: Number(order.total_discount) || 0,
     subtotal: Number(order.subtotal) || 0,
     total: Number(order.total) || 0,

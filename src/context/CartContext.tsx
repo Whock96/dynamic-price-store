@@ -78,22 +78,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [withIPI, setWithIPI] = useState<boolean>(false);
   const [selectedTransportCompany, setSelectedTransportCompany] = useState<string | undefined>(undefined);
 
-  const generateUUID = (): string => {
-    return crypto.randomUUID();
-  };
-
   useEffect(() => {
     if (settings) {
-      console.log("Settings loaded for discount options:", settings);
-      
-      const pickupOptionId = generateUUID();
-      const halfInvoiceOptionId = generateUUID();
-      const taxSubstitutionOptionId = generateUUID();
-      const cashPaymentOptionId = generateUUID();
-      
       const updatedDiscountOptions: DiscountOption[] = [
         {
-          id: pickupOptionId,
+          id: '1',
           name: 'Retirada',
           description: 'Desconto para retirada na loja',
           value: settings.pickup,
@@ -101,7 +90,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isActive: true,
         },
         {
-          id: halfInvoiceOptionId,
+          id: '2',
           name: 'Meia nota',
           description: 'Desconto para meia nota fiscal',
           value: settings.halfInvoice,
@@ -109,7 +98,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isActive: true,
         },
         {
-          id: taxSubstitutionOptionId,
+          id: '3',
           name: 'Substituição tributária',
           description: 'Acréscimo para substituição tributária',
           value: settings.taxSubstitution,
@@ -117,7 +106,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isActive: true,
         },
         {
-          id: cashPaymentOptionId,
+          id: '4',
           name: 'A Vista',
           description: 'Desconto para pagamento à vista',
           value: settings.cashPayment,
@@ -126,7 +115,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       ];
       
-      console.log("Updated discount options with valid UUIDs:", updatedDiscountOptions);
       setDiscountOptions(updatedDiscountOptions);
     }
   }, [settings]);
@@ -540,34 +528,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     try {
-      if (selectedDiscountOptions.length > 0) {
-        const validDiscounts = selectedDiscountOptions.every(id => 
-          discountOptions.some(option => option.id === id)
-        );
-        
-        if (!validDiscounts) {
-          console.error("Invalid discount options selected:", selectedDiscountOptions);
-          console.error("Available discount options:", discountOptions);
-          toast.error('Erro: Opções de desconto inválidas selecionadas');
-          return Promise.reject('Invalid discount options');
-        }
-      }
-      
       const shippingValue: 'pickup' | 'delivery' = isDiscountOptionSelected('1') ? 'pickup' : 'delivery';
       
       const paymentMethodValue: 'cash' | 'credit' = isDiscountOptionSelected('4') ? 'cash' : 'credit';
-      
-      const selectedDiscounts = discountOptions.filter(option => 
-        selectedDiscountOptions.includes(option.id)
-      );
-      
-      console.log("Selected discount options for order:", selectedDiscounts);
       
       const orderData: Partial<Order> = {
         customer,
         customerId: customer.id,
         items,
-        appliedDiscounts: selectedDiscounts,
+        appliedDiscounts: selectedDiscountOptions.map(id => {
+          const option = discountOptions.find(opt => opt.id === id);
+          return option || null;
+        }).filter(Boolean) as DiscountOption[],
         deliveryLocation,
         deliveryFee,
         halfInvoicePercentage: isDiscountOptionSelected('2') ? halfInvoicePercentage : undefined,
@@ -603,7 +575,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return Promise.resolve();
     } catch (error) {
       console.error('Error sending order:', error);
-      toast.error('Erro ao enviar pedido. Verifique as opções de desconto e tente novamente.');
+      toast.error('Erro ao enviar pedido. Tente novamente.');
       return Promise.reject(error);
     }
   };
