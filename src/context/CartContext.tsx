@@ -536,9 +536,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .map(option => ({
           id: option.id,
           name: option.name,
-          description: option.description,
+          description: option.description || '',
           value: option.value,
-          type: option.type,
+          type: option.type as 'discount' | 'surcharge',
           isActive: true
         }));
       
@@ -561,7 +561,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fullInvoice: !isDiscountOptionSelected('2'),
         taxSubstitution: isDiscountOptionSelected('3'),
         withIPI,
-        ipiValue: withIPI ? ipiValue : undefined,
+        ipiValue: withIPI ? calculateIPIValue() : undefined,
         status: 'pending',
         notes: observations,
         userId: user?.id,
@@ -569,6 +569,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       console.log('Sending order with data:', orderData);
+      console.log('Selected discount options:', selectedDiscountOptions);
+      console.log('Formatted discount data:', selectedDiscountData);
       
       const orderId = await addOrder(orderData);
       
