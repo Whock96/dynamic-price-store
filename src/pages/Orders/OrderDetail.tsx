@@ -422,7 +422,11 @@ const OrderDetail = () => {
   const deliveryFee = order.deliveryFee || order.delivery_fee || 0;
   const halfInvoicePercentage = order.halfInvoicePercentage || order.half_invoice_percentage || 50;
   const withIPI = order.withIPI !== undefined ? order.withIPI : (order.with_ipi !== undefined ? order.with_ipi : false);
-  const ipiValue = order.ipiValue || order.ipi_value || 0;
+  
+  // Consolidated ipiValue initialization
+  const ipiValue = withIPI 
+    ? (order.ipiValue || order.ipi_value || 0)
+    : 0;
   
   const userName = order.user?.name || 'Usuário do Sistema';
   console.log("OrderDetail - Order user details:", {
@@ -432,7 +436,6 @@ const OrderDetail = () => {
   });
   
   const taxSubstitutionValue = taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
-  const ipiValue = withIPI ? (order.ipiValue || 0) : 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
