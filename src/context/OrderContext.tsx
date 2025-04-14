@@ -1,5 +1,6 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Order, CartItem } from '@/types/types';
+import { Order, CartItem, DiscountOption } from '@/types/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from './AuthContext';
@@ -84,10 +85,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           `)
           .eq('order_id', order.id);
         
-        let discounts = [];
+        // Process applied_discounts from JSONB
+        let discounts: DiscountOption[] = [];
         if (order.applied_discounts) {
           console.log("Applied discounts from DB:", order.applied_discounts);
-          discounts = order.applied_discounts;
+          if (Array.isArray(order.applied_discounts)) {
+            discounts = order.applied_discounts as DiscountOption[];
+          }
         }
         
         let userName = null;
@@ -116,7 +120,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           userName = 'Usuário do Sistema';
         }
         
-        const processedOrder = supabaseOrderToAppOrder(order, itemsData || [], discounts);
+        const processedOrder = supabaseOrderToAppOrder(order, itemsData || []);
         
         if (userName) {
           processedOrder.user = {
@@ -220,6 +224,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.log("Current user information:", user);
       console.log("Using user ID for order:", userId);
       
+      // Convert appliedDiscounts to raw JSON for Supabase
+      // We need to convert the DiscountOption[] to a format that Supabase can store in JSONB
       const appliedDiscounts = newOrder.appliedDiscounts || [];
       console.log("Applied discounts to be saved:", appliedDiscounts);
       
@@ -242,7 +248,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         total: newOrder.total || 0,
         with_ipi: newOrder.withIPI || false,
         ipi_value: newOrder.ipiValue || 0,
-        applied_discounts: appliedDiscounts
+        applied_discounts: appliedDiscounts as any // Cast to any to satisfy TypeScript
       };
       
       console.log("Order data being inserted:", orderInsert);
@@ -362,6 +368,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           supabaseOrderData.transport_company_id = orderData.transportCompanyId;
           console.log(`Setting transport_company_id to ${orderData.transportCompanyId}`);
         }
+      }
+      if (orderData.appliedDiscounts !== undefined) {
+        supabaseOrderData.applied_discounts = orderData.appliedDiscounts as any;
       }
       
       console.log("Final Supabase order data for update:", supabaseOrderData);

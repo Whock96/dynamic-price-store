@@ -1,3 +1,4 @@
+
 import { Tables } from "@/integrations/supabase/client";
 import { Product, Order, CartItem, DiscountOption, Customer, User } from "@/types/types";
 
@@ -72,9 +73,18 @@ export const supabaseOrderToAppOrder = (
   }));
 
   // Use the applied_discounts directly from the JSONB column
-  const appliedDiscounts = supabaseOrder.applied_discounts || [];
+  // Ensure we're processing it as an array
+  let appliedDiscounts: DiscountOption[] = [];
   
-  console.log("Processing discounts in adapter:", appliedDiscounts);
+  if (supabaseOrder.applied_discounts) {
+    console.log("Processing discounts in adapter:", supabaseOrder.applied_discounts);
+    if (Array.isArray(supabaseOrder.applied_discounts)) {
+      appliedDiscounts = supabaseOrder.applied_discounts as DiscountOption[];
+    } else {
+      // If it's not an array but some other JSON structure, initialize as empty array
+      console.warn("Applied discounts is not an array:", supabaseOrder.applied_discounts);
+    }
+  }
 
   return {
     id: supabaseOrder.id,
