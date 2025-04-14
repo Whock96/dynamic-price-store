@@ -328,7 +328,7 @@ const OrderDetail = () => {
             <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Resumo Financeiro</h2>
             <table style="width: 100%;">
               <tr>
-                <td style="padding: 2px 0;">Subtotal:</td>
+                <td style="padding: 2px 0;">Total dos Produtos:</td>
                 <td style="padding: 2px 0; text-align: right; font-weight: 500;">${formatCurrency(order.subtotal)}</td>
               </tr>
               <tr>
@@ -639,12 +639,16 @@ const OrderDetail = () => {
           <CardContent>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span>Subtotal:</span>
+                <span>Total dos Produtos:</span>
                 <span>{formatCurrency(order.subtotal)}</span>
               </div>
               <div className="flex justify-between text-sm text-red-600">
                 <span>Descontos:</span>
                 <span>-{formatCurrency(totalDiscount)}</span>
+              </div>
+              <div className="flex justify-between text-sm font-medium">
+                <span>Subtotal Pedido:</span>
+                <span>{formatCurrency(order.subtotal - totalDiscount)}</span>
               </div>
               {taxSubstitution && (
                 <div className="flex justify-between text-sm text-amber-600">
