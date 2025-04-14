@@ -1021,23 +1021,37 @@ const Cart = () => {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span>Subtotal:</span>
-                <span>{formatCurrency(subtotal)}</span>
+                <span>Total Produtos:</span>
+                <span>{formatCurrency(items.reduce((total, item) => {
+                  const totalUnits = calculateTotalUnits(item);
+                  return total + (item.product.listPrice * totalUnits);
+                }, 0))}</span>
               </div>
               <div className="flex justify-between text-sm text-red-600">
                 <span>Descontos:</span>
-                <span>-{formatCurrency(totalDiscount)}</span>
+                <span>-{formatCurrency(
+                  items.reduce((total, item) => {
+                    const totalUnits = calculateTotalUnits(item);
+                    const fullPrice = item.product.listPrice * totalUnits;
+                    const discountedPrice = item.finalPrice * totalUnits;
+                    return total + (fullPrice - discountedPrice);
+                  }, 0)
+                )}</span>
               </div>
-              {isDiscountOptionSelected('3') && applyDiscounts && taxSubstitutionValue > 0 && (
-                <div className="flex justify-between text-sm text-orange-600">
-                  <span>ICMS Substituição Tributária ({effectiveTaxRate.toFixed(2)}% ICMS-ST):</span>
-                  <span>+{formatCurrency(taxSubstitutionValue)}</span>
-                </div>
-              )}
+              <div className="flex justify-between text-sm">
+                <span>Subtotal Pedido:</span>
+                <span>{formatCurrency(subtotal)}</span>
+              </div>
               {withIPI && applyDiscounts && ipiValue > 0 && (
                 <div className="flex justify-between text-sm text-orange-600">
                   <span>IPI ({effectiveIPIRate.toFixed(2)}%):</span>
                   <span>+{formatCurrency(ipiValue)}</span>
+                </div>
+              )}
+              {isDiscountOptionSelected('icms-st') && applyDiscounts && taxSubstitutionValue > 0 && (
+                <div className="flex justify-between text-sm text-orange-600">
+                  <span>ICMS Substituição Tributária ({effectiveTaxRate.toFixed(2)}% ICMS-ST):</span>
+                  <span>+{formatCurrency(taxSubstitutionValue)}</span>
                 </div>
               )}
               {deliveryLocation && (
