@@ -682,10 +682,10 @@ const OrderDetail = () => {
                   <span>Forma de Pagamento:</span>
                   <span>{paymentMethod === 'cash' ? 'À Vista' : 'A Prazo'}</span>
                 </div>
-                {paymentMethod === 'credit' && paymentTerms && (
+                {paymentMethod === 'credit' && (
                   <div className="flex justify-between text-sm">
                     <span>Prazos de Pagamento:</span>
-                    <span>{paymentTerms}</span>
+                    <span>{paymentTerms || 'Não informado'}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm">
