@@ -750,8 +750,8 @@ const OrderDetail = () => {
                 const finalPrice = priceTotal * (1 - (item?.discount || 0) / 100);
                 const mva = (item?.product?.mva || 39) / 100;
                 const icmsStValue = taxSubstitution ? finalPrice * mva * 0.078 : 0;
-                const ipiValue = withIPI ? finalPrice * (ipiValue / order.subtotal) : 0;
-                const total = finalPrice + icmsStValue + ipiValue;
+                const itemIpiValue = withIPI ? finalPrice * (ipiValue / order.subtotal) : 0;
+                const total = finalPrice + icmsStValue + itemIpiValue;
                 
                 return (
                   <TableRow key={item?.id || `item-${index}`}>
@@ -765,7 +765,7 @@ const OrderDetail = () => {
                     <TableCell>{item?.discount || 0}%</TableCell>
                     <TableCell>{formatCurrency(finalPrice)}</TableCell>
                     <TableCell>{formatCurrency(icmsStValue)}</TableCell>
-                    <TableCell>{formatCurrency(ipiValue)}</TableCell>
+                    <TableCell>{formatCurrency(itemIpiValue)}</TableCell>
                     <TableCell>{formatCurrency(total)}</TableCell>
                   </TableRow>
                 );
