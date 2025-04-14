@@ -274,11 +274,11 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
             <tbody>
               <tr>
                 <td className="py-0.5">Total Produtos:</td>
-                <td className="py-0.5 text-right font-medium">{formatCurrency(totalProducts)}</td>
+                <td className="py-0.5 text-right font-medium">{formatCurrency(order.totalProducts || totalProducts)}</td>
               </tr>
               <tr>
                 <td className="py-0.5">Descontos:</td>
-                <td className="py-0.5 text-right text-red-600 font-medium">-{formatCurrency(totalProducts - order.subtotal)}</td>
+                <td className="py-0.5 text-right text-red-600 font-medium">-{formatCurrency((order.totalProducts || totalProducts) - order.subtotal)}</td>
               </tr>
               <tr>
                 <td className="py-0.5">Subtotal Pedido:</td>

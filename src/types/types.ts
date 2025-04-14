@@ -96,6 +96,8 @@ export interface CartItem {
   discount: number; // Individual discount percentage
   finalPrice: number; // After all discounts, without tax substitution
   subtotal: number; // (finalPrice + tax) * quantity
+  ipiValue?: number; // IPI value for this item
+  taxSubstitutionValue?: number; // Tax substitution value for this item
 }
 
 export interface DiscountOption {
@@ -143,6 +145,9 @@ export interface Order {
   withIPI?: boolean; // IPI flag
   ipiValue?: number; // IPI value
   transportCompanyId?: string | null; // Referência à empresa transportadora
+  // Add new tax-related fields
+  taxSubstitutionValue?: number; // Total tax substitution value
+  totalProducts?: number; // Total value of products before discounts
 }
 
 export interface MenuItem {
