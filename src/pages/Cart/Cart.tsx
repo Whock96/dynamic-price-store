@@ -86,6 +86,7 @@ const Cart = () => {
     discountOptions, 
     toggleDiscountOption, 
     selectedDiscountOptions,
+    isDiscountOptionSelected,
     deliveryLocation, 
     setDeliveryLocation, 
     halfInvoicePercentage, 
@@ -263,7 +264,6 @@ const Cart = () => {
       console.log("Submitting order with discount options:", discountOptions);
       console.log("Selected discount options:", selectedDiscountOptions);
       
-      // Check if all selected discount options exist in the discountOptions array
       const invalidOptions = selectedDiscountOptions.filter(id => 
         !discountOptions.some(option => option.id === id)
       );
@@ -280,7 +280,6 @@ const Cart = () => {
     } catch (error) {
       console.error('Error submitting order:', error);
       
-      // More specific error messages based on error type
       if (error instanceof Error) {
         if (error.message.includes('discount')) {
           toast.error(`Erro ao processar descontos: ${error.message}`);
