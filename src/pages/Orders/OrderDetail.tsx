@@ -134,6 +134,56 @@ const OrderDetail = () => {
     return `${weight.toFixed(2)} kg`;
   };
 
+  const getTaxSubstitutionRate = () => {
+    const standardRate = 7.8;
+    
+    if (!order?.taxSubstitution) return 0;
+    
+    if (!order.fullInvoice && order.halfInvoicePercentage) {
+      // Adjust rate based on invoice percentage
+      return standardRate * (order.halfInvoicePercentage / 100);
+    }
+    
+    return standardRate;
+  };
+  
+  const getIPIRate = () => {
+    const standardRate = 10; // Standard IPI rate
+    
+    if (!order?.withIPI) return 0;
+    
+    if (!order.fullInvoice && order.halfInvoicePercentage) {
+      // Adjust rate based on invoice percentage
+      return standardRate * (order.halfInvoicePercentage / 100);
+    }
+    
+    return standardRate;
+  };
+
+  const calculateItemIPIValue = (item: any) => {
+    if (!order?.withIPI) return 0;
+    
+    const ipiRate = getIPIRate() / 100;
+    return (item.finalPrice || 0) * ipiRate;
+  };
+
+  const calculateItemTaxSubstitutionValue = (item: any) => {
+    if (!order?.taxSubstitution) return 0;
+    
+    const icmsRate = getTaxSubstitutionRate() / 100;
+    const mva = ((item.product?.mva ?? 39) / 100);
+    return (item.finalPrice || 0) * mva * icmsRate;
+  };
+
+  const calculateTotalProducts = (items: any[]) => {
+    if (!items || items.length === 0) return 0;
+    
+    return items.reduce((total, item) => {
+      const totalUnits = (item.quantity || 0) * (item.product?.quantityPerVolume || 1);
+      return total + ((item.product?.listPrice || 0) * totalUnits);
+    }, 0);
+  };
+
   const handlePrintOrder = () => {
     // Open in new window
     const printWindow = window.open('', '_blank');
@@ -290,23 +340,41 @@ const OrderDetail = () => {
                 <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Preço</th>
                 <th style="border: 1px solid #ddd; padding: 3px; text-align: center;">Desc.</th>
                 <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Final</th>
+                ${order.withIPI || order.with_ipi ? '<th style="border: 1px solid #ddd; padding: 3px; text-align: right;">IPI</th>' : ''}
+                ${order.taxSubstitution || order.tax_substitution ? '<th style="border: 1px solid #ddd; padding: 3px; text-align: right;">ICMS-ST</th>' : ''}
                 <th style="border: 1px solid #ddd; padding: 3px; text-align: center;">Qtd.</th>
+                <th style="border: 1px solid #ddd; padding: 3px; text-align: center;">Unidades</th>
                 <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Subtotal</th>
               </tr>
             </thead>
             <tbody>
-              ${(order.items || []).map((item: any, index: number) => `
-                <tr>
-                  <td style="border: 1px solid #ddd; padding: 3px;">${item?.product?.name || item?.productName || `Produto ${index + 1}`}</td>
-                  <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">
-                    ${formatCurrency(item?.listPrice || item?.product?.listPrice || 0)}
-                  </td>
-                  <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${item?.discount || 0}%</td>
-                  <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.finalPrice || 0)}</td>
-                  <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${item?.quantity || 0}</td>
-                  <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.subtotal || 0)}</td>
-                </tr>
-              `).join('')}
+              ${(order.items || []).map((item: any, index: number) => {
+                const totalUnits = (item?.quantity || 0) * (item?.product?.quantityPerVolume || 1);
+                
+                // Calculate tax values
+                const ipiRate = (order.withIPI || order.with_ipi) ? getIPIRate() / 100 : 0;
+                const ipiValue = (item?.finalPrice || 0) * ipiRate;
+                
+                const mva = ((item?.product?.mva ?? 39) / 100);
+                const icmsRate = (order.taxSubstitution || order.tax_substitution) ? getTaxSubstitutionRate() / 100 : 0;
+                const taxValue = (item?.finalPrice || 0) * mva * icmsRate;
+                
+                return `
+                  <tr>
+                    <td style="border: 1px solid #ddd; padding: 3px;">${item?.product?.name || item?.productName || `Produto ${index + 1}`}</td>
+                    <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">
+                      ${formatCurrency(item?.product?.listPrice || item?.listPrice || 0)}
+                    </td>
+                    <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${item?.discount || 0}%</td>
+                    <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.finalPrice || 0)}</td>
+                    ${order.withIPI || order.with_ipi ? `<td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(ipiValue)}</td>` : ''}
+                    ${order.taxSubstitution || order.tax_substitution ? `<td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(taxValue)}</td>` : ''}
+                    <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${item?.quantity || 0}</td>
+                    <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${totalUnits}</td>
+                    <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.subtotal || 0)}</td>
+                  </tr>
+                `;
+              }).join('')}
             </tbody>
           </table>
         </div>
@@ -328,28 +396,32 @@ const OrderDetail = () => {
             <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Resumo Financeiro</h2>
             <table style="width: 100%;">
               <tr>
-                <td style="padding: 2px 0;">Subtotal:</td>
-                <td style="padding: 2px 0; text-align: right; font-weight: 500;">${formatCurrency(order.subtotal)}</td>
+                <td style="padding: 2px 0;">Total Produtos:</td>
+                <td style="padding: 2px 0; text-align: right; font-weight: 500;">${formatCurrency(totalProductsValue)}</td>
               </tr>
               <tr>
                 <td style="padding: 2px 0;">Descontos:</td>
                 <td style="padding: 2px 0; text-align: right; color: #dc2626; font-weight: 500;">
-                  -${formatCurrency(order.totalDiscount || order.total_discount || 0)}
+                  -${formatCurrency(totalProductsValue - (order.subtotal || 0))}
                 </td>
               </tr>
-              ${(order.taxSubstitution || order.tax_substitution) ? `
+              <tr>
+                <td style="padding: 2px 0;">Subtotal Pedido:</td>
+                <td style="padding: 2px 0; text-align: right; font-weight: 500;">${formatCurrency(order.subtotal || 0)}</td>
+              </tr>
+              ${(order.withIPI || order.with_ipi) && (order.ipiValue || order.ipi_value || 0) > 0 ? `
                 <tr>
-                  <td style="padding: 2px 0;">Substituição Tributária (7.8%):</td>
+                  <td style="padding: 2px 0;">IPI (${effectiveIPIRate.toFixed(2)}%):</td>
                   <td style="padding: 2px 0; text-align: right; color: #ea580c; font-weight: 500;">
-                    +${formatCurrency(taxSubstitutionValue)}
+                    +${formatCurrency(order.ipiValue || order.ipi_value || 0)}
                   </td>
                 </tr>
               ` : ''}
-              ${(order.withIPI || order.with_ipi) && ipiValue > 0 ? `
+              ${(order.taxSubstitution || order.tax_substitution) ? `
                 <tr>
-                  <td style="padding: 2px 0;">IPI:</td>
+                  <td style="padding: 2px 0;">Substituição Tributária (${effectiveTaxRate.toFixed(2)}%):</td>
                   <td style="padding: 2px 0; text-align: right; color: #ea580c; font-weight: 500;">
-                    +${formatCurrency(ipiValue)}
+                    +${formatCurrency(order.taxSubstitutionValue || 0)}
                   </td>
                 </tr>
               ` : ''}
@@ -361,7 +433,7 @@ const OrderDetail = () => {
               ` : ''}
               <tr style="border-top: 1px solid #ddd;">
                 <td style="padding: 3px 0; font-weight: bold;">Total:</td>
-                <td style="padding: 3px 0; text-align: right; font-weight: bold;">${formatCurrency(order.total)}</td>
+                <td style="padding: 3px 0; text-align: right; font-weight: bold;">${formatCurrency(order.total || 0)}</td>
               </tr>
             </table>
           </div>
@@ -432,6 +504,10 @@ const OrderDetail = () => {
   });
   
   const taxSubstitutionValue = taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
+
+  const effectiveTaxRate = getTaxSubstitutionRate();
+  const effectiveIPIRate = getIPIRate();
+  const totalProductsValue = calculateTotalProducts(items);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -635,29 +711,33 @@ const OrderDetail = () => {
           <CardContent>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span>Subtotal:</span>
-                <span>{formatCurrency(order.subtotal)}</span>
+                <span>Total Produtos:</span>
+                <span>{formatCurrency(totalProductsValue)}</span>
               </div>
               <div className="flex justify-between text-sm text-red-600">
                 <span>Descontos:</span>
-                <span>-{formatCurrency(totalDiscount)}</span>
+                <span>-{formatCurrency(totalProductsValue - order.subtotal)}</span>
               </div>
-              {withIPI && ipiValue > 0 && (
+              <div className="flex justify-between text-sm">
+                <span>Subtotal Pedido:</span>
+                <span>{formatCurrency(order.subtotal)}</span>
+              </div>
+              {order.withIPI && order.ipiValue > 0 && (
                 <div className="flex justify-between text-sm text-blue-600">
-                  <span>IPI:</span>
-                  <span>+{formatCurrency(ipiValue)}</span>
+                  <span>IPI (${effectiveIPIRate.toFixed(2)}%):</span>
+                  <span>+{formatCurrency(order.ipiValue)}</span>
                 </div>
               )}
-              {taxSubstitution && taxSubstitutionValue > 0 && (
+              {order.taxSubstitution && (order.taxSubstitutionValue || 0) > 0 && (
                 <div className="flex justify-between text-sm text-orange-600">
-                  <span>Substituição Tributária (7.8%):</span>
-                  <span>+{formatCurrency(taxSubstitutionValue)}</span>
+                  <span>Substituição Tributária (${effectiveTaxRate.toFixed(2)}%):</span>
+                  <span>+{formatCurrency(order.taxSubstitutionValue || 0)}</span>
                 </div>
               )}
-              {deliveryFee > 0 && (
+              {order.deliveryFee > 0 && (
                 <div className="flex justify-between text-sm">
                   <span>Taxa de Entrega:</span>
-                  <span>{formatCurrency(deliveryFee)}</span>
+                  <span>{formatCurrency(order.deliveryFee)}</span>
                 </div>
               )}
               <Separator className="my-2" />
@@ -719,6 +799,12 @@ const OrderDetail = () => {
                 <TableHead>Preço Unitário</TableHead>
                 <TableHead>Desconto</TableHead>
                 <TableHead>Preço Final</TableHead>
+                {order.withIPI && (
+                  <TableHead>IPI</TableHead>
+                )}
+                {order.taxSubstitution && (
+                  <TableHead>ICMS-ST</TableHead>
+                )}
                 <TableHead>Quantidade</TableHead>
                 <TableHead>Total de Unidades</TableHead>
                 <TableHead>Peso Total</TableHead>
@@ -729,6 +815,8 @@ const OrderDetail = () => {
               {items.map((item: any, index: number) => {
                 const totalUnits = (item?.quantity || 0) * (item?.product?.quantityPerVolume || 1);
                 const totalWeight = (item?.quantity || 0) * (item?.product?.weight || 0);
+                const ipiValue = calculateItemIPIValue(item);
+                const taxValue = calculateItemTaxSubstitutionValue(item);
                 
                 return (
                   <TableRow key={item?.id || `item-${index}`}>
@@ -738,6 +826,12 @@ const OrderDetail = () => {
                     <TableCell>{formatCurrency(item?.product?.listPrice || 0)}</TableCell>
                     <TableCell>{item?.discount || 0}%</TableCell>
                     <TableCell>{formatCurrency(item?.finalPrice || 0)}</TableCell>
+                    {order.withIPI && (
+                      <TableCell>{formatCurrency(ipiValue)}</TableCell>
+                    )}
+                    {order.taxSubstitution && (
+                      <TableCell>{formatCurrency(taxValue)}</TableCell>
+                    )}
                     <TableCell>{item?.quantity || 0}</TableCell>
                     <TableCell>{totalUnits}</TableCell>
                     <TableCell>{formatWeight(totalWeight)}</TableCell>

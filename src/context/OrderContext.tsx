@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Order, CartItem, DiscountOption } from '@/types/types';
 import { format } from 'date-fns';
@@ -229,6 +230,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const appliedDiscounts = newOrder.appliedDiscounts || [];
       console.log("Applied discounts to be saved:", appliedDiscounts);
       
+      // Calculate total products value (sum of list price * total units)
+      const totalProducts = (newOrder.items || []).reduce((total, item) => {
+        const totalUnits = (item.quantity || 0) * (item.product?.quantityPerVolume || 1);
+        return total + ((item.product?.listPrice || 0) * totalUnits);
+      }, 0);
+      
       const orderInsert = {
         customer_id: newOrder.customer.id,
         user_id: userId,
@@ -248,7 +255,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         total: newOrder.total || 0,
         with_ipi: newOrder.withIPI || false,
         ipi_value: newOrder.ipiValue || 0,
-        applied_discounts: (appliedDiscounts as unknown) as Tables<'orders'>['applied_discounts']
+        tax_substitution_value: newOrder.taxSubstitutionValue || 0,
+        total_products: totalProducts || 0,
+        applied_discounts: (appliedDiscounts as unknown) as Tables<'orders'>['applied_discounts'],
+        transport_company_id: newOrder.transportCompanyId,
       };
       
       console.log("Order data being inserted:", orderInsert);
@@ -272,14 +282,33 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.log("Order created successfully:", orderData);
       
       if (newOrder.items && newOrder.items.length > 0) {
-        const orderItems = newOrder.items.map(item => ({
-          order_id: orderData.id,
-          product_id: item.product.id,
-          quantity: item.quantity,
-          discount: item.discount || 0,
-          final_price: item.finalPrice,
-          subtotal: item.subtotal
-        }));
+        const orderItems = newOrder.items.map(item => {
+          // Calculate tax values for each item
+          let ipiValue = 0;
+          let taxSubstitutionValue = 0;
+          
+          if (newOrder.withIPI) {
+            const ipiRate = 0.10; // 10% IPI
+            ipiValue = item.finalPrice * ipiRate;
+          }
+          
+          if (newOrder.taxSubstitution) {
+            const mva = (item.product?.mva ?? 39) / 100;
+            const icmsRate = 0.078; // 7.8% ICMS-ST
+            taxSubstitutionValue = item.finalPrice * mva * icmsRate;
+          }
+          
+          return {
+            order_id: orderData.id,
+            product_id: item.product.id,
+            quantity: item.quantity,
+            discount: item.discount || 0,
+            final_price: item.finalPrice,
+            subtotal: item.subtotal,
+            ipi_value: ipiValue,
+            tax_substitution_value: taxSubstitutionValue
+          };
+        });
         
         console.log("Inserting order items:", orderItems);
         
@@ -359,6 +388,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (orderData.deliveryFee !== undefined) supabaseOrderData.delivery_fee = orderData.deliveryFee;
       if (orderData.withIPI !== undefined) supabaseOrderData.with_ipi = orderData.withIPI;
       if (orderData.ipiValue !== undefined) supabaseOrderData.ipi_value = orderData.ipiValue;
+      if (orderData.taxSubstitutionValue !== undefined) supabaseOrderData.tax_substitution_value = orderData.taxSubstitutionValue;
+      if (orderData.totalProducts !== undefined) supabaseOrderData.total_products = orderData.totalProducts;
       if (orderData.userId !== undefined) supabaseOrderData.user_id = orderData.userId;
       if (orderData.transportCompanyId !== undefined) {
         if (orderData.transportCompanyId === 'none') {
