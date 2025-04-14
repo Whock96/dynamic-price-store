@@ -567,7 +567,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       const itemsWithCalculatedValues = items.map(item => {
         const totalUnits = calculateTotalUnits(item);
-        const totalDiscountPercentage = getTotalDiscountPercentage(item.discount);
+        
+        const globalDiscountPercentage = getNetDiscountPercentage();
+        const totalDiscountPercentage = (item.discount || 0) + globalDiscountPercentage;
+        
         const taxSubstitutionValue = calculateItemTaxSubstitutionValue(item);
         
         const ipiRate = getIPIRate() / 100;
