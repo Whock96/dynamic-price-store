@@ -232,10 +232,36 @@ const Cart = () => {
     setIsSubmitting(true);
     
     try {
+      console.log("Submitting order with discount options:", discountOptions);
+      console.log("Selected discount options:", selectedDiscountOptions);
+      
+      // Check if all selected discount options exist in the discountOptions array
+      const invalidOptions = selectedDiscountOptions.filter(id => 
+        !discountOptions.some(option => option.id === id)
+      );
+      
+      if (invalidOptions.length > 0) {
+        console.error("Invalid discount options detected:", invalidOptions);
+        toast.error('Erro: Algumas opções de desconto selecionadas são inválidas');
+        setIsSubmitting(false);
+        return;
+      }
+      
       await sendOrder();
       navigate('/orders');
     } catch (error) {
       console.error('Error submitting order:', error);
+      
+      // More specific error messages based on error type
+      if (error instanceof Error) {
+        if (error.message.includes('discount')) {
+          toast.error(`Erro ao processar descontos: ${error.message}`);
+        } else {
+          toast.error(`Erro ao enviar pedido: ${error.message}`);
+        }
+      } else {
+        toast.error('Erro ao enviar pedido. Verifique as opções de desconto e tente novamente.');
+      }
     } finally {
       setIsSubmitting(false);
     }
