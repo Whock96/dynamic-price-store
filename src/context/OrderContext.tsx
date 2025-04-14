@@ -84,30 +84,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             products(*)
           `)
           .eq('order_id', order.id);
-          
-        const { data: discountData } = await supabase
-          .from('order_discounts')
-          .select('discount_id')
-          .eq('order_id', order.id);
-          
+        
+        // Process discounts from the applied_discounts JSONB field if it exists
         let discounts = [];
-        if (discountData && discountData.length > 0) {
-          const discountIds = discountData.map(d => d.discount_id);
-          const { data: discountDetails } = await supabase
-            .from('discount_options')
-            .select('*')
-            .in('id', discountIds);
-            
-          if (discountDetails) {
-            discounts = discountDetails.map(d => ({
-              id: d.id,
-              name: d.name,
-              description: d.description || '',
-              value: d.value,
-              type: d.type as 'discount' | 'surcharge',
-              isActive: d.is_active,
-            }));
-          }
+        if (order.applied_discounts) {
+          console.log("Applied discounts from DB:", order.applied_discounts);
+          discounts = order.applied_discounts;
         }
         
         let userName = null;
@@ -240,6 +222,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.log("Current user information:", user);
       console.log("Using user ID for order:", userId);
       
+      // Store applied discounts directly in the order
+      const appliedDiscounts = newOrder.appliedDiscounts || [];
+      console.log("Applied discounts to be saved:", appliedDiscounts);
+      
       const orderInsert = {
         customer_id: newOrder.customer.id,
         user_id: userId,
@@ -258,7 +244,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         total_discount: newOrder.totalDiscount || 0,
         total: newOrder.total || 0,
         with_ipi: newOrder.withIPI || false,
-        ipi_value: newOrder.ipiValue || 0
+        ipi_value: newOrder.ipiValue || 0,
+        applied_discounts: appliedDiscounts
       };
       
       console.log("Order data being inserted:", orderInsert);
@@ -303,26 +290,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
         
         console.log("Order items inserted successfully");
-      }
-      
-      if (newOrder.appliedDiscounts && newOrder.appliedDiscounts.length > 0) {
-        const orderDiscounts = newOrder.appliedDiscounts.map(discount => ({
-          order_id: orderData.id,
-          discount_id: discount.id
-        }));
-        
-        console.log("Inserting order discounts:", orderDiscounts);
-        
-        const { error: discountsError } = await supabase
-          .from('order_discounts')
-          .insert(orderDiscounts);
-          
-        if (discountsError) {
-          console.error("Order discounts insert error:", discountsError);
-          throw discountsError;
-        }
-        
-        console.log("Order discounts inserted successfully");
       }
       
       await fetchOrders();

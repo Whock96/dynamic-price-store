@@ -720,7 +720,7 @@ const Cart = () => {
               {discountOptions.length > 0 ? (
                 <>
                   {/* Opção de Retirada */}
-                  {discountOptions.filter(option => option.id === '1').map(option => (
+                  {discountOptions.filter(option => option.id === 'retirada').map(option => (
                     <div key={option.id} className="space-y-3">
                       <div className="flex items-center justify-between">
                         <div>
@@ -739,7 +739,7 @@ const Cart = () => {
                         />
                       </div>
                       
-                      {option.id === '1' && !isDiscountOptionSelected(option.id) && (
+                      {option.id === 'retirada' && !isDiscountOptionSelected(option.id) && (
                         <div className="ml-6 p-3 border-l-2 border-ferplas-100 bg-gray-50 rounded-md space-y-4">
                           <div className="flex items-center mb-1">
                             <MapPin className="h-4 w-4 text-ferplas-500 mr-1" />
@@ -792,7 +792,7 @@ const Cart = () => {
                   ))}
 
                   {/* Opção A Vista */}
-                  {discountOptions.filter(option => option.id === '4').map(option => (
+                  {discountOptions.filter(option => option.id === 'a-vista').map(option => (
                     <div key={option.id} className="space-y-3">
                       <div className="flex items-center justify-between">
                         <div>
@@ -811,7 +811,7 @@ const Cart = () => {
                         />
                       </div>
 
-                      {option.id === '4' && !isDiscountOptionSelected(option.id) && (
+                      {option.id === 'a-vista' && !isDiscountOptionSelected(option.id) && (
                         <div className="ml-6 p-3 border-l-2 border-ferplas-100 bg-gray-50 rounded-md">
                           <div className="flex items-center mb-2">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-ferplas-500 mr-1"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
@@ -831,7 +831,7 @@ const Cart = () => {
                   ))}
 
                   {/* Opção Meia Nota */}
-                  {discountOptions.filter(option => option.id === '2').map(option => (
+                  {discountOptions.filter(option => option.id === 'meia-nota').map(option => (
                     <div key={option.id} className="space-y-3">
                       <div className="flex items-center justify-between">
                         <div>
@@ -850,7 +850,7 @@ const Cart = () => {
                         />
                       </div>
                       
-                      {option.id === '2' && isDiscountOptionSelected(option.id) && (
+                      {option.id === 'meia-nota' && isDiscountOptionSelected(option.id) && (
                         <div className="ml-6 p-3 border-l-2 border-ferplas-100 bg-gray-50 rounded-md space-y-4">
                           <div className="flex items-center mb-2">
                             <Percent className="h-4 w-4 text-ferplas-500 mr-1" />
@@ -936,7 +936,7 @@ const Cart = () => {
           <CardContent>
             <div className="space-y-4">
               {/* Opção de Substituição Tributária */}
-              {discountOptions.filter(option => option.id === '3').map(option => (
+              {discountOptions.filter(option => option.id === 'icms-st').map(option => (
                 <div key={option.id} className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
@@ -944,7 +944,7 @@ const Cart = () => {
                         ICMS Substituição tributária {applyDiscounts && (
                           <span className="text-red-600">(+{option.value}%)</span>
                         )}
-                        {option.id === '3' && isDiscountOptionSelected('2') && applyDiscounts && (
+                        {option.id === 'icms-st' && isDiscountOptionSelected('meia-nota') && applyDiscounts && (
                           <span className="text-red-600 ml-1">
                             (Ajustado: +{(option.value * halfInvoicePercentage / 100).toFixed(2)}%)
                           </span>
@@ -970,7 +970,7 @@ const Cart = () => {
                       IPI {applyDiscounts && settings && (
                         <span className="text-red-600">(+{settings.ipiRate}%)</span>
                       )}
-                      {isDiscountOptionSelected('2') && applyDiscounts && (
+                      {isDiscountOptionSelected('meia-nota') && applyDiscounts && (
                         <span className="text-red-600 ml-1">
                           (Ajustado: +{effectiveIPIRate.toFixed(2)}%)
                         </span>

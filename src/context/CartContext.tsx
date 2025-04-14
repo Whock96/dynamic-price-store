@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
@@ -82,7 +83,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (settings) {
       const updatedDiscountOptions: DiscountOption[] = [
         {
-          id: '1',
+          id: 'retirada',
           name: 'Retirada',
           description: 'Desconto para retirada na loja',
           value: settings.pickup,
@@ -90,7 +91,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isActive: true,
         },
         {
-          id: '2',
+          id: 'meia-nota',
           name: 'Meia nota',
           description: 'Desconto para meia nota fiscal',
           value: settings.halfInvoice,
@@ -98,7 +99,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isActive: true,
         },
         {
-          id: '3',
+          id: 'a-vista',
+          name: 'A Vista',
+          description: 'Desconto para pagamento à vista',
+          value: settings.cashPayment,
+          type: 'discount',
+          isActive: true,
+        },
+        {
+          id: 'icms-st',
           name: 'Substituição tributária',
           description: 'Acréscimo para substituição tributária',
           value: settings.taxSubstitution,
@@ -106,11 +115,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isActive: true,
         },
         {
-          id: '4',
-          name: 'A Vista',
-          description: 'Desconto para pagamento à vista',
-          value: settings.cashPayment,
-          type: 'discount',
+          id: 'ipi',
+          name: 'IPI',
+          description: 'Imposto sobre Produtos Industrializados',
+          value: settings.ipiRate,
+          type: 'surcharge',
           isActive: true,
         }
       ];
@@ -154,8 +163,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const option = discountOptions.find(opt => opt.id === id);
       if (!option) return;
 
-      if (option.id === '3') return;
-      
       if (option.type === 'discount') {
         discountPercentage += option.value;
       }
@@ -165,12 +172,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getTaxSubstitutionRate = () => {
-    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
+    if (!isDiscountOptionSelected('icms-st') || !applyDiscounts) return 0;
     
-    const taxOption = discountOptions.find(opt => opt.id === '3');
+    const taxOption = discountOptions.find(opt => opt.id === 'icms-st');
     if (!taxOption) return 0;
     
-    if (isDiscountOptionSelected('2')) {
+    if (isDiscountOptionSelected('meia-nota')) {
       return taxOption.value * (halfInvoicePercentage / 100);
     }
     
@@ -184,7 +191,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       : 0;
 
   const calculateTaxSubstitutionValue = () => {
-    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
+    if (!isDiscountOptionSelected('icms-st') || !applyDiscounts) return 0;
     
     return items.reduce((total, item) => {
       const unitTaxValue = calculateItemTaxSubstitutionValue(item);
@@ -194,9 +201,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const calculateItemTaxSubstitutionValue = (item: CartItem) => {
-    if (!isDiscountOptionSelected('3') || !applyDiscounts) return 0;
+    if (!isDiscountOptionSelected('icms-st') || !applyDiscounts) return 0;
     
-    const taxOption = discountOptions.find(opt => opt.id === '3');
+    const taxOption = discountOptions.find(opt => opt.id === 'icms-st');
     if (!taxOption) return 0;
     
     const icmsStRate = taxOption.value / 100;
@@ -205,7 +212,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     let taxValue = basePrice * mva * icmsStRate;
     
-    if (isDiscountOptionSelected('2')) {
+    if (isDiscountOptionSelected('meia-nota')) {
       taxValue = taxValue * (halfInvoicePercentage / 100);
     }
     
@@ -221,7 +228,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const totalUnits = calculateTotalUnits(item);
       
       let adjustedRate = standardRate;
-      if (isDiscountOptionSelected('2')) {
+      if (isDiscountOptionSelected('meia-nota')) {
         adjustedRate = standardRate * (halfInvoicePercentage / 100);
       }
       
@@ -239,7 +246,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let finalPrice = item.product.listPrice * (1 - (netDiscount / 100));
       const totalUnits = calculateTotalUnits(item);
       
-      const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('3') ? 
+      const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('icms-st') ? 
         calculateItemTaxSubstitutionValue(item) : 0;
       
       const subtotal = (finalPrice + taxValuePerUnit) * totalUnits;
@@ -264,7 +271,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         prevItems.map(item => {
           const finalPrice = item.product.listPrice * (1 - customer.defaultDiscount / 100);
           
-          const taxValue = applyDiscounts && isDiscountOptionSelected('3') ? 
+          const taxValue = applyDiscounts && isDiscountOptionSelected('icms-st') ? 
             calculateItemTaxSubstitutionValue({...item, finalPrice}) : 0;
           
           const totalUnits = calculateTotalUnits(item);
@@ -284,7 +291,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         prevItems.map(item => {
           const finalPrice = item.product.listPrice;
           
-          const taxValue = applyDiscounts && isDiscountOptionSelected('3') ? 
+          const taxValue = applyDiscounts && isDiscountOptionSelected('icms-st') ? 
             calculateItemTaxSubstitutionValue({...item, finalPrice}) : 0;
           
           const totalUnits = calculateTotalUnits(item);
@@ -334,7 +341,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const toggleIPI = () => {
-    setWithIPI(prev => !prev);
+    setWithIPI(prev => {
+      const newValue = !prev;
+      if (newValue) {
+        setSelectedDiscountOptions(prev => {
+          if (!prev.includes('ipi')) {
+            return [...prev, 'ipi'];
+          }
+          return prev;
+        });
+      } else {
+        setSelectedDiscountOptions(prev => prev.filter(id => id !== 'ipi'));
+      }
+      return newValue;
+    });
   };
 
   const addItem = (product: Product, quantity: number) => {
@@ -353,7 +373,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const newQuantity = existingItem.quantity + quantity;
       const totalUnits = newQuantity * (existingItem.product.quantityPerVolume || 1);
       
-      const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('3') ? 
+      const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('icms-st') ? 
         calculateItemTaxSubstitutionValue({...existingItem, quantity: newQuantity}) : 0;
       
       const subtotal = (existingItem.finalPrice + taxValuePerUnit) * totalUnits;
@@ -385,7 +405,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         subtotal: 0
       };
       
-      const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('3') ? 
+      const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('icms-st') ? 
         calculateItemTaxSubstitutionValue(tempItem) : 0;
       
       const subtotal = (finalPrice + taxValuePerUnit) * totalUnits;
@@ -432,7 +452,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (item.id === id) {
         const totalUnits = quantity * (item.product.quantityPerVolume || 1);
         
-        const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('3') ? 
+        const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('icms-st') ? 
           calculateItemTaxSubstitutionValue({...item, quantity}) : 0;
         
         const subtotal = (item.finalPrice + taxValuePerUnit) * totalUnits;
@@ -468,7 +488,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         const updatedItem = {...item, finalPrice, discount: appliedDiscount};
         
-        const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('3') ? 
+        const taxValuePerUnit = applyDiscounts && isDiscountOptionSelected('icms-st') ? 
           calculateItemTaxSubstitutionValue(updatedItem) : 0;
         
         const subtotal = (finalPrice + taxValuePerUnit) * totalUnits;
@@ -487,18 +507,25 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const toggleDiscountOption = (id: string) => {
     setSelectedDiscountOptions(prev => {
       if (prev.includes(id)) {
-        if (id === '1') {
+        if (id === 'retirada') {
           setDeliveryLocation(null);
         }
-        if (id === '2') {
+        if (id === 'meia-nota') {
           setHalfInvoicePercentage(50);
           setHalfInvoiceType('quantity');
         }
-        if (id === '4') {
+        if (id === 'a-vista') {
           setPaymentTerms('');
+        }
+        if (id === 'ipi') {
+          setWithIPI(false);
         }
         return prev.filter(optId => optId !== id);
       } else {
+        // Special handling for IPI
+        if (id === 'ipi') {
+          setWithIPI(true);
+        }
         return [...prev, id];
       }
     });
@@ -528,37 +555,63 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     try {
-      const shippingValue: 'pickup' | 'delivery' = isDiscountOptionSelected('1') ? 'pickup' : 'delivery';
+      const shippingValue: 'pickup' | 'delivery' = isDiscountOptionSelected('retirada') ? 'pickup' : 'delivery';
       
-      const paymentMethodValue: 'cash' | 'credit' = isDiscountOptionSelected('4') ? 'cash' : 'credit';
+      const paymentMethodValue: 'cash' | 'credit' = isDiscountOptionSelected('a-vista') ? 'cash' : 'credit';
+      
+      // Convert selected discount options to full discount objects
+      const appliedDiscounts = selectedDiscountOptions.map(id => {
+        const option = discountOptions.find(opt => opt.id === id);
+        if (!option) return null;
+        
+        // Create a formatted discount object with additional context for saving
+        // This will be stored as JSONB in the database
+        return {
+          id: option.id,
+          name: option.name,
+          description: option.description,
+          value: option.value,
+          type: option.type,
+          isActive: option.isActive,
+          // Add additional context for specific discount types
+          context: id === 'meia-nota' ? {
+            halfInvoicePercentage,
+            halfInvoiceType
+          } : id === 'retirada' ? {
+            deliveryLocation,
+            transportCompanyId: selectedTransportCompany
+          } : id === 'a-vista' ? {
+            paymentTerms: !isDiscountOptionSelected('a-vista') ? paymentTerms : undefined
+          } : {}
+        };
+      }).filter(Boolean);
+      
+      console.log('Applied discounts for order:', appliedDiscounts);
       
       const orderData: Partial<Order> = {
         customer,
         customerId: customer.id,
         items,
-        appliedDiscounts: selectedDiscountOptions.map(id => {
-          const option = discountOptions.find(opt => opt.id === id);
-          return option || null;
-        }).filter(Boolean) as DiscountOption[],
+        appliedDiscounts,
         deliveryLocation,
         deliveryFee,
-        halfInvoicePercentage: isDiscountOptionSelected('2') ? halfInvoicePercentage : undefined,
-        halfInvoiceType: isDiscountOptionSelected('2') ? halfInvoiceType : undefined,
+        halfInvoicePercentage: isDiscountOptionSelected('meia-nota') ? halfInvoicePercentage : undefined,
+        halfInvoiceType: isDiscountOptionSelected('meia-nota') ? halfInvoiceType : undefined,
         observations,
         subtotal,
         totalDiscount,
         total,
         shipping: shippingValue,
         paymentMethod: paymentMethodValue,
-        paymentTerms: !isDiscountOptionSelected('4') ? paymentTerms : undefined,
-        fullInvoice: !isDiscountOptionSelected('2'),
-        taxSubstitution: isDiscountOptionSelected('3'),
+        paymentTerms: !isDiscountOptionSelected('a-vista') ? paymentTerms : undefined,
+        fullInvoice: !isDiscountOptionSelected('meia-nota'),
+        taxSubstitution: isDiscountOptionSelected('icms-st'),
         withIPI,
         ipiValue: withIPI ? ipiValue : undefined,
         status: 'pending',
         notes: observations,
         userId: user?.id,
-        transportCompanyId: !isDiscountOptionSelected('1') ? selectedTransportCompany : undefined
+        transportCompanyId: !isDiscountOptionSelected('retirada') ? selectedTransportCompany : undefined
       };
       
       console.log('Sending order with data:', orderData);

@@ -1,4 +1,3 @@
-
 import { Tables } from "@/integrations/supabase/client";
 import { Product, Order, CartItem, DiscountOption, Customer, User } from "@/types/types";
 
@@ -37,146 +36,127 @@ export const supabaseProductToAppProduct = (supabaseProduct: Tables<'products'>)
  * Converte um pedido com dados relacionados do formato Supabase para o formato da aplicação
  */
 export const supabaseOrderToAppOrder = (
-  order: any, 
-  items: any[] = [], 
-  discounts: DiscountOption[] = [],
-  userData?: { name: string }
+  supabaseOrder: any,
+  orderItems: any[] = [],
+  discounts: any[] = []
 ): Order => {
-  if (!order) {
-    throw new Error('Order data is null or undefined');
-  }
-  
-  // Ensure customer is properly formatted
-  const customer: Customer = order.customers ? {
-    id: order.customers.id,
-    companyName: order.customers.company_name,
-    document: order.customers.document,
-    salesPersonId: order.customers.sales_person_id,
-    street: order.customers.street,
-    number: order.customers.number || '',
-    noNumber: Boolean(order.customers.no_number),
-    complement: order.customers.complement || '',
-    neighborhood: order.customers.neighborhood || '',
-    city: order.customers.city,
-    state: order.customers.state,
-    zipCode: order.customers.zip_code,
-    phone: order.customers.phone || '',
-    email: order.customers.email || '',
-    whatsapp: order.customers.whatsapp || '',
-    stateRegistration: order.customers.state_registration || '',
-    defaultDiscount: Number(order.customers.default_discount) || 0,
-    maxDiscount: Number(order.customers.max_discount) || 0,
-    createdAt: new Date(order.customers.created_at),
-    updatedAt: new Date(order.customers.updated_at),
-    registerDate: new Date(order.customers.register_date || order.customers.created_at),
-  } : {} as Customer;
-
-  // Format order items with improved safety checks
-  const formattedItems: CartItem[] = items.map(item => {
-    if (!item || !item.products) {
-      console.warn('Invalid item or missing product data in order item');
-      return {} as CartItem;
-    }
-    
-    return {
-      id: item.id,
-      productId: item.product_id,
-      product: {
-        id: item.products.id,
-        name: item.products.name,
-        description: item.products.description || '',
-        listPrice: Number(item.products.list_price),
-        weight: Number(item.products.weight),
-        quantity: Number(item.products.quantity),
-        quantityPerVolume: Number(item.products.quantity_per_volume),
-        dimensions: {
-          width: Number(item.products.width),
-          height: Number(item.products.height),
-          length: Number(item.products.length),
-        },
-        cubicVolume: Number(item.products.cubic_volume),
-        categoryId: item.products.category_id || '',
-        subcategoryId: item.products.subcategory_id || '',
-        imageUrl: item.products.image_url || '',
-        mva: Number(item.products.mva || 39), // Ensure MVA is included with a default value
-        createdAt: new Date(item.products.created_at),
-        updatedAt: new Date(item.products.updated_at),
+  // Process order items
+  const processedItems: CartItem[] = orderItems.map(item => ({
+    id: item.id,
+    productId: item.product_id,
+    product: {
+      id: item.products.id,
+      name: item.products.name,
+      description: item.products.description || '',
+      listPrice: item.products.list_price,
+      weight: item.products.weight,
+      quantity: item.products.quantity,
+      quantityPerVolume: item.products.quantity_per_volume,
+      dimensions: {
+        width: item.products.width,
+        height: item.products.height,
+        length: item.products.length,
       },
-      quantity: Number(item.quantity),
-      discount: Number(item.discount),
-      finalPrice: Number(item.final_price),
-      subtotal: Number(item.subtotal),
-    };
-  }).filter(item => Object.keys(item).length > 0);
+      cubicVolume: item.products.cubic_volume,
+      categoryId: item.products.category_id,
+      subcategoryId: item.products.subcategory_id,
+      imageUrl: item.products.image_url,
+      mva: item.products.mva,
+      createdAt: new Date(item.products.created_at),
+      updatedAt: new Date(item.products.updated_at),
+    },
+    quantity: Number(item.quantity),
+    discount: Number(item.discount || 0),
+    finalPrice: Number(item.final_price || 0),
+    subtotal: Number(item.subtotal || 0),
+  }));
 
-  // Ensure user.role is always one of the allowed values with stricter validation
-  const validRoles: ('administrator' | 'salesperson' | 'billing' | 'inventory')[] = [
-    'administrator', 'salesperson', 'billing', 'inventory'
-  ];
-  const defaultRole = 'salesperson';
-  const userRole = validRoles.includes(order.user_role as any) 
-    ? order.user_role as 'administrator' | 'salesperson' | 'billing' | 'inventory'
-    : defaultRole;
-
-  // Create a properly formatted user object for the order
-  const user: User = {
-    id: order.user_id || '',
-    // If userData is provided, use its name, otherwise use empty string
-    name: userData?.name || '',
-    username: '',
-    role: userRole,
-    permissions: [],
-    email: '',
-    createdAt: new Date(),
-    userTypeId: '' // Ensure userTypeId is provided with a default empty string
-  };
-
-  // Convert order status and shipping to proper types with validation
-  const validStatus: ('pending' | 'confirmed' | 'invoiced' | 'completed' | 'canceled')[] = [
-    'pending', 'confirmed', 'invoiced', 'completed', 'canceled'
-  ];
-  const status = validStatus.includes(order.status as any) 
-    ? order.status as 'pending' | 'confirmed' | 'invoiced' | 'completed' | 'canceled'
-    : 'pending';
-
-  const validShipping: ('delivery' | 'pickup')[] = ['delivery', 'pickup'];
-  const shipping = validShipping.includes(order.shipping as any) 
-    ? order.shipping as 'delivery' | 'pickup'
-    : 'delivery';
-
-  const validPaymentMethod: ('cash' | 'credit')[] = ['cash', 'credit'];
-  const paymentMethod = validPaymentMethod.includes(order.payment_method as any)
-    ? order.payment_method as 'cash' | 'credit'
-    : 'cash';
+  // Use the discounts directly from the parameter or from the applied_discounts field if available
+  const appliedDiscounts = discounts || supabaseOrder.applied_discounts || [];
+  
+  console.log("Processing discounts in adapter:", appliedDiscounts);
 
   return {
-    id: order.id,
-    orderNumber: order.order_number,
-    customerId: order.customer_id,
-    customer,
-    userId: order.user_id,
-    user,
-    items: formattedItems,
-    appliedDiscounts: discounts,
-    totalDiscount: Number(order.total_discount) || 0,
-    subtotal: Number(order.subtotal) || 0,
-    total: Number(order.total) || 0,
-    status,
-    shipping,
-    fullInvoice: Boolean(order.full_invoice),
-    taxSubstitution: Boolean(order.tax_substitution),
-    paymentMethod,
-    paymentTerms: order.payment_terms || '',
-    notes: order.notes || '',
-    observations: order.observations || '',
-    createdAt: new Date(order.created_at),
-    updatedAt: new Date(order.updated_at),
-    deliveryLocation: order.delivery_location as 'capital' | 'interior' | null,
-    halfInvoicePercentage: Number(order.half_invoice_percentage),
-    deliveryFee: Number(order.delivery_fee) || 0,
-    withIPI: Boolean(order.with_ipi) || false,
-    ipiValue: Number(order.ipi_value) || 0,
-    transportCompanyId: order.transport_company_id || null, // Ensure transportCompanyId is always properly mapped
+    id: supabaseOrder.id,
+    orderNumber: supabaseOrder.order_number,
+    customerId: supabaseOrder.customer_id,
+    customer: supabaseOrder.customers ? {
+      id: supabaseOrder.customers.id,
+      companyName: supabaseOrder.customers.company_name,
+      document: supabaseOrder.customers.document,
+      salesPersonId: supabaseOrder.customers.sales_person_id,
+      street: supabaseOrder.customers.street,
+      number: supabaseOrder.customers.number || '',
+      noNumber: supabaseOrder.customers.no_number || false,
+      complement: supabaseOrder.customers.complement || '',
+      neighborhood: supabaseOrder.customers.neighborhood || '',
+      city: supabaseOrder.customers.city,
+      state: supabaseOrder.customers.state,
+      zipCode: supabaseOrder.customers.zip_code,
+      phone: supabaseOrder.customers.phone || '',
+      email: supabaseOrder.customers.email || '',
+      whatsapp: supabaseOrder.customers.whatsapp || '',
+      stateRegistration: supabaseOrder.customers.state_registration || '',
+      defaultDiscount: Number(supabaseOrder.customers.default_discount || 0),
+      maxDiscount: Number(supabaseOrder.customers.max_discount || 0),
+      createdAt: new Date(supabaseOrder.customers.created_at),
+      updatedAt: new Date(supabaseOrder.customers.updated_at),
+      registerDate: new Date(supabaseOrder.customers.register_date),
+      transportCompanyId: supabaseOrder.customers.transport_company_id,
+    } : {
+      id: supabaseOrder.customer_id,
+      companyName: 'Cliente não encontrado',
+      document: '',
+      salesPersonId: '',
+      street: '',
+      number: '',
+      noNumber: false,
+      complement: '',
+      neighborhood: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      phone: '',
+      email: '',
+      defaultDiscount: 0,
+      maxDiscount: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      registerDate: new Date(),
+    },
+    userId: supabaseOrder.user_id,
+    user: {
+      id: supabaseOrder.user_id || '',
+      username: '',
+      name: '',
+      role: 'salesperson',
+      permissions: [],
+      email: '',
+      createdAt: new Date(),
+      userTypeId: '',
+    },
+    items: processedItems,
+    appliedDiscounts: appliedDiscounts,
+    totalDiscount: Number(supabaseOrder.total_discount || 0),
+    subtotal: Number(supabaseOrder.subtotal || 0),
+    total: Number(supabaseOrder.total || 0),
+    status: supabaseOrder.status as Order['status'],
+    shipping: supabaseOrder.shipping as Order['shipping'],
+    fullInvoice: supabaseOrder.full_invoice,
+    taxSubstitution: supabaseOrder.tax_substitution,
+    paymentMethod: supabaseOrder.payment_method as Order['paymentMethod'],
+    paymentTerms: supabaseOrder.payment_terms || '',
+    notes: supabaseOrder.notes || '',
+    observations: supabaseOrder.observations || '',
+    createdAt: new Date(supabaseOrder.created_at),
+    updatedAt: new Date(supabaseOrder.updated_at),
+    deliveryLocation: supabaseOrder.delivery_location as Order['deliveryLocation'],
+    halfInvoicePercentage: supabaseOrder.half_invoice_percentage,
+    halfInvoiceType: 'quantity', // Default value
+    deliveryFee: Number(supabaseOrder.delivery_fee || 0),
+    withIPI: supabaseOrder.with_ipi || false,
+    ipiValue: Number(supabaseOrder.ipi_value || 0),
+    transportCompanyId: supabaseOrder.transport_company_id || null,
   };
 };
 
