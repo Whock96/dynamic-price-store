@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -58,14 +59,15 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
   
   let totalOrderWeight = 0;
   let totalVolumes = 0;
-  let totalIpiValue = 0;
 
   order.items.forEach(item => {
     const itemWeight = (item.quantity || 0) * (item.product?.weight || 0);
     totalOrderWeight += itemWeight;
     totalVolumes += (item.quantity || 0);
-    totalIpiValue += item.ipiValue || 0;
   });
+
+  // Usar o valor de IPI diretamente da ordem
+  const totalIpiValue = order.ipiValue || 0;
 
   const calculatePriceWithInvoice = (finalPrice: number, percentage: number) => {
     return finalPrice * (percentage / 100);
@@ -99,8 +101,6 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
 
   const subtotalAfterDiscount = order.subtotal - (order.totalDiscount || 0);
   const taxSubstitutionValue = order.taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
-  const ipiValue = order.withIPI ? (order.ipiValue || 0) : 0;
-  const deliveryFee = order.deliveryFee || 0;
 
   return (
     <div className="print-container">
@@ -277,11 +277,11 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
                   <td className="align-right text-blue">+{formatCurrency(totalIpiValue)}</td>
                 </tr>
               )}
-              {deliveryFee > 0 && (
+              {order.deliveryFee > 0 && (
                 <tr>
                   <td>Taxa de Entrega:</td>
                   <td className="align-right font-medium">
-                    {formatCurrency(deliveryFee)}
+                    {formatCurrency(order.deliveryFee)}
                   </td>
                 </tr>
               )}
@@ -298,8 +298,8 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
                         subtotalAfterDiscount,
                         halfInvoicePercentage,
                         taxSubstitutionValue,
-                        ipiValue,
-                        deliveryFee
+                        totalIpiValue,
+                        order.deliveryFee || 0
                       ))}
                     </td>
                   </tr>
@@ -331,8 +331,8 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
               <p><span className="font-semibold">Região:</span> {order.deliveryLocation === 'capital' ? 'Capital' : 'Interior'}</p>
             )}
             
-            {order.shipping === 'delivery' && deliveryFee > 0 && (
-              <p><span className="font-semibold">Taxa de Entrega:</span> {formatCurrency(deliveryFee)}</p>
+            {order.shipping === 'delivery' && order.deliveryFee > 0 && (
+              <p><span className="font-semibold">Taxa de Entrega:</span> {formatCurrency(order.deliveryFee)}</p>
             )}
             
             <p><span className="font-semibold">Peso Total do Pedido:</span> {formatWeight(totalOrderWeight)}</p>

@@ -27,9 +27,9 @@ export const printStyles = `
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 6px; /* Reduced from 8px */
+    margin-bottom: 5px; /* Reduced from 6px */
     border-bottom: 1px solid #d1d5db;
-    padding-bottom: 6px;
+    padding-bottom: 5px;
   }
   
   .print-header-logo {
@@ -55,7 +55,7 @@ export const printStyles = `
   
   .print-title {
     text-align: center;
-    margin-bottom: 8px; /* Reduced from 12px */
+    margin-bottom: 6px; /* Reduced from 8px */
   }
   
   .print-title h1 {
@@ -75,8 +75,8 @@ export const printStyles = `
   .print-card {
     border: 1px solid #d1d5db;
     border-radius: 3px;
-    padding: 6px;
-    margin-bottom: 6px;
+    padding: 5px; /* Reduced from 6px */
+    margin-bottom: 5px; /* Reduced from 6px */
   }
   
   .print-card-title {
@@ -84,23 +84,24 @@ export const printStyles = `
     font-size: 10px;
     border-bottom: 1px solid #d1d5db;
     padding-bottom: 2px;
-    margin-bottom: 4px;
+    margin-bottom: 3px; /* Reduced from 4px */
   }
   
   .print-card-content {
     font-size: 9px;
+    line-height: 1.2; /* Reduced line height */
   }
   
   .print-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 6px;
+    gap: 5px; /* Reduced from 6px */
   }
   
   .print-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 6px;
+    margin-bottom: 5px; /* Reduced from 6px */
     font-size: 9px;
   }
   
@@ -108,12 +109,12 @@ export const printStyles = `
     background-color: #f3f4f6;
     font-weight: 600;
     text-align: left;
-    padding: 2px 4px;
+    padding: 2px 3px; /* Reduced from 2px 4px */
     border: 1px solid #d1d5db;
   }
   
   .print-table td {
-    padding: 2px 4px;
+    padding: 2px 3px; /* Reduced from 2px 4px */
     border: 1px solid #d1d5db;
     vertical-align: top;
   }
@@ -131,6 +132,7 @@ export const printStyles = `
   .print-financial-summary {
     width: 100%;
     font-size: 9px;
+    line-height: 1.3; /* Reduced line height */
   }
   
   .print-financial-summary td {
@@ -158,11 +160,12 @@ export const printStyles = `
     padding: 4px;
     border-radius: 3px;
     font-size: 9px;
+    line-height: 1.2; /* Reduced line height */
   }
   
   .print-footer {
-    margin-top: 8px;
-    padding-top: 6px;
+    margin-top: 6px; /* Reduced from 8px */
+    padding-top: 5px; /* Reduced from 6px */
     border-top: 1px solid #d1d5db;
     text-align: center;
     font-size: 9px;
@@ -196,4 +199,3 @@ export const printStyles = `
     }
   }
 `
-
