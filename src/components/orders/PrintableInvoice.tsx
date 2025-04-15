@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -37,7 +36,6 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
     fetchTransportCompany();
   }, [order.transportCompanyId]);
   
-  // Notify parent when component is fully rendered
   useEffect(() => {
     if (onPrint) {
       console.log('PrintableInvoice rendered, calling onPrint callback');
@@ -104,7 +102,6 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
 
   return (
     <div className="print-container">
-      {/* Header with logo and company info */}
       <div className="print-header">
         <div className="print-header-logo">
           <img src="/lovable-uploads/68daf61d-816f-4f86-8b3f-4f0970296cf0.png" width="150" height="60" style={{ objectFit: 'contain' }} alt="Ferplas Logo" />
@@ -118,13 +115,11 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
         </div>
       </div>
 
-      {/* Invoice title */}
       <div className="print-title">
         <h1>FATURAMENTO DO PEDIDO #{orderNumber}</h1>
         <p>Emitido em {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
       </div>
 
-      {/* Customer and order info cards */}
       <div className="print-grid">
         <div className="print-card">
           <div className="print-card-title">Cliente</div>
@@ -166,7 +161,6 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
         </div>
       </div>
 
-      {/* Order items table */}
       <div className="print-card">
         <div className="print-card-title">Itens do Pedido</div>
         <table className="print-table">
@@ -182,10 +176,10 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
                   <th className="align-right">Preço s/ nota</th>
                 </>
               )}
-              {order.items.some(item => (item?.taxSubstitutionValue || 0) > 0) && (
+              {order.taxSubstitution && (
                 <th className="align-right">ST</th>
               )}
-              {order.items.some(item => (item?.ipiValue || 0) > 0) && (
+              {order.withIPI && (
                 <th className="align-right">IPI</th>
               )}
               <th className="align-right">Total c/ Impostos</th>
@@ -219,10 +213,10 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
                       </td>
                     </>
                   )}
-                  {order.items.some(i => (i?.taxSubstitutionValue || 0) > 0) && (
+                  {order.taxSubstitution && (
                     <td className="align-right">{formatCurrency(item?.taxSubstitutionValue || 0)}</td>
                   )}
-                  {order.items.some(i => (i?.ipiValue || 0) > 0) && (
+                  {order.withIPI && (
                     <td className="align-right">{formatCurrency(item?.ipiValue || 0)}</td>
                   )}
                   <td className="align-right">{formatCurrency(item?.totalWithTaxes || 0)}</td>
@@ -246,7 +240,6 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
         </table>
       </div>
 
-      {/* Financial summary and delivery info */}
       <div className="print-grid">
         <div className="print-card">
           <div className="print-card-title">Resumo Financeiro</div>
@@ -348,7 +341,6 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
         </div>
       </div>
 
-      {/* Notes section */}
       {(order.notes || order.observations) && (
         <div className="print-card">
           <div className="print-card-title">Observações</div>
@@ -356,7 +348,6 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
         </div>
       )}
 
-      {/* Footer */}
       <div className="print-footer">
         <p>Este documento não possui valor fiscal. Para mais informações entre em contato conosco.</p>
       </div>

@@ -130,10 +130,10 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, companyInfo, onP
               <th className="align-right" style={{width: '12%'}}>Preço Unit.</th>
               <th className="align-center" style={{width: '8%'}}>Desc.</th>
               <th className="align-right" style={{width: '12%'}}>Preço Final</th>
-              {order.items.some(item => (item?.taxSubstitutionValue || 0) > 0) && (
+              {order.taxSubstitution && (
                 <th className="align-right" style={{width: '8%'}}>ST</th>
               )}
-              {order.items.some(item => (item?.ipiValue || 0) > 0) && (
+              {order.withIPI && (
                 <th className="align-right" style={{width: '8%'}}>IPI</th>
               )}
               <th className="align-right" style={{width: '12%'}}>Total</th>
@@ -149,10 +149,10 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, companyInfo, onP
                 <td className="align-right">{formatCurrency((item as any).listPrice || item?.product?.listPrice || 0)}</td>
                 <td className="align-center">{item?.totalDiscountPercentage || item?.discount || 0}%</td>
                 <td className="align-right">{formatCurrency(item?.finalPrice || 0)}</td>
-                {order.items.some(i => (i?.taxSubstitutionValue || 0) > 0) && (
+                {order.taxSubstitution && (
                   <td className="align-right">{formatCurrency(item?.taxSubstitutionValue || 0)}</td>
                 )}
-                {order.items.some(i => (i?.ipiValue || 0) > 0) && (
+                {order.withIPI && (
                   <td className="align-right">{formatCurrency(item?.ipiValue || 0)}</td>
                 )}
                 <td className="align-right">{formatCurrency(item?.totalWithTaxes || 0)}</td>

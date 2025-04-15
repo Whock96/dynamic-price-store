@@ -640,10 +640,10 @@ const OrderDetail = () => {
                 <TableHead>Preço Unitário</TableHead>
                 <TableHead>Desc. Total (%)</TableHead>
                 <TableHead>Preço Final</TableHead>
-                {items.some(item => (item?.taxSubstitutionValue || 0) > 0) && (
+                {order.taxSubstitution && (
                   <TableHead>Substituição Tributária</TableHead>
                 )}
-                {items.some(item => (item?.ipiValue || 0) > 0) && (
+                {order.withIPI && (
                   <TableHead>IPI</TableHead>
                 )}
                 <TableHead>Total com Impostos</TableHead>
@@ -661,10 +661,10 @@ const OrderDetail = () => {
                   <TableCell>{formatCurrency(item?.product?.listPrice || 0)}</TableCell>
                   <TableCell>{item?.totalDiscountPercentage || item?.discount || 0}%</TableCell>
                   <TableCell>{formatCurrency(item?.finalPrice || 0)}</TableCell>
-                  {items.some(i => (i?.taxSubstitutionValue || 0) > 0) && (
+                  {order.taxSubstitution && (
                     <TableCell>{formatCurrency(item?.taxSubstitutionValue || 0)}</TableCell>
                   )}
-                  {items.some(i => (i?.ipiValue || 0) > 0) && (
+                  {order.withIPI && (
                     <TableCell>{formatCurrency(item?.ipiValue || 0)}</TableCell>
                   )}
                   <TableCell>{formatCurrency(item?.totalWithTaxes || 0)}</TableCell>
