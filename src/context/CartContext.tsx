@@ -553,7 +553,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         customer,
         customerId: customer.id,
         items: itemsWithCalculatedValues,
-        appliedDiscounts,
+        appliedDiscounts: selectedDiscountOptions.map(id => {
+          const option = discountOptions.find(opt => opt.id === id);
+          return option as DiscountOption;
+        }).filter(Boolean),
         deliveryLocation,
         deliveryFee,
         halfInvoicePercentage: isDiscountOptionSelected('meia-nota') ? halfInvoicePercentage : undefined,
