@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
@@ -339,6 +338,19 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const total = subtotal + taxSubstitutionValue + ipiValue + deliveryFee;
 
   const toggleApplyDiscounts = () => {
+    setSelectedDiscountOptions(prev => {
+      if (applyDiscounts) {
+        return prev.filter(id => {
+          const option = discountOptions.find(opt => opt.id === id);
+          return option?.type !== 'discount';
+        });
+      } else {
+        const discountIds = discountOptions
+          .filter(opt => opt.type === 'discount' && opt.isActive)
+          .map(opt => opt.id);
+        return [...prev, ...discountIds];
+      }
+    });
     setApplyDiscounts(prev => !prev);
   };
 
