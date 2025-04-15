@@ -97,7 +97,8 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({ order, onPrint }) =
 
   const subtotalAfterDiscount = order.subtotal - (order.totalDiscount || 0);
   const taxSubstitutionValue = order.taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
-  const ipiValue = (order.withIPI || order.with_ipi) ? (order.ipiValue || order.ipi_value || 0) : 0;
+  // Fix - change 'with_ipi' to 'withIPI' and 'ipi_value' to 'ipiValue'
+  const ipiValue = (order.withIPI) ? (order.ipiValue || 0) : 0;
   const deliveryFee = order.deliveryFee || 0;
 
   return (
