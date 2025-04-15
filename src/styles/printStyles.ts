@@ -1,9 +1,8 @@
 
 export const printStyles = `
-  /* Base styles for both preview and print */
   @page { 
-    size: A4; 
-    margin: 5mm; 
+    size: A4;
+    margin: 4mm; /* Reduced from 5mm */
   }
   
   body { 
@@ -11,28 +10,26 @@ export const printStyles = `
     print-color-adjust: exact !important;
     color-adjust: exact !important;
     font-family: 'Inter', system-ui, sans-serif;
-    font-size: 10px;
+    font-size: 9px; /* Reduced from 10px */
     background-color: white;
     margin: 0;
     padding: 0;
   }
   
-  /* Container */
   .print-container {
     max-width: 190mm;
     margin: 0 auto;
-    padding: 8px;
+    padding: 6px; /* Reduced from 8px */
     background-color: white;
   }
   
-  /* Header section */
   .print-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 8px;
+    margin-bottom: 6px; /* Reduced from 8px */
     border-bottom: 1px solid #d1d5db;
-    padding-bottom: 8px;
+    padding-bottom: 6px;
   }
   
   .print-header-logo {
@@ -41,86 +38,82 @@ export const printStyles = `
   }
   
   .print-header-logo img {
-    width: 120px;
-    height: 48px;
+    width: 100px; /* Reduced from 120px */
+    height: 40px; /* Reduced from 48px */
     object-fit: contain;
   }
   
   .print-header-company {
     text-align: right;
-    font-size: 10px;
+    font-size: 9px;
   }
   
   .print-header-company .company-name {
-    font-size: 14px;
+    font-size: 12px; /* Reduced from 14px */
     font-weight: bold;
   }
   
-  /* Title section */
   .print-title {
     text-align: center;
-    margin-bottom: 12px;
+    margin-bottom: 8px; /* Reduced from 12px */
   }
   
   .print-title h1 {
     display: inline-block;
-    font-size: 16px;
+    font-size: 14px; /* Reduced from 16px */
     font-weight: bold;
     border: 1px solid #d1d5db;
-    padding: 4px 12px;
-    margin-bottom: 4px;
+    padding: 3px 10px;
+    margin-bottom: 2px;
   }
   
   .print-title p {
-    font-size: 10px;
-    margin-top: 2px;
+    font-size: 9px;
+    margin-top: 1px;
   }
   
-  /* Card sections */
   .print-card {
     border: 1px solid #d1d5db;
-    border-radius: 4px;
-    padding: 8px;
-    margin-bottom: 8px;
+    border-radius: 3px;
+    padding: 6px;
+    margin-bottom: 6px;
   }
   
   .print-card-title {
     font-weight: bold;
-    font-size: 12px;
+    font-size: 10px;
     border-bottom: 1px solid #d1d5db;
-    padding-bottom: 4px;
-    margin-bottom: 6px;
+    padding-bottom: 2px;
+    margin-bottom: 4px;
   }
   
   .print-card-content {
-    font-size: 10px;
+    font-size: 9px;
   }
   
-  /* Grid layout */
   .print-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+    gap: 6px;
   }
   
-  /* Tables */
   .print-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 8px;
-    font-size: 10px;
+    margin-bottom: 6px;
+    font-size: 9px;
   }
   
   .print-table th {
     background-color: #f3f4f6;
     font-weight: 600;
     text-align: left;
-    padding: 4px 6px;
+    padding: 2px 4px;
     border: 1px solid #d1d5db;
   }
   
   .print-table td {
-    padding: 4px 6px;
+    padding: 2px 4px;
     border: 1px solid #d1d5db;
     vertical-align: top;
   }
@@ -135,57 +128,51 @@ export const printStyles = `
     text-align: center;
   }
   
-  /* Financial summary */
   .print-financial-summary {
     width: 100%;
-    font-size: 10px;
+    font-size: 9px;
   }
   
   .print-financial-summary td {
-    padding: 2px 0;
+    padding: 1px 0;
     border: none;
   }
   
   .print-financial-summary .summary-total {
     border-top: 1px solid #d1d5db;
     font-weight: bold;
-    padding-top: 4px;
+    padding-top: 2px;
   }
   
-  /* Text colors */
   .text-red { color: #dc2626; }
   .text-blue { color: #2563eb; }
   .text-orange { color: #ea580c; }
   
-  /* Text weights */
   .font-medium { font-weight: 500; }
   .font-semibold { font-weight: 600; }
   .font-bold { font-weight: 700; }
   
-  /* Notes section */
   .print-notes {
     border: 1px solid #d1d5db;
     background-color: #f9fafb;
-    padding: 6px;
-    border-radius: 4px;
-    font-size: 10px;
+    padding: 4px;
+    border-radius: 3px;
+    font-size: 9px;
   }
   
-  /* Footer */
   .print-footer {
-    margin-top: 12px;
-    padding-top: 8px;
+    margin-top: 8px;
+    padding-top: 6px;
     border-top: 1px solid #d1d5db;
     text-align: center;
-    font-size: 10px;
+    font-size: 9px;
     color: #6b7280;
   }
 
-  /* For when we're not printing */
   @media screen {
     body {
       background-color: #f5f5f5;
-      padding: 16px;
+      padding: 12px;
     }
     
     .print-container {
@@ -195,7 +182,6 @@ export const printStyles = `
     }
   }
   
-  /* For when we are printing */
   @media print {
     .print-container {
       box-shadow: none;
@@ -209,5 +195,5 @@ export const printStyles = `
       width: 100% !important;
     }
   }
-`;
+`
 
