@@ -1,9 +1,12 @@
-import React, { useEffect } from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Logo from '@/assets/logo';
 import { Order } from '@/types/types';
 import { useCompany } from '@/context/CompanyContext';
+import { supabase } from '@/integrations/supabase/client';
+import { formatCurrency } from '@/utils/formatters';
 
 interface PrintableOrderProps {
   order: Order;
@@ -12,13 +15,26 @@ interface PrintableOrderProps {
 
 const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
   const { companyInfo } = useCompany();
+  const [transportCompanyName, setTransportCompanyName] = useState<string | null>(null);
   
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(Math.max(value, 0));
-  };
+  useEffect(() => {
+    // Fetch transport company information if there's a transport company ID
+    const fetchTransportCompany = async () => {
+      if (order.transportCompanyId) {
+        const { data, error } = await supabase
+          .from('transport_companies')
+          .select('name')
+          .eq('id', order.transportCompanyId)
+          .single();
+          
+        if (!error && data) {
+          setTransportCompanyName(data.name);
+        }
+      }
+    };
+    
+    fetchTransportCompany();
+  }, [order.transportCompanyId]);
 
   const formatWeight = (weight: number) => {
     return `${weight.toFixed(2)} kg`;
@@ -44,23 +60,6 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
   const halfInvoiceText = !order.fullInvoice && order.halfInvoicePercentage ? 
     `(${order.halfInvoicePercentage}%)` : '';
     
-  // Calculate tax substitution value if applicable
-  const getTaxSubstitutionRate = () => {
-    const standardRate = 7.8;
-    
-    if (!order.taxSubstitution) return 0;
-    
-    if (!order.fullInvoice && order.halfInvoicePercentage) {
-      // Adjust rate based on invoice percentage
-      return standardRate * (order.halfInvoicePercentage / 100);
-    }
-    
-    return standardRate;
-  };
-  
-  const effectiveTaxRate = getTaxSubstitutionRate();
-  const taxSubstitutionValue = order.taxSubstitution ? (effectiveTaxRate / 100) * order.subtotal : 0;
-
   // Calculate total units and total weight for the order
   let totalOrderWeight = 0;
   let totalVolumes = 0;
@@ -132,20 +131,20 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
             <p><span className="font-semibold">Prazos:</span> {order.paymentTerms}</p>
           )}
           <p><span className="font-semibold">Tipo de Nota:</span> {invoiceTypeText} {halfInvoiceText}</p>
-          <p><span className="font-semibold">Substituição Tributária:</span> {order.taxSubstitution ? `Sim (${effectiveTaxRate.toFixed(2)}%)` : 'Não'}</p>
+          <p><span className="font-semibold">Substituição Tributária:</span> {order.taxSubstitution ? 'Sim' : 'Não'}</p>
         </div>
       </div>
 
-      {/* Items Table - Updated with conditional columns */}
+      {/* Items Table - Updated with the requested columns */}
       <div className="mb-3">
         <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Itens do Pedido</h2>
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="bg-gray-100">
               <th className="border p-1 text-left">Produto</th>
-              <th className="border p-1 text-right">Preço</th>
-              <th className="border p-1 text-center">Desc.</th>
-              <th className="border p-1 text-right">Final</th>
+              <th className="border p-1 text-right">Preço Unitário</th>
+              <th className="border p-1 text-center">Desc. Total (%)</th>
+              <th className="border p-1 text-right">Preço Final</th>
               {order.items.some(item => (item?.taxSubstitutionValue || 0) > 0) && (
                 <th className="border p-1 text-right">ST</th>
               )}
@@ -153,21 +152,20 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
                 <th className="border p-1 text-right">IPI</th>
               )}
               <th className="border p-1 text-right">Total c/ Impostos</th>
-              <th className="border p-1 text-center">Qtd.</th>
-              <th className="border p-1 text-center">Unidades</th>
+              <th className="border p-1 text-center">Qtd. Volumes</th>
+              <th className="border p-1 text-center">Total Unidades</th>
               <th className="border p-1 text-right">Subtotal</th>
             </tr>
           </thead>
           <tbody>
             {order.items.map((item, index) => {
               const totalUnits = (item.quantity || 0) * (item.product?.quantityPerVolume || 1);
-              const totalWeight = (item.quantity || 0) * (item.product?.weight || 0);
               
               return (
                 <tr key={item?.id || `item-${index}`}>
                   <td className="border p-1">{item?.product?.name || `Produto ${index + 1}`}</td>
                   <td className="border p-1 text-right">{formatCurrency((item as any).listPrice || item?.product?.listPrice || 0)}</td>
-                  <td className="border p-1 text-center">{item?.discount || 0}%</td>
+                  <td className="border p-1 text-center">{item?.totalDiscountPercentage || item?.discount || 0}%</td>
                   <td className="border p-1 text-right">{formatCurrency(item?.finalPrice || 0)}</td>
                   {order.items.some(i => (i?.taxSubstitutionValue || 0) > 0) && (
                     <td className="border p-1 text-right">{formatCurrency(item?.taxSubstitutionValue || 0)}</td>
@@ -211,30 +209,34 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
         </div>
       )}
 
-      {/* Financial Summary - Updated to match OrderDetail */}
+      {/* Financial Summary - Updated to match the requested sequence */}
       <div className="grid grid-cols-2 gap-2 mb-3">
         <div className="text-xs">
           <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Resumo Financeiro</h2>
           <table className="w-full">
             <tbody>
               <tr>
-                <td className="py-0.5">Subtotal:</td>
+                <td className="py-0.5">Total dos Produtos:</td>
                 <td className="py-0.5 text-right font-medium">{formatCurrency(order.subtotal)}</td>
               </tr>
               <tr>
                 <td className="py-0.5">Descontos:</td>
                 <td className="py-0.5 text-right text-red-600 font-medium">-{formatCurrency(order.totalDiscount || 0)}</td>
               </tr>
-              {order.withIPI && (order.ipiValue || 0) > 0 && (
+              <tr>
+                <td className="py-0.5">Subtotal Pedido:</td>
+                <td className="py-0.5 text-right font-medium">{formatCurrency(order.subtotal - (order.totalDiscount || 0))}</td>
+              </tr>
+              {order.taxSubstitution && (
+                <tr>
+                  <td className="py-0.5">Substituição Tributária:</td>
+                  <td className="py-0.5 text-right text-orange-600 font-medium">+{formatCurrency(order.items.reduce((sum, item) => sum + (item.taxSubstitutionValue || 0), 0))}</td>
+                </tr>
+              )}
+              {order.withIPI && (
                 <tr>
                   <td className="py-0.5">IPI:</td>
                   <td className="py-0.5 text-right text-blue-600 font-medium">+{formatCurrency(order.ipiValue || 0)}</td>
-                </tr>
-              )}
-              {order.taxSubstitution && taxSubstitutionValue > 0 && (
-                <tr>
-                  <td className="py-0.5">Substituição Tributária ({effectiveTaxRate.toFixed(2)}%):</td>
-                  <td className="py-0.5 text-right text-orange-600 font-medium">+{formatCurrency(taxSubstitutionValue)}</td>
                 </tr>
               )}
               {order.deliveryFee && order.deliveryFee > 0 && (
@@ -251,13 +253,17 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
           </table>
         </div>
 
-        {/* Delivery Information */}
+        {/* Delivery Information - Updated to include transport company */}
         <div className="text-xs">
           <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Entrega</h2>
           <p><span className="font-semibold">Tipo:</span> {order.shipping === 'delivery' ? 'Entrega' : 'Retirada'}</p>
           
           {order.shipping === 'delivery' && order.deliveryLocation && (
             <p><span className="font-semibold">Região:</span> {order.deliveryLocation === 'capital' ? 'Capital' : 'Interior'}</p>
+          )}
+          
+          {transportCompanyName && (
+            <p><span className="font-semibold">Transportadora:</span> {transportCompanyName}</p>
           )}
           
           {order.shipping === 'delivery' && order.deliveryFee && order.deliveryFee > 0 && (
