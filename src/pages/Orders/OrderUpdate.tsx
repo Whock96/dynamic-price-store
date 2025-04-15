@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useOrders } from '@/context/OrderContext';
@@ -151,13 +150,25 @@ const OrderUpdate = () => {
     if (invoicePdf) {
       setIsUploading(true);
       try {
+        console.log('Attempting to upload PDF file:', invoicePdf.name);
         const publicUrl = await uploadInvoicePdf(invoicePdf, id);
+        console.log('Upload successful, received URL:', publicUrl);
         if (publicUrl) {
           updates.invoicePdfPath = publicUrl;
         }
       } catch (error: any) {
         console.error('Error uploading PDF:', error);
-        toast.error(`Erro ao fazer upload do arquivo: ${error.message || 'Erro desconhecido'}`);
+        let errorMessage = 'Erro desconhecido';
+        
+        if (error.message) {
+          errorMessage = error.message;
+        } else if (error.error_description) {
+          errorMessage = error.error_description;
+        } else if (typeof error === 'string') {
+          errorMessage = error;
+        }
+        
+        toast.error(`Erro ao fazer upload do arquivo: ${errorMessage}`);
         setIsUploading(false);
         return;
       } finally {
@@ -167,10 +178,12 @@ const OrderUpdate = () => {
 
     if (Object.keys(updates).length > 0) {
       updateOrder(id, updates);
+      toast.success('Pedido atualizado com sucesso');
+      navigate(`/orders/${id}`);
+    } else {
+      toast.info('Nenhuma alteração foi feita');
+      navigate(`/orders/${id}`);
     }
-
-    toast.success('Pedido atualizado com sucesso');
-    navigate(`/orders/${id}`);
   };
 
   if (isLoading || isLoadingSalespeople || isLoadingTransportCompanies) {
@@ -427,7 +440,10 @@ const OrderUpdate = () => {
             <div>
               <Label>Arquivo PDF da NFe</Label>
               <FileUpload
-                onChange={(file) => setInvoicePdf(file)}
+                onChange={(file) => {
+                  console.log('File selected:', file?.name);
+                  setInvoicePdf(file);
+                }}
                 value={order?.invoicePdfPath}
                 accept="application/pdf,.pdf"
                 maxSize={10}

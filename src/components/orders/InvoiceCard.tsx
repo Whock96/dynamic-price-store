@@ -27,6 +27,7 @@ export const InvoiceCard = ({ order, onDelete }: InvoiceCardProps) => {
         // Extract filename from URL
         const fileUrl = new URL(order.invoicePdfPath);
         const pathParts = fileUrl.pathname.split('/');
+        // The last part of the path should be the filename
         const fileName = pathParts[pathParts.length - 1];
         
         console.log('Deleting file:', fileName);
