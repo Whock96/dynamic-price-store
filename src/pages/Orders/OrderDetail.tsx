@@ -23,6 +23,7 @@ import { useOrders } from '@/context/OrderContext';
 import { useOrderData } from '@/hooks/use-order-data';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import PrintableOrder from '@/components/orders/PrintableOrder';
+import PrintableInvoice from '@/components/orders/PrintableInvoice';
 import { supabase } from '@/integrations/supabase/client';
 
 const OrderDetail = () => {
@@ -199,15 +200,120 @@ const OrderDetail = () => {
     }
   };
 
-  const renderPrintableOrderHTML = (order: any, companyInfo: any) => {
+  const handlePrintInvoice = () => {
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Faturamento #${order.orderNumber || '1'} - Impressão</title>
+          <style>
+            body { font-family: Arial, sans-serif; }
+            @media print {
+              body { 
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important;
+                font-size: 11px;
+              }
+            }
+            @page { size: A4; margin: 8mm; }
+          </style>
+          <link rel="stylesheet" href="${window.location.origin}/src/index.css">
+        </head>
+        <body>
+          <div id="printable-content"></div>
+          <script>
+            window.onload = function() {
+              setTimeout(() => window.print(), 1000);
+            };
+          </script>
+        </body>
+        </html>
+      `);
+      
+      printWindow.document.close();
+      
+      const mountNode = printWindow.document.getElementById('printable-content');
+      if (mountNode) {
+        const iframe = document.createElement('iframe');
+        iframe.style.width = '100%';
+        iframe.style.height = '100vh';
+        iframe.style.border = 'none';
+        
+        mountNode.appendChild(iframe);
+        
+        iframe.onload = function() {
+          const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (iframeDoc) {
+            printWindow.document.title = `Faturamento #${order.orderNumber || '1'} - Impressão`;
+            
+            const companyInfo = JSON.parse(localStorage.getItem('ferplas-company-info') || '{}');
+            // Render the PrintableInvoice component here
+            iframeDoc.body.innerHTML = `<div id="invoice-root"></div>`;
+            
+            // You would typically use ReactDOM.render here in a real-world scenario,
+            // but for simplicity, we're using a similar approach to the existing code
+            const invoiceElement = document.createElement('div');
+            invoiceElement.innerHTML = '<div id="invoice-content"></div>';
+            iframeDoc.getElementById('invoice-root')?.appendChild(invoiceElement);
+            
+            // Render our PrintableInvoice component (simplified approach)
+            const invoiceRoot = iframeDoc.getElementById('invoice-content');
+            if (invoiceRoot) {
+              const invoiceComponent = document.createElement('div');
+              invoiceComponent.innerHTML = renderPrintableInvoiceHTML(order, companyInfo);
+              invoiceRoot.appendChild(invoiceComponent);
+            }
+          }
+        };
+        
+        iframe.src = 'about:blank';
+      }
+    } else {
+      toast.error("Não foi possível abrir a janela de impressão. Verifique se o seu navegador está bloqueando pop-ups.");
+    }
+  };
+
+  const renderPrintableInvoiceHTML = (order: any, companyInfo: any) => {
     const invoiceTypeText = order.fullInvoice ? 'Nota Cheia' : 'Meia Nota';
     const halfInvoiceText = !order.fullInvoice && order.halfInvoicePercentage ? 
       `(${order.halfInvoicePercentage}%)` : '';
+    
+    const halfInvoicePercentage = order.halfInvoicePercentage || 50;
+    const halfInvoiceType = order.halfInvoiceType || 'price';
       
     const subtotalAfterDiscount = order.subtotal - (order.totalDiscount || 0);
     const taxSubstitutionValue = order.taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
     const ipiValue = (order.withIPI || order.with_ipi) ? (order.ipiValue || order.ipi_value || 0) : 0;
+    const deliveryFee = order.deliveryFee || order.delivery_fee || 0;
     
+    // Calculate the financial totals for half invoice
+    const calculateTotalWithInvoice = (
+      subtotal: number, 
+      percentage: number,
+      taxSubstitution: number,
+      ipiTotal: number,
+      deliveryFee: number
+    ) => {
+      return (subtotal * (percentage / 100)) + taxSubstitution + ipiTotal + deliveryFee;
+    };
+
+    const calculateTotalWithoutInvoice = (subtotal: number, percentage: number) => {
+      return subtotal * ((100 - percentage) / 100);
+    };
+    
+    const totalWithInvoice = calculateTotalWithInvoice(
+      subtotalAfterDiscount,
+      halfInvoicePercentage,
+      taxSubstitutionValue,
+      ipiValue,
+      deliveryFee
+    );
+    
+    const totalWithoutInvoice = calculateTotalWithoutInvoice(subtotalAfterDiscount, halfInvoicePercentage);
+    
+    // Additional HTML for the invoice template
     return `
       <div style="max-width: 800px; margin: 0 auto; padding: 12px; font-family: Arial, sans-serif; font-size: 11px;">
         <!-- Company header -->
@@ -227,7 +333,7 @@ const OrderDetail = () => {
         <!-- Order title -->
         <div style="text-align: center; margin-bottom: 8px;">
           <h1 style="font-size: 16px; font-weight: bold; border: 1px solid #ddd; display: inline-block; padding: 4px 12px; margin: 4px 0;">
-            PEDIDO #${order.orderNumber || order.order_number || '1'}
+            FATURAMENTO DO PEDIDO #${order.orderNumber || order.order_number || '1'}
           </h1>
           <p style="font-size: 10px; margin: 2px 0;">
             Emitido em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
@@ -265,6 +371,7 @@ const OrderDetail = () => {
             ${(order.paymentMethod || order.payment_method) === 'credit' && (order.paymentTerms || order.payment_terms) ? 
               `<p style="margin: 2px 0;"><span style="font-weight: 600;">Prazos:</span> ${order.paymentTerms || order.payment_terms}</p>` : ''}
             <p style="margin: 2px 0;"><span style="font-weight: 600;">Tipo de Nota:</span> ${invoiceTypeText} ${halfInvoiceText}</p>
+            ${!order.fullInvoice ? `<p style="margin: 2px 0;"><span style="font-weight: 600;">Tipo de Meia Nota:</span> ${halfInvoiceType === 'quantity' ? 'Na Quantidade' : 'No Preço'}</p>` : ''}
             <p style="margin: 2px 0;"><span style="font-weight: 600;">Substituição Tributária:</span> ${order.taxSubstitution || order.tax_substitution ? 'Sim' : 'Não'}</p>
             <p style="margin: 2px 0;"><span style="font-weight: 600;">IPI:</span> ${order.withIPI || order.with_ipi ? 'Sim' : 'Não'}</p>
           </div>
@@ -280,6 +387,12 @@ const OrderDetail = () => {
                 <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Preço Unitário</th>
                 <th style="border: 1px solid #ddd; padding: 3px; text-align: center;">Desc. Total (%)</th>
                 <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Preço Final</th>
+                
+                ${!order.fullInvoice && halfInvoiceType === 'price' ? `
+                  <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Preço c/ nota</th>
+                  <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Preço s/ nota</th>
+                ` : ''}
+                
                 ${order.items.some((item: any) => (item?.taxSubstitutionValue || 0) > 0) ? 
                   `<th style="border: 1px solid #ddd; padding: 3px; text-align: right;">ST</th>` : ''}
                 ${order.items.some((item: any) => (item?.ipiValue || 0) > 0) ? 
@@ -287,18 +400,39 @@ const OrderDetail = () => {
                 <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Total c/ Impostos</th>
                 <th style="border: 1px solid #ddd; padding: 3px; text-align: center;">Qtd. Volumes</th>
                 <th style="border: 1px solid #ddd; padding: 3px; text-align: center;">Total Unidades</th>
+                
+                ${!order.fullInvoice && halfInvoiceType === 'quantity' ? `
+                  <th style="border: 1px solid #ddd; padding: 3px; text-align: center;">Qtd. c/ nota</th>
+                  <th style="border: 1px solid #ddd; padding: 3px; text-align: center;">Qtd. s/ nota</th>
+                ` : ''}
+                
                 <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Subtotal</th>
               </tr>
             </thead>
             <tbody>
               ${(order.items || []).map((item: any, index: number) => {
                 const totalUnits = (item.quantity || 0) * (item.product?.quantityPerVolume || 1);
+                const finalPrice = item?.finalPrice || 0;
+                
+                // Half invoice calculations for price and quantity
+                const priceWithInvoice = finalPrice * (halfInvoicePercentage / 100);
+                const priceWithoutInvoice = finalPrice * ((100 - halfInvoicePercentage) / 100);
+                
+                const quantityWithInvoice = Math.round(totalUnits * (halfInvoicePercentage / 100));
+                const quantityWithoutInvoice = Math.round(totalUnits * ((100 - halfInvoicePercentage) / 100));
+                
                 return `
                   <tr>
                     <td style="border: 1px solid #ddd; padding: 3px;">${item?.product?.name || `Produto ${index + 1}`}</td>
                     <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.product?.listPrice || 0)}</td>
                     <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${item?.totalDiscountPercentage || item?.discount || 0}%</td>
-                    <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.finalPrice || 0)}</td>
+                    <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(finalPrice)}</td>
+                    
+                    ${!order.fullInvoice && halfInvoiceType === 'price' ? `
+                      <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(priceWithInvoice)}</td>
+                      <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(priceWithoutInvoice)}</td>
+                    ` : ''}
+                    
                     ${order.items.some((i: any) => (i?.taxSubstitutionValue || 0) > 0) ? 
                       `<td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.taxSubstitutionValue || 0)}</td>` : ''}
                     ${order.items.some((i: any) => (i?.ipiValue || 0) > 0) ? 
@@ -306,6 +440,12 @@ const OrderDetail = () => {
                     <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.totalWithTaxes || 0)}</td>
                     <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${item?.quantity || 0}</td>
                     <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${totalUnits}</td>
+                    
+                    ${!order.fullInvoice && halfInvoiceType === 'quantity' ? `
+                      <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${quantityWithInvoice}</td>
+                      <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${quantityWithoutInvoice}</td>
+                    ` : ''}
+                    
                     <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.subtotal || 0)}</td>
                   </tr>
                 `;
@@ -316,20 +456,6 @@ const OrderDetail = () => {
         
         <!-- Two column layout for delivery and financial summary -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
-          <!-- Delivery info -->
-          <div>
-            <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Entrega</h2>
-            <p style="margin: 2px 0;"><span style="font-weight: 600;">Tipo:</span> ${(order.shipping || order.shipping) === 'delivery' ? 'Entrega' : 'Retirada'}</p>
-            ${(order.shipping || order.shipping) === 'delivery' && (order.deliveryLocation || order.delivery_location) ? 
-              `<p style="margin: 2px 0;"><span style="font-weight: 600;">Região:</span> ${(order.deliveryLocation || order.delivery_location) === 'capital' ? 'Capital' : 'Interior'}</p>` : ''}
-            ${transportCompany ? `
-              <p style="margin: 2px 0;"><span style="font-weight: 600;">Transportadora:</span> ${transportCompany.name}</p>
-              <p style="margin: 2px 0;"><span style="font-weight: 600;">CNPJ:</span> ${transportCompany.document}</p>
-              ${transportCompany.phone ? `<p style="margin: 2px 0;"><span style="font-weight: 600;">Telefone:</span> ${transportCompany.phone}</p>` : ''}
-              ${transportCompany.email ? `<p style="margin: 2px 0;"><span style="font-weight: 600;">Email:</span> ${transportCompany.email}</p>` : ''}
-            ` : ''}
-          </div>
-          
           <!-- Financial summary -->
           <div>
             <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Resumo Financeiro</h2>
@@ -374,7 +500,32 @@ const OrderDetail = () => {
                 <td style="padding: 3px 0; font-weight: bold;">Total:</td>
                 <td style="padding: 3px 0; text-align: right; font-weight: bold;">${formatCurrency(order.total)}</td>
               </tr>
+              
+              ${!order.fullInvoice ? `
+                <tr>
+                  <td style="padding: 2px 0; font-weight: 600;">Total c/ Nota:</td>
+                  <td style="padding: 2px 0; text-align: right; color: #16a34a; font-weight: 600;">${formatCurrency(totalWithInvoice)}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 2px 0; font-weight: 600;">Total s/ Nota:</td>
+                  <td style="padding: 2px 0; text-align: right; color: #d97706; font-weight: 600;">${formatCurrency(totalWithoutInvoice)}</td>
+                </tr>
+              ` : ''}
             </table>
+          </div>
+          
+          <!-- Delivery info -->
+          <div>
+            <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Entrega</h2>
+            <p style="margin: 2px 0;"><span style="font-weight: 600;">Tipo:</span> ${(order.shipping || order.shipping) === 'delivery' ? 'Entrega' : 'Retirada'}</p>
+            ${(order.shipping || order.shipping) === 'delivery' && (order.deliveryLocation || order.delivery_location) ? 
+              `<p style="margin: 2px 0;"><span style="font-weight: 600;">Região:</span> ${(order.deliveryLocation || order.delivery_location) === 'capital' ? 'Capital' : 'Interior'}</p>` : ''}
+            ${transportCompany ? `
+              <p style="margin: 2px 0;"><span style="font-weight: 600;">Transportadora:</span> ${transportCompany.name}</p>
+              <p style="margin: 2px 0;"><span style="font-weight: 600;">CNPJ:</span> ${transportCompany.document}</p>
+              ${transportCompany.phone ? `<p style="margin: 2px 0;"><span style="font-weight: 600;">Telefone:</span> ${transportCompany.phone}</p>` : ''}
+              ${transportCompany.email ? `<p style="margin: 2px 0;"><span style="font-weight: 600;">Email:</span> ${transportCompany.email}</p>` : ''}
+            ` : ''}
           </div>
         </div>
         
@@ -412,533 +563,3 @@ const OrderDetail = () => {
         <Button 
           className="mt-6"
           onClick={() => navigate('/orders')}
-        >
-          Voltar para lista de pedidos
-        </Button>
-      </div>
-    );
-  }
-
-  const orderNumber = order.orderNumber || order.order_number || 1;
-  const totalDiscount = order.totalDiscount || order.total_discount || 0;
-  const appliedDiscounts = order.appliedDiscounts || order.discountOptions || [];
-  const items = order.items || [];
-  const shipping = order.shipping || 'delivery';
-  const notes = order.observations || order.notes || '';
-  const fullInvoice = order.fullInvoice !== undefined ? order.fullInvoice : (order.full_invoice !== undefined ? order.full_invoice : true);
-  const taxSubstitution = order.taxSubstitution !== undefined ? order.taxSubstitution : (order.tax_substitution !== undefined ? order.tax_substitution : false);
-  const paymentMethod = order.paymentMethod || order.payment_method || 'cash';
-  const paymentTerms = order.paymentTerms || order.payment_terms || '';
-  const deliveryLocation = order.deliveryLocation || order.delivery_location || null;
-  const deliveryFee = order.deliveryFee || order.delivery_fee || 0;
-  const halfInvoicePercentage = order.halfInvoicePercentage || order.half_invoice_percentage || 50;
-  const withIPI = order.withIPI !== undefined ? order.withIPI : (order.with_ipi !== undefined ? order.with_ipi : false);
-  
-  const ipiValue = withIPI 
-    ? (order.ipiValue || order.ipi_value || 0)
-    : 0;
-  
-  const userName = order.user?.name || 'Usuário do Sistema';
-  console.log("OrderDetail - Order user details:", {
-    userId: order.userId || order.user_id,
-    userName: order.user?.name,
-    userObject: order.user
-  });
-  
-  const taxSubstitutionValue = taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
-
-  return (
-    <div className="space-y-6 animate-fade-in">
-      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="mr-4 text-gray-500"
-            onClick={() => navigate('/orders')}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <div className="flex items-center">
-              <h1 className="text-3xl font-bold tracking-tight">Pedido #{orderNumber}</h1>
-              <div className="ml-4">{getStatusBadge(order.status)}</div>
-            </div>
-            <p className="text-muted-foreground">
-              Criado em {format(new Date(order.createdAt || order.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          {user?.role === 'administrator' && order.status !== 'canceled' && (
-            <Button 
-              className="bg-ferplas-500 hover:bg-ferplas-600 button-transition"
-              onClick={() => navigate(`/orders/${id}/edit`)}
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Editar Pedido
-            </Button>
-          )}
-          <Button 
-            variant="outline" 
-            onClick={handlePrintOrder}
-          >
-            <Printer className="mr-2 h-4 w-4" />
-            Imprimir Pedido
-          </Button>
-        </div>
-      </header>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-medium">Cliente</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Empresa</h3>
-              <p className="text-lg font-semibold">
-                {order.customer?.companyName || order.customers?.company_name || "Cliente não identificado"}
-              </p>
-              <p className="text-sm text-gray-500">
-                CNPJ/CPF: {order.customer?.document || order.customers?.document || "N/A"}
-              </p>
-            </div>
-            
-            <Separator />
-            
-            <div>
-              <h3 className="text-sm font-medium text-gray-500 flex items-center">
-                <MapPin className="h-4 w-4 mr-1 text-gray-400" />
-                Endereço
-              </h3>
-              <p className="text-md">
-                {order.customer?.street || order.customers?.street || "Endereço não disponível"}, 
-                {order.customer?.number || order.customers?.number || "S/N"}
-                {(order.customer?.complement || order.customers?.complement) && 
-                  ` - ${order.customer?.complement || order.customers?.complement}`}
-              </p>
-              {(order.customer?.neighborhood || order.customers?.neighborhood) && (
-                <p className="text-md">
-                  Bairro: {order.customer?.neighborhood || order.customers?.neighborhood}
-                </p>
-              )}
-              <p className="text-md">
-                {order.customer?.city || order.customers?.city || "Cidade não informada"}/
-                {order.customer?.state || order.customers?.state || "Estado não informado"} - 
-                {order.customer?.zipCode || order.customers?.zip_code || "CEP não informado"}
-              </p>
-            </div>
-            
-            <Separator />
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <h3 className="text-sm font-medium text-gray-500 flex items-center">
-                  <Phone className="h-4 w-4 mr-1 text-gray-400" />
-                  Telefone
-                </h3>
-                <p className="text-md">{formatPhoneNumber(order.customer?.phone || order.customers?.phone)}</p>
-              </div>
-              
-              <div>
-                <h3 className="text-sm font-medium text-gray-500 flex items-center">
-                  <Mail className="h-4 w-4 mr-1 text-gray-400" />
-                  Email
-                </h3>
-                <p className="text-md">{order.customer?.email || order.customers?.email || "Não informado"}</p>
-              </div>
-            </div>
-            
-            {(order.customer?.id || order.customers?.id) && (
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={() => navigate(`/customers/${order.customer?.id || order.customers?.id}`)}
-              >
-                <User className="mr-2 h-4 w-4" />
-                Ver Detalhes do Cliente
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-medium">Histórico do Pedido</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-start">
-                <div className="min-w-8 min-h-8 rounded-full bg-green-100 flex items-center justify-center mr-3">
-                  <Calendar className="h-4 w-4 text-green-600" />
-                </div>
-                <div>
-                  <p className="font-medium">Pedido Criado</p>
-                  <p className="text-sm text-gray-500">
-                    {format(new Date(order.createdAt || order.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                  </p>
-                  <p className="text-sm text-gray-500">Por {userName}</p>
-                </div>
-              </div>
-              
-              {order.status !== 'pending' && (
-                <div className="flex items-start">
-                  <div className="min-w-8 min-h-8 rounded-full bg-blue-100 flex items-center justify-center mr-3">
-                    <Calendar className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Pedido Confirmado</p>
-                    <p className="text-sm text-gray-500">
-                      {format(new Date(new Date(order.createdAt || order.created_at).getTime() + 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                    </p>
-                    <p className="text-sm text-gray-500">Por Administrador</p>
-                  </div>
-                </div>
-              )}
-              
-              {order.status === 'invoiced' && (
-                <div className="flex items-start">
-                  <div className="min-w-8 min-h-8 rounded-full bg-amber-100 flex items-center justify-center mr-3">
-                    <Receipt className="h-4 w-4 text-amber-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Pedido Faturado</p>
-                    <p className="text-sm text-gray-500">
-                      {format(new Date(new Date(order.createdAt || order.created_at).getTime() + 2 * 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                    </p>
-                    <p className="text-sm text-gray-500">Por Financeiro</p>
-                  </div>
-                </div>
-              )}
-              
-              {order.status === 'completed' && (
-                <div className="flex items-start">
-                  <div className="min-w-8 min-h-8 rounded-full bg-ferplas-100 flex items-center justify-center mr-3">
-                    <Truck className="h-4 w-4 text-ferplas-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Pedido Entregue</p>
-                    <p className="text-sm text-gray-500">
-                      {format(new Date(new Date(order.createdAt || order.created_at).getTime() + 3 * 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                    </p>
-                    <p className="text-sm text-gray-500">Entregue por Transporte Ferplas</p>
-                  </div>
-                </div>
-              )}
-              
-              {order.status === 'canceled' && (
-                <div className="flex items-start">
-                  <div className="min-w-8 min-h-8 rounded-full bg-red-100 flex items-center justify-center mr-3">
-                    <Calendar className="h-4 w-4 text-red-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Pedido Cancelado</p>
-                    <p className="text-sm text-gray-500">
-                      {format(new Date(new Date(order.createdAt || order.created_at).getTime() + 2 * 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                    </p>
-                    <p className="text-sm text-gray-500">Por Cliente</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-medium">Resumo Financeiro</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Total dos Produtos:</span>
-                <span>{formatCurrency(order.subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-sm text-red-600">
-                <span>Descontos:</span>
-                <span>-{formatCurrency(totalDiscount)}</span>
-              </div>
-              <div className="flex justify-between text-sm font-medium">
-                <span>Subtotal Pedido:</span>
-                <span>{formatCurrency(order.subtotal - totalDiscount)}</span>
-              </div>
-              {taxSubstitution && (
-                <div className="flex justify-between text-sm text-amber-600">
-                  <span>Substituição Tributária:</span>
-                  <span>+{formatCurrency(taxSubstitutionValue)}</span>
-                </div>
-              )}
-              {withIPI && (
-                <div className="flex justify-between text-sm text-amber-600">
-                  <span>IPI:</span>
-                  <span>+{formatCurrency(ipiValue)}</span>
-                </div>
-              )}
-              {deliveryFee > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span>Taxa de Entrega:</span>
-                  <span>{formatCurrency(deliveryFee)}</span>
-                </div>
-              )}
-              <Separator className="my-2" />
-              <div className="flex justify-between font-medium text-lg">
-                <span>Total:</span>
-                <span className="text-ferplas-600">{formatCurrency(order.total)}</span>
-              </div>
-            </div>
-
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <h3 className="text-sm font-medium text-gray-500 mb-2">Condições de Pagamento</h3>
-              <div className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span>Forma de Pagamento:</span>
-                  <span>{paymentMethod === 'cash' ? 'À Vista' : 'A Prazo'}</span>
-                </div>
-                {paymentMethod === 'credit' && (
-                  <div className="flex justify-between text-sm">
-                    <span>Prazos de Pagamento:</span>
-                    <span>{paymentTerms || 'Não informado'}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-sm">
-                  <span>Tipo de Nota:</span>
-                  <span>{fullInvoice ? 'Nota Cheia' : 'Meia Nota'}</span>
-                </div>
-                {!fullInvoice && halfInvoicePercentage && (
-                  <>
-                    <div className="flex justify-between text-sm">
-                      <span>Percentual da Nota:</span>
-                      <span>{halfInvoicePercentage}%</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Tipo de Meia Nota:</span>
-                      <span>{order.halfInvoiceType === 'quantity' ? 'Na Quantidade' : 'No Preço'}</span>
-                    </div>
-                  </>
-                )}
-                <div className="flex justify-between text-sm">
-                  <span>Substituição Tributária:</span>
-                  <span>{taxSubstitution ? 'sim' : 'não'}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>IPI:</span>
-                  <span>{withIPI ? 'sim' : 'não'}</span>
-                </div>
-                {deliveryFee > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span>Taxa de Entrega:</span>
-                    <span>{formatCurrency(deliveryFee)}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-medium flex items-center">
-            <ShoppingCart className="mr-2 h-5 w-5" />
-            Itens do Pedido
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Produto</TableHead>
-                <TableHead>Preço Unitário</TableHead>
-                <TableHead>Desc. Total (%)</TableHead>
-                <TableHead>Preço Final</TableHead>
-                {items.some(item => (item?.taxSubstitutionValue || 0) > 0) && (
-                  <TableHead>Substituição Tributária</TableHead>
-                )}
-                {items.some(item => (item?.ipiValue || 0) > 0) && (
-                  <TableHead>IPI</TableHead>
-                )}
-                <TableHead>Total com Impostos</TableHead>
-                <TableHead>Quantidade Volumes</TableHead>
-                <TableHead>Total de Unidades</TableHead>
-                <TableHead>Subtotal</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((item: any, index: number) => (
-                <TableRow key={item?.id || `item-${index}`}>
-                  <TableCell className="font-medium">
-                    {item?.product?.name || "Produto não encontrado"}
-                  </TableCell>
-                  <TableCell>{formatCurrency(item?.product?.listPrice || 0)}</TableCell>
-                  <TableCell>{item?.totalDiscountPercentage || item?.discount || 0}%</TableCell>
-                  <TableCell>{formatCurrency(item?.finalPrice || 0)}</TableCell>
-                  {items.some(i => (i?.taxSubstitutionValue || 0) > 0) && (
-                    <TableCell>{formatCurrency(item?.taxSubstitutionValue || 0)}</TableCell>
-                  )}
-                  {items.some(i => (i?.ipiValue || 0) > 0) && (
-                    <TableCell>{formatCurrency(item?.ipiValue || 0)}</TableCell>
-                  )}
-                  <TableCell>{formatCurrency(item?.totalWithTaxes || 0)}</TableCell>
-                  <TableCell>{item?.quantity || 0}</TableCell>
-                  <TableCell>{item?.totalUnits || 0}</TableCell>
-                  <TableCell>{formatCurrency(item?.subtotal || 0)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          
-          {items.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <Package className="h-12 w-12 text-gray-300 mb-4" />
-              <h2 className="text-xl font-medium text-gray-600">Nenhum item no pedido</h2>
-              <p className="text-muted-foreground">Este pedido não contém itens ou os dados não estão disponíveis.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-medium flex items-center">
-            <Receipt className="mr-2 h-5 w-5" />
-            Descontos e Acréscimos Aplicados
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {appliedDiscounts && appliedDiscounts.length > 0 ? (
-              appliedDiscounts.map((discount: any, index: number) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className={`w-8 h-8 rounded-full ${discount.type === 'discount' ? 'bg-green-100' : 'bg-red-100'} flex items-center justify-center mr-3`}>
-                      <span className={`${discount.type === 'discount' ? 'text-green-600' : 'text-red-600'} font-bold`}>
-                        {discount.type === 'discount' ? '-' : '+'}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="font-medium">{discount.name}</p>
-                      <p className="text-sm text-gray-500">
-                        {discount.type === 'discount' ? 'Desconto' : 'Acréscimo'} de {discount.value}%
-                      </p>
-                    </div>
-                  </div>
-                  <span className={`font-medium ${discount.type === 'discount' ? 'text-green-600' : 'text-red-600'}`}>
-                    {discount.type === 'discount' ? '-' : '+'}
-                    {discount.value}%
-                  </span>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-4 text-gray-500">
-                Nenhum desconto ou acréscimo aplicado.
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-medium flex items-center">
-            <Truck className="mr-2 h-5 w-5" />
-            Entrega
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Tipo de Entrega</h3>
-              <p className="text-lg flex items-center">
-                {shipping === 'delivery' ? (
-                  <>
-                    <Truck className="h-4 w-4 mr-2 text-ferplas-500" />
-                    Entrega
-                  </>
-                ) : (
-                  <>
-                    <Package className="h-4 w-4 mr-2 text-ferplas-500" />
-                    Retirada
-                  </>
-                )}
-              </p>
-            </div>
-            
-            {shipping === 'delivery' && deliveryLocation && (
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Região de Entrega</h3>
-                <p className="text-lg">
-                  {deliveryLocation === 'capital' ? 'Capital' : 'Interior'}
-                </p>
-              </div>
-            )}
-            
-            {shipping === 'delivery' && deliveryFee > 0 && (
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Taxa de Entrega</h3>
-                <p className="text-lg">{formatCurrency(deliveryFee)}</p>
-              </div>
-            )}
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Peso Total do Pedido</h3>
-              <p className="text-lg">{formatWeight(totalOrderWeight)}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Total de Volumes</h3>
-              <p className="text-lg">{totalVolumes}</p>
-            </div>
-          </div>
-          
-          {(order.transportCompanyId || transportCompany) && (
-            <>
-              <Separator className="my-4" />
-              <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-2">Transportadora</h3>
-                
-                {isLoadingTransport ? (
-                  <div className="h-6 bg-gray-100 animate-pulse rounded w-48"></div>
-                ) : transportCompany ? (
-                  <div className="space-y-2">
-                    <p className="text-lg font-medium">{transportCompany.name}</p>
-                    <p className="text-sm text-gray-500">CNPJ: {transportCompany.document}</p>
-                    {transportCompany.phone && (
-                      <p className="text-sm text-gray-500">Telefone: {transportCompany.phone}</p>
-                    )}
-                    {transportCompany.email && (
-                      <p className="text-sm text-gray-500">Email: {transportCompany.email}</p>
-                    )}
-                    {transportCompany.whatsapp && (
-                      <p className="text-sm text-gray-500">WhatsApp: {transportCompany.whatsapp}</p>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-gray-500">Informações da transportadora não disponíveis</p>
-                )}
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      {notes && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-medium">Observações</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm bg-gray-50 border border-gray-200 rounded p-3">
-              {notes}
-            </p>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
-};
-
-export default OrderDetail;
