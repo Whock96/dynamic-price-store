@@ -249,16 +249,12 @@ const OrderDetail = () => {
             printWindow.document.title = `Faturamento #${order.orderNumber || '1'} - Impressão`;
             
             const companyInfo = JSON.parse(localStorage.getItem('ferplas-company-info') || '{}');
-            // Render the PrintableInvoice component here
             iframeDoc.body.innerHTML = `<div id="invoice-root"></div>`;
             
-            // You would typically use ReactDOM.render here in a real-world scenario,
-            // but for simplicity, we're using a similar approach to the existing code
             const invoiceElement = document.createElement('div');
             invoiceElement.innerHTML = '<div id="invoice-content"></div>';
             iframeDoc.getElementById('invoice-root')?.appendChild(invoiceElement);
             
-            // Render our PrintableInvoice component (simplified approach)
             const invoiceRoot = iframeDoc.getElementById('invoice-content');
             if (invoiceRoot) {
               const invoiceComponent = document.createElement('div');
@@ -288,7 +284,6 @@ const OrderDetail = () => {
     const ipiValue = (order.withIPI || order.with_ipi) ? (order.ipiValue || order.ipi_value || 0) : 0;
     const deliveryFee = order.deliveryFee || order.delivery_fee || 0;
     
-    // Calculate the financial totals for half invoice
     const calculateTotalWithInvoice = (
       subtotal: number, 
       percentage: number,
@@ -313,10 +308,8 @@ const OrderDetail = () => {
     
     const totalWithoutInvoice = calculateTotalWithoutInvoice(subtotalAfterDiscount, halfInvoicePercentage);
     
-    // Additional HTML for the invoice template
     return `
       <div style="max-width: 800px; margin: 0 auto; padding: 12px; font-family: Arial, sans-serif; font-size: 11px;">
-        <!-- Company header -->
         <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-bottom: 8px;">
           <div>
             <img src="/lovable-uploads/68daf61d-816f-4f86-8b3f-4f0970296cf0.png" width="150" height="60" style="object-fit: contain;" alt="Ferplas Logo">
@@ -330,7 +323,6 @@ const OrderDetail = () => {
           </div>
         </div>
         
-        <!-- Order title -->
         <div style="text-align: center; margin-bottom: 8px;">
           <h1 style="font-size: 16px; font-weight: bold; border: 1px solid #ddd; display: inline-block; padding: 4px 12px; margin: 4px 0;">
             FATURAMENTO DO PEDIDO #${order.orderNumber || order.order_number || '1'}
@@ -340,7 +332,6 @@ const OrderDetail = () => {
           </p>
         </div>
         
-        <!-- Customer and order info -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
           <div style="border: 1px solid #ddd; border-radius: 4px; padding: 8px;">
             <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Cliente</h2>
@@ -377,7 +368,6 @@ const OrderDetail = () => {
           </div>
         </div>
         
-        <!-- Order items -->
         <div style="margin-bottom: 8px;">
           <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Itens do Pedido</h2>
           <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
@@ -414,7 +404,6 @@ const OrderDetail = () => {
                 const totalUnits = (item.quantity || 0) * (item.product?.quantityPerVolume || 1);
                 const finalPrice = item?.finalPrice || 0;
                 
-                // Half invoice calculations for price and quantity
                 const priceWithInvoice = finalPrice * (halfInvoicePercentage / 100);
                 const priceWithoutInvoice = finalPrice * ((100 - halfInvoicePercentage) / 100);
                 
@@ -454,9 +443,7 @@ const OrderDetail = () => {
           </table>
         </div>
         
-        <!-- Two column layout for delivery and financial summary -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
-          <!-- Financial summary -->
           <div>
             <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Resumo Financeiro</h2>
             <table style="width: 100%;">
@@ -514,7 +501,6 @@ const OrderDetail = () => {
             </table>
           </div>
           
-          <!-- Delivery info -->
           <div>
             <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Entrega</h2>
             <p style="margin: 2px 0;"><span style="font-weight: 600;">Tipo:</span> ${(order.shipping || order.shipping) === 'delivery' ? 'Entrega' : 'Retirada'}</p>
@@ -563,3 +549,18 @@ const OrderDetail = () => {
         <Button 
           className="mt-6"
           onClick={() => navigate('/orders')}
+        >
+          Voltar para Pedidos
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* Rest of the component's JSX */}
+    </div>
+  );
+};
+
+export default OrderDetail;
