@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -59,13 +58,11 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
   
   let totalOrderWeight = 0;
   let totalVolumes = 0;
-  let totalIpiValue = 0;
 
   order.items.forEach(item => {
     const itemWeight = (item.quantity || 0) * (item.product?.weight || 0);
     totalOrderWeight += itemWeight;
     totalVolumes += (item.quantity || 0);
-    totalIpiValue += item.ipiValue || 0;
   });
 
   const calculatePriceWithInvoice = (finalPrice: number, percentage: number) => {
@@ -99,7 +96,8 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
   };
 
   const subtotalAfterDiscount = order.subtotal - (order.totalDiscount || 0);
-  const taxSubstitutionValue = order.items.reduce((sum, item) => sum + (item.taxSubstitutionValue || 0), 0);
+  const taxSubstitutionValue = order.taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
+  const ipiValue = order.withIPI ? (order.ipiValue || 0) : 0;
   const deliveryFee = order.deliveryFee || 0;
 
   return (
@@ -275,7 +273,7 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
                 <tr>
                   <td>IPI:</td>
                   <td className="align-right text-orange font-medium">
-                    +{formatCurrency(totalIpiValue)}
+                    +{formatCurrency(ipiValue)}
                   </td>
                 </tr>
               )}
@@ -300,7 +298,7 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
                         subtotalAfterDiscount,
                         halfInvoicePercentage,
                         taxSubstitutionValue,
-                        totalIpiValue,
+                        ipiValue,
                         deliveryFee
                       ))}
                     </td>

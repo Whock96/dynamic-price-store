@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -53,13 +52,11 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, companyInfo, onP
     
   let totalOrderWeight = 0;
   let totalVolumes = 0;
-  let totalIpiValue = 0;
 
   order.items.forEach(item => {
     const itemWeight = (item.quantity || 0) * (item.product?.weight || 0);
     totalOrderWeight += itemWeight;
     totalVolumes += (item.quantity || 0);
-    totalIpiValue += item.ipiValue || 0;
   });
 
   return (
@@ -192,7 +189,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, companyInfo, onP
               {order.withIPI && (
                 <tr>
                   <td>IPI:</td>
-                  <td className="align-right text-blue">+{formatCurrency(totalIpiValue)}</td>
+                  <td className="align-right text-blue">+{formatCurrency(order.ipiValue || 0)}</td>
                 </tr>
               )}
               {order.deliveryFee > 0 && (
