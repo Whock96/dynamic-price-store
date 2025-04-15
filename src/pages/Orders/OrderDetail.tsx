@@ -739,8 +739,12 @@ const OrderDetail = () => {
                 <TableHead>Preço Unitário</TableHead>
                 <TableHead>Desconto Total (%)</TableHead>
                 <TableHead>Preço Final</TableHead>
-                <TableHead>Substituição Tributária</TableHead>
-                <TableHead>IPI</TableHead>
+                {items.some(item => (item?.taxSubstitutionValue || 0) > 0) && (
+                  <TableHead>Substituição Tributária</TableHead>
+                )}
+                {items.some(item => (item?.ipiValue || 0) > 0) && (
+                  <TableHead>IPI</TableHead>
+                )}
                 <TableHead>Total com Impostos</TableHead>
                 <TableHead>Quantidade Volumes</TableHead>
                 <TableHead>Total de Unidades</TableHead>
@@ -756,8 +760,12 @@ const OrderDetail = () => {
                   <TableCell>{formatCurrency(item?.product?.listPrice || 0)}</TableCell>
                   <TableCell>{item?.totalDiscountPercentage || item?.discount || 0}%</TableCell>
                   <TableCell>{formatCurrency(item?.finalPrice || 0)}</TableCell>
-                  <TableCell>{formatCurrency(item?.taxSubstitutionValue || 0)}</TableCell>
-                  <TableCell>{formatCurrency(item?.ipiValue || 0)}</TableCell>
+                  {items.some(i => (i?.taxSubstitutionValue || 0) > 0) && (
+                    <TableCell>{formatCurrency(item?.taxSubstitutionValue || 0)}</TableCell>
+                  )}
+                  {items.some(i => (i?.ipiValue || 0) > 0) && (
+                    <TableCell>{formatCurrency(item?.ipiValue || 0)}</TableCell>
+                  )}
                   <TableCell>{formatCurrency(item?.totalWithTaxes || 0)}</TableCell>
                   <TableCell>{item?.quantity || 0}</TableCell>
                   <TableCell>{item?.totalUnits || 0}</TableCell>

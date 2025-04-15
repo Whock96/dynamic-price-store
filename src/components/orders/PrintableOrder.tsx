@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -137,7 +136,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
         </div>
       </div>
 
-      {/* Items Table - More compact */}
+      {/* Items Table - Updated with conditional columns */}
       <div className="mb-3">
         <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Itens do Pedido</h2>
         <table className="w-full border-collapse text-xs">
@@ -147,9 +146,15 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
               <th className="border p-1 text-right">Preço</th>
               <th className="border p-1 text-center">Desc.</th>
               <th className="border p-1 text-right">Final</th>
+              {order.items.some(item => (item?.taxSubstitutionValue || 0) > 0) && (
+                <th className="border p-1 text-right">ST</th>
+              )}
+              {order.items.some(item => (item?.ipiValue || 0) > 0) && (
+                <th className="border p-1 text-right">IPI</th>
+              )}
+              <th className="border p-1 text-right">Total c/ Impostos</th>
               <th className="border p-1 text-center">Qtd.</th>
               <th className="border p-1 text-center">Unidades</th>
-              <th className="border p-1 text-right">Peso</th>
               <th className="border p-1 text-right">Subtotal</th>
             </tr>
           </thead>
@@ -160,13 +165,19 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
               
               return (
                 <tr key={item?.id || `item-${index}`}>
-                  <td className="border p-1">{item?.product?.name || (item as any).productName || `Produto ${index + 1}`}</td>
+                  <td className="border p-1">{item?.product?.name || `Produto ${index + 1}`}</td>
                   <td className="border p-1 text-right">{formatCurrency((item as any).listPrice || item?.product?.listPrice || 0)}</td>
                   <td className="border p-1 text-center">{item?.discount || 0}%</td>
                   <td className="border p-1 text-right">{formatCurrency(item?.finalPrice || 0)}</td>
+                  {order.items.some(i => (i?.taxSubstitutionValue || 0) > 0) && (
+                    <td className="border p-1 text-right">{formatCurrency(item?.taxSubstitutionValue || 0)}</td>
+                  )}
+                  {order.items.some(i => (i?.ipiValue || 0) > 0) && (
+                    <td className="border p-1 text-right">{formatCurrency(item?.ipiValue || 0)}</td>
+                  )}
+                  <td className="border p-1 text-right">{formatCurrency(item?.totalWithTaxes || 0)}</td>
                   <td className="border p-1 text-center">{item?.quantity || 0}</td>
                   <td className="border p-1 text-center">{totalUnits}</td>
-                  <td className="border p-1 text-right">{formatWeight(totalWeight)}</td>
                   <td className="border p-1 text-right">{formatCurrency(item?.subtotal || 0)}</td>
                 </tr>
               );
@@ -200,26 +211,8 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
         </div>
       )}
 
-      {/* Delivery and Financial Summary - 2 columns for better space usage */}
+      {/* Financial Summary - Updated to match OrderDetail */}
       <div className="grid grid-cols-2 gap-2 mb-3">
-        {/* Delivery Details */}
-        <div className="text-xs">
-          <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Entrega</h2>
-          <p><span className="font-semibold">Tipo:</span> {order.shipping === 'delivery' ? 'Entrega' : 'Retirada'}</p>
-          
-          {order.shipping === 'delivery' && order.deliveryLocation && (
-            <p><span className="font-semibold">Região:</span> {order.deliveryLocation === 'capital' ? 'Capital' : 'Interior'}</p>
-          )}
-          
-          {order.shipping === 'delivery' && order.deliveryFee && order.deliveryFee > 0 && (
-            <p><span className="font-semibold">Taxa de Entrega:</span> {formatCurrency(order.deliveryFee)}</p>
-          )}
-          
-          <p><span className="font-semibold">Peso Total do Pedido:</span> {formatWeight(totalOrderWeight)}</p>
-          <p><span className="font-semibold">Total de Volumes:</span> {totalVolumes}</p>
-        </div>
-
-        {/* Financial Summary */}
         <div className="text-xs">
           <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Resumo Financeiro</h2>
           <table className="w-full">
@@ -256,6 +249,23 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
               </tr>
             </tbody>
           </table>
+        </div>
+
+        {/* Delivery Information */}
+        <div className="text-xs">
+          <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Entrega</h2>
+          <p><span className="font-semibold">Tipo:</span> {order.shipping === 'delivery' ? 'Entrega' : 'Retirada'}</p>
+          
+          {order.shipping === 'delivery' && order.deliveryLocation && (
+            <p><span className="font-semibold">Região:</span> {order.deliveryLocation === 'capital' ? 'Capital' : 'Interior'}</p>
+          )}
+          
+          {order.shipping === 'delivery' && order.deliveryFee && order.deliveryFee > 0 && (
+            <p><span className="font-semibold">Taxa de Entrega:</span> {formatCurrency(order.deliveryFee)}</p>
+          )}
+          
+          <p><span className="font-semibold">Peso Total do Pedido:</span> {formatWeight(totalOrderWeight)}</p>
+          <p><span className="font-semibold">Total de Volumes:</span> {totalVolumes}</p>
         </div>
       </div>
 
