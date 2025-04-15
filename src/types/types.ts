@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   username: string;
@@ -107,7 +108,7 @@ export interface DiscountOption {
   name: string;
   description: string;
   value: number;
-  type: 'discount' | 'surcharge';
+  type: 'discount' | 'surcharge' | 'tax';
   isActive: boolean;
   context?: Record<string, any>; // Add context to support additional properties for serialization
 }
