@@ -1,7 +1,7 @@
+
 import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import Logo from '@/assets/logo';
 import { Order, CompanyInfo } from '@/types/types';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency } from '@/utils/formatters';
@@ -54,9 +54,8 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({
   
   const invoiceTypeText = order.fullInvoice ? 'Nota Cheia' : 'Meia Nota';
   
-  const halfInvoicePercentageValue = order.halfInvoicePercentage || 50;
-  const halfInvoiceText = !order.fullInvoice && halfInvoicePercentageValue ? 
-    `(${halfInvoicePercentageValue}%)` : '';
+  const halfInvoiceText = !order.fullInvoice && order.halfInvoicePercentage ? 
+    `(${order.halfInvoicePercentage}%)` : '';
     
   let totalOrderWeight = 0;
   let totalVolumes = 0;
@@ -71,7 +70,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({
     <div className="bg-white p-4 max-w-4xl mx-auto print:p-2">
       <div className="flex justify-between items-start mb-2 border-b pb-2">
         <div className="flex items-center">
-          <Logo size="md" />
+          <img src="/lovable-uploads/68daf61d-816f-4f86-8b3f-4f0970296cf0.png" width="150" height="60" style={{ objectFit: 'contain' }} alt="Ferplas Logo" />
         </div>
         <div className="text-right text-xs">
           <p className="font-bold text-base">{companyInfo.name}</p>

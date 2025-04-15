@@ -214,13 +214,7 @@ const OrderDetail = () => {
                 order={order}
                 companyInfo={companyInfo}
                 onPrint={() => {
-                  setTimeout(() => {
-                    printWindow.print();
-                    printWindow.onafterprint = () => {
-                      root.unmount();
-                      printWindow.close();
-                    };
-                  }, 1000);
+                  // No need for setTimeout here since PrintableOrder has its own timeout
                 }}
               />
             </PrintContextWrapper>
@@ -303,18 +297,13 @@ const OrderDetail = () => {
               <PrintableInvoice 
                 order={order}
                 companyInfo={companyInfo}
+                onPrint={() => {
+                  // No need for setTimeout here since PrintableInvoice has its own timeout
+                }}
               />
             </PrintContextWrapper>
           </React.StrictMode>
         );
-
-        setTimeout(() => {
-          printWindow.print();
-          printWindow.onafterprint = () => {
-            root.unmount();
-            printWindow.close();
-          };
-        }, 1000);
       } else {
         toast.error("Erro ao preparar impressão do faturamento.");
         printWindow.close();
