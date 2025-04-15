@@ -564,6 +564,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .filter(Boolean) as DiscountOption[];
       
       console.log('Applied discounts for order:', appliedDiscounts);
+      console.log('Selected transport company ID:', selectedTransportCompany);
       
       const itemsWithCalculatedValues = items.map(item => {
         const totalUnits = calculateTotalUnits(item);
@@ -588,6 +589,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       });
       
+      console.log('Transport company before creating order:', selectedTransportCompany, 
+                  'shipping type:', shippingValue);
+      
       const orderData: Partial<Order> = {
         customer,
         customerId: customer.id,
@@ -611,10 +615,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         status: 'pending',
         notes: observations,
         userId: user?.id,
-        transportCompanyId: !isDiscountOptionSelected('retirada') ? selectedTransportCompany : undefined
+        transportCompanyId: selectedTransportCompany
       };
       
       console.log('Sending order with data:', orderData);
+      console.log('Transport company being sent to order:', orderData.transportCompanyId);
       
       const orderId = await addOrder(orderData);
       

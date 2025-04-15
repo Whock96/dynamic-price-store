@@ -229,6 +229,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const appliedDiscounts = newOrder.appliedDiscounts || [];
       console.log("Applied discounts to be saved:", appliedDiscounts);
       
+      // Fix: Log the transport company ID being used
+      console.log("Transport company ID for database:", newOrder.transportCompanyId);
+      
       const orderInsert = {
         customer_id: newOrder.customer.id,
         user_id: userId,
@@ -248,11 +251,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         total: newOrder.total || 0,
         with_ipi: newOrder.withIPI || false,
         ipi_value: newOrder.ipiValue || 0,
+        transport_company_id: newOrder.transportCompanyId, // Ensure this is included correctly
         applied_discounts: (appliedDiscounts as unknown) as Tables<'orders'>['applied_discounts']
       };
       
       console.log("Order data being inserted:", orderInsert);
-      console.log("User ID being used for order:", userId);
+      console.log("Transport company ID being inserted:", orderInsert.transport_company_id);
       
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
