@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useOrders } from '@/context/OrderContext';
@@ -16,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useOrderData } from '@/hooks/use-order-data';
 import { supabase } from '@/integrations/supabase/client';
 import { User, TransportCompany } from '@/types/types';
+import FileUpload from '@/components/ui/file-upload';
 
 const OrderUpdate = () => {
   const { id } = useParams<{ id: string }>();
@@ -32,11 +32,11 @@ const OrderUpdate = () => {
   const [transportCompanies, setTransportCompanies] = useState<TransportCompany[]>([]);
   const [selectedTransportCompanyId, setSelectedTransportCompanyId] = useState<string>('none');
   const [isLoadingTransportCompanies, setIsLoadingTransportCompanies] = useState(true);
+  const [invoiceNumber, setInvoiceNumber] = useState<string>('');
+  const [invoicePdf, setInvoicePdf] = useState<File | null>(null);
   
-  // Use the custom hook to fetch order data directly from Supabase
   const { order, isLoading, fetchOrderData } = useOrderData(id);
 
-  // Fetch salespeople for the dropdown
   useEffect(() => {
     const fetchSalespeople = async () => {
       try {
@@ -47,12 +47,11 @@ const OrderUpdate = () => {
         if (error) throw error;
         
         if (data) {
-          // Map to User type
           const mappedSalespeople: User[] = data.map(sp => ({
             id: sp.id,
             name: sp.name,
             username: sp.username,
-            role: 'salesperson', // Default role
+            role: 'salesperson',
             permissions: [],
             email: '',
             createdAt: new Date(),
@@ -72,7 +71,6 @@ const OrderUpdate = () => {
     fetchSalespeople();
   }, []);
 
-  // Fetch transport companies for the dropdown
   useEffect(() => {
     const fetchTransportCompanies = async () => {
       try {
@@ -98,67 +96,81 @@ const OrderUpdate = () => {
 
   useEffect(() => {
     if (order) {
-      console.log("Setting form values from order:", order);
       setStatus(order.status || 'pending');
       setNotes(order.notes || order.observations || '');
       setShipping(order.shipping || 'delivery');
       setPaymentMethod(order.paymentMethod || 'cash');
       setPaymentTerms(order.paymentTerms || '');
-      // Set to 'none' if no salesperson is assigned
       setSelectedSalespersonId(order.userId || 'none');
-      
-      // Fix for transportCompanyId - add debugger to troubleshoot
-      console.log("Order transportCompanyId:", order.transportCompanyId);
-      // Set transport company if present, ensuring we properly handle null/undefined values
       setSelectedTransportCompanyId(order.transportCompanyId ? order.transportCompanyId : 'none');
+      setInvoiceNumber(order.invoiceNumber || '');
     }
   }, [order]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!order || !id) return;
-
+    
     const updates: any = {};
 
-    // Update status if it was changed
     if (status !== order.status) {
       updateOrderStatus(id, status as any);
     }
 
-    // Update notes if they were changed
     if (notes !== order.notes) {
       updates.notes = notes;
     }
 
-    // Update shipping if it was changed
     if (shipping !== order.shipping) {
       updates.shipping = shipping;
     }
 
-    // Update payment method if it was changed
     if (paymentMethod !== order.paymentMethod) {
       updates.paymentMethod = paymentMethod;
     }
 
-    // Update payment terms if they were changed
     if (paymentTerms !== order.paymentTerms) {
       updates.paymentTerms = paymentTerms;
     }
 
-    // Update salesperson if it was changed
     if (selectedSalespersonId !== order.userId) {
-      // If 'none' is selected, set userId to null
       updates.userId = selectedSalespersonId === 'none' ? null : selectedSalespersonId;
     }
     
-    // Update transport company if it was changed
     if (selectedTransportCompanyId !== order.transportCompanyId) {
-      // If 'none' is selected, set transportCompanyId to null
       updates.transportCompanyId = selectedTransportCompanyId === 'none' ? null : selectedTransportCompanyId;
     }
 
-    // Only call updateOrder if there are changes to make
+    if (invoiceNumber !== (order.invoiceNumber || '')) {
+      updates.invoiceNumber = invoiceNumber.trim() || null;
+    }
+    
+    if (invoicePdf) {
+      try {
+        const fileName = `invoice_${id}_${Date.now()}.pdf`;
+        const { data, error } = await supabase.storage
+          .from('invoice_pdfs')
+          .upload(fileName, invoicePdf, {
+            cacheControl: '3600',
+            upsert: true,
+            contentType: 'application/pdf'
+          });
+          
+        if (error) throw error;
+        
+        const { data: { publicUrl } } = supabase.storage
+          .from('invoice_pdfs')
+          .getPublicUrl(data.path);
+          
+        updates.invoicePdfPath = publicUrl;
+      } catch (error) {
+        console.error('Error uploading PDF:', error);
+        toast.error('Erro ao fazer upload do arquivo');
+        return;
+      }
+    }
+
     if (Object.keys(updates).length > 0) {
       updateOrder(id, updates);
     }
@@ -189,7 +201,6 @@ const OrderUpdate = () => {
     );
   }
 
-  // Calculate order number display
   const orderNumber = order.orderNumber || id?.split('-')[0];
 
   return (
@@ -393,6 +404,36 @@ const OrderUpdate = () => {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Informações de Faturamento</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="invoiceNumber">Número da Nota Fiscal</Label>
+              <Input
+                id="invoiceNumber"
+                className="mt-1"
+                placeholder="Informe o número da NFe"
+                value={invoiceNumber}
+                onChange={(e) => setInvoiceNumber(e.target.value)}
+              />
+            </div>
+            
+            <div>
+              <Label>Arquivo PDF da NFe</Label>
+              <FileUpload
+                onChange={(file) => setInvoicePdf(file)}
+                value={order?.invoicePdfPath}
+                accept="application/pdf"
+                maxSize={10}
+              />
             </div>
           </div>
         </CardContent>

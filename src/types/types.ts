@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   username: string;
@@ -148,6 +147,8 @@ export interface Order {
   withIPI?: boolean; // IPI flag
   ipiValue?: number; // IPI value
   transportCompanyId?: string | null; // Referência à empresa transportadora
+  invoiceNumber?: string;
+  invoicePdfPath?: string;
 }
 
 export interface MenuItem {

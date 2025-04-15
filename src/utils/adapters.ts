@@ -174,6 +174,8 @@ export const supabaseOrderToAppOrder = (
     withIPI: supabaseOrder.with_ipi || false,
     ipiValue: Number(supabaseOrder.ipi_value || 0),
     transportCompanyId: supabaseOrder.transport_company_id || null,
+    invoiceNumber: supabaseOrder.invoice_number || null,
+    invoicePdfPath: supabaseOrder.invoice_pdf_path || null,
   };
 };
 
