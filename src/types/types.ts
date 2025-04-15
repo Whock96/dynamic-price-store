@@ -170,3 +170,15 @@ export interface TransportCompany {
   created_at: string;
   updated_at: string;
 }
+
+export interface DiscountSettings {
+  pickup: number;
+  cashPayment: number;
+  halfInvoice: number;
+  taxSubstitution: number;
+  deliveryFees: {
+    capital: number;
+    interior: number;
+  }
+  ipiRate: number;
+}

@@ -197,6 +197,45 @@ export type Database = {
         }
         Relationships: []
       }
+      discount_settings: {
+        Row: {
+          cash_payment: number | null
+          created_at: string | null
+          delivery_fee_capital: number | null
+          delivery_fee_interior: number | null
+          half_invoice: number | null
+          id: string
+          ipi_rate: number | null
+          pickup: number | null
+          tax_substitution: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          cash_payment?: number | null
+          created_at?: string | null
+          delivery_fee_capital?: number | null
+          delivery_fee_interior?: number | null
+          half_invoice?: number | null
+          id?: string
+          ipi_rate?: number | null
+          pickup?: number | null
+          tax_substitution?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          cash_payment?: number | null
+          created_at?: string | null
+          delivery_fee_capital?: number | null
+          delivery_fee_interior?: number | null
+          half_invoice?: number | null
+          id?: string
+          ipi_rate?: number | null
+          pickup?: number | null
+          tax_substitution?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       order_discounts: {
         Row: {
           created_at: string
