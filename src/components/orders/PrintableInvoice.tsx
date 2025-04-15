@@ -161,16 +161,18 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({ order }) => {
         <p>Este documento não possui valor fiscal. Para mais informações entre em contato conosco.</p>
       </div>
 
-      <style jsx>{`
-        @media print {
-          @page { size: A4; margin: 10mm; }
-          body { 
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            font-size: 12px;
+      <style>
+        {`
+          @media print {
+            @page { size: A4; margin: 10mm; }
+            body { 
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              font-size: 12px;
+            }
           }
-        }
-      `}</style>
+        `}
+      </style>
     </div>
   );
 };
