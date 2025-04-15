@@ -529,38 +529,24 @@ const OrderDetail = () => {
     `;
   };
 
-  const getStatusBadge = (status: string) => {
-    return <OrderStatusBadge status={status as any} />;
-  };
+  const renderPrintableOrderHTML = (order: any, companyInfo: any) => {
+    const invoiceTypeText = order.fullInvoice ? 'Nota Cheia' : 'Meia Nota';
+    const halfInvoiceText = !order.fullInvoice && order.halfInvoicePercentage ? 
+      `(${order.halfInvoicePercentage}%)` : '';
+      
+    let totalOrderWeight = 0;
+    let totalVolumes = 0;
 
-  if (loading || isSupabaseLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-ferplas-500"></div>
-      </div>
-    );
-  }
-
-  if (!order) {
-    return (
-      <div className="text-center py-12">
-        <h2 className="text-2xl font-bold text-gray-700">Pedido não encontrado</h2>
-        <p className="text-gray-500 mt-2">O pedido que você está procurando não existe ou foi removido.</p>
-        <Button 
-          className="mt-6"
-          onClick={() => navigate('/orders')}
-        >
-          Voltar para Pedidos
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      {/* Rest of the component's JSX */}
-    </div>
-  );
-};
-
-export default OrderDetail;
+    (order.items || []).forEach((item: any) => {
+      const itemWeight = (item.quantity || 0) * (item.product?.weight || 0);
+      totalOrderWeight += itemWeight;
+      totalVolumes += (item.quantity || 0);
+    });
+    
+    return `
+      <div style="max-width: 800px; margin: 0 auto; padding: 12px; font-family: Arial, sans-serif; font-size: 11px;">
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-bottom: 8px;">
+          <div>
+            <img src="/lovable-uploads/68daf61d-816f-4f86-8b3f-4f0970296cf0.png" width="150" height="60" style="object-fit: contain;" alt="Ferplas Logo">
+          </div>
+          <div style="text-align: right
