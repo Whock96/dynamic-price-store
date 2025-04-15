@@ -253,7 +253,8 @@ const OrderDetail = () => {
             
             const invoiceElement = document.createElement('div');
             invoiceElement.innerHTML = '<div id="invoice-content"></div>';
-            iframeDoc.getElementById('invoice-root')?.appendChild(invoiceElement);\n            
+            iframeDoc.getElementById('invoice-root')?.appendChild(invoiceElement);
+            
             const invoiceRoot = iframeDoc.getElementById('invoice-content');
             if (invoiceRoot) {
               const invoiceComponent = document.createElement('div');
@@ -278,7 +279,8 @@ const OrderDetail = () => {
     const halfInvoicePercentage = order.halfInvoicePercentage || 50;
     const halfInvoiceType = order.halfInvoiceType || 'price';
       
-    const subtotalAfterDiscount = order.subtotal - (order.totalDiscount || 0);\n    const taxSubstitutionValue = order.taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
+    const subtotalAfterDiscount = order.subtotal - (order.totalDiscount || 0);
+    const taxSubstitutionValue = order.taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
     const ipiValue = (order.withIPI || order.with_ipi) ? (order.ipiValue || order.ipi_value || 0) : 0;
     const deliveryFee = order.deliveryFee || order.delivery_fee || 0;
     
@@ -576,4 +578,4 @@ const OrderDetail = () => {
               </h3>
               <Separator />
               <p className="text-gray-500">
-                <Calendar
+                <Calendar className="mr
