@@ -200,10 +200,10 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({
                   </td>
                 </tr>
               )}
-              {order.withIPI && (
+              {(order.withIPI || order.with_ipi) && (
                 <tr>
                   <td className="py-0.5">IPI:</td>
-                  <td className="py-0.5 text-right text-blue-600 font-medium">+{formatCurrency(order.ipiValue || 0)}</td>
+                  <td className="py-0.5 text-right text-blue-600 font-medium">+{formatCurrency(order.ipiValue || order.ipi_value || 0)}</td>
                 </tr>
               )}
               {order.deliveryFee && order.deliveryFee > 0 && (
