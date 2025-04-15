@@ -23,8 +23,10 @@ import { useOrders } from '@/context/OrderContext';
 import { useOrderData } from '@/hooks/use-order-data';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import PrintableOrder from '@/components/orders/PrintableOrder';
+import PrintableInvoice from '@/components/orders/PrintableInvoice';
 import { supabase } from '@/integrations/supabase/client';
 import { InvoiceCard } from '@/components/orders/InvoiceCard';
+import ReactDOM from 'react-dom';
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -148,21 +150,22 @@ const OrderDetail = () => {
         <html>
         <head>
           <title>Pedido #${order.orderNumber || '1'} - Impressão</title>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
-            body { font-family: Arial, sans-serif; }
+            body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
             @media print {
               body { 
                 -webkit-print-color-adjust: exact !important; 
                 print-color-adjust: exact !important;
-                font-size: 11px;
               }
             }
-            @page { size: A4; margin: 8mm; }
+            #printable-root { width: 100%; }
           </style>
           <link rel="stylesheet" href="${window.location.origin}/src/index.css">
         </head>
         <body>
-          <div id="printable-content"></div>
+          <div id="printable-root"></div>
           <script>
             window.onload = function() {
               setTimeout(() => window.print(), 1000);
@@ -174,26 +177,24 @@ const OrderDetail = () => {
       
       printWindow.document.close();
       
-      const mountNode = printWindow.document.getElementById('printable-content');
-      if (mountNode) {
-        const iframe = document.createElement('iframe');
-        iframe.style.width = '100%';
-        iframe.style.height = '100vh';
-        iframe.style.border = 'none';
-        
-        mountNode.appendChild(iframe);
-        
-        iframe.onload = function() {
-          const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-          if (iframeDoc) {
-            printWindow.document.title = `Pedido #${order.orderNumber || '1'} - Impressão`;
-            
-            const companyInfo = JSON.parse(localStorage.getItem('ferplas-company-info') || '{}');
-            iframeDoc.body.innerHTML = renderPrintableOrderHTML(order, companyInfo);
-          }
-        };
-        
-        iframe.src = 'about:blank';
+      const printRoot = printWindow.document.getElementById('printable-root');
+      if (printRoot && order) {
+        ReactDOM.render(
+          <PrintableOrder 
+            order={order} 
+            onPrint={() => {
+              setTimeout(() => {
+                printWindow.onafterprint = () => {
+                  ReactDOM.unmountComponentAtNode(printRoot);
+                };
+              }, 100);
+            }} 
+          />,
+          printRoot
+        );
+      } else {
+        toast.error("Erro ao preparar impressão. Tente novamente.");
+        printWindow.close();
       }
     } else {
       toast.error("Não foi possível abrir a janela de impressão. Verifique se o seu navegador está bloqueando pop-ups.");
@@ -208,16 +209,17 @@ const OrderDetail = () => {
         <html>
         <head>
           <title>Faturamento #${order.orderNumber || '1'} - Impressão</title>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
-            body { font-family: Arial, sans-serif; }
+            body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
             @media print {
               body { 
                 -webkit-print-color-adjust: exact !important; 
                 print-color-adjust: exact !important;
-                font-size: 11px;
               }
             }
-            @page { size: A4; margin: 8mm; }
+            #invoice-root { width: 100%; }
           </style>
           <link rel="stylesheet" href="${window.location.origin}/src/index.css">
         </head>
@@ -235,11 +237,14 @@ const OrderDetail = () => {
       printWindow.document.close();
       
       const invoiceRoot = printWindow.document.getElementById('invoice-root');
-      if (invoiceRoot) {
-        const companyInfo = JSON.parse(localStorage.getItem('ferplas-company-info') || '{}');
-        const invoiceComponent = document.createElement('div');
-        invoiceComponent.innerHTML = renderPrintableInvoiceHTML(order, companyInfo);
-        invoiceRoot.appendChild(invoiceComponent);
+      if (invoiceRoot && order) {
+        ReactDOM.render(
+          <PrintableInvoice order={order} />,
+          invoiceRoot
+        );
+      } else {
+        toast.error("Erro ao preparar impressão do faturamento. Tente novamente.");
+        printWindow.close();
       }
     } else {
       toast.error("Não foi possível abrir a janela de impressão. Verifique se o seu navegador está bloqueando pop-ups.");
@@ -251,24 +256,6 @@ const OrderDetail = () => {
       await updateOrder(id, { invoicePdfPath: null });
       fetchOrderData();
     }
-  };
-
-  const renderPrintableOrderHTML = (order: any, companyInfo: any) => {
-    return `
-      <!-- HTML content for order printing -->
-      <div class="print-container">
-        <!-- Add your order HTML here -->
-      </div>
-    `;
-  };
-
-  const renderPrintableInvoiceHTML = (order: any, companyInfo: any) => {
-    return `
-      <!-- HTML content for invoice printing -->
-      <div class="print-container">
-        <!-- Add your invoice HTML here -->
-      </div>
-    `;
   };
 
   const getStatusBadge = (status: string) => {
