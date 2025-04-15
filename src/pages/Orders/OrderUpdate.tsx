@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useOrders } from '@/context/OrderContext';
@@ -14,7 +15,7 @@ import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useOrderData } from '@/hooks/use-order-data';
 import { supabase, uploadInvoicePdf } from '@/integrations/supabase/client';
-import { User, TransportCompany } from '@/types/types';
+import { User, TransportCompany, Order } from '@/types/types';
 import { FileUpload } from '@/components/ui/file-upload';
 
 const OrderUpdate = () => {
