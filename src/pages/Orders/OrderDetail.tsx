@@ -208,19 +208,14 @@ const OrderDetail = () => {
     const halfInvoiceText = !order.fullInvoice && order.halfInvoicePercentage ? 
       `(${order.halfInvoicePercentage}%)` : '';
       
-    // Calculate tax substitution value if applicable
-    let taxSubstitutionValue = 0;
-    if (order.taxSubstitution) {
-      // Using 7.8% which is the standard tax substitution rate in the system
-      taxSubstitutionValue = (7.8 / 100) * order.subtotal;
-    }
-    
-    // Calculate IPI if applicable
+    // Calculate totals and taxes
+    const subtotalAfterDiscount = order.subtotal - (order.totalDiscount || 0);
+    const taxSubstitutionValue = order.taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
     const ipiValue = (order.withIPI || order.with_ipi) ? (order.ipiValue || order.ipi_value || 0) : 0;
     
     return `
       <div style="max-width: 800px; margin: 0 auto; padding: 12px; font-family: Arial, sans-serif; font-size: 11px;">
-        <!-- Company header - more compact -->
+        <!-- Company header -->
         <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-bottom: 8px;">
           <div>
             <img src="/lovable-uploads/68daf61d-816f-4f86-8b3f-4f0970296cf0.png" width="150" height="60" style="object-fit: contain;" alt="Ferplas Logo">
@@ -287,26 +282,39 @@ const OrderDetail = () => {
             <thead>
               <tr style="background-color: #f3f4f6;">
                 <th style="border: 1px solid #ddd; padding: 3px; text-align: left;">Produto</th>
-                <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Preço</th>
-                <th style="border: 1px solid #ddd; padding: 3px; text-align: center;">Desc.</th>
-                <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Final</th>
-                <th style="border: 1px solid #ddd; padding: 3px; text-align: center;">Qtd.</th>
+                <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Preço Unitário</th>
+                <th style="border: 1px solid #ddd; padding: 3px; text-align: center;">Desc. Total (%)</th>
+                <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Preço Final</th>
+                ${order.items.some((item: any) => (item?.taxSubstitutionValue || 0) > 0) ? 
+                  `<th style="border: 1px solid #ddd; padding: 3px; text-align: right;">ST</th>` : ''}
+                ${order.items.some((item: any) => (item?.ipiValue || 0) > 0) ? 
+                  `<th style="border: 1px solid #ddd; padding: 3px; text-align: right;">IPI</th>` : ''}
+                <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Total c/ Impostos</th>
+                <th style="border: 1px solid #ddd; padding: 3px; text-align: center;">Qtd. Volumes</th>
+                <th style="border: 1px solid #ddd; padding: 3px; text-align: center;">Total Unidades</th>
                 <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Subtotal</th>
               </tr>
             </thead>
             <tbody>
-              ${(order.items || []).map((item: any, index: number) => `
-                <tr>
-                  <td style="border: 1px solid #ddd; padding: 3px;">${item?.product?.name || item?.productName || `Produto ${index + 1}`}</td>
-                  <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">
-                    ${formatCurrency(item?.listPrice || item?.product?.listPrice || 0)}
-                  </td>
-                  <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${item?.discount || 0}%</td>
-                  <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.finalPrice || 0)}</td>
-                  <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${item?.quantity || 0}</td>
-                  <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.subtotal || 0)}</td>
-                </tr>
-              `).join('')}
+              ${(order.items || []).map((item: any, index: number) => {
+                const totalUnits = (item.quantity || 0) * (item.product?.quantityPerVolume || 1);
+                return `
+                  <tr>
+                    <td style="border: 1px solid #ddd; padding: 3px;">${item?.product?.name || `Produto ${index + 1}`}</td>
+                    <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.product?.listPrice || 0)}</td>
+                    <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${item?.totalDiscountPercentage || item?.discount || 0}%</td>
+                    <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.finalPrice || 0)}</td>
+                    ${order.items.some((i: any) => (i?.taxSubstitutionValue || 0) > 0) ? 
+                      `<td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.taxSubstitutionValue || 0)}</td>` : ''}
+                    ${order.items.some((i: any) => (i?.ipiValue || 0) > 0) ? 
+                      `<td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.ipiValue || 0)}</td>` : ''}
+                    <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.totalWithTaxes || 0)}</td>
+                    <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${item?.quantity || 0}</td>
+                    <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${totalUnits}</td>
+                    <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.subtotal || 0)}</td>
+                  </tr>
+                `;
+              }).join('')}
             </tbody>
           </table>
         </div>
@@ -319,8 +327,12 @@ const OrderDetail = () => {
             <p style="margin: 2px 0;"><span style="font-weight: 600;">Tipo:</span> ${(order.shipping || order.shipping) === 'delivery' ? 'Entrega' : 'Retirada'}</p>
             ${(order.shipping || order.shipping) === 'delivery' && (order.deliveryLocation || order.delivery_location) ? 
               `<p style="margin: 2px 0;"><span style="font-weight: 600;">Região:</span> ${(order.deliveryLocation || order.delivery_location) === 'capital' ? 'Capital' : 'Interior'}</p>` : ''}
-            ${(order.shipping || order.shipping) === 'delivery' && (order.deliveryFee || order.delivery_fee) && (order.deliveryFee || order.delivery_fee) > 0 ? 
-              `<p style="margin: 2px 0;"><span style="font-weight: 600;">Taxa:</span> ${formatCurrency(order.deliveryFee || order.delivery_fee)}</p>` : ''}
+            ${transportCompany ? `
+              <p style="margin: 2px 0;"><span style="font-weight: 600;">Transportadora:</span> ${transportCompany.name}</p>
+              <p style="margin: 2px 0;"><span style="font-weight: 600;">CNPJ:</span> ${transportCompany.document}</p>
+              ${transportCompany.phone ? `<p style="margin: 2px 0;"><span style="font-weight: 600;">Telefone:</span> ${transportCompany.phone}</p>` : ''}
+              ${transportCompany.email ? `<p style="margin: 2px 0;"><span style="font-weight: 600;">Email:</span> ${transportCompany.email}</p>` : ''}
+            ` : ''}
           </div>
           
           <!-- Financial summary -->
@@ -337,7 +349,11 @@ const OrderDetail = () => {
                   -${formatCurrency(order.totalDiscount || order.total_discount || 0)}
                 </td>
               </tr>
-              ${(order.taxSubstitution || order.tax_substitution) ? `
+              <tr>
+                <td style="padding: 2px 0;">Subtotal Pedido:</td>
+                <td style="padding: 2px 0; text-align: right; font-weight: 500;">${formatCurrency(subtotalAfterDiscount)}</td>
+              </tr>
+              ${order.taxSubstitution ? `
                 <tr>
                   <td style="padding: 2px 0;">Substituição Tributária (7.8%):</td>
                   <td style="padding: 2px 0; text-align: right; color: #ea580c; font-weight: 500;">
@@ -737,7 +753,7 @@ const OrderDetail = () => {
               <TableRow>
                 <TableHead>Produto</TableHead>
                 <TableHead>Preço Unitário</TableHead>
-                <TableHead>Desconto Total (%)</TableHead>
+                <TableHead>Desc. Total (%)</TableHead>
                 <TableHead>Preço Final</TableHead>
                 {items.some(item => (item?.taxSubstitutionValue || 0) > 0) && (
                   <TableHead>Substituição Tributária</TableHead>
