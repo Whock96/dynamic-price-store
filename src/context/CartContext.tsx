@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
@@ -110,7 +111,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: 'Substituição tributária',
           description: 'Acréscimo para substituição tributária',
           value: settings.taxSubstitution,
-          type: 'tax',
+          type: 'surcharge',
           isActive: true,
         },
         {
@@ -118,7 +119,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: 'IPI',
           description: 'Imposto sobre Produtos Industrializados',
           value: settings.ipiRate,
-          type: 'tax',
+          type: 'surcharge',
           isActive: true,
         }
       ];
@@ -168,7 +169,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getTaxSubstitutionRate = () => {
-    if (!isDiscountOptionSelected('icms-st')) return 0;
+    if (!isDiscountOptionSelected('icms-st') || !applyDiscounts) return 0;
     
     const taxOption = discountOptions.find(opt => opt.id === 'icms-st');
     if (!taxOption) return 0;
@@ -181,7 +182,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getIPIRate = () => {
-    if (!withIPI || !settings) return 0;
+    if (!withIPI || !applyDiscounts || !settings) return 0;
     
     const ipiRate = settings.ipiRate;
     
@@ -199,7 +200,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       : 0;
 
   const calculateTaxSubstitutionValue = () => {
-    if (!isDiscountOptionSelected('icms-st')) return 0;
+    if (!isDiscountOptionSelected('icms-st') || !applyDiscounts) return 0;
     
     return items.reduce((total, item) => {
       const unitTaxValue = calculateItemTaxSubstitutionValue(item);
@@ -209,7 +210,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const calculateItemTaxSubstitutionValue = (item: CartItem) => {
-    if (!isDiscountOptionSelected('icms-st')) return 0;
+    if (!isDiscountOptionSelected('icms-st') || !applyDiscounts) return 0;
     
     const icmsRate = getTaxSubstitutionRate() / 100;
     const mva = (item.product.mva ?? 39) / 100;
@@ -338,19 +339,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const total = subtotal + taxSubstitutionValue + ipiValue + deliveryFee;
 
   const toggleApplyDiscounts = () => {
-    setSelectedDiscountOptions(prev => {
-      if (applyDiscounts) {
-        return prev.filter(id => {
-          const option = discountOptions.find(opt => opt.id === id);
-          return option?.type === 'tax';
-        });
-      } else {
-        const discountIds = discountOptions
-          .filter(opt => opt.type === 'discount' && opt.isActive)
-          .map(opt => opt.id);
-        return [...prev, ...discountIds];
-      }
-    });
     setApplyDiscounts(prev => !prev);
   };
 
