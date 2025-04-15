@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useOrders } from '@/context/OrderContext';
@@ -13,9 +14,8 @@ import { formatCurrency, formatDate } from '@/utils/formatters';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useOrderData } from '@/hooks/use-order-data';
-import { supabase, uploadInvoicePdf } from '@/integrations/supabase/client';
-import { User, TransportCompany, Order } from '@/types/types';
-import { FileUpload } from '@/components/ui/file-upload';
+import { supabase } from '@/integrations/supabase/client';
+import { User, TransportCompany } from '@/types/types';
 
 const OrderUpdate = () => {
   const { id } = useParams<{ id: string }>();
@@ -23,8 +23,8 @@ const OrderUpdate = () => {
   const navigate = useNavigate();
   const [status, setStatus] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
-  const [shipping, setShipping] = useState<'delivery' | 'pickup'>('delivery');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit'>('cash');
+  const [shipping, setShipping] = useState<string>('delivery');
+  const [paymentMethod, setPaymentMethod] = useState<string>('cash');
   const [paymentTerms, setPaymentTerms] = useState<string>('');
   const [salespeople, setSalespeople] = useState<User[]>([]);
   const [selectedSalespersonId, setSelectedSalespersonId] = useState<string>('none');
@@ -32,12 +32,11 @@ const OrderUpdate = () => {
   const [transportCompanies, setTransportCompanies] = useState<TransportCompany[]>([]);
   const [selectedTransportCompanyId, setSelectedTransportCompanyId] = useState<string>('none');
   const [isLoadingTransportCompanies, setIsLoadingTransportCompanies] = useState(true);
-  const [invoiceNumber, setInvoiceNumber] = useState<string>('');
-  const [invoicePdf, setInvoicePdf] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
   
+  // Use the custom hook to fetch order data directly from Supabase
   const { order, isLoading, fetchOrderData } = useOrderData(id);
 
+  // Fetch salespeople for the dropdown
   useEffect(() => {
     const fetchSalespeople = async () => {
       try {
@@ -48,11 +47,12 @@ const OrderUpdate = () => {
         if (error) throw error;
         
         if (data) {
+          // Map to User type
           const mappedSalespeople: User[] = data.map(sp => ({
             id: sp.id,
             name: sp.name,
             username: sp.username,
-            role: 'salesperson',
+            role: 'salesperson', // Default role
             permissions: [],
             email: '',
             createdAt: new Date(),
@@ -72,6 +72,7 @@ const OrderUpdate = () => {
     fetchSalespeople();
   }, []);
 
+  // Fetch transport companies for the dropdown
   useEffect(() => {
     const fetchTransportCompanies = async () => {
       try {
@@ -97,88 +98,73 @@ const OrderUpdate = () => {
 
   useEffect(() => {
     if (order) {
+      console.log("Setting form values from order:", order);
       setStatus(order.status || 'pending');
       setNotes(order.notes || order.observations || '');
-      setShipping((order.shipping || 'delivery') as 'delivery' | 'pickup');
-      setPaymentMethod((order.paymentMethod || 'cash') as 'cash' | 'credit');
+      setShipping(order.shipping || 'delivery');
+      setPaymentMethod(order.paymentMethod || 'cash');
       setPaymentTerms(order.paymentTerms || '');
+      // Set to 'none' if no salesperson is assigned
       setSelectedSalespersonId(order.userId || 'none');
+      
+      // Fix for transportCompanyId - add debugger to troubleshoot
+      console.log("Order transportCompanyId:", order.transportCompanyId);
+      // Set transport company if present, ensuring we properly handle null/undefined values
       setSelectedTransportCompanyId(order.transportCompanyId ? order.transportCompanyId : 'none');
-      setInvoiceNumber(order.invoiceNumber || '');
     }
   }, [order]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!order || !id) return;
-    
-    const updates: Partial<Order> = {};
 
+    const updates: any = {};
+
+    // Update status if it was changed
     if (status !== order.status) {
       updateOrderStatus(id, status as any);
     }
 
-    if (notes !== order.notes) updates.notes = notes;
-    if (shipping !== order.shipping) updates.shipping = shipping;
-    if (paymentMethod !== order.paymentMethod) updates.paymentMethod = paymentMethod;
-    if (paymentTerms !== order.paymentTerms) updates.paymentTerms = paymentTerms;
+    // Update notes if they were changed
+    if (notes !== order.notes) {
+      updates.notes = notes;
+    }
+
+    // Update shipping if it was changed
+    if (shipping !== order.shipping) {
+      updates.shipping = shipping;
+    }
+
+    // Update payment method if it was changed
+    if (paymentMethod !== order.paymentMethod) {
+      updates.paymentMethod = paymentMethod;
+    }
+
+    // Update payment terms if they were changed
+    if (paymentTerms !== order.paymentTerms) {
+      updates.paymentTerms = paymentTerms;
+    }
+
+    // Update salesperson if it was changed
     if (selectedSalespersonId !== order.userId) {
+      // If 'none' is selected, set userId to null
       updates.userId = selectedSalespersonId === 'none' ? null : selectedSalespersonId;
     }
+    
+    // Update transport company if it was changed
     if (selectedTransportCompanyId !== order.transportCompanyId) {
+      // If 'none' is selected, set transportCompanyId to null
       updates.transportCompanyId = selectedTransportCompanyId === 'none' ? null : selectedTransportCompanyId;
     }
-    if (invoiceNumber !== (order.invoiceNumber || '')) {
-      updates.invoiceNumber = invoiceNumber.trim() || null;
-    }
 
-    if (invoicePdf) {
-      setIsUploading(true);
-      try {
-        console.log('Attempting to upload PDF file:', invoicePdf.name);
-        const publicUrl = await uploadInvoicePdf(invoicePdf, id);
-        console.log('Upload successful, received URL:', publicUrl);
-        
-        if (!publicUrl) {
-          throw new Error('Falha ao fazer upload do arquivo');
-        }
-        
-        updates.invoicePdfPath = publicUrl;
-      } catch (error: any) {
-        console.error('Error uploading PDF:', error);
-        let errorMessage = error.message || 'Erro desconhecido';
-        toast.error(`Erro ao fazer upload do arquivo: ${errorMessage}`);
-        setIsUploading(false);
-        return;
-      }
-    }
-
+    // Only call updateOrder if there are changes to make
     if (Object.keys(updates).length > 0) {
-      try {
-        await updateOrder(id, updates);
-        toast.success('Pedido atualizado com sucesso');
-        navigate(`/orders/${id}`);
-      } catch (error: any) {
-        console.error('Error updating order:', error);
-        toast.error(`Erro ao atualizar pedido: ${error.message || 'Erro desconhecido'}`);
-      }
-    } else {
-      toast.info('Nenhuma alteração foi feita');
-      navigate(`/orders/${id}`);
+      updateOrder(id, updates);
     }
-  };
 
-  const handleShippingChange = (value: string) => {
-    if (value === 'delivery' || value === 'pickup') {
-      setShipping(value);
-    }
-  };
-
-  const handlePaymentMethodChange = (value: string) => {
-    if (value === 'cash' || value === 'credit') {
-      setPaymentMethod(value);
-    }
+    toast.success('Pedido atualizado com sucesso');
+    navigate(`/orders/${id}`);
   };
 
   if (isLoading || isLoadingSalespeople || isLoadingTransportCompanies) {
@@ -203,6 +189,7 @@ const OrderUpdate = () => {
     );
   }
 
+  // Calculate order number display
   const orderNumber = order.orderNumber || id?.split('-')[0];
 
   return (
@@ -218,13 +205,9 @@ const OrderUpdate = () => {
           <Link to={`/orders/${id}`}>
             <Button variant="outline">Cancelar</Button>
           </Link>
-          <Button 
-            onClick={handleSubmit} 
-            className="bg-ferplas-500 hover:bg-ferplas-600"
-            disabled={isUploading}
-          >
+          <Button onClick={handleSubmit} className="bg-ferplas-500 hover:bg-ferplas-600">
             <Save className="mr-2 h-4 w-4" />
-            {isUploading ? 'Salvando...' : 'Salvar'}
+            Salvar
           </Button>
         </div>
       </div>
@@ -313,7 +296,7 @@ const OrderUpdate = () => {
 
                 <div>
                   <label className="text-sm font-medium">Forma de Entrega</label>
-                  <Select value={shipping} onValueChange={handleShippingChange}>
+                  <Select value={shipping} onValueChange={setShipping}>
                     <SelectTrigger className="w-full mt-1">
                       <SelectValue placeholder="Selecione a forma de entrega" />
                     </SelectTrigger>
@@ -326,7 +309,7 @@ const OrderUpdate = () => {
 
                 <div>
                   <label className="text-sm font-medium">Forma de Pagamento</label>
-                  <Select value={paymentMethod} onValueChange={handlePaymentMethodChange}>
+                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
                     <SelectTrigger className="w-full mt-1">
                       <SelectValue placeholder="Selecione a forma de pagamento" />
                     </SelectTrigger>
@@ -410,42 +393,6 @@ const OrderUpdate = () => {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Informações de Faturamento</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="invoiceNumber">Número da Nota Fiscal</Label>
-              <Input
-                id="invoiceNumber"
-                className="mt-1"
-                placeholder="Informe o número da NFe"
-                value={invoiceNumber}
-                onChange={(e) => setInvoiceNumber(e.target.value)}
-              />
-            </div>
-            
-            <div>
-              <Label>Arquivo PDF da NFe</Label>
-              <FileUpload
-                onChange={(file) => {
-                  console.log('File selected:', file?.name);
-                  setInvoicePdf(file);
-                }}
-                value={order?.invoicePdfPath}
-                accept="application/pdf,.pdf"
-                maxSize={10}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Formatos aceitos: PDF. Tamanho máximo: 10MB.
-              </p>
             </div>
           </div>
         </CardContent>

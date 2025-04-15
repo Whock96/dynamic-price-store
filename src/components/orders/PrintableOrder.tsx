@@ -2,21 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Logo from '@/assets/logo';
-import { Order, CompanyInfo } from '@/types/types';
+import { Order } from '@/types/types';
+import { useCompany } from '@/context/CompanyContext';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency } from '@/utils/formatters';
 
 interface PrintableOrderProps {
   order: Order;
-  companyInfo: CompanyInfo;
   onPrint?: () => void;
 }
 
-const PrintableOrder: React.FC<PrintableOrderProps> = ({ 
-  order, 
-  companyInfo,
-  onPrint 
-}) => {
+const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
+  const { companyInfo } = useCompany();
   const [transportCompanyName, setTransportCompanyName] = useState<string | null>(null);
   
   useEffect(() => {
@@ -54,9 +51,8 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({
   
   const invoiceTypeText = order.fullInvoice ? 'Nota Cheia' : 'Meia Nota';
   
-  const halfInvoicePercentageValue = order.halfInvoicePercentage || 50;
-  const halfInvoiceText = !order.fullInvoice && halfInvoicePercentageValue ? 
-    `(${halfInvoicePercentageValue}%)` : '';
+  const halfInvoiceText = !order.fullInvoice && order.halfInvoicePercentage ? 
+    `(${order.halfInvoicePercentage}%)` : '';
     
   let totalOrderWeight = 0;
   let totalVolumes = 0;

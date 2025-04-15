@@ -197,45 +197,6 @@ export type Database = {
         }
         Relationships: []
       }
-      discount_settings: {
-        Row: {
-          cash_payment: number | null
-          created_at: string | null
-          delivery_fee_capital: number | null
-          delivery_fee_interior: number | null
-          half_invoice: number | null
-          id: string
-          ipi_rate: number | null
-          pickup: number | null
-          tax_substitution: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          cash_payment?: number | null
-          created_at?: string | null
-          delivery_fee_capital?: number | null
-          delivery_fee_interior?: number | null
-          half_invoice?: number | null
-          id?: string
-          ipi_rate?: number | null
-          pickup?: number | null
-          tax_substitution?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          cash_payment?: number | null
-          created_at?: string | null
-          delivery_fee_capital?: number | null
-          delivery_fee_interior?: number | null
-          half_invoice?: number | null
-          id?: string
-          ipi_rate?: number | null
-          pickup?: number | null
-          tax_substitution?: number | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       order_discounts: {
         Row: {
           created_at: string
@@ -344,10 +305,7 @@ export type Database = {
           delivery_location: string | null
           full_invoice: boolean
           half_invoice_percentage: number | null
-          half_invoice_type: string | null
           id: string
-          invoice_number: string | null
-          invoice_pdf_path: string | null
           ipi_value: number | null
           notes: string | null
           observations: string | null
@@ -373,10 +331,7 @@ export type Database = {
           delivery_location?: string | null
           full_invoice?: boolean
           half_invoice_percentage?: number | null
-          half_invoice_type?: string | null
           id?: string
-          invoice_number?: string | null
-          invoice_pdf_path?: string | null
           ipi_value?: number | null
           notes?: string | null
           observations?: string | null
@@ -402,10 +357,7 @@ export type Database = {
           delivery_location?: string | null
           full_invoice?: boolean
           half_invoice_percentage?: number | null
-          half_invoice_type?: string | null
           id?: string
-          invoice_number?: string | null
-          invoice_pdf_path?: string | null
           ipi_value?: number | null
           notes?: string | null
           observations?: string | null

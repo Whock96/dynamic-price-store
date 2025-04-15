@@ -241,13 +241,11 @@ const Cart = () => {
     }
   };
   
-  // Calculate tax values - independent from discount toggle
   const taxSubstitutionValue = calculateTaxSubstitutionValue();
   const ipiValue = calculateIPIValue();
   
-  // Get rates for display - not dependent on discount toggle
   const getTaxSubstitutionRate = () => {
-    if (!isDiscountOptionSelected('icms-st')) return 0;
+    if (!isDiscountOptionSelected('icms-st') || !applyDiscounts) return 0;
     
     const taxOption = discountOptions.find(opt => opt.id === 'icms-st');
     if (!taxOption) return 0;
@@ -262,7 +260,7 @@ const Cart = () => {
   const effectiveTaxRate = getTaxSubstitutionRate();
   
   const getIPIRate = () => {
-    if (!withIPI || !settings) return 0;
+    if (!withIPI || !applyDiscounts || !settings) return 0;
     
     const ipiRate = settings ? settings.ipiRate : 10;
     
@@ -608,14 +606,10 @@ const Cart = () => {
                   <TableBody>
                     {items.map(item => {
                       const totalUnits = calculateTotalUnits(item);
-                      
-                      // Calculate tax values regardless of discount toggle
-                      const taxValue = isDiscountOptionSelected('icms-st') ? 
+                      const taxValue = isDiscountOptionSelected('icms-st') && applyDiscounts ? 
                         calculateItemTaxSubstitutionValue(item) : 0;
-                        
-                      const ipiValue = withIPI ? 
+                      const ipiValue = withIPI && applyDiscounts ? 
                         item.finalPrice * (getIPIRate() / 100) : 0;
-                        
                       const totalWithTaxes = item.finalPrice + taxValue + ipiValue;
                       
                       return (
@@ -634,13 +628,13 @@ const Cart = () => {
                           </TableCell>
                           <TableCell>{formatCurrency(item.finalPrice)}</TableCell>
                           <TableCell>
-                            {isDiscountOptionSelected('icms-st') ? 
+                            {isDiscountOptionSelected('icms-st') && applyDiscounts ? 
                               formatCurrency(taxValue) : 
                               formatCurrency(0)
                             }
                           </TableCell>
                           <TableCell>
-                            {withIPI ? 
+                            {withIPI && applyDiscounts ? 
                               formatCurrency(ipiValue) : 
                               formatCurrency(0)
                             }
@@ -959,8 +953,10 @@ const Cart = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium">
-                        ICMS Substituição tributária <span className="text-red-600">(+{option.value}%)</span>
-                        {option.id === 'icms-st' && isDiscountOptionSelected('meia-nota') && (
+                        ICMS Substituição tributária {applyDiscounts && (
+                          <span className="text-red-600">(+{option.value}%)</span>
+                        )}
+                        {option.id === 'icms-st' && isDiscountOptionSelected('meia-nota') && applyDiscounts && (
                           <span className="text-red-600 ml-1">
                             (Ajustado: +{(option.value * halfInvoicePercentage / 100).toFixed(2)}%)
                           </span>
@@ -983,10 +979,10 @@ const Cart = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">
-                      IPI {settings && (
+                      IPI {applyDiscounts && settings && (
                         <span className="text-red-600">(+{settings.ipiRate}%)</span>
                       )}
-                      {isDiscountOptionSelected('meia-nota') && (
+                      {isDiscountOptionSelected('meia-nota') && applyDiscounts && (
                         <span className="text-red-600 ml-1">
                           (Ajustado: +{effectiveIPIRate.toFixed(2)}%)
                         </span>
@@ -1046,13 +1042,13 @@ const Cart = () => {
                 <span>Subtotal Pedido:</span>
                 <span>{formatCurrency(subtotal)}</span>
               </div>
-              {withIPI && ipiValue > 0 && (
+              {withIPI && applyDiscounts && ipiValue > 0 && (
                 <div className="flex justify-between text-sm text-orange-600">
                   <span>IPI ({effectiveIPIRate.toFixed(2)}%):</span>
                   <span>+{formatCurrency(ipiValue)}</span>
                 </div>
               )}
-              {isDiscountOptionSelected('icms-st') && taxSubstitutionValue > 0 && (
+              {isDiscountOptionSelected('icms-st') && applyDiscounts && taxSubstitutionValue > 0 && (
                 <div className="flex justify-between text-sm text-orange-600">
                   <span>ICMS Substituição Tributária ({effectiveTaxRate.toFixed(2)}% ICMS-ST):</span>
                   <span>+{formatCurrency(taxSubstitutionValue)}</span>

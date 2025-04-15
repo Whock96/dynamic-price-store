@@ -140,15 +140,13 @@ export interface Order {
   updatedAt: Date;
   observations?: string; // Optional to maintain compatibility with existing code
   deliveryLocation?: 'capital' | 'interior' | null;
+  halfInvoicePercentage?: number;
   halfInvoiceType?: 'quantity' | 'price'; // New field for half invoice type
-  halfInvoicePercentage?: number; // Add this field for half invoice percentage
   discountOptions?: DiscountOption[];
   deliveryFee?: number;
   withIPI?: boolean; // IPI flag
   ipiValue?: number; // IPI value
   transportCompanyId?: string | null; // Referência à empresa transportadora
-  invoiceNumber?: string;
-  invoicePdfPath?: string;
 }
 
 export interface MenuItem {
@@ -169,29 +167,4 @@ export interface TransportCompany {
   whatsapp?: string;
   created_at: string;
   updated_at: string;
-}
-
-export interface DiscountSettings {
-  pickup: number;
-  cashPayment: number;
-  halfInvoice: number;
-  taxSubstitution: number;
-  deliveryFees: {
-    capital: number;
-    interior: number;
-  }
-  ipiRate: number;
-}
-
-export interface CompanyInfo {
-  name: string;
-  document: string; // CNPJ
-  stateRegistration: string; // Inscrição Estadual
-  address: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  phone: string;
-  email: string;
-  website?: string;
 }

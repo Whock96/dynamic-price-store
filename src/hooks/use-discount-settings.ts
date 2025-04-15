@@ -1,13 +1,12 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 
 export interface DiscountSettings {
   pickup: number;
   cashPayment: number;
   halfInvoice: number;
-  taxSubstitution: number;
+  taxSubstitution: number; // This represents ICMS ST rate
   deliveryFees: {
     capital: number;
     interior: number;
@@ -20,7 +19,7 @@ const DEFAULT_SETTINGS: DiscountSettings = {
   pickup: 1,
   cashPayment: 1,
   halfInvoice: 3,
-  taxSubstitution: 20,
+  taxSubstitution: 20, // Changed default to 20 (representing 20% ICMS ST)
   deliveryFees: {
     capital: 25,
     interior: 50
@@ -35,53 +34,29 @@ export const useDiscountSettings = () => {
   const [settings, setSettings] = useState<DiscountSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load settings from both localStorage and Supabase
+  // Load settings from localStorage
   useEffect(() => {
-    const loadSettings = async () => {
+    const loadSettings = () => {
       try {
-        // First, try to fetch from Supabase
-        const { data, error } = await supabase
-          .from('discount_settings')
-          .select('*')
-          .limit(1)
-          .single();
-
-        if (error) {
-          console.warn('Error fetching settings from Supabase, falling back to localStorage:', error);
-          // Fallback to localStorage
-          const storedSettings = localStorage.getItem(STORAGE_KEY);
-          if (storedSettings) {
-            const parsedSettings = JSON.parse(storedSettings);
-            setSettings({
-              ...DEFAULT_SETTINGS,
-              ...parsedSettings,
-              deliveryFees: {
-                ...DEFAULT_SETTINGS.deliveryFees,
-                ...(parsedSettings.deliveryFees || {})
-              }
-            });
-          }
-        } else if (data) {
-          // Convert Supabase data to our DiscountSettings interface
-          const supabaseSettings: DiscountSettings = {
-            pickup: data.pickup,
-            cashPayment: data.cash_payment,
-            halfInvoice: data.half_invoice,
-            taxSubstitution: data.tax_substitution,
+        const storedSettings = localStorage.getItem(STORAGE_KEY);
+        if (storedSettings) {
+          const parsedSettings = JSON.parse(storedSettings);
+          // Ensure all required fields exist
+          const mergedSettings = {
+            ...DEFAULT_SETTINGS,
+            ...parsedSettings,
+            // Ensure nested objects are properly merged
             deliveryFees: {
-              capital: data.delivery_fee_capital,
-              interior: data.delivery_fee_interior
-            },
-            ipiRate: data.ipi_rate
+              ...DEFAULT_SETTINGS.deliveryFees,
+              ...(parsedSettings.deliveryFees || {})
+            }
           };
-
-          setSettings(supabaseSettings);
-          // Also update localStorage for consistency
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(supabaseSettings));
+          setSettings(mergedSettings);
         }
       } catch (error) {
         console.error('Error loading discount settings:', error);
-        toast.error('Erro ao carregar configurações de desconto');
+        // Fallback to default settings
+        setSettings(DEFAULT_SETTINGS);
       } finally {
         setIsLoading(false);
       }
@@ -94,7 +69,17 @@ export const useDiscountSettings = () => {
       if (event.key === STORAGE_KEY && event.newValue) {
         try {
           const parsedSettings = JSON.parse(event.newValue);
-          setSettings(parsedSettings);
+          // Ensure all required fields exist
+          const mergedSettings = {
+            ...DEFAULT_SETTINGS,
+            ...parsedSettings,
+            // Ensure nested objects are properly merged
+            deliveryFees: {
+              ...DEFAULT_SETTINGS.deliveryFees,
+              ...(parsedSettings.deliveryFees || {})
+            }
+          };
+          setSettings(mergedSettings);
         } catch (error) {
           console.error('Error parsing updated settings:', error);
         }
@@ -108,67 +93,20 @@ export const useDiscountSettings = () => {
     };
   }, []);
 
-  // Save settings to both Supabase and localStorage
-  const saveSettings = async (newSettings: DiscountSettings) => {
+  // Save settings to localStorage and trigger an event for other components
+  const saveSettings = (newSettings: DiscountSettings) => {
     try {
       // Ensure all fields are present before saving
       const settingsToSave = {
         ...DEFAULT_SETTINGS,
         ...newSettings,
+        // Ensure nested objects are properly merged
         deliveryFees: {
           ...DEFAULT_SETTINGS.deliveryFees,
           ...(newSettings.deliveryFees || {})
         }
       };
       
-      // Get existing records to determine if we need to insert or update
-      const { data: existingData, error: fetchError } = await supabase
-        .from('discount_settings')
-        .select('id')
-        .limit(1);
-        
-      if (fetchError) {
-        console.warn('Error checking for existing settings:', fetchError);
-      }
-      
-      // Determine if we're updating or inserting
-      let supabaseResult;
-      if (existingData && existingData.length > 0) {
-        // Update existing record
-        supabaseResult = await supabase
-          .from('discount_settings')
-          .update({
-            pickup: settingsToSave.pickup,
-            cash_payment: settingsToSave.cashPayment,
-            half_invoice: settingsToSave.halfInvoice,
-            tax_substitution: settingsToSave.taxSubstitution,
-            delivery_fee_capital: settingsToSave.deliveryFees.capital,
-            delivery_fee_interior: settingsToSave.deliveryFees.interior,
-            ipi_rate: settingsToSave.ipiRate,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingData[0].id);
-      } else {
-        // Insert new record
-        supabaseResult = await supabase
-          .from('discount_settings')
-          .insert({
-            pickup: settingsToSave.pickup,
-            cash_payment: settingsToSave.cashPayment,
-            half_invoice: settingsToSave.halfInvoice,
-            tax_substitution: settingsToSave.taxSubstitution,
-            delivery_fee_capital: settingsToSave.deliveryFees.capital,
-            delivery_fee_interior: settingsToSave.deliveryFees.interior,
-            ipi_rate: settingsToSave.ipiRate
-          });
-      }
-      
-      if (supabaseResult.error) {
-        console.error('Supabase error details:', supabaseResult.error);
-        throw supabaseResult.error;
-      }
-      
-      // Update localStorage regardless of database result
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settingsToSave));
       
       // Update local state

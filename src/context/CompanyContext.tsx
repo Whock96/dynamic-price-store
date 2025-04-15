@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useSupabaseData } from '@/hooks/use-supabase-data';
@@ -40,19 +41,17 @@ const COMPANY_INFO_STORAGE_KEY = 'ferplas-company-info';
 
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined);
 
-export const CompanyProvider: React.FC<{ 
-  children: React.ReactNode;
-  initialData?: CompanyInfo;
-}> = ({ 
-  children,
-  initialData 
-}) => {
-  const [companyInfo, setCompanyInfoState] = useState<CompanyInfo>(initialData || initialCompanyInfo);
+export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [companyInfo, setCompanyInfoState] = useState<CompanyInfo>(initialCompanyInfo);
   
+  // Fetch company data from Supabase if available
   const { data: companySettingsData, isLoading, fetchData } = useSupabaseData('company_settings');
 
+  // This effect runs once on component mount
   useEffect(() => {
+    // First try to load from Supabase
     if (companySettingsData && companySettingsData.length > 0) {
+      // Map Supabase data format to our CompanyInfo format
       const settings = companySettingsData[0];
       const mappedInfo: CompanyInfo = {
         name: settings.name || '',
@@ -67,8 +66,12 @@ export const CompanyProvider: React.FC<{
         website: settings.website || '',
       };
       setCompanyInfoState(mappedInfo);
+      
+      // Update localStorage with latest data from Supabase
       localStorage.setItem(COMPANY_INFO_STORAGE_KEY, JSON.stringify(mappedInfo));
-    } else {
+    } 
+    // If no data in Supabase, try localStorage as fallback
+    else {
       const savedCompanyInfo = localStorage.getItem(COMPANY_INFO_STORAGE_KEY);
       
       if (savedCompanyInfo) {
@@ -84,9 +87,13 @@ export const CompanyProvider: React.FC<{
 
   const saveCompanyInfo = useCallback(async (info: CompanyInfo) => {
     try {
+      // Save to localStorage
       localStorage.setItem(COMPANY_INFO_STORAGE_KEY, JSON.stringify(info));
+      
+      // Update context state
       setCompanyInfoState(info);
       
+      // Map our format to Supabase format
       const mappedData = {
         name: info.name,
         document: info.document,
@@ -103,9 +110,14 @@ export const CompanyProvider: React.FC<{
       
       console.log('Mapped data for Supabase:', mappedData);
       
+      // If we have company settings in Supabase, update them
       if (companySettingsData && companySettingsData.length > 0) {
+        // Get the ID of the existing record
         const settingsId = companySettingsData[0].id;
+        
         console.log('Updating existing company settings with ID:', settingsId);
+        
+        // Update the record directly with Supabase client
         const { error } = await supabase
           .from('company_settings')
           .update(mappedData)
@@ -113,7 +125,10 @@ export const CompanyProvider: React.FC<{
           
         if (error) throw error;
       } else {
+        // Create a new record in Supabase
         console.log('Creating new company settings record');
+        
+        // Add created_at field for new records
         const dataWithCreatedAt = {
           ...mappedData,
           created_at: new Date().toISOString()
@@ -126,6 +141,7 @@ export const CompanyProvider: React.FC<{
         if (error) throw error;
       }
       
+      // Refresh data to get the latest from Supabase
       await fetchData();
       
       toast.success('Dados da empresa salvos com sucesso!');
