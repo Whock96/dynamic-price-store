@@ -54,15 +54,17 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
     `(${order.halfInvoicePercentage}%)` : '';
   
   const halfInvoicePercentage = order.halfInvoicePercentage || 50;
-  const halfInvoiceType = order.halfInvoiceType || 'price';
+  const halfInvoiceType = order.halfInvoiceType || 'quantity';
   
   let totalOrderWeight = 0;
   let totalVolumes = 0;
+  let totalIpiValue = 0;
 
   order.items.forEach(item => {
     const itemWeight = (item.quantity || 0) * (item.product?.weight || 0);
     totalOrderWeight += itemWeight;
     totalVolumes += (item.quantity || 0);
+    totalIpiValue += item.ipiValue || 0;
   });
 
   const calculatePriceWithInvoice = (finalPrice: number, percentage: number) => {
@@ -272,9 +274,7 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
               {order.withIPI && (
                 <tr>
                   <td>IPI:</td>
-                  <td className="align-right text-orange font-medium">
-                    +{formatCurrency(ipiValue)}
-                  </td>
+                  <td className="align-right text-blue">+{formatCurrency(totalIpiValue)}</td>
                 </tr>
               )}
               {deliveryFee > 0 && (
