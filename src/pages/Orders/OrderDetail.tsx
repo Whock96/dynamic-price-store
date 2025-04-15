@@ -163,7 +163,7 @@ const OrderDetail = () => {
         <title>Pedido #${order.orderNumber || '1'} - Impressão</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
           ${printStyles}
         </style>
@@ -222,7 +222,7 @@ const OrderDetail = () => {
         <title>Faturamento #${order.orderNumber || '1'} - Impressão</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
           ${printStyles}
         </style>
@@ -680,7 +680,7 @@ const OrderDetail = () => {
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Package className="h-12 w-12 text-gray-300 mb-4" />
               <h2 className="text-xl font-medium text-gray-600">Nenhum item no pedido</h2>
-              <p className="text-muted-foreground">Este pedido não contém itens ou os dados não estão disponíveis.</p>
+              <p className="text-muted-foreground">Este pedido não cont��m itens ou os dados não estão disponíveis.</p>
             </div>
           )}
         </CardContent>

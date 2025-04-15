@@ -72,6 +72,8 @@ export const CompanyProvider: React.FC<{
       };
       console.log('CompanyContext: Mapped company info from database:', mappedInfo);
       setCompanyInfoState(mappedInfo);
+      
+      // Always update localStorage with latest database information
       localStorage.setItem(COMPANY_INFO_STORAGE_KEY, JSON.stringify(mappedInfo));
     } else {
       console.log('CompanyContext: No company settings found in database, checking localStorage');
@@ -83,7 +85,7 @@ export const CompanyProvider: React.FC<{
           console.log('CompanyContext: Found company info in localStorage:', parsedInfo);
           setCompanyInfoState(parsedInfo);
           
-          // Try to save localStorage data to database if missing
+          // Try to save localStorage data to database if missing and contains valid data
           if (parsedInfo.name && parsedInfo.document) {
             console.log('CompanyContext: Valid company data found in localStorage, saving to database');
             saveCompanyInfo(parsedInfo).catch(error => {
