@@ -3,8 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Order, CompanyInfo } from '@/types/types';
-import { formatCurrency } from '@/utils/formatters';
 import { supabase } from '@/integrations/supabase/client';
+import { formatCurrency } from '@/utils/formatters';
 
 interface PrintableInvoiceProps {
   order: Order;
@@ -100,7 +100,7 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
 
   const subtotalAfterDiscount = order.subtotal - (order.totalDiscount || 0);
   const taxSubstitutionValue = order.taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
-  const ipiValue = (order.withIPI || order.with_ipi) ? (order.ipiValue || order.ipi_value || 0) : 0;
+  const ipiValue = order.withIPI ? (order.ipiValue || 0) : 0;
   const deliveryFee = order.deliveryFee || 0;
 
   return (
