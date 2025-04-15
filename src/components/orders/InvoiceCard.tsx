@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, FilePdf, Download, Upload, Trash2 } from 'lucide-react';
+import { FileText, File, Download, Upload, Trash2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -80,7 +80,7 @@ export const InvoiceCard = ({ order, onDelete }: InvoiceCardProps) => {
             ) : (
               <div className="flex items-center justify-between p-3 border rounded-md bg-muted/20">
                 <div className="flex items-center">
-                  <FilePdf className="h-8 w-8 text-red-500 mr-3" />
+                  <File className="h-8 w-8 text-red-500 mr-3" />
                   <div>
                     <p className="font-medium">Nota Fiscal {order.invoiceNumber || ""}</p>
                     <p className="text-sm text-muted-foreground">PDF anexado</p>
