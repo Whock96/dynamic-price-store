@@ -110,7 +110,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: 'Substituição tributária',
           description: 'Acréscimo para substituição tributária',
           value: settings.taxSubstitution,
-          type: 'surcharge',
+          type: 'tax',
           isActive: true,
         },
         {
@@ -118,7 +118,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: 'IPI',
           description: 'Imposto sobre Produtos Industrializados',
           value: settings.ipiRate,
-          type: 'surcharge',
+          type: 'tax',
           isActive: true,
         }
       ];
@@ -168,7 +168,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getTaxSubstitutionRate = () => {
-    if (!isDiscountOptionSelected('icms-st') || !applyDiscounts) return 0;
+    if (!isDiscountOptionSelected('icms-st')) return 0;
     
     const taxOption = discountOptions.find(opt => opt.id === 'icms-st');
     if (!taxOption) return 0;
@@ -181,7 +181,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getIPIRate = () => {
-    if (!withIPI || !applyDiscounts || !settings) return 0;
+    if (!withIPI || !settings) return 0;
     
     const ipiRate = settings.ipiRate;
     
@@ -199,7 +199,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       : 0;
 
   const calculateTaxSubstitutionValue = () => {
-    if (!isDiscountOptionSelected('icms-st') || !applyDiscounts) return 0;
+    if (!isDiscountOptionSelected('icms-st')) return 0;
     
     return items.reduce((total, item) => {
       const unitTaxValue = calculateItemTaxSubstitutionValue(item);
@@ -209,7 +209,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const calculateItemTaxSubstitutionValue = (item: CartItem) => {
-    if (!isDiscountOptionSelected('icms-st') || !applyDiscounts) return 0;
+    if (!isDiscountOptionSelected('icms-st')) return 0;
     
     const icmsRate = getTaxSubstitutionRate() / 100;
     const mva = (item.product.mva ?? 39) / 100;
@@ -342,7 +342,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (applyDiscounts) {
         return prev.filter(id => {
           const option = discountOptions.find(opt => opt.id === id);
-          return option?.type !== 'discount';
+          return option?.type === 'tax';
         });
       } else {
         const discountIds = discountOptions
