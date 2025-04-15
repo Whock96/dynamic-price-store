@@ -75,7 +75,7 @@ export const uploadInvoicePdf = async (file: File, orderId: string): Promise<str
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: true,
-        contentType: 'application/pdf', // Explicitly set content type for PDF
+        contentType: 'application/pdf',
       });
 
     if (error) {
@@ -94,7 +94,7 @@ export const uploadInvoicePdf = async (file: File, orderId: string): Promise<str
     return publicUrl;
   } catch (error) {
     console.error('Error uploading PDF:', error);
-    throw error; // Rethrow to handle in the UI
+    throw error;
   }
 };
 

@@ -113,73 +113,56 @@ const OrderUpdate = () => {
     
     if (!order || !id) return;
     
-    const updates: any = {};
+    const updates: Partial<Order> = {};
 
     if (status !== order.status) {
       updateOrderStatus(id, status as any);
     }
 
-    if (notes !== order.notes) {
-      updates.notes = notes;
-    }
-
-    if (shipping !== order.shipping) {
-      updates.shipping = shipping;
-    }
-
-    if (paymentMethod !== order.paymentMethod) {
-      updates.paymentMethod = paymentMethod;
-    }
-
-    if (paymentTerms !== order.paymentTerms) {
-      updates.paymentTerms = paymentTerms;
-    }
-
+    if (notes !== order.notes) updates.notes = notes;
+    if (shipping !== order.shipping) updates.shipping = shipping;
+    if (paymentMethod !== order.paymentMethod) updates.paymentMethod = paymentMethod;
+    if (paymentTerms !== order.paymentTerms) updates.paymentTerms = paymentTerms;
     if (selectedSalespersonId !== order.userId) {
       updates.userId = selectedSalespersonId === 'none' ? null : selectedSalespersonId;
     }
-    
     if (selectedTransportCompanyId !== order.transportCompanyId) {
       updates.transportCompanyId = selectedTransportCompanyId === 'none' ? null : selectedTransportCompanyId;
     }
-
     if (invoiceNumber !== (order.invoiceNumber || '')) {
       updates.invoiceNumber = invoiceNumber.trim() || null;
     }
-    
+
     if (invoicePdf) {
       setIsUploading(true);
       try {
         console.log('Attempting to upload PDF file:', invoicePdf.name);
         const publicUrl = await uploadInvoicePdf(invoicePdf, id);
         console.log('Upload successful, received URL:', publicUrl);
-        if (publicUrl) {
-          updates.invoicePdfPath = publicUrl;
+        
+        if (!publicUrl) {
+          throw new Error('Falha ao fazer upload do arquivo');
         }
+        
+        updates.invoicePdfPath = publicUrl;
       } catch (error: any) {
         console.error('Error uploading PDF:', error);
-        let errorMessage = 'Erro desconhecido';
-        
-        if (error.message) {
-          errorMessage = error.message;
-        } else if (error.error_description) {
-          errorMessage = error.error_description;
-        } else if (typeof error === 'string') {
-          errorMessage = error;
-        }
-        
+        let errorMessage = error.message || 'Erro desconhecido';
         toast.error(`Erro ao fazer upload do arquivo: ${errorMessage}`);
         setIsUploading(false);
         return;
-      } finally {
-        setIsUploading(false);
       }
     }
 
     if (Object.keys(updates).length > 0) {
-      updateOrder(id, updates);
-      toast.success('Pedido atualizado com sucesso');
-      navigate(`/orders/${id}`);
+      try {
+        await updateOrder(id, updates);
+        toast.success('Pedido atualizado com sucesso');
+        navigate(`/orders/${id}`);
+      } catch (error: any) {
+        console.error('Error updating order:', error);
+        toast.error(`Erro ao atualizar pedido: ${error.message || 'Erro desconhecido'}`);
+      }
     } else {
       toast.info('Nenhuma alteração foi feita');
       navigate(`/orders/${id}`);
