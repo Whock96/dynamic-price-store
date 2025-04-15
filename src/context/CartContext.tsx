@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
@@ -465,7 +466,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setItems(prevItems => prevItems.map(item => {
       if (item.id === id) {
         const netDiscount = applyDiscounts ? appliedDiscount + globalDiscount : appliedDiscount;
-        const finalPrice = item.product.listPrice * (1 - netDiscount / 100));
+        const finalPrice = item.product.listPrice * (1 - netDiscount / 100);
         
         const totalUnits = item.quantity * (item.product.quantityPerVolume || 1);
         const subtotal = finalPrice * totalUnits; // Changed: simplified subtotal calculation
