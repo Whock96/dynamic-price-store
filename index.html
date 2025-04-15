@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -15,6 +16,8 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@lovable_dev" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/src/styles/print.css" type="text/css">
   </head>
 
   <body>
@@ -22,5 +25,138 @@
     <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
     <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Hidden styles for printing -->
+    <div id="print-styles" style="display: none;">
+      <style>
+        @media print {
+          body { 
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          
+          .print-container { max-width: 100%; margin: 0 auto; padding: 1rem; }
+          .flex { display: flex; }
+          .grid { display: grid; }
+          .justify-between { justify-content: space-between; }
+          .items-start { align-items: flex-start; }
+          .items-center { align-items: center; }
+          .text-right { text-align: right; }
+          .text-center { text-align: center; }
+          .text-left { text-align: left; }
+          .font-bold { font-weight: 700; }
+          .font-medium { font-weight: 500; }
+          .text-xs { font-size: 0.75rem; line-height: 1rem; }
+          .text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+          .text-base { font-size: 1rem; line-height: 1.5rem; }
+          .text-lg { font-size: 1.125rem; line-height: 1.75rem; }
+          .text-xl { font-size: 1.25rem; line-height: 1.75rem; }
+          .border { border-width: 1px; }
+          .border-b { border-bottom-width: 1px; }
+          .border-t { border-top-width: 1px; }
+          .rounded { border-radius: 0.25rem; }
+          .p-1 { padding: 0.25rem; }
+          .p-2 { padding: 0.5rem; }
+          .p-4 { padding: 1rem; }
+          .px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
+          .py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+          .py-0\.5 { padding-top: 0.125rem; padding-bottom: 0.125rem; }
+          .pb-0\.5 { padding-bottom: 0.125rem; }
+          .pb-1 { padding-bottom: 0.25rem; }
+          .pb-2 { padding-bottom: 0.5rem; }
+          .pt-1 { padding-top: 0.25rem; }
+          .pt-2 { padding-top: 0.5rem; }
+          .pt-4 { padding-top: 1rem; }
+          .pt-6 { padding-top: 1.5rem; }
+          .mb-1 { margin-bottom: 0.25rem; }
+          .mb-2 { margin-bottom: 0.5rem; }
+          .mb-3 { margin-bottom: 0.75rem; }
+          .mb-4 { margin-bottom: 1rem; }
+          .mt-0\.5 { margin-top: 0.125rem; }
+          .mt-1 { margin-top: 0.25rem; }
+          .mt-2 { margin-top: 0.5rem; }
+          .mt-4 { margin-top: 1rem; }
+          .mt-6 { margin-top: 1.5rem; }
+          .mr-1 { margin-right: 0.25rem; }
+          .mr-2 { margin-right: 0.5rem; }
+          .mr-3 { margin-right: 0.75rem; }
+          .mr-4 { margin-right: 1rem; }
+          .ml-1 { margin-left: 0.25rem; }
+          .ml-2 { margin-left: 0.5rem; }
+          .ml-4 { margin-left: 1rem; }
+          .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+          .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+          .gap-2 { gap: 0.5rem; }
+          .gap-4 { gap: 1rem; }
+          .bg-white { background-color: white !important; }
+          .bg-gray-50 { background-color: #f9fafb !important; }
+          .bg-gray-100 { background-color: #f3f4f6 !important; }
+          .border-gray-200 { border-color: #e5e7eb !important; }
+          .border-gray-300 { border-color: #d1d5db !important; }
+          .text-gray-400 { color: #9ca3af !important; }
+          .text-gray-500 { color: #6b7280 !important; }
+          .text-gray-600 { color: #4b5563 !important; }
+          .text-gray-700 { color: #374151 !important; }
+          .text-red-600 { color: #dc2626 !important; }
+          .text-blue-600 { color: #2563eb !important; }
+          .text-orange-600 { color: #ea580c !important; }
+          .text-green-600 { color: #16a34a !important; }
+          .text-amber-600 { color: #d97706 !important; }
+          .max-w-4xl { max-width: 56rem; }
+          .mx-auto { margin-left: auto; margin-right: auto; }
+          .w-full { width: 100%; }
+          .border-collapse { border-collapse: collapse; }
+          .font-semibold { font-weight: 600; }
+          .inline-block { display: inline-block; }
+          .space-y-1 > * + * { margin-top: 0.25rem; }
+          .space-y-2 > * + * { margin-top: 0.5rem; }
+          .space-y-3 > * + * { margin-top: 0.75rem; }
+          .space-y-4 > * + * { margin-top: 1rem; }
+          
+          /* Specific print fixes */
+          @page { size: A4; margin: 10mm; }
+          
+          body { 
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            font-size: 12px;
+          }
+          
+          .max-w-4xl {
+            max-width: none !important;
+          }
+          
+          table {
+            page-break-inside: auto;
+          }
+          
+          tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+          }
+          
+          .min-w-8 { min-width: 2rem; }
+          .min-h-8 { min-height: 2rem; }
+          .h-4 { height: 1rem; }
+          .w-4 { width: 1rem; }
+          .h-5 { height: 1.25rem; }
+          .w-5 { width: 1.25rem; }
+
+          /* Fix for table borders and background colors */
+          th, td {
+            border: 1px solid #d1d5db !important;
+          }
+          
+          th {
+            background-color: #f3f4f6 !important;
+            font-weight: 600 !important;
+          }
+          
+          .bg-ferplas-100 { background-color: #e5deff !important; }
+          .text-ferplas-500, .text-ferplas-600 { color: #8B5CF6 !important; }
+        }
+      </style>
+    </div>
   </body>
 </html>

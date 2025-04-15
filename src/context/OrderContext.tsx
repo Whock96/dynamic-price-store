@@ -95,7 +95,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
         let userName = null;
         if (order.user_id) {
-          console.log("OrderContext - Verificando ID de usuário do pedido:", order.user_id, "(tipo:", typeof order.user_id, ")");
+          console.log("OrderContext - Verificando ID de usu��rio do pedido:", order.user_id, "(tipo:", typeof order.user_id, ")");
           
           if (user && String(user.id) === String(order.user_id)) {
             userName = user.name;
@@ -252,7 +252,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         with_ipi: newOrder.withIPI || false,
         ipi_value: newOrder.ipiValue || 0,
         transport_company_id: newOrder.transportCompanyId, // Ensure this is included correctly
-        applied_discounts: (appliedDiscounts as unknown) as Tables<'orders'>['applied_discounts']
+        applied_discounts: (appliedDiscounts as unknown) as Tables<'orders'>['applied_discounts'],
+        half_invoice_type: newOrder.halfInvoiceType || 'quantity'
       };
       
       console.log("Order data being inserted:", orderInsert);
@@ -369,19 +370,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (orderData.withIPI !== undefined) supabaseOrderData.with_ipi = orderData.withIPI;
       if (orderData.ipiValue !== undefined) supabaseOrderData.ipi_value = orderData.ipiValue;
       if (orderData.userId !== undefined) supabaseOrderData.user_id = orderData.userId;
-      if (orderData.transportCompanyId !== undefined) {
-        if (orderData.transportCompanyId === 'none') {
-          supabaseOrderData.transport_company_id = null;
-          console.log("Setting transport_company_id to null");
-        } else {
-          supabaseOrderData.transport_company_id = orderData.transportCompanyId;
-          console.log(`Setting transport_company_id to ${orderData.transportCompanyId}`);
-        }
-      }
-      if (orderData.appliedDiscounts !== undefined) {
-        supabaseOrderData.applied_discounts = (orderData.appliedDiscounts as unknown) as Tables<'orders'>['applied_discounts'];
-      }
+      if (orderData.invoiceNumber !== undefined) supabaseOrderData.invoice_number = orderData.invoiceNumber;
+      if (orderData.invoicePdfPath !== undefined) supabaseOrderData.invoice_pdf_path = orderData.invoicePdfPath;
       
+      if (orderData.transportCompanyId !== undefined) {
+        supabaseOrderData.transport_company_id = orderData.transportCompanyId === 'none' ? null : orderData.transportCompanyId;
+      }
+
       console.log("Final Supabase order data for update:", supabaseOrderData);
       
       const { error } = await supabase
@@ -406,13 +401,11 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         )
       );
       
-      toast.success(`Pedido atualizado com sucesso!`);
-      
-      await fetchOrders();
-      
+      console.log('Order updated successfully');
+      return true;
     } catch (error: any) {
       console.error('Error updating order:', error);
-      toast.error(`Erro ao atualizar pedido: ${error.message || 'Erro desconhecido'}`);
+      throw error;
     }
   };
 

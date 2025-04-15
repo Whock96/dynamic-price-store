@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface FileUploadProps {
@@ -53,8 +53,37 @@ export function FileUpload({
   const handleFile = (file: File) => {
     setError(null);
     
-    // Check file type
-    if (!file.type.match(accept.replace('*', '.*'))) {
+    // Check file type based on the accept attribute
+    const fileType = file.type.toLowerCase();
+    const acceptTypes = accept.split(',').map(type => type.trim().toLowerCase());
+    
+    console.log('Checking file:', file.name, 'Type:', fileType);
+    console.log('Accepted types:', acceptTypes);
+    
+    // Special handling for PDFs
+    const isPdf = fileType === 'application/pdf';
+    const isPdfAccepted = acceptTypes.some(type => 
+      type === 'application/pdf' || type === '.pdf' || type === 'pdf'
+    );
+    
+    if (isPdf && !isPdfAccepted) {
+      setError(`Tipo de arquivo inválido. Por favor, envie ${accept.includes('image') ? 'uma imagem' : 'um arquivo válido'}.`);
+      return;
+    }
+    
+    if (!isPdf && !acceptTypes.some(type => {
+      if (type.startsWith('.')) {
+        // Handle extension format like .jpg
+        return file.name.toLowerCase().endsWith(type);
+      } else if (type.includes('*')) {
+        // Handle wildcard format like image/*
+        const [category] = type.split('/');
+        return fileType.startsWith(category);
+      } else {
+        // Handle exact match like image/jpeg
+        return fileType === type;
+      }
+    })) {
       setError(`Tipo de arquivo inválido. Por favor, envie ${accept.includes('image') ? 'uma imagem' : 'um arquivo válido'}.`);
       return;
     }
@@ -72,12 +101,16 @@ export function FileUpload({
     onChange(null);
   };
   
-  // Determine if we have a valid image URL to display
-  // Make sure value is actually a string and not null or undefined
-  const hasValidImageUrl = Boolean(value && typeof value === 'string' && value.trim().length > 0);
+  // Determine if we have a valid file URL to display
+  const hasValidUrl = Boolean(value && typeof value === 'string' && value.trim().length > 0);
   
-  // Check if the URL actually represents an image based on extension or type
-  const isImageUrl = hasValidImageUrl && (
+  // Check if the URL is an image or PDF
+  const isPdfUrl = hasValidUrl && (
+    value?.toLowerCase().includes('.pdf') ||
+    value?.toLowerCase().includes('pdf')
+  );
+  
+  const isImageUrl = hasValidUrl && !isPdfUrl && (
     value?.includes('image') || 
     value?.endsWith('.jpg') || 
     value?.endsWith('.jpeg') || 
@@ -88,8 +121,9 @@ export function FileUpload({
     value?.startsWith('data:image/')
   );
   
-  // Only show the image preview if we have a valid image URL
-  const showImagePreview = hasValidImageUrl && isImageUrl;
+  // Show the appropriate preview
+  const showImagePreview = hasValidUrl && isImageUrl;
+  const showPdfPreview = hasValidUrl && isPdfUrl;
   
   return (
     <div className="space-y-2">
@@ -97,7 +131,7 @@ export function FileUpload({
         className={cn(
           "border-2 border-dashed rounded-lg p-4 transition-all text-center",
           dragActive ? "border-primary bg-muted/20" : "border-muted-foreground/20",
-          showImagePreview ? "border-primary/50" : "",
+          (showImagePreview || showPdfPreview) ? "border-primary/50" : "",
           className
         )}
         onDragEnter={handleDrag}
@@ -121,11 +155,33 @@ export function FileUpload({
               <X className="h-4 w-4" />
             </button>
           </div>
+        ) : showPdfPreview ? (
+          <div className="relative w-full flex items-center justify-center bg-muted/20 rounded-md overflow-hidden p-4">
+            <div className="flex items-center">
+              <FileText className="h-12 w-12 text-red-500 mr-3" />
+              <div className="text-left">
+                <p className="font-medium">Arquivo PDF</p>
+                <p className="text-sm text-muted-foreground">
+                  <a href={value!} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                    Visualizar PDF
+                  </a>
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleRemove}
+              className="absolute top-2 right-2 bg-destructive text-destructive-foreground p-1 rounded-full hover:bg-destructive/80"
+              aria-label="Remove PDF"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-4">
             <Upload className="h-10 w-10 text-muted-foreground mb-2" />
             <p className="text-sm text-muted-foreground mb-1">
-              Arraste e solte sua imagem aqui ou
+              Arraste e solte seu {accept.includes('pdf') ? 'PDF' : 'arquivo'} aqui ou
             </p>
             <Button
               type="button"
