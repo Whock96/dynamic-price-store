@@ -1,22 +1,22 @@
-
 import React from 'react';
-import { Order } from '@/types/types';
+import { Order, CompanyInfo } from '@/types/types';
 import { formatCurrency } from '@/utils/formatters';
 import Logo from '@/assets/logo';
-import { useCompany } from '@/context/CompanyContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface PrintableInvoiceProps {
   order: Order;
+  companyInfo: CompanyInfo;
 }
 
-const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({ order }) => {
-  const { companyInfo } = useCompany();
+const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({ 
+  order,
+  companyInfo 
+}) => {
   const halfInvoiceType = order.halfInvoiceType || 'quantity';
   const ipiValue = order.withIPI ? (order.ipiValue || 0) : 0;
 
-  // Update the calculations to use the correct halfInvoiceType
   const calculatePriceWithInvoice = (finalPrice: number, percentage: number) => {
     return finalPrice * (percentage / 100);
   };

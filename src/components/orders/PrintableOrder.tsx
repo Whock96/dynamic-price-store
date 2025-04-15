@@ -2,18 +2,21 @@ import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Logo from '@/assets/logo';
-import { Order } from '@/types/types';
-import { useCompany } from '@/context/CompanyContext';
+import { Order, CompanyInfo } from '@/types/types';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency } from '@/utils/formatters';
 
 interface PrintableOrderProps {
   order: Order;
+  companyInfo: CompanyInfo;
   onPrint?: () => void;
 }
 
-const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
-  const { companyInfo } = useCompany();
+const PrintableOrder: React.FC<PrintableOrderProps> = ({ 
+  order, 
+  companyInfo,
+  onPrint 
+}) => {
   const [transportCompanyName, setTransportCompanyName] = useState<string | null>(null);
   
   useEffect(() => {

@@ -1,6 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import * as ReactDOM from 'react-dom/client';
+import { useCompany } from '@/context/CompanyContext';
+import { PrintContextWrapper } from '@/components/orders/PrintContextWrapper';
 import { 
   ArrowLeft, Edit, Printer, Truck, Package, 
   Calendar, User, Phone, Mail, MapPin, Receipt, ShoppingCart
@@ -27,7 +29,6 @@ import PrintableOrder from '@/components/orders/PrintableOrder';
 import PrintableInvoice from '@/components/orders/PrintableInvoice';
 import { supabase } from '@/integrations/supabase/client';
 import { InvoiceCard } from '@/components/orders/InvoiceCard';
-import * as ReactDOM from 'react-dom/client';
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -41,6 +42,7 @@ const OrderDetail = () => {
   const [isLoadingTransport, setIsLoadingTransport] = useState(false);
   const [totalOrderWeight, setTotalOrderWeight] = useState(0);
   const [totalVolumes, setTotalVolumes] = useState(0);
+  const { companyInfo } = useCompany();
 
   const formatPhoneNumber = (phone: string | undefined | null) => {
     if (!phone) return 'Não informado';
@@ -146,6 +148,8 @@ const OrderDetail = () => {
   const handlePrintOrder = () => {
     const printWindow = window.open('', '_blank');
     if (printWindow) {
+      const printStyles = document.getElementById('print-styles')?.innerHTML || '';
+      
       printWindow.document.write(`
         <!DOCTYPE html>
         <html>
@@ -153,19 +157,12 @@ const OrderDetail = () => {
           <title>Pedido #${order.orderNumber || '1'} - Impressão</title>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <link href="${window.location.origin}/src/index.css" rel="stylesheet">
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
           <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-            
+            ${printStyles}
             body { 
               margin: 0;
               font-family: 'Inter', system-ui, sans-serif;
-            }
-            @media print {
-              body { 
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-              }
             }
           </style>
         </head>
@@ -182,18 +179,21 @@ const OrderDetail = () => {
         const root = ReactDOM.createRoot(printRoot);
         root.render(
           <React.StrictMode>
-            <PrintableOrder 
-              order={order} 
-              onPrint={() => {
-                setTimeout(() => {
-                  printWindow.print();
-                  printWindow.onafterprint = () => {
-                    root.unmount();
-                    printWindow.close();
-                  };
-                }, 1000);
-              }} 
-            />
+            <PrintContextWrapper companyInfo={companyInfo}>
+              <PrintableOrder 
+                order={order}
+                companyInfo={companyInfo}
+                onPrint={() => {
+                  setTimeout(() => {
+                    printWindow.print();
+                    printWindow.onafterprint = () => {
+                      root.unmount();
+                      printWindow.close();
+                    };
+                  }, 1000);
+                }}
+              />
+            </PrintContextWrapper>
           </React.StrictMode>
         );
       } else {
@@ -201,13 +201,15 @@ const OrderDetail = () => {
         printWindow.close();
       }
     } else {
-      toast.error("Não foi possível abrir a janela de impressão. Verifique se o seu navegador está bloqueando pop-ups.");
+      toast.error("Não foi possível abrir a janela de impressão.");
     }
   };
 
   const handlePrintInvoice = () => {
     const printWindow = window.open('', '_blank');
     if (printWindow) {
+      const printStyles = document.getElementById('print-styles')?.innerHTML || '';
+      
       printWindow.document.write(`
         <!DOCTYPE html>
         <html>
@@ -215,19 +217,12 @@ const OrderDetail = () => {
           <title>Faturamento #${order.orderNumber || '1'} - Impressão</title>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <link href="${window.location.origin}/src/index.css" rel="stylesheet">
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
           <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-            
+            ${printStyles}
             body { 
               margin: 0;
               font-family: 'Inter', system-ui, sans-serif;
-            }
-            @media print {
-              body { 
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-              }
             }
           </style>
         </head>
@@ -244,9 +239,12 @@ const OrderDetail = () => {
         const root = ReactDOM.createRoot(invoiceRoot);
         root.render(
           <React.StrictMode>
-            <PrintableInvoice 
-              order={order} 
-            />
+            <PrintContextWrapper companyInfo={companyInfo}>
+              <PrintableInvoice 
+                order={order}
+                companyInfo={companyInfo}
+              />
+            </PrintContextWrapper>
           </React.StrictMode>
         );
 
@@ -258,11 +256,11 @@ const OrderDetail = () => {
           };
         }, 1000);
       } else {
-        toast.error("Erro ao preparar impressão do faturamento. Tente novamente.");
+        toast.error("Erro ao preparar impressão do faturamento.");
         printWindow.close();
       }
     } else {
-      toast.error("Não foi possível abrir a janela de impressão. Verifique se o seu navegador está bloqueando pop-ups.");
+      toast.error("Não foi possível abrir a janela de impressão.");
     }
   };
 
