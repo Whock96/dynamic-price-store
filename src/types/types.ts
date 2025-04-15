@@ -182,3 +182,16 @@ export interface DiscountSettings {
   }
   ipiRate: number;
 }
+
+export interface CompanyInfo {
+  name: string;
+  document: string; // CNPJ
+  stateRegistration: string; // Inscrição Estadual
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  phone: string;
+  email: string;
+  website?: string;
+}
