@@ -30,8 +30,8 @@ const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { getOrderById } = useOrders();
-  const { order: supabaseOrder, isLoading: isSupabaseLoading } = useOrderData(id);
+  const { getOrderById, updateOrder } = useOrders();
+  const { order: supabaseOrder, isLoading: isSupabaseLoading, fetchOrderData } = useOrderData(id);
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [transportCompany, setTransportCompany] = useState<any>(null);
@@ -254,11 +254,21 @@ const OrderDetail = () => {
   };
 
   const renderPrintableOrderHTML = (order: any, companyInfo: any) => {
-    // ... (existing renderPrintableOrderHTML function)
+    return `
+      <!-- HTML content for order printing -->
+      <div class="print-container">
+        <!-- Add your order HTML here -->
+      </div>
+    `;
   };
 
   const renderPrintableInvoiceHTML = (order: any, companyInfo: any) => {
-    // ... (existing renderPrintableInvoiceHTML function)
+    return `
+      <!-- HTML content for invoice printing -->
+      <div class="print-container">
+        <!-- Add your invoice HTML here -->
+      </div>
+    `;
   };
 
   const getStatusBadge = (status: string) => {
