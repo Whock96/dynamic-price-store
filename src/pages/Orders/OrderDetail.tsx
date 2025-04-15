@@ -253,8 +253,7 @@ const OrderDetail = () => {
             
             const invoiceElement = document.createElement('div');
             invoiceElement.innerHTML = '<div id="invoice-content"></div>';
-            iframeDoc.getElementById('invoice-root')?.appendChild(invoiceElement);
-            
+            iframeDoc.getElementById('invoice-root')?.appendChild(invoiceElement);\n            
             const invoiceRoot = iframeDoc.getElementById('invoice-content');
             if (invoiceRoot) {
               const invoiceComponent = document.createElement('div');
@@ -279,8 +278,7 @@ const OrderDetail = () => {
     const halfInvoicePercentage = order.halfInvoicePercentage || 50;
     const halfInvoiceType = order.halfInvoiceType || 'price';
       
-    const subtotalAfterDiscount = order.subtotal - (order.totalDiscount || 0);
-    const taxSubstitutionValue = order.taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
+    const subtotalAfterDiscount = order.subtotal - (order.totalDiscount || 0);\n    const taxSubstitutionValue = order.taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
     const ipiValue = (order.withIPI || order.with_ipi) ? (order.ipiValue || order.ipi_value || 0) : 0;
     const deliveryFee = order.deliveryFee || order.delivery_fee || 0;
     
@@ -377,12 +375,6 @@ const OrderDetail = () => {
                 <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Preço Unitário</th>
                 <th style="border: 1px solid #ddd; padding: 3px; text-align: center;">Desc. Total (%)</th>
                 <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Preço Final</th>
-                
-                ${!order.fullInvoice && halfInvoiceType === 'price' ? `
-                  <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Preço c/ nota</th>
-                  <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Preço s/ nota</th>
-                ` : ''}
-                
                 ${order.items.some((item: any) => (item?.taxSubstitutionValue || 0) > 0) ? 
                   `<th style="border: 1px solid #ddd; padding: 3px; text-align: right;">ST</th>` : ''}
                 ${order.items.some((item: any) => (item?.ipiValue || 0) > 0) ? 
@@ -390,38 +382,18 @@ const OrderDetail = () => {
                 <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Total c/ Impostos</th>
                 <th style="border: 1px solid #ddd; padding: 3px; text-align: center;">Qtd. Volumes</th>
                 <th style="border: 1px solid #ddd; padding: 3px; text-align: center;">Total Unidades</th>
-                
-                ${!order.fullInvoice && halfInvoiceType === 'quantity' ? `
-                  <th style="border: 1px solid #ddd; padding: 3px; text-align: center;">Qtd. c/ nota</th>
-                  <th style="border: 1px solid #ddd; padding: 3px; text-align: center;">Qtd. s/ nota</th>
-                ` : ''}
-                
                 <th style="border: 1px solid #ddd; padding: 3px; text-align: right;">Subtotal</th>
               </tr>
             </thead>
             <tbody>
               ${(order.items || []).map((item: any, index: number) => {
                 const totalUnits = (item.quantity || 0) * (item.product?.quantityPerVolume || 1);
-                const finalPrice = item?.finalPrice || 0;
-                
-                const priceWithInvoice = finalPrice * (halfInvoicePercentage / 100);
-                const priceWithoutInvoice = finalPrice * ((100 - halfInvoicePercentage) / 100);
-                
-                const quantityWithInvoice = Math.round(totalUnits * (halfInvoicePercentage / 100));
-                const quantityWithoutInvoice = Math.round(totalUnits * ((100 - halfInvoicePercentage) / 100));
-                
                 return `
                   <tr>
                     <td style="border: 1px solid #ddd; padding: 3px;">${item?.product?.name || `Produto ${index + 1}`}</td>
-                    <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.product?.listPrice || 0)}</td>
+                    <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency((item as any).listPrice || item?.product?.listPrice || 0)}</td>
                     <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${item?.totalDiscountPercentage || item?.discount || 0}%</td>
-                    <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(finalPrice)}</td>
-                    
-                    ${!order.fullInvoice && halfInvoiceType === 'price' ? `
-                      <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(priceWithInvoice)}</td>
-                      <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(priceWithoutInvoice)}</td>
-                    ` : ''}
-                    
+                    <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.finalPrice || 0)}</td>
                     ${order.items.some((i: any) => (i?.taxSubstitutionValue || 0) > 0) ? 
                       `<td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.taxSubstitutionValue || 0)}</td>` : ''}
                     ${order.items.some((i: any) => (i?.ipiValue || 0) > 0) ? 
@@ -429,12 +401,6 @@ const OrderDetail = () => {
                     <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.totalWithTaxes || 0)}</td>
                     <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${item?.quantity || 0}</td>
                     <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${totalUnits}</td>
-                    
-                    ${!order.fullInvoice && halfInvoiceType === 'quantity' ? `
-                      <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${quantityWithInvoice}</td>
-                      <td style="border: 1px solid #ddd; padding: 3px; text-align: center;">${quantityWithoutInvoice}</td>
-                    ` : ''}
-                    
                     <td style="border: 1px solid #ddd; padding: 3px; text-align: right;">${formatCurrency(item?.subtotal || 0)}</td>
                   </tr>
                 `;
@@ -453,28 +419,24 @@ const OrderDetail = () => {
               </tr>
               <tr>
                 <td style="padding: 2px 0;">Descontos:</td>
-                <td style="padding: 2px 0; text-align: right; color: #dc2626; font-weight: 500;">
-                  -${formatCurrency(order.totalDiscount || order.total_discount || 0)}
-                </td>
+                <td style="padding: 2px 0; text-align: right; color: #dc2626; font-weight: 500;">-${formatCurrency(order.totalDiscount || order.total_discount || 0)}</td>
               </tr>
               <tr>
                 <td style="padding: 2px 0;">Subtotal Pedido:</td>
-                <td style="padding: 2px 0; text-align: right; font-weight: 500;">${formatCurrency(subtotalAfterDiscount)}</td>
+                <td style="padding: 2px 0; text-align: right; font-weight: 500;">${formatCurrency(order.subtotal - (order.totalDiscount || order.total_discount || 0))}</td>
               </tr>
-              ${order.taxSubstitution ? `
+              ${(order.taxSubstitution || order.tax_substitution) ? `
                 <tr>
                   <td style="padding: 2px 0;">Substituição Tributária:</td>
                   <td style="padding: 2px 0; text-align: right; color: #ea580c; font-weight: 500;">
-                    +${formatCurrency(taxSubstitutionValue)}
+                    +${formatCurrency(order.items.reduce((sum: number, item: any) => sum + (item.taxSubstitutionValue || 0), 0))}
                   </td>
                 </tr>
               ` : ''}
-              ${(order.withIPI || order.with_ipi) && ipiValue > 0 ? `
+              ${(order.withIPI || order.with_ipi) ? `
                 <tr>
                   <td style="padding: 2px 0;">IPI:</td>
-                  <td style="padding: 2px 0; text-align: right; color: #ea580c; font-weight: 500;">
-                    +${formatCurrency(ipiValue)}
-                  </td>
+                  <td style="padding: 2px 0; text-align: right; color: #ea580c; font-weight: 500;">+${formatCurrency(order.ipiValue || order.ipi_value || 0)}</td>
                 </tr>
               ` : ''}
               ${(order.deliveryFee || order.delivery_fee) && (order.deliveryFee || order.delivery_fee) > 0 ? `
@@ -487,31 +449,27 @@ const OrderDetail = () => {
                 <td style="padding: 3px 0; font-weight: bold;">Total:</td>
                 <td style="padding: 3px 0; text-align: right; font-weight: bold;">${formatCurrency(order.total)}</td>
               </tr>
-              
-              ${!order.fullInvoice ? `
-                <tr>
-                  <td style="padding: 2px 0; font-weight: 600;">Total c/ Nota:</td>
-                  <td style="padding: 2px 0; text-align: right; color: #16a34a; font-weight: 600;">${formatCurrency(totalWithInvoice)}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 2px 0; font-weight: 600;">Total s/ Nota:</td>
-                  <td style="padding: 2px 0; text-align: right; color: #d97706; font-weight: 600;">${formatCurrency(totalWithoutInvoice)}</td>
-                </tr>
-              ` : ''}
             </table>
           </div>
           
           <div>
             <h2 style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin: 0 0 5px 0; font-size: 12px;">Entrega</h2>
             <p style="margin: 2px 0;"><span style="font-weight: 600;">Tipo:</span> ${(order.shipping || order.shipping) === 'delivery' ? 'Entrega' : 'Retirada'}</p>
-            ${(order.shipping || order.shipping) === 'delivery' && (order.deliveryLocation || order.delivery_location) ? 
-              `<p style="margin: 2px 0;"><span style="font-weight: 600;">Região:</span> ${(order.deliveryLocation || order.delivery_location) === 'capital' ? 'Capital' : 'Interior'}</p>` : ''}
+            
             ${transportCompany ? `
               <p style="margin: 2px 0;"><span style="font-weight: 600;">Transportadora:</span> ${transportCompany.name}</p>
-              <p style="margin: 2px 0;"><span style="font-weight: 600;">CNPJ:</span> ${transportCompany.document}</p>
-              ${transportCompany.phone ? `<p style="margin: 2px 0;"><span style="font-weight: 600;">Telefone:</span> ${transportCompany.phone}</p>` : ''}
-              ${transportCompany.email ? `<p style="margin: 2px 0;"><span style="font-weight: 600;">Email:</span> ${transportCompany.email}</p>` : ''}
             ` : ''}
+            
+            ${(order.shipping || order.shipping) === 'delivery' && (order.deliveryLocation || order.delivery_location) ? `
+              <p style="margin: 2px 0;"><span style="font-weight: 600;">Região:</span> ${(order.deliveryLocation || order.delivery_location) === 'capital' ? 'Capital' : 'Interior'}</p>
+            ` : ''}
+            
+            ${(order.shipping || order.shipping) === 'delivery' && (order.deliveryFee || order.delivery_fee) && (order.deliveryFee || order.delivery_fee) > 0 ? `
+              <p style="margin: 2px 0;"><span style="font-weight: 600;">Taxa de Entrega:</span> ${formatCurrency(order.deliveryFee || order.delivery_fee)}</p>
+            ` : ''}
+            
+            <p style="margin: 2px 0;"><span style="font-weight: 600;">Peso Total do Pedido:</span> ${formatWeight(totalOrderWeight)}</p>
+            <p style="margin: 2px 0;"><span style="font-weight: 600;">Total de Volumes:</span> ${totalVolumes}</p>
           </div>
         </div>
         
@@ -529,24 +487,93 @@ const OrderDetail = () => {
     `;
   };
 
-  const renderPrintableOrderHTML = (order: any, companyInfo: any) => {
-    const invoiceTypeText = order.fullInvoice ? 'Nota Cheia' : 'Meia Nota';
-    const halfInvoiceText = !order.fullInvoice && order.halfInvoicePercentage ? 
-      `(${order.halfInvoicePercentage}%)` : '';
-      
-    let totalOrderWeight = 0;
-    let totalVolumes = 0;
+  const getStatusBadge = (status: string) => {
+    return <OrderStatusBadge status={status as any} />;
+  };
 
-    (order.items || []).forEach((item: any) => {
-      const itemWeight = (item.quantity || 0) * (item.product?.weight || 0);
-      totalOrderWeight += itemWeight;
-      totalVolumes += (item.quantity || 0);
-    });
-    
-    return `
-      <div style="max-width: 800px; margin: 0 auto; padding: 12px; font-family: Arial, sans-serif; font-size: 11px;">
-        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-bottom: 8px;">
-          <div>
-            <img src="/lovable-uploads/68daf61d-816f-4f86-8b3f-4f0970296cf0.png" width="150" height="60" style="object-fit: contain;" alt="Ferplas Logo">
+  if (loading || isSupabaseLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-ferplas-500"></div>
+      </div>
+    );
+  }
+
+  if (!order) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold text-gray-700">Pedido não encontrado</h2>
+        <p className="text-gray-500 mt-2">O pedido que você está procurando não existe ou foi removido.</p>
+        <Button 
+          className="mt-6"
+          onClick={() => navigate('/orders')}
+        >
+          Voltar para Pedidos
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-2xl font-bold">
+            Pedido #{order.orderNumber}
+          </CardTitle>
+          <div className="flex space-x-2">
+            <Button variant="outline" size="icon" onClick={handlePrintOrder}>
+              <Printer className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" onClick={handlePrintInvoice}>
+              <Receipt className="h-4 w-4" />
+            </Button>
+            {user?.role === 'admin' && (
+              <Button variant="secondary" size="icon" onClick={() => navigate(`/orders/edit/${order.id}`)}>
+                <Edit className="h-4 w-4" />
+              </Button>
+            )}
+            <Button variant="ghost" onClick={() => navigate('/orders')}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Voltar
+            </Button>
           </div>
-          <div style="text-align: right
+        </CardHeader>
+        <CardContent>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <h3 className="text-xl font-semibold">
+                Informações do Cliente
+              </h3>
+              <Separator />
+              <p className="text-gray-500">
+                <User className="mr-2 inline-block h-4 w-4" />
+                {order.customer.companyName}
+              </p>
+              <p className="text-gray-500">
+                <Phone className="mr-2 inline-block h-4 w-4" />
+                {formatPhoneNumber(order.customer.phone)}
+              </p>
+              {order.customer.whatsapp && (
+                <p className="text-gray-500">
+                  <ShoppingCart className="mr-2 inline-block h-4 w-4" />
+                  {formatPhoneNumber(order.customer.whatsapp)}
+                </p>
+              )}
+              <p className="text-gray-500">
+                <Mail className="mr-2 inline-block h-4 w-4" />
+                {order.customer.email}
+              </p>
+              <p className="text-gray-500">
+                <MapPin className="mr-2 inline-block h-4 w-4" />
+                {order.customer.street}, {order.customer.number} - {order.customer.city}, {order.customer.state}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-xl font-semibold">
+                Detalhes do Pedido
+              </h3>
+              <Separator />
+              <p className="text-gray-500">
+                <Calendar
