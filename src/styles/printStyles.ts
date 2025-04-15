@@ -3,7 +3,7 @@ export const printStyles = `
   /* Base styles for both preview and print */
   @page { 
     size: A4; 
-    margin: 10mm; 
+    margin: 5mm; 
   }
   
   body { 
@@ -11,6 +11,7 @@ export const printStyles = `
     print-color-adjust: exact !important;
     color-adjust: exact !important;
     font-family: 'Inter', system-ui, sans-serif;
+    font-size: 10px;
     background-color: white;
     margin: 0;
     padding: 0;
@@ -18,11 +19,10 @@ export const printStyles = `
   
   /* Container */
   .print-container {
-    max-width: 100%;
+    max-width: 190mm;
     margin: 0 auto;
-    padding: 20px;
+    padding: 8px;
     background-color: white;
-    font-size: 12px;
   }
   
   /* Header section */
@@ -30,9 +30,9 @@ export const printStyles = `
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 15px;
+    margin-bottom: 8px;
     border-bottom: 1px solid #d1d5db;
-    padding-bottom: 15px;
+    padding-bottom: 8px;
   }
   
   .print-header-logo {
@@ -40,28 +40,39 @@ export const printStyles = `
     align-items: center;
   }
   
+  .print-header-logo img {
+    width: 120px;
+    height: 48px;
+    object-fit: contain;
+  }
+  
   .print-header-company {
     text-align: right;
-    font-size: 12px;
+    font-size: 10px;
+  }
+  
+  .print-header-company .company-name {
+    font-size: 14px;
+    font-weight: bold;
   }
   
   /* Title section */
   .print-title {
     text-align: center;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
   }
   
   .print-title h1 {
     display: inline-block;
-    font-size: 20px;
+    font-size: 16px;
     font-weight: bold;
     border: 1px solid #d1d5db;
-    padding: 5px 15px;
-    margin-bottom: 5px;
+    padding: 4px 12px;
+    margin-bottom: 4px;
   }
   
   .print-title p {
-    font-size: 11px;
+    font-size: 10px;
     margin-top: 2px;
   }
   
@@ -69,48 +80,47 @@ export const printStyles = `
   .print-card {
     border: 1px solid #d1d5db;
     border-radius: 4px;
-    padding: 10px;
-    margin-bottom: 15px;
-    background-color: white;
+    padding: 8px;
+    margin-bottom: 8px;
   }
   
   .print-card-title {
     font-weight: bold;
-    font-size: 14px;
+    font-size: 12px;
     border-bottom: 1px solid #d1d5db;
-    padding-bottom: 5px;
-    margin-bottom: 8px;
+    padding-bottom: 4px;
+    margin-bottom: 6px;
   }
   
   .print-card-content {
-    font-size: 12px;
+    font-size: 10px;
   }
   
   /* Grid layout */
   .print-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 15px;
+    gap: 8px;
   }
   
   /* Tables */
   .print-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 15px;
-    font-size: 11px;
+    margin-bottom: 8px;
+    font-size: 10px;
   }
   
   .print-table th {
     background-color: #f3f4f6;
     font-weight: 600;
     text-align: left;
-    padding: 6px 8px;
+    padding: 4px 6px;
     border: 1px solid #d1d5db;
   }
   
   .print-table td {
-    padding: 6px 8px;
+    padding: 4px 6px;
     border: 1px solid #d1d5db;
     vertical-align: top;
   }
@@ -128,18 +138,18 @@ export const printStyles = `
   /* Financial summary */
   .print-financial-summary {
     width: 100%;
-    font-size: 12px;
+    font-size: 10px;
   }
   
   .print-financial-summary td {
-    padding: 4px 0;
+    padding: 2px 0;
     border: none;
   }
   
   .print-financial-summary .summary-total {
     border-top: 1px solid #d1d5db;
     font-weight: bold;
-    padding-top: 8px;
+    padding-top: 4px;
   }
   
   /* Text colors */
@@ -156,18 +166,18 @@ export const printStyles = `
   .print-notes {
     border: 1px solid #d1d5db;
     background-color: #f9fafb;
-    padding: 8px;
+    padding: 6px;
     border-radius: 4px;
-    font-size: 12px;
+    font-size: 10px;
   }
   
   /* Footer */
   .print-footer {
-    margin-top: 20px;
-    padding-top: 10px;
+    margin-top: 12px;
+    padding-top: 8px;
     border-top: 1px solid #d1d5db;
     text-align: center;
-    font-size: 11px;
+    font-size: 10px;
     color: #6b7280;
   }
 
@@ -175,11 +185,11 @@ export const printStyles = `
   @media screen {
     body {
       background-color: #f5f5f5;
-      padding: 20px;
+      padding: 16px;
     }
     
     .print-container {
-      max-width: 210mm;
+      max-width: 190mm;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
       margin: 0 auto;
     }
@@ -189,6 +199,14 @@ export const printStyles = `
   @media print {
     .print-container {
       box-shadow: none;
+      max-width: none !important;
+      width: 100% !important;
+      padding: 0 !important;
+    }
+    
+    table { 
+      table-layout: fixed !important;
+      width: 100% !important;
     }
     
     /* These elements will still have the classes from Tailwind */
@@ -208,8 +226,6 @@ export const printStyles = `
     .text-xs { font-size: 0.75rem !important; line-height: 1rem !important; }
     .text-sm { font-size: 0.875rem !important; line-height: 1.25rem !important; }
     .text-base { font-size: 1rem !important; line-height: 1.5rem !important; }
-    .text-lg { font-size: 1.125rem !important; line-height: 1.75rem !important; }
-    .text-xl { font-size: 1.25rem !important; line-height: 1.75rem !important; }
     
     .font-medium { font-weight: 500 !important; }
     .font-semibold { font-weight: 600 !important; }
@@ -225,7 +241,15 @@ export const printStyles = `
     
     .rounded { border-radius: 0.25rem !important; }
     
-    table { page-break-inside: auto !important; }
-    tr { page-break-inside: avoid !important; page-break-after: auto !important; }
+    .p-1 { padding: 0.25rem !important; }
+    .p-2 { padding: 0.5rem !important; }
+    .px-2 { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
+    .py-1 { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; }
+    
+    .mb-1 { margin-bottom: 0.25rem !important; }
+    .mb-2 { margin-bottom: 0.5rem !important; }
+    .mt-1 { margin-top: 0.25rem !important; }
+    .mt-2 { margin-top: 0.5rem !important; }
   }
 `;
+

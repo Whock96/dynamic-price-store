@@ -1,14 +1,13 @@
-
 import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Order, CompanyInfo } from '@/types/types';
+import { Order } from '@/types/types';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency } from '@/utils/formatters';
 
 interface PrintableOrderProps {
   order: Order;
-  companyInfo: CompanyInfo;
+  companyInfo: any;
   onPrint?: () => void;
 }
 
@@ -37,7 +36,6 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({
     fetchTransportCompany();
   }, [order.transportCompanyId]);
 
-  // Notify parent when component is fully rendered
   useEffect(() => {
     if (onPrint) {
       console.log('PrintableOrder rendered, calling onPrint callback');
@@ -67,13 +65,12 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({
 
   return (
     <div className="print-container">
-      {/* Header with logo and company info */}
       <div className="print-header">
         <div className="print-header-logo">
-          <img src="/lovable-uploads/68daf61d-816f-4f86-8b3f-4f0970296cf0.png" width="150" height="60" style={{ objectFit: 'contain' }} alt="Ferplas Logo" />
+          <img src="/lovable-uploads/68daf61d-816f-4f86-8b3f-4f0970296cf0.png" alt="Logo" />
         </div>
         <div className="print-header-company">
-          <p className="font-bold text-base">{companyInfo.name}</p>
+          <p className="company-name">{companyInfo.name}</p>
           <p>CNPJ: {companyInfo.document} | IE: {companyInfo.stateRegistration}</p>
           <p>{companyInfo.address} - {companyInfo.city}/{companyInfo.state} - {companyInfo.zipCode}</p>
           <p>Tel: {companyInfo.phone} | {companyInfo.email}</p>
@@ -81,13 +78,11 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({
         </div>
       </div>
 
-      {/* Order title */}
       <div className="print-title">
         <h1>PEDIDO #{orderNumber}</h1>
         <p>Emitido em {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
       </div>
 
-      {/* Customer and order info cards */}
       <div className="print-grid">
         <div className="print-card">
           <div className="print-card-title">Cliente</div>
@@ -108,7 +103,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({
             )}
           </div>
         </div>
-        
+
         <div className="print-card">
           <div className="print-card-title">Dados do Pedido</div>
           <div className="print-card-content">
@@ -120,25 +115,26 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({
               order.status === 'invoiced' ? 'Faturado' : 
               order.status === 'completed' ? 'Concluído' : 'Cancelado'
             }</p>
+            <p><span className="font-semibold">Tipo de Nota:</span> {order.fullInvoice ? 'Nota Cheia' : 'Meia Nota'} 
+              {!order.fullInvoice && order.halfInvoicePercentage ? ` (${order.halfInvoicePercentage}%)` : ''}
+            </p>
+            <p><span className="font-semibold">Substituição Tributária:</span> {order.taxSubstitution ? 'Sim' : 'Não'}</p>
             <p><span className="font-semibold">Pagamento:</span> {order.paymentMethod === 'cash' ? 'À Vista' : 'A Prazo'}</p>
             {order.paymentMethod === 'credit' && order.paymentTerms && (
               <p><span className="font-semibold">Prazos:</span> {order.paymentTerms}</p>
             )}
-            <p><span className="font-semibold">Tipo de Nota:</span> {invoiceTypeText} {halfInvoiceText}</p>
-            <p><span className="font-semibold">Substituição Tributária:</span> {order.taxSubstitution ? 'Sim' : 'Não'}</p>
           </div>
         </div>
       </div>
 
-      {/* Order items table */}
       <div className="print-card">
         <div className="print-card-title">Itens do Pedido</div>
         <table className="print-table">
           <thead>
             <tr>
               <th>Produto</th>
-              <th className="align-right">Preço Unitário</th>
-              <th className="align-center">Desc. Total (%)</th>
+              <th className="align-right">Preço Unit.</th>
+              <th className="align-center">Desc. (%)</th>
               <th className="align-right">Preço Final</th>
               {order.items.some(item => (item?.taxSubstitutionValue || 0) > 0) && (
                 <th className="align-right">ST</th>
@@ -146,9 +142,9 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({
               {order.items.some(item => (item?.ipiValue || 0) > 0) && (
                 <th className="align-right">IPI</th>
               )}
-              <th className="align-right">Total c/ Impostos</th>
-              <th className="align-center">Qtd. Volumes</th>
-              <th className="align-center">Total Unidades</th>
+              <th className="align-right">Total c/ Imp.</th>
+              <th className="align-center">Qtd.</th>
+              <th className="align-center">Un. Total</th>
               <th className="align-right">Subtotal</th>
             </tr>
           </thead>
@@ -178,7 +174,6 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({
         </table>
       </div>
 
-      {/* Financial summary and delivery info */}
       <div className="print-grid">
         <div className="print-card">
           <div className="print-card-title">Resumo Financeiro</div>
@@ -186,20 +181,20 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({
             <tbody>
               <tr>
                 <td>Total dos Produtos:</td>
-                <td className="align-right font-medium">{formatCurrency(order.subtotal)}</td>
+                <td className="align-right">{formatCurrency(order.subtotal)}</td>
               </tr>
               <tr>
                 <td>Descontos:</td>
-                <td className="align-right text-red font-medium">-{formatCurrency(order.totalDiscount || 0)}</td>
+                <td className="align-right text-red">-{formatCurrency(order.totalDiscount || 0)}</td>
               </tr>
               <tr>
-                <td>Subtotal Pedido:</td>
-                <td className="align-right font-medium">{formatCurrency(order.subtotal - (order.totalDiscount || 0))}</td>
+                <td>Subtotal:</td>
+                <td className="align-right">{formatCurrency(order.subtotal - (order.totalDiscount || 0))}</td>
               </tr>
               {order.taxSubstitution && (
                 <tr>
                   <td>Substituição Tributária:</td>
-                  <td className="align-right text-orange font-medium">
+                  <td className="align-right text-orange">
                     +{formatCurrency(order.items.reduce((sum, item) => sum + (item.taxSubstitutionValue || 0), 0))}
                   </td>
                 </tr>
@@ -207,18 +202,18 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({
               {order.withIPI && (
                 <tr>
                   <td>IPI:</td>
-                  <td className="align-right text-blue font-medium">+{formatCurrency(order.ipiValue || 0)}</td>
+                  <td className="align-right text-blue">+{formatCurrency(order.ipiValue || 0)}</td>
                 </tr>
               )}
-              {order.deliveryFee && order.deliveryFee > 0 && (
+              {order.deliveryFee > 0 && (
                 <tr>
                   <td>Taxa de Entrega:</td>
-                  <td className="align-right font-medium">{formatCurrency(order.deliveryFee)}</td>
+                  <td className="align-right">{formatCurrency(order.deliveryFee)}</td>
                 </tr>
               )}
               <tr className="summary-total">
-                <td className="font-bold">Total:</td>
-                <td className="align-right font-bold">{formatCurrency(order.total)}</td>
+                <td>Total:</td>
+                <td className="align-right">{formatCurrency(order.total)}</td>
               </tr>
             </tbody>
           </table>
@@ -228,26 +223,21 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({
           <div className="print-card-title">Entrega</div>
           <div className="print-card-content">
             <p><span className="font-semibold">Tipo:</span> {order.shipping === 'delivery' ? 'Entrega' : 'Retirada'}</p>
-            
             {transportCompanyName && (
               <p><span className="font-semibold">Transportadora:</span> {transportCompanyName}</p>
             )}
-            
             {order.shipping === 'delivery' && order.deliveryLocation && (
               <p><span className="font-semibold">Região:</span> {order.deliveryLocation === 'capital' ? 'Capital' : 'Interior'}</p>
             )}
-            
-            {order.shipping === 'delivery' && order.deliveryFee && order.deliveryFee > 0 && (
+            {order.shipping === 'delivery' && order.deliveryFee > 0 && (
               <p><span className="font-semibold">Taxa de Entrega:</span> {formatCurrency(order.deliveryFee)}</p>
             )}
-            
-            <p><span className="font-semibold">Peso Total do Pedido:</span> {formatWeight(totalOrderWeight)}</p>
+            <p><span className="font-semibold">Peso Total:</span> {formatWeight(totalOrderWeight)}</p>
             <p><span className="font-semibold">Total de Volumes:</span> {totalVolumes}</p>
           </div>
         </div>
       </div>
 
-      {/* Notes section */}
       {order.notes && (
         <div className="print-card">
           <div className="print-card-title">Observações</div>
@@ -255,7 +245,6 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({
         </div>
       )}
 
-      {/* Footer */}
       <div className="print-footer">
         <p>Este documento não possui valor fiscal. Para mais informações entre em contato conosco.</p>
       </div>
