@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -245,7 +246,7 @@ const Cart = () => {
   const ipiValue = calculateIPIValue();
   
   const getTaxSubstitutionRate = () => {
-    if (!isDiscountOptionSelected('icms-st') || !applyDiscounts) return 0;
+    if (!isDiscountOptionSelected('icms-st')) return 0;
     
     const taxOption = discountOptions.find(opt => opt.id === 'icms-st');
     if (!taxOption) return 0;
@@ -260,7 +261,7 @@ const Cart = () => {
   const effectiveTaxRate = getTaxSubstitutionRate();
   
   const getIPIRate = () => {
-    if (!withIPI || !applyDiscounts || !settings) return 0;
+    if (!withIPI || !settings) return 0;
     
     const ipiRate = settings ? settings.ipiRate : 10;
     
