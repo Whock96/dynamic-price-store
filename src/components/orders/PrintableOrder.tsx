@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -18,7 +17,6 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
   const [transportCompanyName, setTransportCompanyName] = useState<string | null>(null);
   
   useEffect(() => {
-    // Fetch transport company information if there's a transport company ID
     const fetchTransportCompany = async () => {
       if (order.transportCompanyId) {
         const { data, error } = await supabase
@@ -49,17 +47,13 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
     return () => clearTimeout(printTimeout);
   }, [onPrint]);
 
-  // Display order number correctly, ensuring it's a number and not undefined
   const orderNumber = order.orderNumber ? order.orderNumber.toString() : '1';
   
-  // Determine invoice type text based on fullInvoice flag
   const invoiceTypeText = order.fullInvoice ? 'Nota Cheia' : 'Meia Nota';
   
-  // Show percentage only if it's a half invoice
   const halfInvoiceText = !order.fullInvoice && order.halfInvoicePercentage ? 
     `(${order.halfInvoicePercentage}%)` : '';
     
-  // Calculate total units and total weight for the order
   let totalOrderWeight = 0;
   let totalVolumes = 0;
 
@@ -71,7 +65,6 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
 
   return (
     <div className="bg-white p-4 max-w-4xl mx-auto print:p-2">
-      {/* Header section */}
       <div className="flex justify-between items-start mb-2 border-b pb-2">
         <div className="flex items-center">
           <Logo size="md" />
@@ -85,7 +78,6 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
         </div>
       </div>
 
-      {/* Order Title */}
       <div className="text-center mb-3">
         <h1 className="text-xl font-bold border border-gray-300 inline-block px-3 py-1">
           PEDIDO #{orderNumber}
@@ -95,7 +87,6 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
         </p>
       </div>
 
-      {/* Customer and Order Info */}
       <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
         <div className="border p-2 rounded">
           <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Cliente</h2>
@@ -134,7 +125,6 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
         </div>
       </div>
 
-      {/* Items Table */}
       <div className="mb-3">
         <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Itens do Pedido</h2>
         <table className="w-full border-collapse text-xs">
@@ -182,7 +172,6 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
         </table>
       </div>
 
-      {/* Financial Summary and Delivery Info */}
       <div className="grid grid-cols-2 gap-2 mb-3">
         <div className="text-xs">
           <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Resumo Financeiro</h2>
@@ -203,7 +192,9 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
               {order.taxSubstitution && (
                 <tr>
                   <td className="py-0.5">Substituição Tributária:</td>
-                  <td className="py-0.5 text-right text-orange-600 font-medium">+{formatCurrency(order.items.reduce((sum, item) => sum + (item.taxSubstitutionValue || 0), 0))}</td>
+                  <td className="py-0.5 text-right text-orange-600 font-medium">
+                    +{formatCurrency(order.items.reduce((sum, item) => sum + (item.taxSubstitutionValue || 0), 0))}
+                  </td>
                 </tr>
               )}
               {order.withIPI && (
@@ -226,7 +217,6 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
           </table>
         </div>
 
-        {/* Delivery Information */}
         <div className="text-xs">
           <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Entrega</h2>
           <p><span className="font-semibold">Tipo:</span> {order.shipping === 'delivery' ? 'Entrega' : 'Retirada'}</p>
@@ -248,7 +238,6 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
         </div>
       </div>
 
-      {/* Notes section */}
       {order.notes && (
         <div className="mb-3 text-xs">
           <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Observações</h2>
@@ -256,7 +245,6 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
         </div>
       )}
 
-      {/* Footer */}
       <div className="mt-2 pt-2 border-t border-gray-200 text-center text-xs text-gray-500">
         <p>Este documento não possui valor fiscal. Para mais informações entre em contato conosco.</p>
       </div>

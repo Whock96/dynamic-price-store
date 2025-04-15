@@ -38,6 +38,22 @@ const OrderDetail = () => {
   const [totalOrderWeight, setTotalOrderWeight] = useState(0);
   const [totalVolumes, setTotalVolumes] = useState(0);
 
+  // Add formatPhoneNumber function using the utility
+  const formatPhoneNumber = (phone: string | undefined | null) => {
+    if (!phone) return 'Não informado';
+    
+    // Remove non-numeric characters
+    const numericOnly = phone.replace(/\D/g, '');
+    
+    if (numericOnly.length === 11) {
+      return numericOnly.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+    } else if (numericOnly.length === 10) {
+      return numericOnly.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+    }
+    
+    return phone;
+  };
+
   useEffect(() => {
     if (id) {
       console.log(`Fetching order with ID: ${id}`);
@@ -355,7 +371,7 @@ const OrderDetail = () => {
               </tr>
               ${order.taxSubstitution ? `
                 <tr>
-                  <td style="padding: 2px 0;">Substituição Tributária (7.8%):</td>
+                  <td style="padding: 2px 0;">Substituição Tributária:</td>
                   <td style="padding: 2px 0; text-align: right; color: #ea580c; font-weight: 500;">
                     +${formatCurrency(taxSubstitutionValue)}
                   </td>
@@ -524,6 +540,11 @@ const OrderDetail = () => {
                 {(order.customer?.complement || order.customers?.complement) && 
                   ` - ${order.customer?.complement || order.customers?.complement}`}
               </p>
+              {(order.customer?.neighborhood || order.customers?.neighborhood) && (
+                <p className="text-md">
+                  Bairro: {order.customer?.neighborhood || order.customers?.neighborhood}
+                </p>
+              )}
               <p className="text-md">
                 {order.customer?.city || order.customers?.city || "Cidade não informada"}/
                 {order.customer?.state || order.customers?.state || "Estado não informado"} - 
@@ -539,7 +560,7 @@ const OrderDetail = () => {
                   <Phone className="h-4 w-4 mr-1 text-gray-400" />
                   Telefone
                 </h3>
-                <p className="text-md">{order.customer?.phone || order.customers?.phone || "Não informado"}</p>
+                <p className="text-md">{formatPhoneNumber(order.customer?.phone || order.customers?.phone)}</p>
               </div>
               
               <div>
@@ -668,7 +689,7 @@ const OrderDetail = () => {
               </div>
               {taxSubstitution && (
                 <div className="flex justify-between text-sm text-amber-600">
-                  <span>Substituição Tributária (7.8%):</span>
+                  <span>Substituição Tributária:</span>
                   <span>+{formatCurrency(taxSubstitutionValue)}</span>
                 </div>
               )}
