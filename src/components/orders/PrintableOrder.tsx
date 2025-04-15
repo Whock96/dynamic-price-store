@@ -70,7 +70,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
 
   return (
     <div className="bg-white p-4 max-w-4xl mx-auto print:p-2">
-      {/* Header - More compact */}
+      {/* Header section */}
       <div className="flex justify-between items-start mb-2 border-b pb-2">
         <div className="flex items-center">
           <Logo size="md" />
@@ -84,7 +84,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
         </div>
       </div>
 
-      {/* Order Title - More compact */}
+      {/* Order Title */}
       <div className="text-center mb-3">
         <h1 className="text-xl font-bold border border-gray-300 inline-block px-3 py-1">
           PEDIDO #{orderNumber}
@@ -94,7 +94,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
         </p>
       </div>
 
-      {/* Customer and Order Info - More compact 2-column grid */}
+      {/* Customer and Order Info */}
       <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
         <div className="border p-2 rounded">
           <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Cliente</h2>
@@ -133,7 +133,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
         </div>
       </div>
 
-      {/* Items Table - Updated with all columns */}
+      {/* Items Table */}
       <div className="mb-3">
         <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Itens do Pedido</h2>
         <table className="w-full border-collapse text-xs">
@@ -158,7 +158,6 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
           <tbody>
             {order.items.map((item, index) => {
               const totalUnits = (item.quantity || 0) * (item.product?.quantityPerVolume || 1);
-              
               return (
                 <tr key={item?.id || `item-${index}`}>
                   <td className="border p-1">{item?.product?.name || `Produto ${index + 1}`}</td>
@@ -182,7 +181,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
         </table>
       </div>
 
-      {/* Financial Summary and Delivery Info - Updated order and layout */}
+      {/* Financial Summary and Delivery Info */}
       <div className="grid grid-cols-2 gap-2 mb-3">
         <div className="text-xs">
           <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Resumo Financeiro</h2>
@@ -226,17 +225,17 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
           </table>
         </div>
 
-        {/* Delivery Information - Updated with transport company */}
+        {/* Delivery Information */}
         <div className="text-xs">
           <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Entrega</h2>
           <p><span className="font-semibold">Tipo:</span> {order.shipping === 'delivery' ? 'Entrega' : 'Retirada'}</p>
           
-          {order.shipping === 'delivery' && order.deliveryLocation && (
-            <p><span className="font-semibold">Região:</span> {order.deliveryLocation === 'capital' ? 'Capital' : 'Interior'}</p>
-          )}
-          
           {transportCompanyName && (
             <p><span className="font-semibold">Transportadora:</span> {transportCompanyName}</p>
+          )}
+          
+          {order.shipping === 'delivery' && order.deliveryLocation && (
+            <p><span className="font-semibold">Região:</span> {order.deliveryLocation === 'capital' ? 'Capital' : 'Interior'}</p>
           )}
           
           {order.shipping === 'delivery' && order.deliveryFee && order.deliveryFee > 0 && (
@@ -248,7 +247,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
         </div>
       </div>
 
-      {/* Notes */}
+      {/* Notes section */}
       {order.notes && (
         <div className="mb-3 text-xs">
           <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Observações</h2>
