@@ -51,8 +51,9 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
   
   const invoiceTypeText = order.fullInvoice ? 'Nota Cheia' : 'Meia Nota';
   
-  const halfInvoiceText = !order.fullInvoice && order.halfInvoicePercentage ? 
-    `(${order.halfInvoicePercentage}%)` : '';
+  const halfInvoicePercentageValue = order.halfInvoicePercentage || 50;
+  const halfInvoiceText = !order.fullInvoice && halfInvoicePercentageValue ? 
+    `(${halfInvoicePercentageValue}%)` : '';
     
   let totalOrderWeight = 0;
   let totalVolumes = 0;

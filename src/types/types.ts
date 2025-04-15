@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   username: string;
@@ -141,6 +142,7 @@ export interface Order {
   observations?: string; // Optional to maintain compatibility with existing code
   deliveryLocation?: 'capital' | 'interior' | null;
   halfInvoiceType?: 'quantity' | 'price'; // New field for half invoice type
+  halfInvoicePercentage?: number; // Add this field for half invoice percentage
   discountOptions?: DiscountOption[];
   deliveryFee?: number;
   withIPI?: boolean; // IPI flag
