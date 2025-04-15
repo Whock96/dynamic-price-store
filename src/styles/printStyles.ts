@@ -208,48 +208,6 @@ export const printStyles = `
       table-layout: fixed !important;
       width: 100% !important;
     }
-    
-    /* These elements will still have the classes from Tailwind */
-    .flex { display: flex !important; }
-    .items-start { align-items: flex-start !important; }
-    .items-center { align-items: center !important; }
-    .justify-between { justify-content: space-between !important; }
-    
-    .grid { display: grid !important; }
-    .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-    .gap-2 { gap: 0.5rem !important; }
-    
-    .text-left { text-align: left !important; }
-    .text-center { text-align: center !important; }
-    .text-right { text-align: right !important; }
-    
-    .text-xs { font-size: 0.75rem !important; line-height: 1rem !important; }
-    .text-sm { font-size: 0.875rem !important; line-height: 1.25rem !important; }
-    .text-base { font-size: 1rem !important; line-height: 1.5rem !important; }
-    
-    .font-medium { font-weight: 500 !important; }
-    .font-semibold { font-weight: 600 !important; }
-    .font-bold { font-weight: 700 !important; }
-    
-    .border { border-width: 1px !important; border-style: solid !important; border-color: #d1d5db !important; }
-    .border-t { border-top-width: 1px !important; border-top-style: solid !important; border-top-color: #d1d5db !important; }
-    .border-b { border-bottom-width: 1px !important; border-bottom-style: solid !important; border-bottom-color: #d1d5db !important; }
-    
-    .bg-white { background-color: white !important; }
-    .bg-gray-50 { background-color: #f9fafb !important; }
-    .bg-gray-100 { background-color: #f3f4f6 !important; }
-    
-    .rounded { border-radius: 0.25rem !important; }
-    
-    .p-1 { padding: 0.25rem !important; }
-    .p-2 { padding: 0.5rem !important; }
-    .px-2 { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
-    .py-1 { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; }
-    
-    .mb-1 { margin-bottom: 0.25rem !important; }
-    .mb-2 { margin-bottom: 0.5rem !important; }
-    .mt-1 { margin-top: 0.25rem !important; }
-    .mt-2 { margin-top: 0.5rem !important; }
   }
 `;
 
