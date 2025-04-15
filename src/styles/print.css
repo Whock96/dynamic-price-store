@@ -59,20 +59,20 @@
   .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .gap-2 { gap: 0.5rem; }
   .gap-4 { gap: 1rem; }
-  .bg-white { background-color: white; }
-  .bg-gray-50 { background-color: #f9fafb; }
-  .bg-gray-100 { background-color: #f3f4f6; }
-  .border-gray-200 { border-color: #e5e7eb; }
-  .border-gray-300 { border-color: #d1d5db; }
-  .text-gray-400 { color: #9ca3af; }
-  .text-gray-500 { color: #6b7280; }
-  .text-gray-600 { color: #4b5563; }
-  .text-gray-700 { color: #374151; }
-  .text-red-600 { color: #dc2626; }
-  .text-blue-600 { color: #2563eb; }
-  .text-orange-600 { color: #ea580c; }
-  .text-green-600 { color: #16a34a; }
-  .text-amber-600 { color: #d97706; }
+  .bg-white { background-color: white !important; }
+  .bg-gray-50 { background-color: #f9fafb !important; }
+  .bg-gray-100 { background-color: #f3f4f6 !important; }
+  .border-gray-200 { border-color: #e5e7eb !important; }
+  .border-gray-300 { border-color: #d1d5db !important; }
+  .text-gray-400 { color: #9ca3af !important; }
+  .text-gray-500 { color: #6b7280 !important; }
+  .text-gray-600 { color: #4b5563 !important; }
+  .text-gray-700 { color: #374151 !important; }
+  .text-red-600 { color: #dc2626 !important; }
+  .text-blue-600 { color: #2563eb !important; }
+  .text-orange-600 { color: #ea580c !important; }
+  .text-green-600 { color: #16a34a !important; }
+  .text-amber-600 { color: #d97706 !important; }
   .max-w-4xl { max-width: 56rem; }
   .mx-auto { margin-left: auto; margin-right: auto; }
   .w-full { width: 100%; }
@@ -112,4 +112,17 @@
   .w-4 { width: 1rem; }
   .h-5 { height: 1.25rem; }
   .w-5 { width: 1.25rem; }
+
+  /* Fix for table borders and background colors */
+  th, td {
+    border: 1px solid #d1d5db !important;
+  }
+  
+  th {
+    background-color: #f3f4f6 !important;
+    font-weight: 600 !important;
+  }
+  
+  .bg-ferplas-100 { background-color: #e5deff !important; }
+  .text-ferplas-500, .text-ferplas-600 { color: #8B5CF6 !important; }
 }

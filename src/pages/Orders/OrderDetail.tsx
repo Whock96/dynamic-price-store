@@ -149,6 +149,7 @@ const OrderDetail = () => {
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       const printStyles = document.getElementById('print-styles')?.innerHTML || '';
+      const linkTag = document.querySelector('link[href*="print.css"]')?.outerHTML || '';
       
       printWindow.document.write(`
         <!DOCTYPE html>
@@ -158,11 +159,40 @@ const OrderDetail = () => {
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+          ${linkTag}
           <style>
             ${printStyles}
             body { 
               margin: 0;
               font-family: 'Inter', system-ui, sans-serif;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            
+            @media print {
+              @page { size: A4; margin: 10mm; }
+              body { 
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                font-size: 12px;
+              }
+              .max-w-4xl {
+                max-width: none !important;
+              }
+              table {
+                page-break-inside: auto;
+              }
+              tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+              }
+              th, td {
+                border: 1px solid #d1d5db !important;
+              }
+              th {
+                background-color: #f3f4f6 !important;
+                font-weight: 600 !important;
+              }
             }
           </style>
         </head>
@@ -209,6 +239,7 @@ const OrderDetail = () => {
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       const printStyles = document.getElementById('print-styles')?.innerHTML || '';
+      const linkTag = document.querySelector('link[href*="print.css"]')?.outerHTML || '';
       
       printWindow.document.write(`
         <!DOCTYPE html>
@@ -218,11 +249,40 @@ const OrderDetail = () => {
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+          ${linkTag}
           <style>
             ${printStyles}
             body { 
               margin: 0;
               font-family: 'Inter', system-ui, sans-serif;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            
+            @media print {
+              @page { size: A4; margin: 10mm; }
+              body { 
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                font-size: 12px;
+              }
+              .max-w-4xl {
+                max-width: none !important;
+              }
+              table {
+                page-break-inside: auto;
+              }
+              tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+              }
+              th, td {
+                border: 1px solid #d1d5db !important;
+              }
+              th {
+                background-color: #f3f4f6 !important;
+                font-weight: 600 !important;
+              }
             }
           </style>
         </head>
