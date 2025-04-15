@@ -218,13 +218,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const calculateIPIValue = () => {
-    const ipiRate = getIPIRate() / 100;
+    if (!withIPI || !settings) return 0;
+    
+    const ipiRate = settings.ipiRate;
+    const effectiveRate = isDiscountOptionSelected('meia-nota') 
+      ? (ipiRate * halfInvoicePercentage) / 100 
+      : ipiRate;
     
     return items.reduce((total, item) => {
-      if (!withIPI) return total;
-      
       const totalUnits = calculateTotalUnits(item);
-      return total + (item.finalPrice * totalUnits * ipiRate);
+      return total + (item.finalPrice * totalUnits * (effectiveRate / 100));
     }, 0);
   };
 
@@ -520,48 +523,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     try {
       const shippingValue: 'pickup' | 'delivery' = isDiscountOptionSelected('retirada') ? 'pickup' : 'delivery';
-      
       const paymentMethodValue: 'cash' | 'credit' = isDiscountOptionSelected('a-vista') ? 'cash' : 'credit';
       
-      const appliedDiscounts = selectedDiscountOptions
-        .map(id => {
-          const option = discountOptions.find(opt => opt.id === id);
-          if (!option) return null;
-          
-          return {
-            id: option.id,
-            name: option.name,
-            description: option.description,
-            value: option.value,
-            type: option.type,
-            isActive: option.isActive,
-            context: id === 'meia-nota' ? {
-              halfInvoicePercentage,
-              halfInvoiceType
-            } : id === 'retirada' ? {
-              deliveryLocation,
-              transportCompanyId: selectedTransportCompany
-            } : id === 'a-vista' ? {
-              paymentTerms: !isDiscountOptionSelected('a-vista') ? paymentTerms : undefined
-            } : {}
-          };
-        })
-        .filter(Boolean) as DiscountOption[];
-      
-      console.log('Applied discounts for order:', appliedDiscounts);
-      console.log('Selected transport company ID:', selectedTransportCompany);
+      const ipiRate = withIPI && settings ? settings.ipiRate : 0;
+      const effectiveIpiRate = isDiscountOptionSelected('meia-nota') 
+        ? (ipiRate * halfInvoicePercentage) / 100 
+        : ipiRate;
       
       const itemsWithCalculatedValues = items.map(item => {
         const totalUnits = calculateTotalUnits(item);
-        
         const globalDiscountPercentage = getNetDiscountPercentage();
-        const totalDiscountPercentage = (item.discount || 0) + globalDiscountPercentage;
-        
+        const totalDiscountPercentage = (item.discount || 0) + (applyDiscounts ? globalDiscountPercentage : 0);
         const taxSubstitutionValue = calculateItemTaxSubstitutionValue(item);
         
-        const ipiRate = getIPIRate() / 100;
-        const itemIpiValue = withIPI && applyDiscounts ? (item.finalPrice * ipiRate) : 0;
-        
+        const itemIpiValue = withIPI ? (item.finalPrice * (effectiveIpiRate / 100)) : 0;
         const totalWithTaxes = item.finalPrice + taxSubstitutionValue + itemIpiValue;
         
         return {
@@ -573,10 +548,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           totalUnits
         };
       });
-      
-      console.log('Transport company before creating order:', selectedTransportCompany, 
-                  'shipping type:', shippingValue);
-      
+
       const orderData: Partial<Order> = {
         customer,
         customerId: customer.id,
@@ -596,7 +568,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fullInvoice: !isDiscountOptionSelected('meia-nota'),
         taxSubstitution: isDiscountOptionSelected('icms-st'),
         withIPI,
-        ipiValue: withIPI ? ipiValue : undefined,
+        ipiValue: withIPI ? calculateIPIValue() : undefined,
         status: 'pending',
         notes: observations,
         userId: user?.id,
