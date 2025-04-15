@@ -160,11 +160,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     selectedDiscountOptions.forEach(id => {
       const option = discountOptions.find(opt => opt.id === id);
-      if (!option) return;
-
-      if (option.type === 'discount') {
-        discountPercentage += option.value;
-      }
+      if (!option || option.type !== 'discount') return;
+      discountPercentage += option.value;
     });
     
     return discountPercentage;
@@ -468,7 +465,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setItems(prevItems => prevItems.map(item => {
       if (item.id === id) {
         const netDiscount = applyDiscounts ? appliedDiscount + globalDiscount : appliedDiscount;
-        const finalPrice = item.product.listPrice * (1 - netDiscount / 100);
+        const finalPrice = item.product.listPrice * (1 - netDiscount / 100));
         
         const totalUnits = item.quantity * (item.product.quantityPerVolume || 1);
         const subtotal = finalPrice * totalUnits; // Changed: simplified subtotal calculation
