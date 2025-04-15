@@ -252,7 +252,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         with_ipi: newOrder.withIPI || false,
         ipi_value: newOrder.ipiValue || 0,
         transport_company_id: newOrder.transportCompanyId, // Ensure this is included correctly
-        applied_discounts: (appliedDiscounts as unknown) as Tables<'orders'>['applied_discounts']
+        applied_discounts: (appliedDiscounts as unknown) as Tables<'orders'>['applied_discounts'],
+        half_invoice_type: newOrder.halfInvoiceType || 'quantity'
       };
       
       console.log("Order data being inserted:", orderInsert);
@@ -380,6 +381,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
       if (orderData.appliedDiscounts !== undefined) {
         supabaseOrderData.applied_discounts = (orderData.appliedDiscounts as unknown) as Tables<'orders'>['applied_discounts'];
+      }
+      if (orderData.halfInvoiceType !== undefined) {
+        supabaseOrderData.half_invoice_type = orderData.halfInvoiceType;
       }
       
       console.log("Final Supabase order data for update:", supabaseOrderData);

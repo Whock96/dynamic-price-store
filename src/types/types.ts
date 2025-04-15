@@ -140,7 +140,6 @@ export interface Order {
   updatedAt: Date;
   observations?: string; // Optional to maintain compatibility with existing code
   deliveryLocation?: 'capital' | 'interior' | null;
-  halfInvoicePercentage?: number;
   halfInvoiceType?: 'quantity' | 'price'; // New field for half invoice type
   discountOptions?: DiscountOption[];
   deliveryFee?: number;

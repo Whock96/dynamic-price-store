@@ -305,6 +305,7 @@ export type Database = {
           delivery_location: string | null
           full_invoice: boolean
           half_invoice_percentage: number | null
+          half_invoice_type: string | null
           id: string
           ipi_value: number | null
           notes: string | null
@@ -331,6 +332,7 @@ export type Database = {
           delivery_location?: string | null
           full_invoice?: boolean
           half_invoice_percentage?: number | null
+          half_invoice_type?: string | null
           id?: string
           ipi_value?: number | null
           notes?: string | null
@@ -357,6 +359,7 @@ export type Database = {
           delivery_location?: string | null
           full_invoice?: boolean
           half_invoice_percentage?: number | null
+          half_invoice_type?: string | null
           id?: string
           ipi_value?: number | null
           notes?: string | null

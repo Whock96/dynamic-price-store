@@ -168,8 +168,7 @@ export const supabaseOrderToAppOrder = (
     createdAt: new Date(supabaseOrder.created_at),
     updatedAt: new Date(supabaseOrder.updated_at),
     deliveryLocation: supabaseOrder.delivery_location as Order['deliveryLocation'],
-    halfInvoicePercentage: supabaseOrder.half_invoice_percentage,
-    halfInvoiceType: 'quantity', // Default value
+    halfInvoiceType: supabaseOrder.half_invoice_type === 'price' ? 'price' : 'quantity',
     deliveryFee: Number(supabaseOrder.delivery_fee || 0),
     withIPI: supabaseOrder.with_ipi || false,
     ipiValue: Number(supabaseOrder.ipi_value || 0),
