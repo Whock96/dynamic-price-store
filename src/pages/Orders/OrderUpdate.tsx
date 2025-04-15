@@ -24,8 +24,10 @@ const OrderUpdate = () => {
   const navigate = useNavigate();
   const [status, setStatus] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
-  const [shipping, setShipping] = useState<string>('delivery');
-  const [paymentMethod, setPaymentMethod] = useState<string>('cash');
+  // Fix the shipping state type to match the expected union type
+  const [shipping, setShipping] = useState<'delivery' | 'pickup'>('delivery');
+  // Fix the payment method state type to match the expected union type
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit'>('cash');
   const [paymentTerms, setPaymentTerms] = useState<string>('');
   const [salespeople, setSalespeople] = useState<User[]>([]);
   const [selectedSalespersonId, setSelectedSalespersonId] = useState<string>('none');
@@ -100,8 +102,10 @@ const OrderUpdate = () => {
     if (order) {
       setStatus(order.status || 'pending');
       setNotes(order.notes || order.observations || '');
-      setShipping(order.shipping || 'delivery');
-      setPaymentMethod(order.paymentMethod || 'cash');
+      // Cast the shipping value to ensure it matches the expected type
+      setShipping((order.shipping || 'delivery') as 'delivery' | 'pickup');
+      // Cast the payment method value to ensure it matches the expected type
+      setPaymentMethod((order.paymentMethod || 'cash') as 'cash' | 'credit');
       setPaymentTerms(order.paymentTerms || '');
       setSelectedSalespersonId(order.userId || 'none');
       setSelectedTransportCompanyId(order.transportCompanyId ? order.transportCompanyId : 'none');
