@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -189,7 +190,9 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, companyInfo, onP
               {order.withIPI && (
                 <tr>
                   <td>IPI:</td>
-                  <td className="align-right text-blue">+{formatCurrency(order.ipiValue || 0)}</td>
+                  <td className="align-right text-blue">
+                    +{formatCurrency(order.items.reduce((sum, item) => sum + (item.ipiValue || 0), 0))}
+                  </td>
                 </tr>
               )}
               {order.deliveryFee > 0 && (

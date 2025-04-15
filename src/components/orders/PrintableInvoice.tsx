@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -96,8 +97,10 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
   };
 
   const subtotalAfterDiscount = order.subtotal - (order.totalDiscount || 0);
-  const taxSubstitutionValue = order.taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
-  const ipiValue = order.withIPI ? (order.ipiValue || 0) : 0;
+  const taxSubstitutionValue = order.taxSubstitution ? 
+    order.items.reduce((sum, item) => sum + (item.taxSubstitutionValue || 0), 0) : 0;
+  const ipiValue = order.withIPI ? 
+    order.items.reduce((sum, item) => sum + (item.ipiValue || 0), 0) : 0;
   const deliveryFee = order.deliveryFee || 0;
 
   return (
