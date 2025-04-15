@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useOrders } from '@/context/OrderContext';
@@ -24,9 +23,7 @@ const OrderUpdate = () => {
   const navigate = useNavigate();
   const [status, setStatus] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
-  // Fix the shipping state type to match the expected union type
   const [shipping, setShipping] = useState<'delivery' | 'pickup'>('delivery');
-  // Fix the payment method state type to match the expected union type
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit'>('cash');
   const [paymentTerms, setPaymentTerms] = useState<string>('');
   const [salespeople, setSalespeople] = useState<User[]>([]);
@@ -102,9 +99,7 @@ const OrderUpdate = () => {
     if (order) {
       setStatus(order.status || 'pending');
       setNotes(order.notes || order.observations || '');
-      // Cast the shipping value to ensure it matches the expected type
       setShipping((order.shipping || 'delivery') as 'delivery' | 'pickup');
-      // Cast the payment method value to ensure it matches the expected type
       setPaymentMethod((order.paymentMethod || 'cash') as 'cash' | 'credit');
       setPaymentTerms(order.paymentTerms || '');
       setSelectedSalespersonId(order.userId || 'none');
@@ -171,6 +166,18 @@ const OrderUpdate = () => {
     } else {
       toast.info('Nenhuma alteração foi feita');
       navigate(`/orders/${id}`);
+    }
+  };
+
+  const handleShippingChange = (value: string) => {
+    if (value === 'delivery' || value === 'pickup') {
+      setShipping(value);
+    }
+  };
+
+  const handlePaymentMethodChange = (value: string) => {
+    if (value === 'cash' || value === 'credit') {
+      setPaymentMethod(value);
     }
   };
 
@@ -306,7 +313,7 @@ const OrderUpdate = () => {
 
                 <div>
                   <label className="text-sm font-medium">Forma de Entrega</label>
-                  <Select value={shipping} onValueChange={setShipping}>
+                  <Select value={shipping} onValueChange={handleShippingChange}>
                     <SelectTrigger className="w-full mt-1">
                       <SelectValue placeholder="Selecione a forma de entrega" />
                     </SelectTrigger>
@@ -319,7 +326,7 @@ const OrderUpdate = () => {
 
                 <div>
                   <label className="text-sm font-medium">Forma de Pagamento</label>
-                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <Select value={paymentMethod} onValueChange={handlePaymentMethodChange}>
                     <SelectTrigger className="w-full mt-1">
                       <SelectValue placeholder="Selecione a forma de pagamento" />
                     </SelectTrigger>
