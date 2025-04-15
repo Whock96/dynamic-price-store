@@ -24,14 +24,21 @@ export const InvoiceCard = ({ order, onDelete }: InvoiceCardProps) => {
 
     if (confirm('Tem certeza que deseja excluir este arquivo?')) {
       try {
-        const pathParts = order.invoicePdfPath.split('/');
+        // Extract filename from URL
+        const fileUrl = new URL(order.invoicePdfPath);
+        const pathParts = fileUrl.pathname.split('/');
         const fileName = pathParts[pathParts.length - 1];
+        
+        console.log('Deleting file:', fileName);
         
         const { error } = await supabase.storage
           .from('invoice_pdfs')
           .remove([fileName]);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error deleting PDF:', error);
+          throw error;
+        }
         
         await onDelete();
         toast.success('Arquivo excluído com sucesso');

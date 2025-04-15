@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useOrders } from '@/context/OrderContext';
@@ -13,7 +14,7 @@ import { formatCurrency, formatDate } from '@/utils/formatters';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useOrderData } from '@/hooks/use-order-data';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, uploadInvoicePdf } from '@/integrations/supabase/client';
 import { User, TransportCompany } from '@/types/types';
 import { FileUpload } from '@/components/ui/file-upload';
 
@@ -34,6 +35,7 @@ const OrderUpdate = () => {
   const [isLoadingTransportCompanies, setIsLoadingTransportCompanies] = useState(true);
   const [invoiceNumber, setInvoiceNumber] = useState<string>('');
   const [invoicePdf, setInvoicePdf] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   
   const { order, isLoading, fetchOrderData } = useOrderData(id);
 
@@ -147,27 +149,19 @@ const OrderUpdate = () => {
     }
     
     if (invoicePdf) {
+      setIsUploading(true);
       try {
-        const fileName = `invoice_${id}_${Date.now()}.pdf`;
-        const { data, error } = await supabase.storage
-          .from('invoice_pdfs')
-          .upload(fileName, invoicePdf, {
-            cacheControl: '3600',
-            upsert: true,
-            contentType: 'application/pdf'
-          });
-          
-        if (error) throw error;
-        
-        const { data: { publicUrl } } = supabase.storage
-          .from('invoice_pdfs')
-          .getPublicUrl(data.path);
-          
-        updates.invoicePdfPath = publicUrl;
-      } catch (error) {
+        const publicUrl = await uploadInvoicePdf(invoicePdf, id);
+        if (publicUrl) {
+          updates.invoicePdfPath = publicUrl;
+        }
+      } catch (error: any) {
         console.error('Error uploading PDF:', error);
-        toast.error('Erro ao fazer upload do arquivo');
+        toast.error(`Erro ao fazer upload do arquivo: ${error.message || 'Erro desconhecido'}`);
+        setIsUploading(false);
         return;
+      } finally {
+        setIsUploading(false);
       }
     }
 
@@ -216,9 +210,13 @@ const OrderUpdate = () => {
           <Link to={`/orders/${id}`}>
             <Button variant="outline">Cancelar</Button>
           </Link>
-          <Button onClick={handleSubmit} className="bg-ferplas-500 hover:bg-ferplas-600">
+          <Button 
+            onClick={handleSubmit} 
+            className="bg-ferplas-500 hover:bg-ferplas-600"
+            disabled={isUploading}
+          >
             <Save className="mr-2 h-4 w-4" />
-            Salvar
+            {isUploading ? 'Salvando...' : 'Salvar'}
           </Button>
         </div>
       </div>
@@ -431,9 +429,12 @@ const OrderUpdate = () => {
               <FileUpload
                 onChange={(file) => setInvoicePdf(file)}
                 value={order?.invoicePdfPath}
-                accept="application/pdf"
+                accept="application/pdf,.pdf"
                 maxSize={10}
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Formatos aceitos: PDF. Tamanho máximo: 10MB.
+              </p>
             </div>
           </div>
         </CardContent>

@@ -52,6 +52,53 @@ export const uploadProductImage = async (file: File, productId: string): Promise
   }
 };
 
+// New function for uploading invoice PDFs
+export const uploadInvoicePdf = async (file: File, orderId: string): Promise<string | null> => {
+  try {
+    console.log('Starting PDF upload for order:', orderId);
+    
+    // Validate file type
+    if (!file.type.includes('pdf') && !file.type.includes('application/pdf')) {
+      console.error('Invalid file type:', file.type);
+      throw new Error('O arquivo deve ser um PDF.');
+    }
+    
+    // Create a unique file path using the order ID and timestamp
+    const fileExt = file.name.split('.').pop();
+    const fileName = `invoice_${orderId}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+    const filePath = `${fileName}`;
+    
+    console.log('PDF file path:', filePath, 'File type:', file.type);
+    
+    // Upload the file to the invoice_pdfs bucket
+    const { data, error } = await supabase.storage
+      .from('invoice_pdfs')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: 'application/pdf', // Explicitly set content type for PDF
+      });
+
+    if (error) {
+      console.error('PDF upload error details:', error);
+      throw error;
+    }
+
+    console.log('PDF upload successful:', data);
+
+    // Get the public URL for the uploaded file
+    const { data: { publicUrl } } = supabase.storage
+      .from('invoice_pdfs')
+      .getPublicUrl(data.path);
+
+    console.log('PDF Public URL:', publicUrl);
+    return publicUrl;
+  } catch (error) {
+    console.error('Error uploading PDF:', error);
+    throw error; // Rethrow to handle in the UI
+  }
+};
+
 // Helper types for better TypeScript support
 export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
 export type Enums<T extends keyof Database['public']['Enums']> = Database['public']['Enums'][T];
