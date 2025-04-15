@@ -38,11 +38,9 @@ const OrderDetail = () => {
   const [totalOrderWeight, setTotalOrderWeight] = useState(0);
   const [totalVolumes, setTotalVolumes] = useState(0);
 
-  // Add formatPhoneNumber function using the utility
   const formatPhoneNumber = (phone: string | undefined | null) => {
     if (!phone) return 'Não informado';
     
-    // Remove non-numeric characters
     const numericOnly = phone.replace(/\D/g, '');
     
     if (numericOnly.length === 11) {
@@ -58,7 +56,6 @@ const OrderDetail = () => {
     if (id) {
       console.log(`Fetching order with ID: ${id}`);
       
-      // First try to get from context
       const contextOrder = getOrderById(id);
       
       if (contextOrder) {
@@ -66,28 +63,22 @@ const OrderDetail = () => {
         setOrder(contextOrder);
         setLoading(false);
         
-        // If order has transport company ID, fetch transport company details
         if (contextOrder.transportCompanyId) {
           fetchTransportCompany(contextOrder.transportCompanyId);
         }
         
-        // Calculate total weight and volumes
         calculateOrderTotals(contextOrder.items);
       } else if (supabaseOrder) {
-        // If not in context, use the one fetched directly from Supabase
         console.log(`Found order in Supabase:`, supabaseOrder);
         setOrder(supabaseOrder);
         setLoading(false);
         
-        // If order has transport company ID, fetch transport company details
         if (supabaseOrder.transportCompanyId) {
           fetchTransportCompany(supabaseOrder.transportCompanyId);
         }
         
-        // Calculate total weight and volumes
         calculateOrderTotals(supabaseOrder.items);
       } else if (!isSupabaseLoading) {
-        // If we've tried both and still don't have it, show error
         console.error(`Order with ID ${id} not found`);
         toast.error("Pedido não encontrado");
         setLoading(false);
@@ -106,11 +97,9 @@ const OrderDetail = () => {
     let volumes = 0;
 
     items.forEach(item => {
-      // Calculate total weight
       const itemWeight = (item.quantity || 0) * (item.product?.weight || 0);
       weight += itemWeight;
       
-      // Calculate total volumes
       volumes += (item.quantity || 0);
     });
 
@@ -151,7 +140,6 @@ const OrderDetail = () => {
   };
 
   const handlePrintOrder = () => {
-    // Open in new window
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(`
@@ -175,7 +163,6 @@ const OrderDetail = () => {
         <body>
           <div id="printable-content"></div>
           <script>
-            // This will trigger print when content is loaded
             window.onload = function() {
               setTimeout(() => window.print(), 1000);
             };
@@ -186,10 +173,8 @@ const OrderDetail = () => {
       
       printWindow.document.close();
       
-      // Use fallback method for rendering since we can't use React in the new window
       const mountNode = printWindow.document.getElementById('printable-content');
       if (mountNode) {
-        // Create an iframe to hold the content
         const iframe = document.createElement('iframe');
         iframe.style.width = '100%';
         iframe.style.height = '100vh';
@@ -197,13 +182,11 @@ const OrderDetail = () => {
         
         mountNode.appendChild(iframe);
         
-        // Wait for iframe to load then add content
         iframe.onload = function() {
           const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
           if (iframeDoc) {
             printWindow.document.title = `Pedido #${order.orderNumber || '1'} - Impressão`;
             
-            // Add component markup directly
             const companyInfo = JSON.parse(localStorage.getItem('ferplas-company-info') || '{}');
             iframeDoc.body.innerHTML = renderPrintableOrderHTML(order, companyInfo);
           }
@@ -215,16 +198,12 @@ const OrderDetail = () => {
       toast.error("Não foi possível abrir a janela de impressão. Verifique se o seu navegador está bloqueando pop-ups.");
     }
   };
-  
+
   const renderPrintableOrderHTML = (order: any, companyInfo: any) => {
-    // Determine invoice type text based on fullInvoice flag
     const invoiceTypeText = order.fullInvoice ? 'Nota Cheia' : 'Meia Nota';
-    
-    // Show percentage only if it's a half invoice
     const halfInvoiceText = !order.fullInvoice && order.halfInvoicePercentage ? 
       `(${order.halfInvoicePercentage}%)` : '';
       
-    // Calculate totals and taxes
     const subtotalAfterDiscount = order.subtotal - (order.totalDiscount || 0);
     const taxSubstitutionValue = order.taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
     const ipiValue = (order.withIPI || order.with_ipi) ? (order.ipiValue || order.ipi_value || 0) : 0;
@@ -455,7 +434,6 @@ const OrderDetail = () => {
   const halfInvoicePercentage = order.halfInvoicePercentage || order.half_invoice_percentage || 50;
   const withIPI = order.withIPI !== undefined ? order.withIPI : (order.with_ipi !== undefined ? order.with_ipi : false);
   
-  // Consolidated ipiValue initialization
   const ipiValue = withIPI 
     ? (order.ipiValue || order.ipi_value || 0)
     : 0;
