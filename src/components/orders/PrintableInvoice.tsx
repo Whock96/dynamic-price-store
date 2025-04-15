@@ -37,13 +37,16 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
     fetchTransportCompany();
   }, [order.transportCompanyId]);
   
+  // Notify parent when component is fully rendered
   useEffect(() => {
-    const printTimeout = setTimeout(() => {
-      window.print();
-      if (onPrint) onPrint();
-    }, 500);
-
-    return () => clearTimeout(printTimeout);
+    if (onPrint) {
+      const notifyTimeout = setTimeout(() => {
+        console.log('PrintableInvoice rendered, calling onPrint callback');
+        onPrint();
+      }, 300);
+      
+      return () => clearTimeout(notifyTimeout);
+    }
   }, [onPrint]);
 
   const formatWeight = (weight: number) => {
@@ -104,7 +107,7 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
   const deliveryFee = order.deliveryFee || 0;
 
   return (
-    <div className="bg-white p-4 max-w-4xl mx-auto print:p-2">
+    <div className="print-container bg-white p-4 max-w-4xl mx-auto">
       <div className="flex justify-between items-start mb-2 border-b pb-2">
         <div className="flex items-center">
           <img src="/lovable-uploads/68daf61d-816f-4f86-8b3f-4f0970296cf0.png" width="150" height="60" style={{ objectFit: 'contain' }} alt="Ferplas Logo" />
@@ -354,22 +357,6 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
       <div className="mt-2 pt-2 border-t border-gray-200 text-center text-xs text-gray-500">
         <p>Este documento não possui valor fiscal. Para mais informações entre em contato conosco.</p>
       </div>
-
-      <style>
-        {`
-          @media print {
-            @page { size: A4; margin: 8mm; }
-            body { 
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-              font-size: 11px;
-            }
-            .max-w-4xl {
-              max-width: none;
-            }
-          }
-        `}
-      </style>
     </div>
   );
 };

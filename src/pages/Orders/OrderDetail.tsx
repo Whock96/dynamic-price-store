@@ -29,6 +29,7 @@ import PrintableOrder from '@/components/orders/PrintableOrder';
 import PrintableInvoice from '@/components/orders/PrintableInvoice';
 import { supabase } from '@/integrations/supabase/client';
 import { InvoiceCard } from '@/components/orders/InvoiceCard';
+import { printStyles } from '@/styles/printStyles';
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -146,170 +147,120 @@ const OrderDetail = () => {
   };
 
   const handlePrintOrder = () => {
+    console.log('Opening print window for order with company info:', companyInfo);
+    
     const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      const printStyles = document.getElementById('print-styles')?.innerHTML || '';
-      const linkTag = document.querySelector('link[href*="print.css"]')?.outerHTML || '';
-      
-      printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Pedido #${order.orderNumber || '1'} - Impressão</title>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
-          ${linkTag}
-          <style>
-            ${printStyles}
-            body { 
-              margin: 0;
-              font-family: 'Inter', system-ui, sans-serif;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-            }
-            
-            @media print {
-              @page { size: A4; margin: 10mm; }
-              body { 
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                font-size: 12px;
-              }
-              .max-w-4xl {
-                max-width: none !important;
-              }
-              table {
-                page-break-inside: auto;
-              }
-              tr {
-                page-break-inside: avoid;
-                page-break-after: auto;
-              }
-              th, td {
-                border: 1px solid #d1d5db !important;
-              }
-              th {
-                background-color: #f3f4f6 !important;
-                font-weight: 600 !important;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          <div id="printable-root"></div>
-        </body>
-        </html>
-      `);
-      
-      printWindow.document.close();
-      
-      const printRoot = printWindow.document.getElementById('printable-root');
-      if (printRoot && order) {
-        const root = ReactDOM.createRoot(printRoot);
-        root.render(
-          <React.StrictMode>
-            <PrintContextWrapper companyInfo={companyInfo}>
-              <PrintableOrder 
-                order={order}
-                companyInfo={companyInfo}
-                onPrint={() => {
-                  // No need for setTimeout here since PrintableOrder has its own timeout
-                }}
-              />
-            </PrintContextWrapper>
-          </React.StrictMode>
-        );
-      } else {
-        toast.error("Erro ao preparar impressão. Tente novamente.");
-        printWindow.close();
-      }
-    } else {
+    if (!printWindow) {
       toast.error("Não foi possível abrir a janela de impressão.");
+      return;
+    }
+    
+    // Write the HTML with embedded styles
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Pedido #${order.orderNumber || '1'} - Impressão</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+        <style>
+          ${printStyles}
+        </style>
+      </head>
+      <body>
+        <div id="printable-root"></div>
+      </body>
+      </html>
+    `);
+    
+    printWindow.document.close();
+    
+    const printRoot = printWindow.document.getElementById('printable-root');
+    if (printRoot && order) {
+      console.log('Rendering PrintableOrder with companyInfo:', companyInfo);
+      
+      const root = ReactDOM.createRoot(printRoot);
+      root.render(
+        <React.StrictMode>
+          <PrintContextWrapper companyInfo={companyInfo}>
+            <PrintableOrder 
+              order={order}
+              companyInfo={companyInfo}
+              onPrint={() => {
+                console.log('PrintableOrder rendered and ready for printing');
+                printWindow.focus();
+                setTimeout(() => {
+                  console.log('Executing print command');
+                  printWindow.print();
+                }, 1000);
+              }}
+            />
+          </PrintContextWrapper>
+        </React.StrictMode>
+      );
+    } else {
+      toast.error("Erro ao preparar impressão. Tente novamente.");
+      printWindow.close();
     }
   };
 
   const handlePrintInvoice = () => {
+    console.log('Opening print window for invoice with company info:', companyInfo);
+    
     const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      const printStyles = document.getElementById('print-styles')?.innerHTML || '';
-      const linkTag = document.querySelector('link[href*="print.css"]')?.outerHTML || '';
-      
-      printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Faturamento #${order.orderNumber || '1'} - Impressão</title>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
-          ${linkTag}
-          <style>
-            ${printStyles}
-            body { 
-              margin: 0;
-              font-family: 'Inter', system-ui, sans-serif;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-            }
-            
-            @media print {
-              @page { size: A4; margin: 10mm; }
-              body { 
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                font-size: 12px;
-              }
-              .max-w-4xl {
-                max-width: none !important;
-              }
-              table {
-                page-break-inside: auto;
-              }
-              tr {
-                page-break-inside: avoid;
-                page-break-after: auto;
-              }
-              th, td {
-                border: 1px solid #d1d5db !important;
-              }
-              th {
-                background-color: #f3f4f6 !important;
-                font-weight: 600 !important;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          <div id="invoice-root"></div>
-        </body>
-        </html>
-      `);
-      
-      printWindow.document.close();
-      
-      const invoiceRoot = printWindow.document.getElementById('invoice-root');
-      if (invoiceRoot && order) {
-        const root = ReactDOM.createRoot(invoiceRoot);
-        root.render(
-          <React.StrictMode>
-            <PrintContextWrapper companyInfo={companyInfo}>
-              <PrintableInvoice 
-                order={order}
-                companyInfo={companyInfo}
-                onPrint={() => {
-                  // No need for setTimeout here since PrintableInvoice has its own timeout
-                }}
-              />
-            </PrintContextWrapper>
-          </React.StrictMode>
-        );
-      } else {
-        toast.error("Erro ao preparar impressão do faturamento.");
-        printWindow.close();
-      }
-    } else {
+    if (!printWindow) {
       toast.error("Não foi possível abrir a janela de impressão.");
+      return;
+    }
+    
+    // Write the HTML with embedded styles
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Faturamento #${order.orderNumber || '1'} - Impressão</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+        <style>
+          ${printStyles}
+        </style>
+      </head>
+      <body>
+        <div id="invoice-root"></div>
+      </body>
+      </html>
+    `);
+    
+    printWindow.document.close();
+    
+    const invoiceRoot = printWindow.document.getElementById('invoice-root');
+    if (invoiceRoot && order) {
+      console.log('Rendering PrintableInvoice with companyInfo:', companyInfo);
+      
+      const root = ReactDOM.createRoot(invoiceRoot);
+      root.render(
+        <React.StrictMode>
+          <PrintContextWrapper companyInfo={companyInfo}>
+            <PrintableInvoice 
+              order={order}
+              companyInfo={companyInfo}
+              onPrint={() => {
+                console.log('PrintableInvoice rendered and ready for printing');
+                printWindow.focus();
+                setTimeout(() => {
+                  console.log('Executing print command');
+                  printWindow.print();
+                }, 1000);
+              }}
+            />
+          </PrintContextWrapper>
+        </React.StrictMode>
+      );
+    } else {
+      toast.error("Erro ao preparar impressão do faturamento.");
+      printWindow.close();
     }
   };
 

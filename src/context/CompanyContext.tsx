@@ -53,7 +53,10 @@ export const CompanyProvider: React.FC<{
   const { data: companySettingsData, isLoading, fetchData } = useSupabaseData('company_settings');
 
   useEffect(() => {
+    console.log('CompanyContext: Checking for company data in database or localStorage');
+    
     if (companySettingsData && companySettingsData.length > 0) {
+      console.log('CompanyContext: Found company settings in database:', companySettingsData);
       const settings = companySettingsData[0];
       const mappedInfo: CompanyInfo = {
         name: settings.name || '',
@@ -67,27 +70,44 @@ export const CompanyProvider: React.FC<{
         email: settings.email || '',
         website: settings.website || '',
       };
+      console.log('CompanyContext: Mapped company info from database:', mappedInfo);
       setCompanyInfoState(mappedInfo);
       localStorage.setItem(COMPANY_INFO_STORAGE_KEY, JSON.stringify(mappedInfo));
     } else {
+      console.log('CompanyContext: No company settings found in database, checking localStorage');
       const savedCompanyInfo = localStorage.getItem(COMPANY_INFO_STORAGE_KEY);
       
       if (savedCompanyInfo) {
         try {
           const parsedInfo = JSON.parse(savedCompanyInfo);
+          console.log('CompanyContext: Found company info in localStorage:', parsedInfo);
           setCompanyInfoState(parsedInfo);
+          
+          // Try to save localStorage data to database if missing
+          if (parsedInfo.name && parsedInfo.document) {
+            console.log('CompanyContext: Valid company data found in localStorage, saving to database');
+            saveCompanyInfo(parsedInfo).catch(error => {
+              console.error('Failed to save company info from localStorage to database:', error);
+            });
+          }
         } catch (error) {
           console.error('Error loading company info from localStorage:', error);
         }
+      } else {
+        console.log('CompanyContext: No company info found in localStorage');
       }
     }
   }, [companySettingsData]);
 
   const saveCompanyInfo = useCallback(async (info: CompanyInfo) => {
     try {
+      console.log('Saving company info to localStorage and database:', info);
+      
+      // Save to localStorage first as fallback
       localStorage.setItem(COMPANY_INFO_STORAGE_KEY, JSON.stringify(info));
       setCompanyInfoState(info);
       
+      // Map data for Supabase
       const mappedData = {
         name: info.name,
         document: info.document,
@@ -104,16 +124,27 @@ export const CompanyProvider: React.FC<{
       
       console.log('Mapped data for Supabase:', mappedData);
       
-      if (companySettingsData && companySettingsData.length > 0) {
-        const settingsId = companySettingsData[0].id;
+      // Check if we have a record to update
+      const { data: existingData } = await supabase
+        .from('company_settings')
+        .select('id')
+        .limit(1);
+      
+      if (existingData && existingData.length > 0) {
+        // Update existing record
+        const settingsId = existingData[0].id;
         console.log('Updating existing company settings with ID:', settingsId);
         const { error } = await supabase
           .from('company_settings')
           .update(mappedData)
           .eq('id', settingsId);
           
-        if (error) throw error;
+        if (error) {
+          console.error('Error updating company settings:', error);
+          throw error;
+        }
       } else {
+        // Create new record
         console.log('Creating new company settings record');
         const dataWithCreatedAt = {
           ...mappedData,
@@ -124,7 +155,10 @@ export const CompanyProvider: React.FC<{
           .from('company_settings')
           .insert(dataWithCreatedAt);
           
-        if (error) throw error;
+        if (error) {
+          console.error('Error creating company settings:', error);
+          throw error;
+        }
       }
       
       await fetchData();
@@ -134,7 +168,7 @@ export const CompanyProvider: React.FC<{
       console.error('Error saving company info:', error);
       toast.error('Erro ao salvar informações da empresa');
     }
-  }, [companySettingsData, fetchData]);
+  }, [fetchData]);
 
   return (
     <CompanyContext.Provider value={{ 
