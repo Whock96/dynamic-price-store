@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -50,7 +49,6 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
   }, [onPrint]);
 
   // Display order number correctly, ensuring it's a number and not undefined
-  // The order_number field in the database is an integer with autoincrement
   const orderNumber = order.orderNumber ? order.orderNumber.toString() : '1';
   
   // Determine invoice type text based on fullInvoice flag
@@ -135,7 +133,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
         </div>
       </div>
 
-      {/* Items Table - Updated with the requested columns */}
+      {/* Items Table - Updated with all columns */}
       <div className="mb-3">
         <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Itens do Pedido</h2>
         <table className="w-full border-collapse text-xs">
@@ -184,32 +182,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
         </table>
       </div>
 
-      {/* Discounts - Conditional and More Compact */}
-      {(order.appliedDiscounts || order.discountOptions) && (order.appliedDiscounts?.length > 0 || order.discountOptions?.length > 0) && (
-        <div className="mb-3">
-          <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Descontos e Acréscimos</h2>
-          <table className="w-full border-collapse text-xs">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="border p-1 text-left">Descrição</th>
-                <th className="border p-1 text-center">Tipo</th>
-                <th className="border p-1 text-right">Valor</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(order.appliedDiscounts || order.discountOptions || []).map((discount, index) => (
-                <tr key={index}>
-                  <td className="border p-1">{discount.name}</td>
-                  <td className="border p-1 text-center">{discount.type === 'discount' ? 'Desconto' : 'Acréscimo'}</td>
-                  <td className="border p-1 text-right">{discount.value}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Financial Summary - Updated to match the requested sequence */}
+      {/* Financial Summary and Delivery Info - Updated order and layout */}
       <div className="grid grid-cols-2 gap-2 mb-3">
         <div className="text-xs">
           <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Resumo Financeiro</h2>
@@ -253,7 +226,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
           </table>
         </div>
 
-        {/* Delivery Information - Updated to include transport company */}
+        {/* Delivery Information - Updated with transport company */}
         <div className="text-xs">
           <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Entrega</h2>
           <p><span className="font-semibold">Tipo:</span> {order.shipping === 'delivery' ? 'Entrega' : 'Retirada'}</p>
@@ -275,7 +248,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
         </div>
       </div>
 
-      {/* Notes - Only if present, more compact */}
+      {/* Notes */}
       {order.notes && (
         <div className="mb-3 text-xs">
           <h2 className="font-bold border-b pb-0.5 mb-1 text-sm">Observações</h2>
@@ -283,7 +256,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, onPrint }) => {
         </div>
       )}
 
-      {/* Footer - More compact */}
+      {/* Footer */}
       <div className="mt-2 pt-2 border-t border-gray-200 text-center text-xs text-gray-500">
         <p>Este documento não possui valor fiscal. Para mais informações entre em contato conosco.</p>
       </div>
