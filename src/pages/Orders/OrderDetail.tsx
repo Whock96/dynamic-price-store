@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
@@ -26,7 +27,7 @@ import PrintableOrder from '@/components/orders/PrintableOrder';
 import PrintableInvoice from '@/components/orders/PrintableInvoice';
 import { supabase } from '@/integrations/supabase/client';
 import { InvoiceCard } from '@/components/orders/InvoiceCard';
-import ReactDOM from 'react-dom';
+import * as ReactDOM from 'react-dom/client';
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
