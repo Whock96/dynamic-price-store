@@ -152,25 +152,24 @@ const OrderDetail = () => {
           <title>Pedido #${order.orderNumber || '1'} - Impressão</title>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <link href="${window.location.origin}/src/index.css" rel="stylesheet">
           <style>
-            body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+            
+            body { 
+              margin: 0;
+              font-family: 'Inter', system-ui, sans-serif;
+            }
             @media print {
               body { 
-                -webkit-print-color-adjust: exact !important; 
+                -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
               }
             }
-            #printable-root { width: 100%; }
           </style>
-          <link rel="stylesheet" href="${window.location.origin}/src/index.css">
         </head>
         <body>
           <div id="printable-root"></div>
-          <script>
-            window.onload = function() {
-              setTimeout(() => window.print(), 1000);
-            };
-          </script>
         </body>
         </html>
       `);
@@ -179,18 +178,22 @@ const OrderDetail = () => {
       
       const printRoot = printWindow.document.getElementById('printable-root');
       if (printRoot && order) {
-        ReactDOM.render(
-          <PrintableOrder 
-            order={order} 
-            onPrint={() => {
-              setTimeout(() => {
-                printWindow.onafterprint = () => {
-                  ReactDOM.unmountComponentAtNode(printRoot);
-                };
-              }, 100);
-            }} 
-          />,
-          printRoot
+        const root = ReactDOM.createRoot(printRoot);
+        root.render(
+          <React.StrictMode>
+            <PrintableOrder 
+              order={order} 
+              onPrint={() => {
+                setTimeout(() => {
+                  printWindow.print();
+                  printWindow.onafterprint = () => {
+                    root.unmount();
+                    printWindow.close();
+                  };
+                }, 1000);
+              }} 
+            />
+          </React.StrictMode>
         );
       } else {
         toast.error("Erro ao preparar impressão. Tente novamente.");
@@ -211,25 +214,24 @@ const OrderDetail = () => {
           <title>Faturamento #${order.orderNumber || '1'} - Impressão</title>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <link href="${window.location.origin}/src/index.css" rel="stylesheet">
           <style>
-            body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+            
+            body { 
+              margin: 0;
+              font-family: 'Inter', system-ui, sans-serif;
+            }
             @media print {
               body { 
-                -webkit-print-color-adjust: exact !important; 
+                -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
               }
             }
-            #invoice-root { width: 100%; }
           </style>
-          <link rel="stylesheet" href="${window.location.origin}/src/index.css">
         </head>
         <body>
           <div id="invoice-root"></div>
-          <script>
-            window.onload = function() {
-              setTimeout(() => window.print(), 1000);
-            };
-          </script>
         </body>
         </html>
       `);
@@ -238,10 +240,22 @@ const OrderDetail = () => {
       
       const invoiceRoot = printWindow.document.getElementById('invoice-root');
       if (invoiceRoot && order) {
-        ReactDOM.render(
-          <PrintableInvoice order={order} />,
-          invoiceRoot
+        const root = ReactDOM.createRoot(invoiceRoot);
+        root.render(
+          <React.StrictMode>
+            <PrintableInvoice 
+              order={order} 
+            />
+          </React.StrictMode>
         );
+
+        setTimeout(() => {
+          printWindow.print();
+          printWindow.onafterprint = () => {
+            root.unmount();
+            printWindow.close();
+          };
+        }, 1000);
       } else {
         toast.error("Erro ao preparar impressão do faturamento. Tente novamente.");
         printWindow.close();
