@@ -43,10 +43,6 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, companyInfo, onP
     return `${weight.toFixed(2)} kg`;
   };
 
-  const formatCubicVolume = (volume: number) => {
-    return `${volume.toFixed(2)} m³`;
-  };
-
   const orderNumber = order.orderNumber ? order.orderNumber.toString() : '1';
   
   const invoiceTypeText = order.fullInvoice ? 'Nota Cheia' : 'Meia Nota';
@@ -230,12 +226,11 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, companyInfo, onP
               )}
             </div>
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Peso Total do Pedido</h3>
-              <p className="text-lg">{formatWeight(order.totalWeight || 0)}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Cubagem Total</h3>
-              <p className="text-lg">{formatCubicVolume(order.totalCubicVolume || 0)}</p>
+              <p><span className="font-semibold">Peso:</span> {formatWeight(totalOrderWeight)}</p>
+              <p><span className="font-semibold">Volumes:</span> {totalVolumes}</p>
+              {order.shipping === 'delivery' && order.deliveryFee > 0 && (
+                <p><span className="font-semibold">Taxa:</span> {formatCurrency(order.deliveryFee || 0)}</p>
+              )}
             </div>
           </div>
         </div>

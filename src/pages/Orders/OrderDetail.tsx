@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import * as ReactDOM from 'react-dom/client';
@@ -151,10 +150,6 @@ const OrderDetail = () => {
 
   const formatWeight = (weight: number) => {
     return `${weight.toFixed(2)} kg`;
-  };
-
-  const formatCubicVolume = (volume: number) => {
-    return `${volume.toFixed(2)} m³`;
   };
 
   const handlePrintOrder = () => {
@@ -691,7 +686,7 @@ const OrderDetail = () => {
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Package className="h-12 w-12 text-gray-300 mb-4" />
               <h2 className="text-xl font-medium text-gray-600">Nenhum item no pedido</h2>
-              <p className="text-muted-foreground">Este pedido não contm itens ou os dados não estão disponveis.</p>
+              <p className="text-muted-foreground">Este pedido não cont��m itens ou os dados não estão dispon��veis.</p>
             </div>
           )}
         </CardContent>
@@ -783,15 +778,59 @@ const OrderDetail = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div>
               <h3 className="text-sm font-medium text-gray-500">Peso Total do Pedido</h3>
-              <p className="text-lg">{formatWeight(order.totalWeight || 0)}</p>
+              <p className="text-lg">{formatWeight(totalOrderWeight)}</p>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Cubagem Total</h3>
-              <p className="text-lg">{formatCubicVolume(order.totalCubicVolume || 0)}</p>
+              <h3 className="text-sm font-medium text-gray-500">Total de Volumes</h3>
+              <p className="text-lg">{totalVolumes}</p>
             </div>
           </div>
+          
+          {(order.transportCompanyId || transportCompany) && (
+            <>
+              <Separator className="my-4" />
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Transportadora</h3>
+                
+                {isLoadingTransport ? (
+                  <div className="h-6 bg-gray-100 animate-pulse rounded w-48"></div>
+                ) : transportCompany ? (
+                  <div className="space-y-2">
+                    <p className="text-lg font-medium">{transportCompany.name}</p>
+                    <p className="text-sm text-gray-500">CNPJ: {transportCompany.document}</p>
+                    {transportCompany.phone && (
+                      <p className="text-sm text-gray-500">Telefone: {transportCompany.phone}</p>
+                    )}
+                    {transportCompany.email && (
+                      <p className="text-sm text-gray-500">Email: {transportCompany.email}</p>
+                    )}
+                    {transportCompany.whatsapp && (
+                      <p className="text-sm text-gray-500">WhatsApp: {transportCompany.whatsapp}</p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-gray-500">Informações da transportadora não disponíveis</p>
+                )}
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
+
+      {notes && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-medium">Observações</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm bg-gray-50 border border-gray-200 rounded p-3">
+              {notes}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {order && <InvoiceCard order={order} onDelete={handleInvoicePdfDelete} />}
     </div>
   );
 };
