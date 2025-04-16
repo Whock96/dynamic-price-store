@@ -788,7 +788,7 @@ const OrderDetail = () => {
             </div>
             <div>
               <h3 className="text-sm font-medium text-gray-500">Cubagem Total</h3>
-              <p className="text-lg">{formatCubicVolume(items.reduce((sum, item) => sum + (item.total_cubic_volume || 0), 0))}</p>
+              <p className="text-lg">{formatCubicVolume(items.reduce((sum, item) => sum + Number(item.totalCubicVolume || 0), 0))}</p>
             </div>
           </div>
           
