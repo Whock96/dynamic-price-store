@@ -232,6 +232,18 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, companyInfo, onP
                 <p><span className="font-semibold">Taxa:</span> {formatCurrency(order.deliveryFee || 0)}</p>
               )}
             </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Peso Total do Pedido</h3>
+              <p className="text-lg">{formatWeight(order.totalWeight || 0)}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Total de Volumes</h3>
+              <p className="text-lg">{totalVolumes}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Cubagem Total</h3>
+              <p className="text-lg">{order.totalCubicVolume?.toFixed(3) || "0.000"} m³</p>
+            </div>
           </div>
         </div>
       </div>

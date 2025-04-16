@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   username: string;
@@ -104,6 +103,8 @@ export interface CartItem {
   unitPrice?: number; // Unit price of the product
   totalCubicVolume?: number; // Total cubic volume (product cubic volume * quantity)
   totalWeight?: number; // Total weight (product weight * quantity)
+  totalWeight?: number;
+  totalCubicVolume?: number;
 }
 
 export interface DiscountOption {
@@ -155,6 +156,8 @@ export interface Order {
   invoicePdfPath?: string;
   productsTotal?: number; // Add new field for products total
   taxSubstitutionTotal?: number; // Add new field for tax substitution total
+  totalWeight?: number;
+  totalCubicVolume?: number;
 }
 
 export interface MenuItem {
