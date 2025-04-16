@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   username: string;
@@ -155,6 +154,8 @@ export interface Order {
   invoicePdfPath?: string;
   productsTotal?: number; // Add new field for products total
   taxSubstitutionTotal?: number; // Add new field for tax substitution total
+  totalWeight?: number; // Add new field for total order weight
+  totalCubicVolume?: number; // Add new field for total order cubic volume
 }
 
 export interface MenuItem {
