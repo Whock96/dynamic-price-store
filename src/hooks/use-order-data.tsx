@@ -181,6 +181,9 @@ export function useOrderData(orderId: string | undefined) {
       }
       
       console.log("useOrderData - Processed order with user:", processedOrder.user);
+      console.log("useOrderData - Processed order products_total:", orderData.products_total, "app productsTotal:", processedOrder.productsTotal);
+      console.log("useOrderData - Processed order tax_substitution_total:", orderData.tax_substitution_total, "app taxSubstitutionTotal:", processedOrder.taxSubstitutionTotal);
+      
       setOrder(processedOrder);
       
       // Verificação final
