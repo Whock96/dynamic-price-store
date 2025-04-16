@@ -636,6 +636,7 @@ const OrderDetail = () => {
               <TableRow>
                 <TableHead>Produto</TableHead>
                 <TableHead>Preço Unitário</TableHead>
+                <TableHead>Desconto Produto</TableHead>
                 <TableHead>Desc. Total (%)</TableHead>
                 <TableHead>Preço Final</TableHead>
                 {order.taxSubstitution && (
@@ -657,6 +658,7 @@ const OrderDetail = () => {
                     {item?.product?.name || "Produto não encontrado"}
                   </TableCell>
                   <TableCell>{formatCurrency(item?.product?.listPrice || 0)}</TableCell>
+                  <TableCell>{formatCurrency(item?.discount || 0)}</TableCell>
                   <TableCell>{item?.totalDiscountPercentage || item?.discount || 0}%</TableCell>
                   <TableCell>{formatCurrency(item?.finalPrice || 0)}</TableCell>
                   {order.taxSubstitution && (
