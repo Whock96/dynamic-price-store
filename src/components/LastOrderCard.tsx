@@ -2,7 +2,7 @@
 import React from 'react';
 import { Order } from '@/types/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CreditCard, Calendar, FileText, Percent, ClipboardList, Receipt, Package, Briefcase } from 'lucide-react';
+import { CreditCard, Calendar, FileText, Percent, ClipboardList, Receipt, Package, Briefcase, Truck } from 'lucide-react';
 import { formatDate } from '@/utils/formatters';
 
 interface LastOrderCardProps {
@@ -42,6 +42,7 @@ const LastOrderCard: React.FC<LastOrderCardProps> = ({ lastOrder, isLoading }) =
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Payment Method Section */}
           <div className="p-3 bg-gray-50 rounded-md">
             <div className="flex items-center mb-2">
               <CreditCard className="h-4 w-4 text-ferplas-500 mr-1" />
@@ -55,6 +56,7 @@ const LastOrderCard: React.FC<LastOrderCardProps> = ({ lastOrder, isLoading }) =
             )}
           </div>
 
+          {/* Invoice Type Section */}
           <div className="p-3 bg-gray-50 rounded-md">
             <div className="flex items-center mb-2">
               <FileText className="h-4 w-4 text-ferplas-500 mr-1" />
@@ -75,27 +77,42 @@ const LastOrderCard: React.FC<LastOrderCardProps> = ({ lastOrder, isLoading }) =
             )}
           </div>
 
+          {/* Tax Options Section */}
           <div className="p-3 bg-gray-50 rounded-md">
             <div className="flex items-center mb-2">
               <Receipt className="h-4 w-4 text-ferplas-500 mr-1" />
-              <span className="text-sm font-medium text-gray-700">Substituição Tributária:</span>
+              <span className="text-sm font-medium text-gray-700">Opções Tributárias:</span>
             </div>
-            <p className="text-sm text-ferplas-600">
-              {lastOrder.taxSubstitution ? 'Sim' : 'Não'}
-            </p>
+            <div className="space-y-1">
+              <p className="text-sm">
+                <span className="text-sm font-medium text-gray-600">Subst. Tributária:</span>{' '}
+                <span className="text-ferplas-600">{lastOrder.taxSubstitution ? 'Sim' : 'Não'}</span>
+              </p>
+              <p className="text-sm">
+                <span className="text-sm font-medium text-gray-600">IPI:</span>{' '}
+                <span className="text-ferplas-600">{lastOrder.withIPI ? 'Sim' : 'Não'}</span>
+              </p>
+              <p className="text-sm">
+                <span className="text-sm font-medium text-gray-600">SUFRAMA:</span>{' '}
+                <span className="text-ferplas-600">{lastOrder.withSuframa ? 'Sim' : 'Não'}</span>
+              </p>
+            </div>
           </div>
 
+          {/* Delivery Section */}
           <div className="p-3 bg-gray-50 rounded-md">
             <div className="flex items-center mb-2">
-              <Package className="h-4 w-4 text-ferplas-500 mr-1" />
-              <span className="text-sm font-medium text-gray-700">IPI:</span>
+              <Truck className="h-4 w-4 text-ferplas-500 mr-1" />
+              <span className="text-sm font-medium text-gray-700">Entrega:</span>
             </div>
             <p className="text-sm text-ferplas-600">
-              {lastOrder.withIPI ? 'Sim' : 'Não'}
+              {lastOrder.shipping === 'delivery' ? 'Entrega' : 'Retirada'}
             </p>
-            <p className="text-sm text-ferplas-600 mt-1">
-              <span className="text-sm font-medium text-gray-700">SUFRAMA:</span> {lastOrder.withSuframa ? 'Sim' : 'Não'}
-            </p>
+            {lastOrder.transportCompanyId && (
+              <p className="text-xs text-gray-500 mt-1">
+                <span className="font-medium">Transportadora:</span> {lastOrder.transportCompanyId}
+              </p>
+            )}
           </div>
         </div>
       </CardContent>
