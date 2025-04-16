@@ -545,7 +545,7 @@ const OrderDetail = () => {
               </div>
               <div className="flex justify-between text-sm text-red-600">
                 <span>Descontos:</span>
-                <span>-{formatCurrency(order.totalDiscount || 0)}</span>
+                <span>-{formatCurrency(totalDiscount)}</span>
               </div>
               <div className="flex justify-between text-sm font-medium">
                 <span>Subtotal Pedido:</span>
@@ -558,7 +558,7 @@ const OrderDetail = () => {
                 </div>
               )}
               {order.withIPI && (
-                <div className="flex justify-between text-sm text-amber-600">
+                <div className="flex justify-between text-sm text-blue-600">
                   <span>IPI:</span>
                   <span>+{formatCurrency(order.ipiValue || 0)}</span>
                 </div>
@@ -680,7 +680,7 @@ const OrderDetail = () => {
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Package className="h-12 w-12 text-gray-300 mb-4" />
               <h2 className="text-xl font-medium text-gray-600">Nenhum item no pedido</h2>
-              <p className="text-muted-foreground">Este pedido não cont��m itens ou os dados não estão disponíveis.</p>
+              <p className="text-muted-foreground">Este pedido não cont��m itens ou os dados não estão dispon��veis.</p>
             </div>
           )}
         </CardContent>
