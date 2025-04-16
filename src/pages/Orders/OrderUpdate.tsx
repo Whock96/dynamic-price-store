@@ -13,7 +13,7 @@ import { formatCurrency, formatDate } from '@/utils/formatters';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useOrderData } from '@/hooks/use-order-data';
-import { supabase, uploadInvoicePdf } from '@/integrations/supabase/client';
+import { supabase, uploadInvoicePdf, deleteInvoicePdf } from '@/integrations/supabase/client';
 import { User, TransportCompany, Order } from '@/types/types';
 import { FileUpload } from '@/components/ui/file-upload';
 
@@ -34,7 +34,9 @@ const OrderUpdate = () => {
   const [isLoadingTransportCompanies, setIsLoadingTransportCompanies] = useState(true);
   const [invoiceNumber, setInvoiceNumber] = useState<string>('');
   const [invoicePdf, setInvoicePdf] = useState<File | null>(null);
+  const [invoicePdfPath, setInvoicePdfPath] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDeletingPdf, setIsDeletingPdf] = useState(false);
   
   const { order, isLoading, fetchOrderData } = useOrderData(id);
 
@@ -105,6 +107,7 @@ const OrderUpdate = () => {
       setSelectedSalespersonId(order.userId || 'none');
       setSelectedTransportCompanyId(order.transportCompanyId ? order.transportCompanyId : 'none');
       setInvoiceNumber(order.invoiceNumber || '');
+      setInvoicePdfPath(order.invoicePdfPath || null);
     }
   }, [order]);
 
@@ -169,6 +172,35 @@ const OrderUpdate = () => {
     }
   };
 
+  const handlePdfDelete = async () => {
+    if (!id || !invoicePdfPath) return;
+    
+    setIsDeletingPdf(true);
+    try {
+      const deleteSuccess = await deleteInvoicePdf(invoicePdfPath);
+      
+      if (!deleteSuccess) {
+        throw new Error('Falha ao excluir o arquivo PDF');
+      }
+      
+      await updateOrder(id, { invoicePdfPath: null });
+      
+      setInvoicePdfPath(null);
+      setInvoicePdf(null);
+      
+      toast.success('Arquivo PDF excluído com sucesso');
+      
+      if (fetchOrderData) {
+        await fetchOrderData();
+      }
+    } catch (error: any) {
+      console.error('Error deleting PDF:', error);
+      toast.error(`Erro ao excluir o arquivo: ${error.message || 'Erro desconhecido'}`);
+    } finally {
+      setIsDeletingPdf(false);
+    }
+  };
+
   const handleShippingChange = (value: string) => {
     if (value === 'delivery' || value === 'pickup') {
       setShipping(value);
@@ -221,7 +253,7 @@ const OrderUpdate = () => {
           <Button 
             onClick={handleSubmit} 
             className="bg-ferplas-500 hover:bg-ferplas-600"
-            disabled={isUploading}
+            disabled={isUploading || isDeletingPdf}
           >
             <Save className="mr-2 h-4 w-4" />
             {isUploading ? 'Salvando...' : 'Salvar'}
@@ -429,6 +461,7 @@ const OrderUpdate = () => {
                 placeholder="Informe o número da NFe"
                 value={invoiceNumber}
                 onChange={(e) => setInvoiceNumber(e.target.value)}
+                disabled={isUploading || isDeletingPdf}
               />
             </div>
             
@@ -439,9 +472,11 @@ const OrderUpdate = () => {
                   console.log('File selected:', file?.name);
                   setInvoicePdf(file);
                 }}
-                value={order?.invoicePdfPath}
+                value={invoicePdfPath}
                 accept="application/pdf,.pdf"
                 maxSize={10}
+                isLoading={isUploading || isDeletingPdf}
+                onDelete={invoicePdfPath ? handlePdfDelete : undefined}
               />
               <p className="text-xs text-muted-foreground mt-1">
                 Formatos aceitos: PDF. Tamanho máximo: 10MB.

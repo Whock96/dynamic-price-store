@@ -98,6 +98,39 @@ export const uploadInvoicePdf = async (file: File, orderId: string): Promise<str
   }
 };
 
+// Function for deleting invoice PDFs
+export const deleteInvoicePdf = async (filePath: string): Promise<boolean> => {
+  try {
+    console.log('Starting PDF deletion for file path:', filePath);
+    
+    // Extract the file name from the full path
+    const fileName = filePath.split('/').pop();
+    
+    if (!fileName) {
+      console.error('Invalid file path:', filePath);
+      return false;
+    }
+    
+    console.log('Attempting to delete file with name:', fileName);
+    
+    // Delete the file from the invoice_pdfs bucket
+    const { error } = await supabase.storage
+      .from('invoice_pdfs')
+      .remove([fileName]);
+
+    if (error) {
+      console.error('PDF deletion error details:', error);
+      throw error;
+    }
+
+    console.log('PDF deletion successful');
+    return true;
+  } catch (error) {
+    console.error('Error deleting PDF:', error);
+    return false;
+  }
+};
+
 // Helper types for better TypeScript support
 export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
 export type Enums<T extends keyof Database['public']['Enums']> = Database['public']['Enums'][T];

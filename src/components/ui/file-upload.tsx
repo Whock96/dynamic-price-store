@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Upload, X, Image as ImageIcon, FileText } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, FileText, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface FileUploadProps {
@@ -10,6 +10,8 @@ interface FileUploadProps {
   className?: string;
   accept?: string;
   maxSize?: number; // in MB
+  isLoading?: boolean;
+  onDelete?: () => Promise<void>;
 }
 
 export function FileUpload({
@@ -18,9 +20,12 @@ export function FileUpload({
   className,
   accept = "image/*",
   maxSize = 5, // Default 5MB
+  isLoading = false,
+  onDelete
 }: FileUploadProps) {
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -97,8 +102,20 @@ export function FileUpload({
     onChange(file);
   };
   
-  const handleRemove = () => {
-    onChange(null);
+  const handleRemove = async () => {
+    if (onDelete) {
+      setIsDeleting(true);
+      try {
+        await onDelete();
+      } catch (error) {
+        console.error('Error during file deletion:', error);
+        setError('Erro ao excluir o arquivo. Tente novamente.');
+      } finally {
+        setIsDeleting(false);
+      }
+    } else {
+      onChange(null);
+    }
   };
   
   // Determine if we have a valid file URL to display
@@ -149,10 +166,11 @@ export function FileUpload({
             <button
               type="button"
               onClick={handleRemove}
-              className="absolute top-2 right-2 bg-destructive text-destructive-foreground p-1 rounded-full hover:bg-destructive/80"
+              disabled={isDeleting || isLoading}
+              className="absolute top-2 right-2 bg-destructive text-destructive-foreground p-1 rounded-full hover:bg-destructive/80 disabled:opacity-50"
               aria-label="Remove image"
             >
-              <X className="h-4 w-4" />
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
             </button>
           </div>
         ) : showPdfPreview ? (
@@ -171,27 +189,37 @@ export function FileUpload({
             <button
               type="button"
               onClick={handleRemove}
-              className="absolute top-2 right-2 bg-destructive text-destructive-foreground p-1 rounded-full hover:bg-destructive/80"
+              disabled={isDeleting || isLoading}
+              className="absolute top-2 right-2 bg-destructive text-destructive-foreground p-1 rounded-full hover:bg-destructive/80 disabled:opacity-50"
               aria-label="Remove PDF"
             >
-              <X className="h-4 w-4" />
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
             </button>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-4">
-            <Upload className="h-10 w-10 text-muted-foreground mb-2" />
+            {isLoading ? (
+              <Loader2 className="h-10 w-10 text-muted-foreground mb-2 animate-spin" />
+            ) : (
+              <Upload className="h-10 w-10 text-muted-foreground mb-2" />
+            )}
             <p className="text-sm text-muted-foreground mb-1">
-              Arraste e solte seu {accept.includes('pdf') ? 'PDF' : 'arquivo'} aqui ou
+              {isLoading ? 
+                'Processando...' : 
+                `Arraste e solte seu ${accept.includes('pdf') ? 'PDF' : 'arquivo'} aqui ou`
+              }
             </p>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="mt-2"
-              onClick={() => document.getElementById('fileInput')?.click()}
-            >
-              Selecionar Arquivo
-            </Button>
+            {!isLoading && (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="mt-2"
+                onClick={() => document.getElementById('fileInput')?.click()}
+              >
+                Selecionar Arquivo
+              </Button>
+            )}
           </div>
         )}
         <input
@@ -200,6 +228,7 @@ export function FileUpload({
           accept={accept}
           onChange={handleChange}
           className="hidden"
+          disabled={isLoading || isDeleting}
         />
       </div>
       {error && <p className="text-destructive text-sm">{error}</p>}
