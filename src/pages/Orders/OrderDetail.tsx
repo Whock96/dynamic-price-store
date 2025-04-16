@@ -650,7 +650,7 @@ const OrderDetail = () => {
                 {order.withIPI && (
                   <TableHead>IPI</TableHead>
                 )}
-                <TableHead>Total com Impostos</TableHead>
+                <TableHead>Unitario c/ Impostos</TableHead>
                 <TableHead>Quantidade Volumes</TableHead>
                 <TableHead>Total de Unidades</TableHead>
                 <TableHead>Subtotal</TableHead>
