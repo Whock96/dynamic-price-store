@@ -104,8 +104,8 @@ const OrderDetail = () => {
     let volumes = 0;
 
     items.forEach(item => {
-      weight += item.totalWeight || 0;
-      volumes += (item.quantity || 0);
+      weight += Number(item.totalWeight || 0);
+      volumes += Number(item.quantity || 0);
     });
 
     setTotalOrderWeight(weight);

@@ -59,9 +59,9 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, companyInfo, onP
   let totalCubicVolume = 0;
 
   order.items.forEach(item => {
-    totalOrderWeight += item.totalWeight || 0;
-    totalVolumes += (item.quantity || 0);
-    totalCubicVolume += item.totalCubicVolume || 0;
+    totalOrderWeight += Number(item.totalWeight || 0);
+    totalVolumes += Number(item.quantity || 0);
+    totalCubicVolume += Number(item.totalCubicVolume || 0);
   });
 
   // Usar o valor do IPI diretamente da ordem, não recalcular

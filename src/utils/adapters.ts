@@ -1,3 +1,4 @@
+
 import { Tables } from "@/integrations/supabase/client";
 import { Product, Order, CartItem, DiscountOption, Customer, User } from "@/types/types";
 
@@ -73,7 +74,9 @@ export const supabaseOrderToAppOrder = (
     taxSubstitutionValue: Number(item.tax_substitution_value || 0),
     ipiValue: Number(item.ipi_value || 0),
     totalWithTaxes: Number(item.total_with_taxes || 0),
-    totalUnits: Number(item.total_units || (item.quantity * (item.products.quantity_per_volume || 1)))
+    totalUnits: Number(item.total_units || (item.quantity * (item.products.quantity_per_volume || 1))),
+    totalWeight: Number(item.total_weight || 0),
+    totalCubicVolume: Number(item.total_cubic_volume || 0)
   }));
 
   // Parse applied_discounts from JSONB to DiscountOption[] type
