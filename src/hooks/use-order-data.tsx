@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -18,7 +17,6 @@ export function useOrderData(orderId: string | undefined) {
   const { getOrderById } = useOrders();
   const { user: currentUser } = useAuth();
   
-  // Verificação para identificar se o usuário é do tipo vendedor específico
   const isSalespersonType = currentUser?.userTypeId === 'c5ee0433-3faf-46a4-a516-be7261bfe575';
 
   const fetchOrderData = useCallback(async () => {
@@ -31,16 +29,13 @@ export function useOrderData(orderId: string | undefined) {
     setError(null);
 
     try {
-      // First try to get order from context
       const contextOrder = getOrderById(orderId);
       if (contextOrder) {
         console.log("Found order in context:", contextOrder);
         
-        // Verificação específica para o tipo de vendedor com UUID c5ee0433-3faf-46a4-a516-be7261bfe575
         if (isSalespersonType && currentUser?.id) {
           console.log("User is a specific salesperson type checking order permission");
           
-          // Always convert to string for comparison to avoid type issues
           if (String(contextOrder.userId) !== String(currentUser.id)) {
             console.log("User is a specific salesperson type but this order belongs to another user");
             console.log(`Order user ID: ${contextOrder.userId} (${typeof contextOrder.userId}) vs Current user ID: ${currentUser.id} (${typeof currentUser.id})`);
@@ -50,7 +45,6 @@ export function useOrderData(orderId: string | undefined) {
             return;
           }
         }
-        // Verificação por role para compatibilidade
         else if (currentUser?.role === 'salesperson' && String(contextOrder.userId) !== String(currentUser.id)) {
           console.log("User is a salesperson but this order belongs to another salesperson");
           console.log(`Order user ID: ${contextOrder.userId} (${typeof contextOrder.userId}) vs Current user ID: ${currentUser.id} (${typeof currentUser.id})`);
@@ -60,7 +54,6 @@ export function useOrderData(orderId: string | undefined) {
           return;
         }
         
-        // Make sure we don't lose the user name that's already in the order
         setOrder(contextOrder);
         setIsLoading(false);
         return;
@@ -68,22 +61,20 @@ export function useOrderData(orderId: string | undefined) {
 
       console.log("Order not found in context, fetching from Supabase");
       
-      // Garantir uso consistente de strings para IDs de usuário
       let query = supabase
         .from('orders')
         .select(`
           *,
-          customers(*)
+          customers(*),
+          transport_companies(*)
         `)
         .eq('id', orderId);
       
-      // Verificação específica para o tipo de vendedor com UUID c5ee0433-3faf-46a4-a516-be7261bfe575
       if (isSalespersonType && currentUser?.id) {
         const currentUserIdStr = String(currentUser.id);
         console.log("useOrderData - Restringindo acesso a pedidos para vendedor ESPECÍFICO:", currentUserIdStr);
         query = query.eq('user_id', currentUserIdStr);
       }
-      // Verificação por role para compatibilidade
       else if (currentUser?.role === 'salesperson' && currentUser?.id) {
         const currentUserIdStr = String(currentUser.id);
         console.log("useOrderData - Restringindo acesso a pedidos para vendedor (role):", currentUserIdStr);
@@ -94,7 +85,6 @@ export function useOrderData(orderId: string | undefined) {
 
       if (orderError) {
         if (orderError.code === 'PGRST116') {
-          // This is the "no rows returned" error
           if (isSalespersonType || currentUser?.role === 'salesperson') {
             throw new Error('Você não tem permissão para visualizar este pedido');
           } else {
@@ -104,7 +94,9 @@ export function useOrderData(orderId: string | undefined) {
         throw orderError;
       }
 
-      // Fetch order items with product details
+      console.log("Raw order data from database:", orderData);
+      console.log("Transport company data:", orderData.transport_companies);
+      
       const { data: itemsData } = await supabase
         .from('order_items')
         .select(`
@@ -113,13 +105,11 @@ export function useOrderData(orderId: string | undefined) {
         `)
         .eq('order_id', orderId);
         
-      // Fetch discount options applied to this order
       const { data: discountData } = await supabase
         .from('order_discounts')
         .select('discount_id')
         .eq('order_id', orderId);
         
-      // Fetch full discount details if there are any applied discounts
       let discounts = [];
       if (discountData && discountData.length > 0) {
         const discountIds = discountData.map(d => d.discount_id);
@@ -140,19 +130,16 @@ export function useOrderData(orderId: string | undefined) {
         }
       }
       
-      // Melhorando a verificação do usuário
       let userName = null;
       
       if (orderData && orderData.user_id) {
         const orderUserIdStr = String(orderData.user_id);
         console.log("useOrderData - Verificando ID de usuário:", orderUserIdStr);
         
-        // Comparando strings para evitar problemas de tipo
         if (currentUser && String(currentUser.id) === orderUserIdStr) {
           userName = currentUser.name;
           console.log("useOrderData - Usando nome do usuário atual:", userName);
         } else {
-          // If not the current user, fetch from the database
           const { data: userData } = await supabase
             .from('users')
             .select('name')
@@ -169,10 +156,8 @@ export function useOrderData(orderId: string | undefined) {
         }
       }
       
-      // Use adapter to convert Supabase order to app Order
       const processedOrder = supabaseOrderToAppOrder(orderData, itemsData || [], discounts);
       
-      // Only set the user name if we actually found one
       if (userName) {
         processedOrder.user = {
           ...processedOrder.user,
@@ -186,8 +171,6 @@ export function useOrderData(orderId: string | undefined) {
       
       setOrder(processedOrder);
       
-      // Verificação final
-      // Verificação específica para o tipo de vendedor com UUID c5ee0433-3faf-46a4-a516-be7261bfe575
       if (isSalespersonType && currentUser?.id) {
         const orderUserIdStr = String(orderData.user_id);
         const currentUserIdStr = String(currentUser.id);
@@ -200,7 +183,6 @@ export function useOrderData(orderId: string | undefined) {
           return;
         }
       }
-      // Verificação por role para compatibilidade
       else if (currentUser?.role === 'salesperson' && currentUser?.id) {
         const orderUserIdStr = String(orderData.user_id);
         const currentUserIdStr = String(currentUser.id);

@@ -98,8 +98,28 @@ export const supabaseOrderToAppOrder = (
 
   // Extract transport company name if provided by join
   let transportCompanyName = null;
-  if (supabaseOrder.transport_companies && supabaseOrder.transport_companies.name) {
-    transportCompanyName = supabaseOrder.transport_companies.name;
+  
+  // Add more detailed logging to understand the data structure
+  console.log("Transport company data in supabase order:", supabaseOrder.transport_companies);
+  
+  if (supabaseOrder.transport_companies) {
+    if (typeof supabaseOrder.transport_companies === 'object' && supabaseOrder.transport_companies !== null) {
+      transportCompanyName = supabaseOrder.transport_companies.name;
+      console.log("Found transport company name:", transportCompanyName);
+    } else {
+      console.log("Transport companies exists but is not an object:", supabaseOrder.transport_companies);
+    }
+  } else if (supabaseOrder.transport_company_name) {
+    // Alternative: maybe it's already been extracted and added as a field
+    transportCompanyName = supabaseOrder.transport_company_name;
+    console.log("Using pre-extracted transport company name:", transportCompanyName);
+  } else {
+    console.log("No transport company information found in order data");
+  }
+
+  // If we still don't have a name but we do have an ID, log this situation
+  if (!transportCompanyName && supabaseOrder.transport_company_id) {
+    console.log("Have transport company ID but no name:", supabaseOrder.transport_company_id);
   }
 
   return {
@@ -183,7 +203,7 @@ export const supabaseOrderToAppOrder = (
     withIPI: supabaseOrder.with_ipi || false,
     ipiValue: Number(supabaseOrder.ipi_value || 0),
     transportCompanyId: supabaseOrder.transport_company_id || null,
-    transportCompanyName: transportCompanyName,
+    transportCompanyName: transportCompanyName || null, // Use null instead of 'Não especificada'
     invoiceNumber: supabaseOrder.invoice_number || null,
     invoicePdfPath: supabaseOrder.invoice_pdf_path || null,
     productsTotal: Number(supabaseOrder.products_total || 0),
