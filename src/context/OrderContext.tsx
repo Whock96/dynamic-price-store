@@ -251,9 +251,11 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         total: newOrder.total || 0,
         with_ipi: newOrder.withIPI || false,
         ipi_value: newOrder.ipiValue || 0,
-        transport_company_id: newOrder.transportCompanyId, // Ensure this is included correctly
+        transport_company_id: newOrder.transportCompanyId,
         applied_discounts: (appliedDiscounts as unknown) as Tables<'orders'>['applied_discounts'],
-        half_invoice_type: newOrder.halfInvoiceType || 'quantity'
+        half_invoice_type: newOrder.halfInvoiceType || 'quantity',
+        products_total: newOrder.productsTotal || 0,
+        tax_substitution_total: newOrder.taxSubstitutionTotal || 0
       };
       
       console.log("Order data being inserted:", orderInsert);
@@ -288,7 +290,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           tax_substitution_value: item.taxSubstitutionValue || 0,
           ipi_value: item.ipiValue || 0,
           total_with_taxes: item.totalWithTaxes || 0,
-          total_units: item.totalUnits || (item.quantity * (item.product.quantityPerVolume || 1))
+          total_units: item.totalUnits || (item.quantity * (item.product.quantityPerVolume || 1)),
+          unit_price: item.unitPrice || 0,
+          total_cubic_volume: item.totalCubicVolume || 0,
+          total_weight: item.totalWeight || 0
         }));
         
         console.log("Inserting order items:", orderItems);

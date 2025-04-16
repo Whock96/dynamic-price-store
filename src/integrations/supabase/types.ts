@@ -284,9 +284,12 @@ export type Database = {
           quantity: number
           subtotal: number
           tax_substitution_value: number | null
+          total_cubic_volume: number | null
           total_discount_percentage: number | null
           total_units: number | null
+          total_weight: number | null
           total_with_taxes: number | null
+          unit_price: number | null
         }
         Insert: {
           created_at?: string
@@ -299,9 +302,12 @@ export type Database = {
           quantity?: number
           subtotal?: number
           tax_substitution_value?: number | null
+          total_cubic_volume?: number | null
           total_discount_percentage?: number | null
           total_units?: number | null
+          total_weight?: number | null
           total_with_taxes?: number | null
+          unit_price?: number | null
         }
         Update: {
           created_at?: string
@@ -314,9 +320,12 @@ export type Database = {
           quantity?: number
           subtotal?: number
           tax_substitution_value?: number | null
+          total_cubic_volume?: number | null
           total_discount_percentage?: number | null
           total_units?: number | null
+          total_weight?: number | null
           total_with_taxes?: number | null
+          unit_price?: number | null
         }
         Relationships: [
           {
@@ -354,10 +363,12 @@ export type Database = {
           order_number: number
           payment_method: string
           payment_terms: string | null
+          products_total: number | null
           shipping: string
           status: string
           subtotal: number
           tax_substitution: boolean
+          tax_substitution_total: number | null
           total: number
           total_discount: number
           transport_company_id: string | null
@@ -383,10 +394,12 @@ export type Database = {
           order_number?: number
           payment_method: string
           payment_terms?: string | null
+          products_total?: number | null
           shipping: string
           status: string
           subtotal?: number
           tax_substitution?: boolean
+          tax_substitution_total?: number | null
           total?: number
           total_discount?: number
           transport_company_id?: string | null
@@ -412,10 +425,12 @@ export type Database = {
           order_number?: number
           payment_method?: string
           payment_terms?: string | null
+          products_total?: number | null
           shipping?: string
           status?: string
           subtotal?: number
           tax_substitution?: boolean
+          tax_substitution_total?: number | null
           total?: number
           total_discount?: number
           transport_company_id?: string | null

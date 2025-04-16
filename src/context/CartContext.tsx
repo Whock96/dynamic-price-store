@@ -539,13 +539,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const itemIpiValue = withIPI ? (item.finalPrice * (effectiveIpiRate / 100)) : 0;
         const totalWithTaxes = item.finalPrice + taxSubstitutionValue + itemIpiValue;
         
+        const unitPrice = item.product.listPrice;
+        const totalCubicVolume = item.product.cubicVolume * totalUnits;
+        const totalWeight = item.product.weight * totalUnits;
+        
         return {
           ...item,
           totalDiscountPercentage,
           taxSubstitutionValue,
           ipiValue: itemIpiValue,
           totalWithTaxes,
-          totalUnits
+          totalUnits,
+          unitPrice,
+          totalCubicVolume,
+          totalWeight
         };
       });
 
@@ -575,7 +582,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         status: 'pending',
         notes: observations,
         userId: user?.id,
-        transportCompanyId: selectedTransportCompany
+        transportCompanyId: selectedTransportCompany,
+        productsTotal: rawSubtotal,
+        taxSubstitutionTotal: calculateTaxSubstitutionValue()
       };
       
       console.log('Sending order with data:', orderData);
