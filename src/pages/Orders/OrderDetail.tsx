@@ -575,6 +575,52 @@ const OrderDetail = () => {
                 <span className="text-ferplas-600">{formatCurrency(order.total || 0)}</span>
               </div>
             </div>
+
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <h3 className="text-sm font-medium text-gray-500 mb-2">Condições de Pagamento</h3>
+              <div className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span>Forma de Pagamento:</span>
+                  <span>{paymentMethod === 'cash' ? 'À Vista' : 'A Prazo'}</span>
+                </div>
+                {paymentMethod === 'credit' && (
+                  <div className="flex justify-between text-sm">
+                    <span>Prazos de Pagamento:</span>
+                    <span>{paymentTerms || 'Não informado'}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span>Tipo de Nota:</span>
+                  <span>{fullInvoice ? 'Nota Cheia' : 'Meia Nota'}</span>
+                </div>
+                {!fullInvoice && halfInvoicePercentage && (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span>Percentual da Nota:</span>
+                      <span>{halfInvoicePercentage}%</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Tipo de Meia Nota:</span>
+                      <span>{order.halfInvoiceType === 'quantity' ? 'Na Quantidade' : 'No Preço'}</span>
+                    </div>
+                  </>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span>Substituição Tributária:</span>
+                  <span>{taxSubstitution ? 'sim' : 'não'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>IPI:</span>
+                  <span>{withIPI ? 'sim' : 'não'}</span>
+                </div>
+                {order.deliveryFee > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span>Taxa de Entrega:</span>
+                    <span>{formatCurrency(order.deliveryFee || 0)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
