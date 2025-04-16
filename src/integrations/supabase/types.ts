@@ -375,6 +375,7 @@ export type Database = {
           updated_at: string
           user_id: string
           with_ipi: boolean | null
+          with_suframa: boolean | null
         }
         Insert: {
           applied_discounts?: Json | null
@@ -406,6 +407,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           with_ipi?: boolean | null
+          with_suframa?: boolean | null
         }
         Update: {
           applied_discounts?: Json | null
@@ -437,6 +439,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           with_ipi?: boolean | null
+          with_suframa?: boolean | null
         }
         Relationships: [
           {

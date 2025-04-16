@@ -83,7 +83,7 @@ const Cart = () => {
     observations, setObservations, totalItems, subtotal, totalDiscount, total, sendOrder, clearCart, 
     deliveryFee, applyDiscounts, toggleApplyDiscounts, paymentTerms, setPaymentTerms,
     calculateTaxSubstitutionValue, withIPI, toggleIPI, calculateIPIValue, calculateItemTaxSubstitutionValue,
-    selectedTransportCompany, setSelectedTransportCompany
+    selectedTransportCompany, setSelectedTransportCompany, withSuframa, toggleSuframa
   } = useCart();
   
   const [customerSearch, setCustomerSearch] = useState('');
@@ -997,6 +997,22 @@ const Cart = () => {
                   <Switch
                     checked={withIPI}
                     onCheckedChange={toggleIPI}
+                  />
+                </div>
+              </div>
+
+              {/* Opção SUFRAMA */}
+              <div className="space-y-3 pt-2 border-t border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">SUFRAMA</p>
+                    <p className="text-sm text-gray-500">
+                      Ativar para operações com registro SUFRAMA (Zona Franca de Manaus)
+                    </p>
+                  </div>
+                  <Switch
+                    checked={withSuframa}
+                    onCheckedChange={toggleSuframa}
                   />
                 </div>
               </div>

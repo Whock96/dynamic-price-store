@@ -154,6 +154,7 @@ export interface Order {
   invoicePdfPath?: string;
   productsTotal?: number; // Add new field for products total
   taxSubstitutionTotal?: number; // Add new field for tax substitution total
+  withSuframa?: boolean; // New field for SUFRAMA
 }
 
 export interface MenuItem {

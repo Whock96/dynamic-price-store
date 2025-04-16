@@ -23,6 +23,7 @@ interface CartContextType {
   deliveryFee: number;
   applyDiscounts: boolean;
   withIPI: boolean;
+  withSuframa: boolean;
   selectedTransportCompany: string | undefined;
   setSelectedTransportCompany: (id: string | undefined) => void;
   setCustomer: (customer: Customer | null) => void;
@@ -42,6 +43,7 @@ interface CartContextType {
   toggleApplyDiscounts: () => void;
   calculateTaxSubstitutionValue: () => number;
   toggleIPI: () => void;
+  toggleSuframa: () => void;
   calculateIPIValue: () => number;
   calculateItemTaxSubstitutionValue: (item: CartItem) => number;
 }
@@ -76,6 +78,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [paymentTerms, setPaymentTerms] = useState<string>('');
   const [applyDiscounts, setApplyDiscounts] = useState<boolean>(true);
   const [withIPI, setWithIPI] = useState<boolean>(false);
+  const [withSuframa, setWithSuframa] = useState<boolean>(false);
   const [selectedTransportCompany, setSelectedTransportCompany] = useState<string | undefined>(undefined);
 
   useEffect(() => {
@@ -349,6 +352,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  const toggleSuframa = () => {
+    setWithSuframa(prev => !prev);
+  };
+
   const addItem = (product: Product, quantity: number) => {
     if (!product || !product.id) {
       toast.error("Produto inválido");
@@ -507,6 +514,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setObservations('');
     setPaymentTerms('');
     setWithIPI(false);
+    setWithSuframa(false);
+    setSelectedTransportCompany(undefined);
     toast.info('Carrinho limpo');
   };
 
@@ -578,6 +587,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fullInvoice: !isDiscountOptionSelected('meia-nota'),
         taxSubstitution: isDiscountOptionSelected('icms-st'),
         withIPI,
+        withSuframa,
         ipiValue: withIPI ? calculateIPIValue() : undefined,
         status: 'pending',
         notes: observations,
@@ -588,6 +598,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       console.log('Sending order with data:', orderData);
+      console.log('SUFRAMA setting:', withSuframa);
       console.log('Transport company being sent to order:', orderData.transportCompanyId);
       
       const orderId = await addOrder(orderData);
@@ -625,6 +636,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       deliveryFee,
       applyDiscounts,
       withIPI,
+      withSuframa,
       selectedTransportCompany,
       setSelectedTransportCompany,
       setCustomer: handleSetCustomer,
@@ -644,6 +656,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toggleApplyDiscounts,
       calculateTaxSubstitutionValue,
       toggleIPI,
+      toggleSuframa,
       calculateIPIValue,
       calculateItemTaxSubstitutionValue
     }}>

@@ -179,7 +179,8 @@ export const supabaseOrderToAppOrder = (
     invoiceNumber: supabaseOrder.invoice_number || null,
     invoicePdfPath: supabaseOrder.invoice_pdf_path || null,
     productsTotal: Number(supabaseOrder.products_total || 0),
-    taxSubstitutionTotal: Number(supabaseOrder.tax_substitution_total || 0)
+    taxSubstitutionTotal: Number(supabaseOrder.tax_substitution_total || 0),
+    withSuframa: supabaseOrder.with_suframa || false
   };
 };
 

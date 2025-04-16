@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import * as ReactDOM from 'react-dom/client';
@@ -307,6 +306,7 @@ const OrderDetail = () => {
   const notes = order.observations || order.notes || '';
   const fullInvoice = order.fullInvoice !== undefined ? order.fullInvoice : (order.full_invoice !== undefined ? order.full_invoice : true);
   const taxSubstitution = order.taxSubstitution !== undefined ? order.taxSubstitution : (order.tax_substitution !== undefined ? order.tax_substitution : false);
+  const withSuframa = order.withSuframa !== undefined ? order.withSuframa : (order.with_suframa !== undefined ? order.with_suframa : false);
   const paymentMethod = order.paymentMethod || order.payment_method || 'cash';
   const paymentTerms = order.paymentTerms || order.payment_terms || '';
   const deliveryLocation = order.deliveryLocation || order.delivery_location || null;
@@ -611,6 +611,10 @@ const OrderDetail = () => {
                 <div className="flex justify-between text-sm">
                   <span>IPI:</span>
                   <span>{withIPI ? 'sim' : 'não'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>SUFRAMA:</span>
+                  <span>{withSuframa ? 'sim' : 'não'}</span>
                 </div>
                 {order.deliveryFee > 0 && (
                   <div className="flex justify-between text-sm">
