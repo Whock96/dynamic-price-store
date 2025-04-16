@@ -41,6 +41,24 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { formatCurrency, formatDate } from "@/utils/formatters";
 
 type SupabaseProduct = Tables<'products'>;
 type TransportCompany = {
@@ -1017,7 +1035,7 @@ const Cart = () => {
         
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-medium">Observações do Pedido</CardTitle>
+            <CardTitle className="text-lg font-medium">Observaç��es do Pedido</CardTitle>
           </CardHeader>
           <CardContent>
             <Textarea
