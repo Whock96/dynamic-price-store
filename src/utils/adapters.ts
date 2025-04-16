@@ -1,4 +1,3 @@
-
 import { Tables } from "@/integrations/supabase/client";
 import { Product, Order, CartItem, DiscountOption, Customer, User } from "@/types/types";
 
@@ -96,30 +95,24 @@ export const supabaseOrderToAppOrder = (
     }
   }
 
-  // Extract transport company name if provided by join
+  // Extract transport company information more robustly
   let transportCompanyName = null;
+  let transportCompanyId = supabaseOrder.transport_company_id || null;
   
-  // Add more detailed logging to understand the data structure
-  console.log("Transport company data in supabase order:", supabaseOrder.transport_companies);
-  
+  // Try to get transport company name from joined data
   if (supabaseOrder.transport_companies) {
-    if (typeof supabaseOrder.transport_companies === 'object' && supabaseOrder.transport_companies !== null) {
+    // Check if transport_companies is an object with a name property
+    if (typeof supabaseOrder.transport_companies === 'object' && 
+        supabaseOrder.transport_companies !== null && 
+        supabaseOrder.transport_companies.name) {
       transportCompanyName = supabaseOrder.transport_companies.name;
-      console.log("Found transport company name:", transportCompanyName);
-    } else {
-      console.log("Transport companies exists but is not an object:", supabaseOrder.transport_companies);
+      console.log("Found transport company name from joined data:", transportCompanyName);
     }
-  } else if (supabaseOrder.transport_company_name) {
-    // Alternative: maybe it's already been extracted and added as a field
-    transportCompanyName = supabaseOrder.transport_company_name;
-    console.log("Using pre-extracted transport company name:", transportCompanyName);
-  } else {
-    console.log("No transport company information found in order data");
   }
-
-  // If we still don't have a name but we do have an ID, log this situation
-  if (!transportCompanyName && supabaseOrder.transport_company_id) {
-    console.log("Have transport company ID but no name:", supabaseOrder.transport_company_id);
+  
+  // If we still don't have a name but have an ID, log this situation
+  if (!transportCompanyName && transportCompanyId) {
+    console.log("Have transport company ID but no name:", transportCompanyId);
   }
 
   return {
@@ -202,8 +195,8 @@ export const supabaseOrderToAppOrder = (
     deliveryFee: Number(supabaseOrder.delivery_fee || 0),
     withIPI: supabaseOrder.with_ipi || false,
     ipiValue: Number(supabaseOrder.ipi_value || 0),
-    transportCompanyId: supabaseOrder.transport_company_id || null,
-    transportCompanyName: transportCompanyName || null, // Use null instead of 'Não especificada'
+    transportCompanyId: transportCompanyId,
+    transportCompanyName: transportCompanyName,
     invoiceNumber: supabaseOrder.invoice_number || null,
     invoicePdfPath: supabaseOrder.invoice_pdf_path || null,
     productsTotal: Number(supabaseOrder.products_total || 0),

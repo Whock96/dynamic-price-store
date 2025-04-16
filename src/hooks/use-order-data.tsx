@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -61,12 +62,13 @@ export function useOrderData(orderId: string | undefined) {
 
       console.log("Order not found in context, fetching from Supabase");
       
+      // Make sure to include the explicit join with transport_companies
       let query = supabase
         .from('orders')
         .select(`
           *,
           customers(*),
-          transport_companies(*)
+          transport_companies(id, name)
         `)
         .eq('id', orderId);
       
@@ -95,7 +97,12 @@ export function useOrderData(orderId: string | undefined) {
       }
 
       console.log("Raw order data from database:", orderData);
-      console.log("Transport company data:", orderData.transport_companies);
+      
+      if (orderData.transport_companies) {
+        console.log("Transport company data from query:", orderData.transport_companies);
+      } else {
+        console.log("No transport company data in query result");
+      }
       
       const { data: itemsData } = await supabase
         .from('order_items')
@@ -166,8 +173,10 @@ export function useOrderData(orderId: string | undefined) {
       }
       
       console.log("useOrderData - Processed order with user:", processedOrder.user);
-      console.log("useOrderData - Processed order products_total:", orderData.products_total, "app productsTotal:", processedOrder.productsTotal);
-      console.log("useOrderData - Processed order tax_substitution_total:", orderData.tax_substitution_total, "app taxSubstitutionTotal:", processedOrder.taxSubstitutionTotal);
+      console.log("useOrderData - Processed order transport company:", {
+        id: processedOrder.transportCompanyId,
+        name: processedOrder.transportCompanyName
+      });
       
       setOrder(processedOrder);
       

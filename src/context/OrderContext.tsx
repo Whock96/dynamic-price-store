@@ -44,7 +44,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .select(`
           *,
           customers(*),
-          transport_companies(*)
+          transport_companies(id, name)
         `);
       
       if (isSalespersonType && user?.id) {

@@ -30,7 +30,7 @@ const LastOrderCard: React.FC<LastOrderCardProps> = ({ lastOrder, isLoading }) =
     return null;
   }
   
-  // Add some console logging to help debug
+  // Log transport company data to debug
   console.log("Last order transport company data:", {
     id: lastOrder.transportCompanyId,
     name: lastOrder.transportCompanyName
@@ -116,7 +116,7 @@ const LastOrderCard: React.FC<LastOrderCardProps> = ({ lastOrder, isLoading }) =
             </p>
             {lastOrder.transportCompanyId && (
               <p className="text-xs text-gray-500 mt-1">
-                <span className="font-medium">Transportadora:</span> {lastOrder.transportCompanyName || lastOrder.transportCompanyId}
+                <span className="font-medium">Transportadora:</span> {lastOrder.transportCompanyName || 'Não especificada'}
               </p>
             )}
           </div>
