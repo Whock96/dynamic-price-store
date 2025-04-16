@@ -99,33 +99,18 @@ export const supabaseOrderToAppOrder = (
   let transportCompanyName = null;
   let transportCompanyId = supabaseOrder.transport_company_id || null;
   
-  // Improved logging for debugging transport company data
-  console.log("supabaseOrderToAppOrder - Raw transport company data:", {
-    rawTransportCompanies: supabaseOrder.transport_companies,
-    transportCompanyId: transportCompanyId
-  });
-  
   // Try to get transport company name from joined data
   if (supabaseOrder.transport_companies) {
     // Check if transport_companies is an object with a name property
     if (typeof supabaseOrder.transport_companies === 'object' && 
-        supabaseOrder.transport_companies !== null) {
-      if (supabaseOrder.transport_companies.name) {
-        transportCompanyName = supabaseOrder.transport_companies.name;
-        console.log("Found transport company name from joined data:", transportCompanyName);
-      } else {
-        console.log("transport_companies object exists but has no name property:", supabaseOrder.transport_companies);
-      }
-    } else if (Array.isArray(supabaseOrder.transport_companies) && 
-               supabaseOrder.transport_companies.length > 0 && 
-               supabaseOrder.transport_companies[0].name) {
-      // In case it comes as an array (shouldn't happen with proper join, but just in case)
-      transportCompanyName = supabaseOrder.transport_companies[0].name;
-      console.log("Found transport company name from array data:", transportCompanyName);
+        supabaseOrder.transport_companies !== null && 
+        supabaseOrder.transport_companies.name) {
+      transportCompanyName = supabaseOrder.transport_companies.name;
+      console.log("Found transport company name from joined data:", transportCompanyName);
     }
   }
   
-  // If we still don't have a name but have an ID, try to extract it from the ID
+  // If we still don't have a name but have an ID, log this situation
   if (!transportCompanyName && transportCompanyId) {
     console.log("Have transport company ID but no name:", transportCompanyId);
   }

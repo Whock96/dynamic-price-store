@@ -30,11 +30,10 @@ const LastOrderCard: React.FC<LastOrderCardProps> = ({ lastOrder, isLoading }) =
     return null;
   }
   
-  // Enhanced debugging for transport company data
-  console.log("LastOrderCard - Transport company details:", {
+  // Log transport company data to debug
+  console.log("Last order transport company data:", {
     id: lastOrder.transportCompanyId,
-    name: lastOrder.transportCompanyName,
-    rawOrder: lastOrder
+    name: lastOrder.transportCompanyName
   });
 
   return (
@@ -118,9 +117,6 @@ const LastOrderCard: React.FC<LastOrderCardProps> = ({ lastOrder, isLoading }) =
             {lastOrder.transportCompanyId && (
               <p className="text-xs text-gray-500 mt-1">
                 <span className="font-medium">Transportadora:</span> {lastOrder.transportCompanyName || 'Não especificada'}
-                {!lastOrder.transportCompanyName && lastOrder.transportCompanyId && (
-                  <span className="text-xs text-gray-400 block mt-1">(ID: {lastOrder.transportCompanyId.substring(0, 8)}...)</span>
-                )}
               </p>
             )}
           </div>
