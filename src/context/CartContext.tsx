@@ -625,27 +625,19 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  useEffect(() => {
-    if (customer) {
-      fetchLastOrder(customer.id);
-    } else {
-      setLastOrder(null);
-      setSelectedTransportCompany(undefined);
-    }
-  }, [customer]);
-
   const fetchLastOrder = async (customerId: string) => {
     if (!customerId) return;
     
     setIsLoadingLastOrder(true);
     
     try {
-      // Get the most recent order for the customer
+      // Get the most recent order for the customer with explicit join to transport_companies
       const { data, error } = await supabase
         .from('orders')
         .select(`
           *,
-          customers(*)
+          customers(*),
+          transport_companies(id, name)
         `)
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false })
@@ -658,6 +650,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       if (data && data.length > 0) {
+        console.log("Raw last order data from Supabase:", data[0]);
+        console.log("Transport company data in last order:", data[0].transport_companies);
+        
         // Get the order items
         const { data: itemsData } = await supabase
           .from('order_items')
@@ -696,8 +691,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Use adapter to convert Supabase order to app Order
         const processedOrder = supabaseOrderToAppOrder(data[0], itemsData || [], discounts);
         
+        console.log('Processed last order before setting state:', processedOrder);
         setLastOrder(processedOrder);
-        console.log('Last order fetched:', processedOrder);
       } else {
         setLastOrder(null);
       }
