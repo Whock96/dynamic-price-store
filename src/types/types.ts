@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   username: string;
@@ -100,6 +101,9 @@ export interface CartItem {
   ipiValue?: number; // IPI value for this item
   totalWithTaxes?: number; // Subtotal including all taxes
   totalUnits?: number; // Total units (quantity * quantityPerVolume)
+  unitPrice?: number; // Unit price of the product
+  totalCubicVolume?: number; // Total cubic volume (product cubic volume * quantity)
+  totalWeight?: number; // Total weight (product weight * quantity)
 }
 
 export interface DiscountOption {
@@ -149,6 +153,8 @@ export interface Order {
   transportCompanyId?: string | null; // Referência à empresa transportadora
   invoiceNumber?: string;
   invoicePdfPath?: string;
+  productsTotal?: number; // Add new field for products total
+  taxSubstitutionTotal?: number; // Add new field for tax substitution total
 }
 
 export interface MenuItem {
