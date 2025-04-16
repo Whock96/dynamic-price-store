@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Order } from '@/types/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CreditCard, Calendar, FileText, Percent, ClipboardList, Receipt, Package, Briefcase, Truck } from 'lucide-react';
@@ -11,6 +11,16 @@ interface LastOrderCardProps {
 }
 
 const LastOrderCard: React.FC<LastOrderCardProps> = ({ lastOrder, isLoading }) => {
+  // Add debug effect to log the transport company data when the component renders
+  useEffect(() => {
+    if (lastOrder) {
+      console.log("LastOrderCard - Transport company data:", {
+        id: lastOrder.transportCompanyId,
+        name: lastOrder.transportCompanyName,
+      });
+    }
+  }, [lastOrder]);
+
   if (isLoading) {
     return (
       <Card>
@@ -29,12 +39,6 @@ const LastOrderCard: React.FC<LastOrderCardProps> = ({ lastOrder, isLoading }) =
   if (!lastOrder) {
     return null;
   }
-  
-  // Log transport company data to debug
-  console.log("Last order transport company data:", {
-    id: lastOrder.transportCompanyId,
-    name: lastOrder.transportCompanyName
-  });
 
   return (
     <Card>
@@ -116,7 +120,9 @@ const LastOrderCard: React.FC<LastOrderCardProps> = ({ lastOrder, isLoading }) =
             </p>
             {lastOrder.transportCompanyId && (
               <p className="text-xs text-gray-500 mt-1">
-                <span className="font-medium">Transportadora:</span> {lastOrder.transportCompanyName || 'Não especificada'}
+                <span className="font-medium">Transportadora:</span>{' '}
+                {lastOrder.transportCompanyName || 
+                 (lastOrder.transportCompanyId ? `ID: ${lastOrder.transportCompanyId}` : 'Não especificada')}
               </p>
             )}
           </div>

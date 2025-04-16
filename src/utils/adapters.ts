@@ -1,3 +1,4 @@
+
 import { Tables } from "@/integrations/supabase/client";
 import { Product, Order, CartItem, DiscountOption, Customer, User } from "@/types/types";
 
@@ -99,14 +100,29 @@ export const supabaseOrderToAppOrder = (
   let transportCompanyName = null;
   let transportCompanyId = supabaseOrder.transport_company_id || null;
   
+  // Log raw transport company data for debugging
+  console.log("supabaseOrderToAppOrder - Raw transport company data:", {
+    id: transportCompanyId,
+    rawData: supabaseOrder.transport_companies
+  });
+  
   // Try to get transport company name from joined data
   if (supabaseOrder.transport_companies) {
-    // Check if transport_companies is an object with a name property
+    // Handle both object and array formats that could come from Supabase
     if (typeof supabaseOrder.transport_companies === 'object' && 
-        supabaseOrder.transport_companies !== null && 
-        supabaseOrder.transport_companies.name) {
-      transportCompanyName = supabaseOrder.transport_companies.name;
-      console.log("Found transport company name from joined data:", transportCompanyName);
+        supabaseOrder.transport_companies !== null) {
+        
+      // Handle array format (sometimes returned by Supabase)
+      if (Array.isArray(supabaseOrder.transport_companies) && 
+          supabaseOrder.transport_companies.length > 0) {
+        transportCompanyName = supabaseOrder.transport_companies[0].name;
+        console.log("Found transport company name from array:", transportCompanyName);
+      }
+      // Handle object format
+      else if (supabaseOrder.transport_companies.name) {
+        transportCompanyName = supabaseOrder.transport_companies.name;
+        console.log("Found transport company name from object:", transportCompanyName);
+      }
     }
   }
   
@@ -114,6 +130,12 @@ export const supabaseOrderToAppOrder = (
   if (!transportCompanyName && transportCompanyId) {
     console.log("Have transport company ID but no name:", transportCompanyId);
   }
+  
+  // Log the final extracted transport company data
+  console.log("Final transport company data extracted:", {
+    id: transportCompanyId,
+    name: transportCompanyName
+  });
 
   return {
     id: supabaseOrder.id,
