@@ -6,8 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface CompanyInfo {
   name: string;
-  document: string; // CNPJ
-  stateRegistration: string; // Inscrição Estadual
+  document: string;
+  stateRegistration: string;
   address: string;
   city: string;
   state: string;
@@ -37,8 +37,6 @@ const initialCompanyInfo: CompanyInfo = {
   website: ''
 };
 
-const COMPANY_INFO_STORAGE_KEY = 'ferplas-company-info';
-
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined);
 
 export const CompanyProvider: React.FC<{ 
@@ -49,11 +47,10 @@ export const CompanyProvider: React.FC<{
   initialData 
 }) => {
   const [companyInfo, setCompanyInfoState] = useState<CompanyInfo>(initialData || initialCompanyInfo);
-  
   const { data: companySettingsData, isLoading, fetchData } = useSupabaseData('company_settings');
 
   useEffect(() => {
-    console.log('CompanyContext: Checking for company data in database or localStorage');
+    console.log('CompanyContext: Checking for company data in database');
     
     if (companySettingsData && companySettingsData.length > 0) {
       console.log('CompanyContext: Found company settings in database:', companySettingsData);
@@ -72,42 +69,14 @@ export const CompanyProvider: React.FC<{
       };
       console.log('CompanyContext: Mapped company info from database:', mappedInfo);
       setCompanyInfoState(mappedInfo);
-      
-      // Always update localStorage with latest database information
-      localStorage.setItem(COMPANY_INFO_STORAGE_KEY, JSON.stringify(mappedInfo));
     } else {
-      console.log('CompanyContext: No company settings found in database, checking localStorage');
-      const savedCompanyInfo = localStorage.getItem(COMPANY_INFO_STORAGE_KEY);
-      
-      if (savedCompanyInfo) {
-        try {
-          const parsedInfo = JSON.parse(savedCompanyInfo);
-          console.log('CompanyContext: Found company info in localStorage:', parsedInfo);
-          setCompanyInfoState(parsedInfo);
-          
-          // Try to save localStorage data to database if missing and contains valid data
-          if (parsedInfo.name && parsedInfo.document) {
-            console.log('CompanyContext: Valid company data found in localStorage, saving to database');
-            saveCompanyInfo(parsedInfo).catch(error => {
-              console.error('Failed to save company info from localStorage to database:', error);
-            });
-          }
-        } catch (error) {
-          console.error('Error loading company info from localStorage:', error);
-        }
-      } else {
-        console.log('CompanyContext: No company info found in localStorage');
-      }
+      console.log('CompanyContext: No company settings found in database');
     }
   }, [companySettingsData]);
 
-  const saveCompanyInfo = useCallback(async (info: CompanyInfo) => {
+  const saveCompanyInfo = useCallback(async (info: CompanyInfo, showToast: boolean = true) => {
     try {
-      console.log('Saving company info to localStorage and database:', info);
-      
-      // Save to localStorage first as fallback
-      localStorage.setItem(COMPANY_INFO_STORAGE_KEY, JSON.stringify(info));
-      setCompanyInfoState(info);
+      console.log('Saving company info to database:', info);
       
       // Map data for Supabase
       const mappedData = {
@@ -164,11 +133,16 @@ export const CompanyProvider: React.FC<{
       }
       
       await fetchData();
+      setCompanyInfoState(info);
       
-      toast.success('Dados da empresa salvos com sucesso!');
+      if (showToast) {
+        toast.success('Dados da empresa salvos com sucesso!');
+      }
     } catch (error) {
       console.error('Error saving company info:', error);
-      toast.error('Erro ao salvar informações da empresa');
+      if (showToast) {
+        toast.error('Erro ao salvar informações da empresa');
+      }
     }
   }, [fetchData]);
 
