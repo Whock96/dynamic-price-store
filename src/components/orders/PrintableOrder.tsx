@@ -13,6 +13,7 @@ interface PrintableOrderProps {
 
 const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, companyInfo, onPrint }) => {
   const [transportCompanyName, setTransportCompanyName] = useState<string | null>(null);
+  const [hasPrinted, setHasPrinted] = useState(false);
   
   useEffect(() => {
     const fetchTransportCompany = async () => {
@@ -33,11 +34,11 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, companyInfo, onP
   }, [order.transportCompanyId]);
 
   useEffect(() => {
-    if (onPrint) {
-      console.log('PrintableOrder rendered, calling onPrint callback');
+    if (onPrint && !hasPrinted) {
+      setHasPrinted(true);
       onPrint();
     }
-  }, [onPrint]);
+  }, [onPrint, hasPrinted]);
 
   const formatWeight = (weight: number) => {
     return `${weight.toFixed(2)} kg`;

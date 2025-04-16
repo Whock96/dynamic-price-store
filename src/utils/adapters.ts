@@ -74,7 +74,7 @@ export const supabaseOrderToAppOrder = (
     ipiValue: Number(item.ipi_value || 0),
     totalWithTaxes: Number(item.total_with_taxes || 0),
     totalUnits: Number(item.total_units || (item.quantity * (item.products.quantity_per_volume || 1))),
-    totalWeight: Number(item.total_weight || 0),
+    totalWeight: Number(item.products.weight || 0) * Number(item.quantity || 0),
     totalCubicVolume: Number(item.total_cubic_volume || 0)
   }));
 

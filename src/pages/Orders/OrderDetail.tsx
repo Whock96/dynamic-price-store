@@ -357,15 +357,13 @@ const OrderDetail = () => {
           </div>
         </div>
         <div className="flex gap-2">
-          {user?.role === 'administrator' && order.status !== 'canceled' && (
-            <Button 
-              className="bg-ferplas-500 hover:bg-ferplas-600 button-transition"
-              onClick={() => navigate(`/orders/${id}/edit`)}
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Editar Pedido
-            </Button>
-          )}
+          <Button 
+            className="bg-ferplas-500 hover:bg-ferplas-600 button-transition"
+            onClick={() => navigate(`/orders/${id}/edit`)}
+          >
+            <Edit className="mr-2 h-4 w-4" />
+            Editar Pedido
+          </Button>
           <Button 
             variant="outline" 
             onClick={handlePrintOrder}

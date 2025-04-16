@@ -1,4 +1,3 @@
-
 export const printStyles = `
   @page { 
     size: A4;
