@@ -43,7 +43,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .from('orders')
         .select(`
           *,
-          customers(*)
+          customers(*),
+          transport_companies(*)
         `);
       
       if (isSalespersonType && user?.id) {

@@ -150,6 +150,7 @@ export interface Order {
   withIPI?: boolean; // IPI flag
   ipiValue?: number; // IPI value
   transportCompanyId?: string | null; // Referência à empresa transportadora
+  transportCompanyName?: string; // Nome da empresa transportadora
   invoiceNumber?: string;
   invoicePdfPath?: string;
   productsTotal?: number; // Add new field for products total

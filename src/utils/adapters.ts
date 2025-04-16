@@ -1,3 +1,4 @@
+
 import { Tables } from "@/integrations/supabase/client";
 import { Product, Order, CartItem, DiscountOption, Customer, User } from "@/types/types";
 
@@ -95,6 +96,12 @@ export const supabaseOrderToAppOrder = (
     }
   }
 
+  // Extract transport company name if provided by join
+  let transportCompanyName = null;
+  if (supabaseOrder.transport_companies && supabaseOrder.transport_companies.name) {
+    transportCompanyName = supabaseOrder.transport_companies.name;
+  }
+
   return {
     id: supabaseOrder.id,
     orderNumber: supabaseOrder.order_number,
@@ -176,6 +183,7 @@ export const supabaseOrderToAppOrder = (
     withIPI: supabaseOrder.with_ipi || false,
     ipiValue: Number(supabaseOrder.ipi_value || 0),
     transportCompanyId: supabaseOrder.transport_company_id || null,
+    transportCompanyName: transportCompanyName,
     invoiceNumber: supabaseOrder.invoice_number || null,
     invoicePdfPath: supabaseOrder.invoice_pdf_path || null,
     productsTotal: Number(supabaseOrder.products_total || 0),
