@@ -123,7 +123,7 @@ export interface DeliveryFees {
 
 export interface Order {
   id: string;
-  orderNumber?: number;
+  orderNumber?: number; // Add orderNumber as optional property
   customerId: string;
   customer: Customer;
   userId: string;
@@ -142,19 +142,19 @@ export interface Order {
   notes: string;
   createdAt: Date;
   updatedAt: Date;
-  observations?: string;
+  observations?: string; // Optional to maintain compatibility with existing code
   deliveryLocation?: 'capital' | 'interior' | null;
-  halfInvoiceType?: 'quantity' | 'price';
-  halfInvoicePercentage?: number;
+  halfInvoiceType?: 'quantity' | 'price'; // New field for half invoice type
+  halfInvoicePercentage?: number; // Add this field for half invoice percentage
   discountOptions?: DiscountOption[];
   deliveryFee?: number;
-  withIPI?: boolean;
-  ipiValue?: number;
-  transportCompanyId?: string | null;
+  withIPI?: boolean; // IPI flag
+  ipiValue?: number; // IPI value
+  transportCompanyId?: string | null; // Referência à empresa transportadora
   invoiceNumber?: string;
   invoicePdfPath?: string;
-  productsTotal?: number;
-  taxSubstitutionTotal?: number;
+  productsTotal?: number; // Add new field for products total
+  taxSubstitutionTotal?: number; // Add new field for tax substitution total
 }
 
 export interface MenuItem {

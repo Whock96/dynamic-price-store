@@ -328,8 +328,7 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
               <p><span className="font-semibold">Taxa de Entrega:</span> {formatCurrency(order.deliveryFee)}</p>
             )}
             
-            <p><span className="font-semibold">Peso Total:</span> {formatWeight(order.items.reduce((sum, item) => sum + (item.totalWeight || 0), 0))}</p>
-            <p><span className="font-semibold">Cubagem Total:</span> {(order.items.reduce((sum, item) => sum + (item.totalCubicVolume || 0), 0)).toFixed(2)} m³</p>
+            <p><span className="font-semibold">Peso Total do Pedido:</span> {formatWeight(totalOrderWeight)}</p>
             <p><span className="font-semibold">Total de Volumes:</span> {totalVolumes}</p>
           </div>
         </div>

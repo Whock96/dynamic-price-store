@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import * as ReactDOM from 'react-dom/client';
@@ -101,12 +100,17 @@ const OrderDetail = () => {
       return;
     }
 
+    let weight = 0;
     let volumes = 0;
 
     items.forEach(item => {
+      const itemWeight = (item.quantity || 0) * (item.product?.weight || 0);
+      weight += itemWeight;
+      
       volumes += (item.quantity || 0);
     });
 
+    setTotalOrderWeight(weight);
     setTotalVolumes(volumes);
   };
 
@@ -682,7 +686,7 @@ const OrderDetail = () => {
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Package className="h-12 w-12 text-gray-300 mb-4" />
               <h2 className="text-xl font-medium text-gray-600">Nenhum item no pedido</h2>
-              <p className="text-muted-foreground">Este pedido não contm itens ou os dados não estão disponves.</p>
+              <p className="text-muted-foreground">Este pedido não cont��m itens ou os dados não estão dispon��veis.</p>
             </div>
           )}
         </CardContent>
@@ -774,21 +778,42 @@ const OrderDetail = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div>
               <h3 className="text-sm font-medium text-gray-500">Peso Total do Pedido</h3>
-              <p className="text-lg">
-                {formatWeight(order.items.reduce((sum, item) => sum + (item.totalWeight || 0), 0))}
-              </p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Cubagem Total</h3>
-              <p className="text-lg">
-                {(order.items.reduce((sum, item) => sum + (item.totalCubicVolume || 0), 0)).toFixed(2)} m³
-              </p>
+              <p className="text-lg">{formatWeight(totalOrderWeight)}</p>
             </div>
             <div>
               <h3 className="text-sm font-medium text-gray-500">Total de Volumes</h3>
               <p className="text-lg">{totalVolumes}</p>
             </div>
           </div>
+          
+          {(order.transportCompanyId || transportCompany) && (
+            <>
+              <Separator className="my-4" />
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Transportadora</h3>
+                
+                {isLoadingTransport ? (
+                  <div className="h-6 bg-gray-100 animate-pulse rounded w-48"></div>
+                ) : transportCompany ? (
+                  <div className="space-y-2">
+                    <p className="text-lg font-medium">{transportCompany.name}</p>
+                    <p className="text-sm text-gray-500">CNPJ: {transportCompany.document}</p>
+                    {transportCompany.phone && (
+                      <p className="text-sm text-gray-500">Telefone: {transportCompany.phone}</p>
+                    )}
+                    {transportCompany.email && (
+                      <p className="text-sm text-gray-500">Email: {transportCompany.email}</p>
+                    )}
+                    {transportCompany.whatsapp && (
+                      <p className="text-sm text-gray-500">WhatsApp: {transportCompany.whatsapp}</p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-gray-500">Informações da transportadora não disponíveis</p>
+                )}
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -798,10 +823,14 @@ const OrderDetail = () => {
             <CardTitle className="text-lg font-medium">Observações</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="whitespace-pre-wrap">{notes}</p>
+            <p className="text-sm bg-gray-50 border border-gray-200 rounded p-3">
+              {notes}
+            </p>
           </CardContent>
         </Card>
       )}
+
+      {order && <InvoiceCard order={order} onDelete={handleInvoicePdfDelete} />}
     </div>
   );
 };
