@@ -163,7 +163,6 @@ const OrderDetail = () => {
       return;
     }
     
-    // Write the HTML with embedded styles
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
@@ -196,12 +195,9 @@ const OrderDetail = () => {
               order={order}
               companyInfo={companyInfo}
               onPrint={() => {
-                console.log('PrintableOrder rendered and ready for printing');
+                console.log('PrintableOrder rendered, initiating print...');
                 printWindow.focus();
-                setTimeout(() => {
-                  console.log('Executing print command');
-                  printWindow.print();
-                }, 1000);
+                printWindow.print();
               }}
             />
           </PrintContextWrapper>
@@ -222,7 +218,6 @@ const OrderDetail = () => {
       return;
     }
     
-    // Write the HTML with embedded styles
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
@@ -255,12 +250,9 @@ const OrderDetail = () => {
               order={order}
               companyInfo={companyInfo}
               onPrint={() => {
-                console.log('PrintableInvoice rendered and ready for printing');
+                console.log('PrintableInvoice rendered, initiating print...');
                 printWindow.focus();
-                setTimeout(() => {
-                  console.log('Executing print command');
-                  printWindow.print();
-                }, 1000);
+                printWindow.print();
               }}
             />
           </PrintContextWrapper>

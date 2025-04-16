@@ -17,7 +17,6 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
   onPrint 
 }) => {
   const [transportCompanyName, setTransportCompanyName] = useState<string | null>(null);
-  const [hasPrinted, setHasPrinted] = useState(false);
   
   useEffect(() => {
     const fetchTransportCompany = async () => {
@@ -38,11 +37,15 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
   }, [order.transportCompanyId]);
   
   useEffect(() => {
-    if (onPrint && !hasPrinted) {
-      setHasPrinted(true);
-      onPrint();
-    }
-  }, [onPrint, hasPrinted]);
+    const timer = setTimeout(() => {
+      if (onPrint) {
+        console.log('Triggering print callback');
+        onPrint();
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [onPrint]);
 
   const formatWeight = (weight: number) => {
     return `${weight.toFixed(2)} kg`;
