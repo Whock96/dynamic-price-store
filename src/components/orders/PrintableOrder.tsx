@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -176,7 +175,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, companyInfo, onP
             <tbody>
               <tr>
                 <td>Total dos Produtos:</td>
-                <td className="align-right font-medium">{formatCurrency(order.subtotal)}</td>
+                <td className="align-right font-medium">{formatCurrency(order.productsTotal || 0)}</td>
               </tr>
               <tr>
                 <td>Descontos:</td>
@@ -184,31 +183,31 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, companyInfo, onP
               </tr>
               <tr>
                 <td>Subtotal do Pedido:</td>
-                <td className="align-right font-medium">{formatCurrency(order.subtotal - (order.totalDiscount || 0))}</td>
+                <td className="align-right font-medium">{formatCurrency(order.subtotal || 0)}</td>
               </tr>
               {order.taxSubstitution && (
                 <tr>
-                  <td>ST:</td>
+                  <td>Substituição Tributária:</td>
                   <td className="align-right text-orange">
-                    +{formatCurrency(order.items.reduce((sum, item) => sum + (item.taxSubstitutionValue || 0), 0))}
+                    +{formatCurrency(order.taxSubstitutionTotal || 0)}
                   </td>
                 </tr>
               )}
               {order.withIPI && (
                 <tr>
                   <td>IPI:</td>
-                  <td className="align-right text-blue">+{formatCurrency(totalIpiValue)}</td>
+                  <td className="align-right text-blue">+{formatCurrency(order.ipiValue || 0)}</td>
                 </tr>
               )}
               {order.deliveryFee > 0 && (
                 <tr>
                   <td>Taxa de Entrega:</td>
-                  <td className="align-right">{formatCurrency(order.deliveryFee)}</td>
+                  <td className="align-right">{formatCurrency(order.deliveryFee || 0)}</td>
                 </tr>
               )}
               <tr className="summary-total">
                 <td>Total:</td>
-                <td className="align-right">{formatCurrency(order.total)}</td>
+                <td className="align-right">{formatCurrency(order.total || 0)}</td>
               </tr>
             </tbody>
           </table>
@@ -230,7 +229,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, companyInfo, onP
               <p><span className="font-semibold">Peso:</span> {formatWeight(totalOrderWeight)}</p>
               <p><span className="font-semibold">Volumes:</span> {totalVolumes}</p>
               {order.shipping === 'delivery' && order.deliveryFee > 0 && (
-                <p><span className="font-semibold">Taxa:</span> {formatCurrency(order.deliveryFee)}</p>
+                <p><span className="font-semibold">Taxa:</span> {formatCurrency(order.deliveryFee || 0)}</p>
               )}
             </div>
           </div>

@@ -541,38 +541,38 @@ const OrderDetail = () => {
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Total dos Produtos:</span>
-                <span>{formatCurrency(order.subtotal)}</span>
+                <span>{formatCurrency(order.productsTotal || 0)}</span>
               </div>
               <div className="flex justify-between text-sm text-red-600">
                 <span>Descontos:</span>
-                <span>-{formatCurrency(totalDiscount)}</span>
+                <span>-{formatCurrency(order.totalDiscount || 0)}</span>
               </div>
               <div className="flex justify-between text-sm font-medium">
                 <span>Subtotal Pedido:</span>
-                <span>{formatCurrency(order.subtotal - totalDiscount)}</span>
+                <span>{formatCurrency(order.subtotal || 0)}</span>
               </div>
-              {taxSubstitution && (
+              {order.taxSubstitution && (
                 <div className="flex justify-between text-sm text-amber-600">
                   <span>Substituição Tributária:</span>
-                  <span>+{formatCurrency(taxSubstitutionValue)}</span>
+                  <span>+{formatCurrency(order.taxSubstitutionTotal || 0)}</span>
                 </div>
               )}
-              {withIPI && (
+              {order.withIPI && (
                 <div className="flex justify-between text-sm text-amber-600">
                   <span>IPI:</span>
-                  <span>+{formatCurrency(ipiValue)}</span>
+                  <span>+{formatCurrency(order.ipiValue || 0)}</span>
                 </div>
               )}
-              {deliveryFee > 0 && (
+              {order.deliveryFee > 0 && (
                 <div className="flex justify-between text-sm">
                   <span>Taxa de Entrega:</span>
-                  <span>{formatCurrency(deliveryFee)}</span>
+                  <span>{formatCurrency(order.deliveryFee || 0)}</span>
                 </div>
               )}
               <Separator className="my-2" />
               <div className="flex justify-between font-medium text-lg">
                 <span>Total:</span>
-                <span className="text-ferplas-600">{formatCurrency(order.total)}</span>
+                <span className="text-ferplas-600">{formatCurrency(order.total || 0)}</span>
               </div>
             </div>
 
@@ -613,10 +613,10 @@ const OrderDetail = () => {
                   <span>IPI:</span>
                   <span>{withIPI ? 'sim' : 'não'}</span>
                 </div>
-                {deliveryFee > 0 && (
+                {order.deliveryFee > 0 && (
                   <div className="flex justify-between text-sm">
                     <span>Taxa de Entrega:</span>
-                    <span>{formatCurrency(deliveryFee)}</span>
+                    <span>{formatCurrency(order.deliveryFee || 0)}</span>
                   </div>
                 )}
               </div>

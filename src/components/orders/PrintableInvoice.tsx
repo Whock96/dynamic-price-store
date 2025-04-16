@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -249,45 +248,39 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
             <tbody>
               <tr>
                 <td>Total dos Produtos:</td>
-                <td className="align-right font-medium">{formatCurrency(order.subtotal)}</td>
+                <td className="align-right font-medium">{formatCurrency(order.productsTotal || 0)}</td>
               </tr>
               <tr>
                 <td>Descontos:</td>
-                <td className="align-right text-red font-medium">
-                  -{formatCurrency(order.totalDiscount || 0)}
-                </td>
+                <td className="align-right text-red">-{formatCurrency(order.totalDiscount || 0)}</td>
               </tr>
               <tr>
                 <td>Subtotal Pedido:</td>
-                <td className="align-right font-medium">
-                  {formatCurrency(subtotalAfterDiscount)}
-                </td>
+                <td className="align-right font-medium">{formatCurrency(order.subtotal || 0)}</td>
               </tr>
               {order.taxSubstitution && (
                 <tr>
                   <td>Substituição Tributária:</td>
-                  <td className="align-right text-orange font-medium">
-                    +{formatCurrency(taxSubstitutionValue)}
+                  <td className="align-right text-orange">
+                    +{formatCurrency(order.taxSubstitutionTotal || 0)}
                   </td>
                 </tr>
               )}
               {order.withIPI && (
                 <tr>
                   <td>IPI:</td>
-                  <td className="align-right text-blue">+{formatCurrency(totalIpiValue)}</td>
+                  <td className="align-right text-blue">+{formatCurrency(order.ipiValue || 0)}</td>
                 </tr>
               )}
               {order.deliveryFee > 0 && (
                 <tr>
                   <td>Taxa de Entrega:</td>
-                  <td className="align-right font-medium">
-                    {formatCurrency(order.deliveryFee)}
-                  </td>
+                  <td className="align-right">{formatCurrency(order.deliveryFee || 0)}</td>
                 </tr>
               )}
               <tr className="summary-total">
                 <td>Total:</td>
-                <td className="align-right font-bold">{formatCurrency(order.total)}</td>
+                <td className="align-right font-bold">{formatCurrency(order.total || 0)}</td>
               </tr>
               {!order.fullInvoice && (
                 <>
