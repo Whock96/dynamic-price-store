@@ -73,7 +73,9 @@ export const supabaseOrderToAppOrder = (
     taxSubstitutionValue: Number(item.tax_substitution_value || 0),
     ipiValue: Number(item.ipi_value || 0),
     totalWithTaxes: Number(item.total_with_taxes || 0),
-    totalUnits: Number(item.total_units || (item.quantity * (item.products.quantity_per_volume || 1)))
+    totalUnits: Number(item.total_units || (item.quantity * (item.products.quantity_per_volume || 1))),
+    totalWeight: Number(item.total_weight || 0),
+    totalCubicVolume: Number(item.total_cubic_volume || 0)
   }));
 
   // Parse applied_discounts from JSONB to DiscountOption[] type
@@ -92,6 +94,10 @@ export const supabaseOrderToAppOrder = (
       console.error("Error parsing applied discounts:", error);
     }
   }
+
+  // Calculate total weight and cubic volume from items
+  const totalOrderWeight = processedItems.reduce((sum, item) => sum + (item.totalWeight || 0), 0);
+  const totalOrderCubicVolume = processedItems.reduce((sum, item) => sum + (item.totalCubicVolume || 0), 0);
 
   return {
     id: supabaseOrder.id,
@@ -177,7 +183,9 @@ export const supabaseOrderToAppOrder = (
     invoiceNumber: supabaseOrder.invoice_number || null,
     invoicePdfPath: supabaseOrder.invoice_pdf_path || null,
     productsTotal: Number(supabaseOrder.products_total || 0),
-    taxSubstitutionTotal: Number(supabaseOrder.tax_substitution_total || 0)
+    taxSubstitutionTotal: Number(supabaseOrder.tax_substitution_total || 0),
+    totalWeight: totalOrderWeight,
+    totalCubicVolume: totalOrderCubicVolume
   };
 };
 
