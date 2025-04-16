@@ -64,11 +64,16 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
   let totalVolumes = 0;
   let totalCubicVolume = 0;
 
-  order.items.forEach(item => {
-    totalOrderWeight += item.totalWeight || 0;
-    totalVolumes += (item.quantity || 0);
-    totalCubicVolume += item.totalCubicVolume || 0;
-  });
+  if (order.items && order.items.length > 0) {
+    totalOrderWeight = order.items.reduce((sum, item) => 
+      sum + Number(item.total_weight || item.totalWeight || 0), 0);
+    
+    totalVolumes = order.items.reduce((sum, item) => 
+      sum + Number(item.quantity || 0), 0);
+    
+    totalCubicVolume = order.items.reduce((sum, item) => 
+      sum + Number(item.total_cubic_volume || item.totalCubicVolume || 0), 0);
+  }
 
   const totalIpiValue = order.ipiValue || 0;
 

@@ -104,10 +104,11 @@ const OrderDetail = () => {
     let volumes = 0;
 
     items.forEach(item => {
-      weight += item.total_weight || 0;
-      volumes += (item.quantity || 0);
+      weight += Number(item.total_weight || item.totalWeight || 0);
+      volumes += Number(item.quantity || 0);
     });
 
+    console.log("Calculated total weight:", weight);
     setTotalOrderWeight(weight);
     setTotalVolumes(volumes);
   };
@@ -788,7 +789,7 @@ const OrderDetail = () => {
             </div>
             <div>
               <h3 className="text-sm font-medium text-gray-500">Cubagem Total</h3>
-              <p className="text-lg">{formatCubicVolume(items.reduce((sum, item) => sum + (item.total_cubic_volume || 0), 0))}</p>
+              <p className="text-lg">{formatCubicVolume(items.reduce((sum, item) => sum + Number(item.total_cubic_volume || item.totalCubicVolume || 0), 0))}</p>
             </div>
           </div>
           

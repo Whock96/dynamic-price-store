@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -54,15 +55,21 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, companyInfo, onP
   const halfInvoiceText = !order.fullInvoice && order.halfInvoicePercentage ? 
     `(${order.halfInvoicePercentage}%)` : '';
     
+  // Calculate totals correctly using reduce
   let totalOrderWeight = 0;
   let totalVolumes = 0;
   let totalCubicVolume = 0;
 
-  order.items.forEach(item => {
-    totalOrderWeight += item.totalWeight || 0;
-    totalVolumes += (item.quantity || 0);
-    totalCubicVolume += item.totalCubicVolume || 0;
-  });
+  if (order.items && order.items.length > 0) {
+    totalOrderWeight = order.items.reduce((sum, item) => 
+      sum + Number(item.total_weight || item.totalWeight || 0), 0);
+    
+    totalVolumes = order.items.reduce((sum, item) => 
+      sum + Number(item.quantity || 0), 0);
+    
+    totalCubicVolume = order.items.reduce((sum, item) => 
+      sum + Number(item.total_cubic_volume || item.totalCubicVolume || 0), 0);
+  }
 
   // Usar o valor do IPI diretamente da ordem, não recalcular
   const totalIpiValue = order.ipiValue || 0;
