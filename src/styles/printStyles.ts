@@ -1,7 +1,7 @@
 export const printStyles = `
   @page { 
     size: A4;
-    margin: 4mm; /* Reduced from 5mm */
+    margin: 4mm;
   }
   
   body { 
@@ -9,7 +9,7 @@ export const printStyles = `
     print-color-adjust: exact !important;
     color-adjust: exact !important;
     font-family: 'Inter', system-ui, sans-serif;
-    font-size: 9px; /* Reduced from 10px */
+    font-size: 9px;
     background-color: white;
     margin: 0;
     padding: 0;
@@ -18,7 +18,7 @@ export const printStyles = `
   .print-container {
     max-width: 190mm;
     margin: 0 auto;
-    padding: 6px; /* Reduced from 8px */
+    padding: 6px;
     background-color: white;
   }
   
@@ -26,9 +26,9 @@ export const printStyles = `
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 5px; /* Reduced from 6px */
+    margin-bottom: 3px;
     border-bottom: 1px solid #d1d5db;
-    padding-bottom: 5px;
+    padding-bottom: 3px;
   }
   
   .print-header-logo {
@@ -37,33 +37,36 @@ export const printStyles = `
   }
   
   .print-header-logo img {
-    width: 100px; /* Reduced from 120px */
-    height: 40px; /* Reduced from 48px */
+    width: 120px;
+    height: 48px;
     object-fit: contain;
   }
   
   .print-header-company {
     text-align: right;
-    font-size: 9px;
+    font-size: 8px;
+    line-height: 1.1;
   }
   
   .print-header-company .company-name {
-    font-size: 12px; /* Reduced from 14px */
+    font-size: 12px;
     font-weight: bold;
+    margin-bottom: 1px;
+    line-height: 1;
   }
   
   .print-title {
     text-align: center;
-    margin-bottom: 6px; /* Reduced from 8px */
+    margin-bottom: 4px;
   }
   
   .print-title h1 {
     display: inline-block;
-    font-size: 14px; /* Reduced from 16px */
+    font-size: 14px;
     font-weight: bold;
     border: 1px solid #d1d5db;
-    padding: 3px 10px;
-    margin-bottom: 2px;
+    padding: 2px 8px;
+    margin-bottom: 1px;
   }
   
   .print-title p {
@@ -74,33 +77,33 @@ export const printStyles = `
   .print-card {
     border: 1px solid #d1d5db;
     border-radius: 3px;
-    padding: 5px; /* Reduced from 6px */
-    margin-bottom: 5px; /* Reduced from 6px */
+    padding: 4px;
+    margin-bottom: 4px;
   }
   
   .print-card-title {
     font-weight: bold;
     font-size: 10px;
     border-bottom: 1px solid #d1d5db;
-    padding-bottom: 2px;
-    margin-bottom: 3px; /* Reduced from 4px */
+    padding-bottom: 1px;
+    margin-bottom: 2px;
   }
   
   .print-card-content {
     font-size: 9px;
-    line-height: 1.2; /* Reduced line height */
+    line-height: 1.1;
   }
   
   .print-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 5px; /* Reduced from 6px */
+    gap: 5px;
   }
   
   .print-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 5px; /* Reduced from 6px */
+    margin-bottom: 5px;
     font-size: 9px;
   }
   
@@ -108,12 +111,12 @@ export const printStyles = `
     background-color: #f3f4f6;
     font-weight: 600;
     text-align: left;
-    padding: 2px 3px; /* Reduced from 2px 4px */
+    padding: 2px 3px;
     border: 1px solid #d1d5db;
   }
   
   .print-table td {
-    padding: 2px 3px; /* Reduced from 2px 4px */
+    padding: 2px 3px;
     border: 1px solid #d1d5db;
     vertical-align: top;
   }
@@ -131,7 +134,7 @@ export const printStyles = `
   .print-financial-summary {
     width: 100%;
     font-size: 9px;
-    line-height: 1.3; /* Reduced line height */
+    line-height: 1.3;
   }
   
   .print-financial-summary td {
@@ -159,12 +162,12 @@ export const printStyles = `
     padding: 4px;
     border-radius: 3px;
     font-size: 9px;
-    line-height: 1.2; /* Reduced line height */
+    line-height: 1.2;
   }
   
   .print-footer {
-    margin-top: 6px; /* Reduced from 8px */
-    padding-top: 5px; /* Reduced from 6px */
+    margin-top: 6px;
+    padding-top: 5px;
     border-top: 1px solid #d1d5db;
     text-align: center;
     font-size: 9px;
