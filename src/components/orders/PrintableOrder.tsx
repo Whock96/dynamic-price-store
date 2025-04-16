@@ -226,7 +226,8 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, companyInfo, onP
               )}
             </div>
             <div>
-              <p><span className="font-semibold">Peso:</span> {formatWeight(totalOrderWeight)}</p>
+              <p><span className="font-semibold">Peso Total:</span> {formatWeight(order.items.reduce((sum, item) => sum + (item.totalWeight || 0), 0))}</p>
+              <p><span className="font-semibold">Cubagem Total:</span> {(order.items.reduce((sum, item) => sum + (item.totalCubicVolume || 0), 0)).toFixed(2)} m³</p>
               <p><span className="font-semibold">Volumes:</span> {totalVolumes}</p>
               {order.shipping === 'delivery' && order.deliveryFee > 0 && (
                 <p><span className="font-semibold">Taxa:</span> {formatCurrency(order.deliveryFee || 0)}</p>
