@@ -20,8 +20,6 @@ import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { Checkbox } from '@/components/ui/checkbox';
-import { useCart } from '../../context/CartContext';
 import { useCustomers } from '../../context/CustomerContext';
 import { useDiscountSettings } from '@/hooks/use-discount-settings';
 import { toast } from 'sonner';
@@ -59,6 +57,7 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatCurrency, formatDate } from "@/utils/formatters";
+import { useCart } from '@/context/CartContext';
 
 type SupabaseProduct = Tables<'products'>;
 type TransportCompany = {
