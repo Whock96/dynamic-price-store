@@ -47,6 +47,10 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
     return `${weight.toFixed(2)} kg`;
   };
 
+  const formatCubicVolume = (volume: number) => {
+    return `${volume.toFixed(3)} m³`;
+  };
+
   const orderNumber = order.orderNumber ? order.orderNumber.toString() : '1';
   
   const invoiceTypeText = order.fullInvoice ? 'Nota Cheia' : 'Meia Nota';
@@ -58,14 +62,14 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
   
   let totalOrderWeight = 0;
   let totalVolumes = 0;
+  let totalCubicVolume = 0;
 
   order.items.forEach(item => {
-    const itemWeight = (item.quantity || 0) * (item.product?.weight || 0);
-    totalOrderWeight += itemWeight;
+    totalOrderWeight += item.totalWeight || 0;
     totalVolumes += (item.quantity || 0);
+    totalCubicVolume += item.totalCubicVolume || 0;
   });
 
-  // Usar o valor de IPI diretamente da ordem
   const totalIpiValue = order.ipiValue || 0;
 
   const calculatePriceWithInvoice = (finalPrice: number, percentage: number) => {
@@ -330,6 +334,7 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
             
             <p><span className="font-semibold">Peso Total do Pedido:</span> {formatWeight(totalOrderWeight)}</p>
             <p><span className="font-semibold">Total de Volumes:</span> {totalVolumes}</p>
+            <p><span className="font-semibold">Cubagem Total:</span> {formatCubicVolume(totalCubicVolume)}</p>
           </div>
         </div>
       </div>

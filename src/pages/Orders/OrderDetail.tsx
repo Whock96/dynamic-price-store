@@ -104,9 +104,7 @@ const OrderDetail = () => {
     let volumes = 0;
 
     items.forEach(item => {
-      const itemWeight = (item.quantity || 0) * (item.product?.weight || 0);
-      weight += itemWeight;
-      
+      weight += item.total_weight || 0;
       volumes += (item.quantity || 0);
     });
 
@@ -150,6 +148,10 @@ const OrderDetail = () => {
 
   const formatWeight = (weight: number) => {
     return `${weight.toFixed(2)} kg`;
+  };
+
+  const formatCubicVolume = (volume: number) => {
+    return `${volume.toFixed(3)} m³`;
   };
 
   const handlePrintOrder = () => {
@@ -775,7 +777,7 @@ const OrderDetail = () => {
             )}
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <div>
               <h3 className="text-sm font-medium text-gray-500">Peso Total do Pedido</h3>
               <p className="text-lg">{formatWeight(totalOrderWeight)}</p>
@@ -783,6 +785,10 @@ const OrderDetail = () => {
             <div>
               <h3 className="text-sm font-medium text-gray-500">Total de Volumes</h3>
               <p className="text-lg">{totalVolumes}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Cubagem Total</h3>
+              <p className="text-lg">{formatCubicVolume(items.reduce((sum, item) => sum + (item.total_cubic_volume || 0), 0))}</p>
             </div>
           </div>
           

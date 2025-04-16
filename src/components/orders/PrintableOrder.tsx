@@ -43,6 +43,10 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, companyInfo, onP
     return `${weight.toFixed(2)} kg`;
   };
 
+  const formatCubicVolume = (volume: number) => {
+    return `${volume.toFixed(3)} m³`;
+  };
+
   const orderNumber = order.orderNumber ? order.orderNumber.toString() : '1';
   
   const invoiceTypeText = order.fullInvoice ? 'Nota Cheia' : 'Meia Nota';
@@ -52,11 +56,12 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, companyInfo, onP
     
   let totalOrderWeight = 0;
   let totalVolumes = 0;
+  let totalCubicVolume = 0;
 
   order.items.forEach(item => {
-    const itemWeight = (item.quantity || 0) * (item.product?.weight || 0);
-    totalOrderWeight += itemWeight;
+    totalOrderWeight += item.totalWeight || 0;
     totalVolumes += (item.quantity || 0);
+    totalCubicVolume += item.totalCubicVolume || 0;
   });
 
   // Usar o valor do IPI diretamente da ordem, não recalcular
@@ -215,23 +220,24 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, companyInfo, onP
 
         <div className="print-card">
           <div className="print-card-title">Entrega</div>
-          <div className="print-card-content grid grid-cols-2 gap-1">
-            <div>
-              <p><span className="font-semibold">Tipo:</span> {order.shipping === 'delivery' ? 'Entrega' : 'Retirada'}</p>
-              {transportCompanyName && (
-                <p><span className="font-semibold">Transportadora:</span> {transportCompanyName}</p>
-              )}
-              {order.shipping === 'delivery' && order.deliveryLocation && (
-                <p><span className="font-semibold">Região:</span> {order.deliveryLocation === 'capital' ? 'Capital' : 'Interior'}</p>
-              )}
-            </div>
-            <div>
-              <p><span className="font-semibold">Peso:</span> {formatWeight(totalOrderWeight)}</p>
-              <p><span className="font-semibold">Volumes:</span> {totalVolumes}</p>
-              {order.shipping === 'delivery' && order.deliveryFee > 0 && (
-                <p><span className="font-semibold">Taxa:</span> {formatCurrency(order.deliveryFee || 0)}</p>
-              )}
-            </div>
+          <div className="print-card-content">
+            <p><span className="font-semibold">Tipo:</span> {order.shipping === 'delivery' ? 'Entrega' : 'Retirada'}</p>
+            
+            {transportCompanyName && (
+              <p><span className="font-semibold">Transportadora:</span> {transportCompanyName}</p>
+            )}
+            
+            {order.shipping === 'delivery' && order.deliveryLocation && (
+              <p><span className="font-semibold">Região:</span> {order.deliveryLocation === 'capital' ? 'Capital' : 'Interior'}</p>
+            )}
+            
+            {order.shipping === 'delivery' && order.deliveryFee > 0 && (
+              <p><span className="font-semibold">Taxa de Entrega:</span> {formatCurrency(order.deliveryFee)}</p>
+            )}
+            
+            <p><span className="font-semibold">Peso Total do Pedido:</span> {formatWeight(totalOrderWeight)}</p>
+            <p><span className="font-semibold">Total de Volumes:</span> {totalVolumes}</p>
+            <p><span className="font-semibold">Cubagem Total:</span> {formatCubicVolume(totalCubicVolume)}</p>
           </div>
         </div>
       </div>
