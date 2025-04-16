@@ -775,18 +775,14 @@ const OrderDetail = () => {
             )}
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div>
               <h3 className="text-sm font-medium text-gray-500">Peso Total do Pedido</h3>
-              <p className="text-lg">{formatWeight(order.totalWeight || 0)}</p>
+              <p className="text-lg">{formatWeight(totalOrderWeight)}</p>
             </div>
             <div>
               <h3 className="text-sm font-medium text-gray-500">Total de Volumes</h3>
               <p className="text-lg">{totalVolumes}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Cubagem Total</h3>
-              <p className="text-lg">{order.totalCubicVolume?.toFixed(3) || "0.000"} m³</p>
             </div>
           </div>
           
