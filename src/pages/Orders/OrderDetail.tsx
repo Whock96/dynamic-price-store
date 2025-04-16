@@ -645,12 +645,12 @@ const OrderDetail = () => {
                 <TableHead>Desc. Total (%)</TableHead>
                 <TableHead>Preço Final</TableHead>
                 {order.taxSubstitution && (
-                  <TableHead>Substituição Tributária</TableHead>
+                  <TableHead>Valor ST Und.</TableHead>
                 )}
                 {order.withIPI && (
-                  <TableHead>IPI</TableHead>
+                  <TableHead>Valor IPI Und.</TableHead>
                 )}
-                <TableHead>Unitario c/ Impostos</TableHead>
+                <TableHead>Valor Und. c/ Impostos</TableHead>
                 <TableHead>Quantidade Volumes</TableHead>
                 <TableHead>Total de Unidades</TableHead>
                 <TableHead>Subtotal</TableHead>
