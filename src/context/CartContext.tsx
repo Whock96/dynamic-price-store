@@ -5,6 +5,8 @@ import { useOrders } from './OrderContext';
 import { useCustomers } from './CustomerContext';
 import { useDiscountSettings } from '../hooks/use-discount-settings';
 import { useAuth } from './AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { supabaseOrderToAppOrder } from '@/utils/adapters';
 
 interface CartContextType {
   items: CartItem[];
@@ -25,6 +27,8 @@ interface CartContextType {
   withIPI: boolean;
   withSuframa: boolean;
   selectedTransportCompany: string | undefined;
+  lastOrder: Order | null;
+  isLoadingLastOrder: boolean;
   setSelectedTransportCompany: (id: string | undefined) => void;
   setCustomer: (customer: Customer | null) => void;
   addItem: (product: Product, quantity: number) => void;
@@ -80,6 +84,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [withIPI, setWithIPI] = useState<boolean>(false);
   const [withSuframa, setWithSuframa] = useState<boolean>(false);
   const [selectedTransportCompany, setSelectedTransportCompany] = useState<string | undefined>(undefined);
+
+  const [lastOrder, setLastOrder] = useState<Order | null>(null);
+  const [isLoadingLastOrder, setIsLoadingLastOrder] = useState<boolean>(false);
 
   useEffect(() => {
     if (settings) {
@@ -618,6 +625,90 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  useEffect(() => {
+    if (customer) {
+      fetchLastOrder(customer.id);
+    } else {
+      setLastOrder(null);
+      setSelectedTransportCompany(undefined);
+    }
+  }, [customer]);
+
+  const fetchLastOrder = async (customerId: string) => {
+    if (!customerId) return;
+    
+    setIsLoadingLastOrder(true);
+    
+    try {
+      // Get the most recent order for the customer
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          customers(*)
+        `)
+        .eq('customer_id', customerId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      if (error) {
+        console.error('Error fetching last order:', error);
+        setLastOrder(null);
+        return;
+      }
+      
+      if (data && data.length > 0) {
+        // Get the order items
+        const { data: itemsData } = await supabase
+          .from('order_items')
+          .select(`
+            *,
+            products(*)
+          `)
+          .eq('order_id', data[0].id);
+          
+        // Get discounts
+        const { data: discountData } = await supabase
+          .from('order_discounts')
+          .select('discount_id')
+          .eq('order_id', data[0].id);
+          
+        let discounts = [];
+        if (discountData && discountData.length > 0) {
+          const discountIds = discountData.map(d => d.discount_id);
+          const { data: discountDetails } = await supabase
+            .from('discount_options')
+            .select('*')
+            .in('id', discountIds);
+            
+          if (discountDetails) {
+            discounts = discountDetails.map(d => ({
+              id: d.id,
+              name: d.name,
+              description: d.description || '',
+              value: d.value,
+              type: d.type as 'discount' | 'surcharge',
+              isActive: d.is_active,
+            }));
+          }
+        }
+        
+        // Use adapter to convert Supabase order to app Order
+        const processedOrder = supabaseOrderToAppOrder(data[0], itemsData || [], discounts);
+        
+        setLastOrder(processedOrder);
+        console.log('Last order fetched:', processedOrder);
+      } else {
+        setLastOrder(null);
+      }
+    } catch (err) {
+      console.error('Error processing last order:', err);
+      setLastOrder(null);
+    } finally {
+      setIsLoadingLastOrder(false);
+    }
+  };
+
   return (
     <CartContext.Provider value={{
       items,
@@ -638,6 +729,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       withIPI,
       withSuframa,
       selectedTransportCompany,
+      lastOrder,
+      isLoadingLastOrder,
       setSelectedTransportCompany,
       setCustomer: handleSetCustomer,
       addItem,

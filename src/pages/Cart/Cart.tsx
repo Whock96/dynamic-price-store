@@ -29,6 +29,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/client';
 import { supabaseProductToAppProduct } from '@/utils/adapters';
 import { useAuth } from '@/context/AuthContext';
+import LastOrderCard from '@/components/LastOrderCard';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,18 +41,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { formatCurrency } from '@/utils/formatters';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 
 type SupabaseProduct = Tables<'products'>;
 type TransportCompany = {
@@ -83,7 +72,8 @@ const Cart = () => {
     observations, setObservations, totalItems, subtotal, totalDiscount, total, sendOrder, clearCart, 
     deliveryFee, applyDiscounts, toggleApplyDiscounts, paymentTerms, setPaymentTerms,
     calculateTaxSubstitutionValue, withIPI, toggleIPI, calculateIPIValue, calculateItemTaxSubstitutionValue,
-    selectedTransportCompany, setSelectedTransportCompany, withSuframa, toggleSuframa
+    selectedTransportCompany, setSelectedTransportCompany, withSuframa, toggleSuframa,
+    lastOrder, isLoadingLastOrder
   } = useCart();
   
   const [customerSearch, setCustomerSearch] = useState('');
@@ -241,11 +231,9 @@ const Cart = () => {
     }
   };
   
-  // Calculate tax values - independent from discount toggle
   const taxSubstitutionValue = calculateTaxSubstitutionValue();
   const ipiValue = calculateIPIValue();
   
-  // Get rates for display - not dependent on discount toggle
   const getTaxSubstitutionRate = () => {
     if (!isDiscountOptionSelected('icms-st')) return 0;
     
@@ -493,6 +481,13 @@ const Cart = () => {
             )}
           </CardContent>
         </Card>
+
+        {(customer || isLoadingLastOrder) && (
+          <LastOrderCard 
+            lastOrder={lastOrder} 
+            isLoading={isLoadingLastOrder} 
+          />
+        )}
 
         <Card>
           <CardHeader className="pb-3">
