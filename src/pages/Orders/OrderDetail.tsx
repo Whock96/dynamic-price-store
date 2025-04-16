@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import * as ReactDOM from 'react-dom/client';
@@ -681,7 +682,7 @@ const OrderDetail = () => {
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Package className="h-12 w-12 text-gray-300 mb-4" />
               <h2 className="text-xl font-medium text-gray-600">Nenhum item no pedido</h2>
-              <p className="text-muted-foreground">Este pedido não contm itens ou os dados não estão disponveis.</p>
+              <p className="text-muted-foreground">Este pedido não contm itens ou os dados não estão disponves.</p>
             </div>
           )}
         </CardContent>
@@ -768,20 +769,41 @@ const OrderDetail = () => {
                 <p className="text-lg">{formatCurrency(deliveryFee)}</p>
               </div>
             )}
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div>
-            <h3 className="text-sm font-medium text-gray-500">Peso Total do Pedido</h3>
-            <p className="text-lg">
-              {formatWeight(order.items.reduce((sum, item) => sum + (item.totalWeight || 0), 0))}
-            </p>
           </div>
-          <div>
-            <h3 className="text-sm font-medium text-gray-500">Cubagem Total</h3>
-            <p className="text-lg">
-              {(order.items.reduce((sum, item) => sum + (item.totalCubicVolume || 0), 0)).toFixed(2)} m³
-            </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Peso Total do Pedido</h3>
+              <p className="text-lg">
+                {formatWeight(order.items.reduce((sum, item) => sum + (item.totalWeight || 0), 0))}
+              </p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Cubagem Total</h3>
+              <p className="text-lg">
+                {(order.items.reduce((sum, item) => sum + (item.totalCubicVolume || 0), 0)).toFixed(2)} m³
+              </p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Total de Volumes</h3>
+              <p className="text-lg">{totalVolumes}</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text
+        </CardContent>
+      </Card>
+
+      {notes && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-medium">Observações</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="whitespace-pre-wrap">{notes}</p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+export default OrderDetail;
