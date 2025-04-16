@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import * as ReactDOM from 'react-dom/client';
@@ -786,4 +787,13 @@ const OrderDetail = () => {
             </div>
             <div>
               <h3 className="text-sm font-medium text-gray-500">Cubagem Total</h3>
-              <p className
+              <p className="text-lg">{formatCubicVolume(order.totalCubicVolume || 0)}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default OrderDetail;
