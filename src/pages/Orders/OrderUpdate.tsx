@@ -17,6 +17,14 @@ import { supabase, uploadInvoicePdf, deleteInvoicePdf } from '@/integrations/sup
 import { User, TransportCompany, Order } from '@/types/types';
 import { FileUpload } from '@/components/ui/file-upload';
 import DuplicataForm from "@/components/orders/DuplicataForm";
+import { 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { fetchRefTable, fetchDuplicatas, upsertDuplicata, deleteDuplicata, uploadBoletoPdf, deleteBoletoPdf } from "@/integrations/supabase/duplicata";
 import { Duplicata, RefTable } from "@/types/duplicata";
 
@@ -45,6 +53,18 @@ const OrderUpdate = () => {
   const [showDuplicataForm, setShowDuplicataForm] = useState(false);
   const [editingDuplicata, setEditingDuplicata] = useState<Duplicata | null>(null);
   const [isSavingDuplicata, setIsSavingDuplicata] = useState(false);
+  const [isLoadingLookup, setIsLoadingLookup] = useState(true);
+  const [lookup, setLookup] = useState<{
+    modos: RefTable[];
+    portadores: RefTable[];
+    bancos: RefTable[];
+    statuses: RefTable[];
+  }>({
+    modos: [],
+    portadores: [],
+    bancos: [],
+    statuses: []
+  });
 
   const { order, isLoading, fetchOrderData } = useOrderData(id);
 
@@ -562,43 +582,43 @@ const OrderUpdate = () => {
                 </Button>
               </div>
               <div className="overflow-x-auto">
-                <table className="min-w-full text-xs md:text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th>Número</th>
-                      <th>Emissão</th>
-                      <th>Vencimento</th>
-                      <th>Valor</th>
-                      <th>Acresc.</th>
-                      <th>Desconto</th>
-                      <th>Modo Pgto.</th>
-                      <th>Portador</th>
-                      <th>Banco</th>
-                      <th>Situação</th>
-                      <th>Valor Recebido</th>
-                      <th>Data Pgto</th>
-                      <th>Banco Pgto</th>
-                      <th>Boleto PDF</th>
-                      <th>-</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Número</TableHead>
+                      <TableHead>Emissão</TableHead>
+                      <TableHead>Vencimento</TableHead>
+                      <TableHead>Valor</TableHead>
+                      <TableHead>Acresc.</TableHead>
+                      <TableHead>Desconto</TableHead>
+                      <TableHead>Modo Pgto.</TableHead>
+                      <TableHead>Portador</TableHead>
+                      <TableHead>Banco</TableHead>
+                      <TableHead>Situação</TableHead>
+                      <TableHead>Valor Recebido</TableHead>
+                      <TableHead>Data Pgto</TableHead>
+                      <TableHead>Banco Pgto</TableHead>
+                      <TableHead>Boleto PDF</TableHead>
+                      <TableHead>Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {duplicatas.map((d) => (
-                      <tr key={d.id} className="border-b hover:bg-gray-100">
-                        <td>{d.numeroDuplicata}</td>
-                        <td>{d.dataEmissao}</td>
-                        <td>{d.dataVencimento}</td>
-                        <td>{d.valor}</td>
-                        <td>{d.valorAcrescimo}</td>
-                        <td>{d.valorDesconto}</td>
-                        <td>{d.modoPagamento?.nome || '-'}</td>
-                        <td>{d.portador?.nome || '-'}</td>
-                        <td>{d.banco?.nome || '-'}</td>
-                        <td>{d.paymentStatus?.nome || '-'}</td>
-                        <td>{d.valorRecebido || '-'}</td>
-                        <td>{d.dataPagamento || '-'}</td>
-                        <td>{d.bancoPagamento?.nome || '-'}</td>
-                        <td>
+                      <TableRow key={d.id}>
+                        <TableCell>{d.numeroDuplicata}</TableCell>
+                        <TableCell>{d.dataEmissao ? format(new Date(d.dataEmissao), "dd/MM/yyyy", { locale: ptBR }) : '-'}</TableCell>
+                        <TableCell>{d.dataVencimento ? format(new Date(d.dataVencimento), "dd/MM/yyyy", { locale: ptBR }) : '-'}</TableCell>
+                        <TableCell>{formatCurrency(d.valor)}</TableCell>
+                        <TableCell>{formatCurrency(d.valorAcrescimo)}</TableCell>
+                        <TableCell>{formatCurrency(d.valorDesconto)}</TableCell>
+                        <TableCell>{d.modoPagamento?.nome || '-'}</TableCell>
+                        <TableCell>{d.portador?.nome || '-'}</TableCell>
+                        <TableCell>{d.banco?.nome || '-'}</TableCell>
+                        <TableCell>{d.paymentStatus?.nome || '-'}</TableCell>
+                        <TableCell>{d.valorRecebido !== undefined ? formatCurrency(d.valorRecebido) : '-'}</TableCell>
+                        <TableCell>{d.dataPagamento ? format(new Date(d.dataPagamento), "dd/MM/yyyy", { locale: ptBR }) : '-'}</TableCell>
+                        <TableCell>{d.bancoPagamento?.nome || '-'}</TableCell>
+                        <TableCell>
                           {d.pdfBoletoPath ? (
                             <a href={d.pdfBoletoPath} target="_blank" rel="noopener noreferrer">
                               <Button size="icon" variant="ghost" className="hover:bg-ferplas-50" title="Baixar PDF">
@@ -618,8 +638,8 @@ const OrderUpdate = () => {
                               <Trash2 size={16} />
                             </Button>
                           )}
-                        </td>
-                        <td>
+                        </TableCell>
+                        <TableCell>
                           <Button size="sm" variant="outline" onClick={() => handleEditDuplicata(d)}>
                             Editar
                           </Button>
@@ -631,16 +651,18 @@ const OrderUpdate = () => {
                           >
                             <Trash2 size={16} />
                           </Button>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
-                {duplicatas.length === 0 && (
-                  <div className="py-8 text-center text-muted-foreground">
-                    Nenhuma duplicata cadastrada.
-                  </div>
-                )}
+                    {duplicatas.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={15} className="text-center py-8 text-muted-foreground">
+                          Nenhuma duplicata cadastrada.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </div>
               {showDuplicataForm && (
                 <div className="fixed inset-0 bg-black/20 z-30 flex justify-center items-center">
@@ -656,7 +678,7 @@ const OrderUpdate = () => {
                       }}
                       onDeletePdf={
                         editingDuplicata?.pdfBoletoPath
-                          ? () => handleDeleteBoletoPdf(editingDuplicata!)
+                          ? async () => handleDeleteBoletoPdf(editingDuplicata!)
                           : undefined
                       }
                     />

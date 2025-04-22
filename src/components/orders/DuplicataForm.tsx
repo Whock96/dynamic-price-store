@@ -4,12 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { FileUpload } from "@/components/ui/file-upload";
 import { Duplicata, RefTable } from "@/types/duplicata";
 import { format } from "date-fns";
-import { toast } from "sonner";
-import { uploadBoletoPdf, deleteBoletoPdf } from "@/integrations/supabase/duplicata";
 
 interface Props {
   value?: Partial<Duplicata>;
@@ -21,7 +18,7 @@ interface Props {
   };
   onSave: (data: Partial<Duplicata>, file?: File | null) => void;
   onCancel: () => void;
-  onDeletePdf?: () => void;
+  onDeletePdf?: () => Promise<void>;
   isSaving: boolean;
 }
 
@@ -55,6 +52,12 @@ const DuplicataForm: React.FC<Props> = ({
     if (s === "Pago" || s === "Pago Parcialmente") setShowPayment(true);
     else setShowPayment(false);
   }, [data.paymentStatusId, lookup.statuses]);
+
+  const handleDeletePdf = async () => {
+    if (onDeletePdf) {
+      await onDeletePdf();
+    }
+  };
 
   return (
     <form
@@ -296,7 +299,7 @@ const DuplicataForm: React.FC<Props> = ({
           accept="application/pdf,.pdf"
           maxSize={15}
           isLoading={isSaving}
-          onDelete={value?.pdfBoletoPath && onDeletePdf ? onDeletePdf : undefined}
+          onDelete={value?.pdfBoletoPath && onDeletePdf ? handleDeletePdf : undefined}
         />
         <span className="text-xs text-muted-foreground">
           Formato: PDF, até 15MB.
@@ -305,10 +308,10 @@ const DuplicataForm: React.FC<Props> = ({
       <div className="flex gap-3">
         <Button
           type="submit"
-          loading={isSaving}
+          disabled={isSaving}
           className="bg-ferplas-500 hover:bg-ferplas-600"
         >
-          Salvar
+          {isSaving ? "Salvando..." : "Salvar"}
         </Button>
         <Button variant="outline" type="button" onClick={onCancel} disabled={isSaving}>
           Cancelar

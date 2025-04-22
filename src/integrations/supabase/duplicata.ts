@@ -28,9 +28,27 @@ export async function fetchDuplicatas(orderId: string): Promise<Duplicata[]> {
     .eq("order_id", orderId)
     .order("data_vencimento", { ascending: true });
   if (error) throw error;
-  // Renomear os campos aninhados para os nomes certos para o formulário/tabela
+  
+  // Transform database fields to match our frontend model
   return (data || []).map(d => ({
-    ...d,
+    id: d.id,
+    orderId: d.order_id,
+    numeroDuplicata: d.numero_duplicata,
+    dataEmissao: d.data_emissao,
+    dataVencimento: d.data_vencimento,
+    valor: d.valor,
+    valorAcrescimo: d.valor_acrescimo,
+    valorDesconto: d.valor_desconto,
+    modoPagamentoId: d.modo_pagamento_id,
+    portadorId: d.portador_id,
+    bancoId: d.banco_id,
+    paymentStatusId: d.payment_status_id,
+    valorRecebido: d.valor_recebido,
+    dataPagamento: d.data_pagamento,
+    bancoPagamentoId: d.banco_pagamento_id,
+    pdfBoletoPath: d.pdf_boleto_path,
+    createdAt: d.created_at,
+    updatedAt: d.updated_at,
     modoPagamento: d.modo_pagamento,
     portador: d.portador,
     banco: d.banco,
@@ -40,10 +58,29 @@ export async function fetchDuplicatas(orderId: string): Promise<Duplicata[]> {
 }
 
 export async function upsertDuplicata(duplicata: Partial<Duplicata>) {
-  // upsert = insert or update by id
+  // Convert from frontend model to database fields
+  const dbDuplicata = {
+    id: duplicata.id,
+    order_id: duplicata.orderId,
+    numero_duplicata: duplicata.numeroDuplicata,
+    data_emissao: duplicata.dataEmissao,
+    data_vencimento: duplicata.dataVencimento,
+    valor: duplicata.valor,
+    valor_acrescimo: duplicata.valorAcrescimo,
+    valor_desconto: duplicata.valorDesconto,
+    modo_pagamento_id: duplicata.modoPagamentoId,
+    portador_id: duplicata.portadorId,
+    banco_id: duplicata.bancoId,
+    payment_status_id: duplicata.paymentStatusId,
+    valor_recebido: duplicata.valorRecebido,
+    data_pagamento: duplicata.dataPagamento,
+    banco_pagamento_id: duplicata.bancoPagamentoId,
+    pdf_boleto_path: duplicata.pdfBoletoPath
+  };
+
   const { data, error } = await supabase
     .from('duplicatas')
-    .upsert(duplicata, { onConflict: 'id' })
+    .upsert(dbDuplicata, { onConflict: 'id' })
     .select();
   if (error) throw error;
   return data && data[0];
