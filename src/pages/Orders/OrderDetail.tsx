@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import * as ReactDOM from 'react-dom/client';
@@ -30,6 +31,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { InvoiceCard } from '@/components/orders/InvoiceCard';
 import { printStyles } from '@/styles/printStyles';
 import { Order } from '@/types/types';
+import { supabaseOrderToAppOrder } from '@/utils/adapters';
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -58,7 +60,7 @@ const OrderDetail = () => {
     return phone;
   };
 
-  useEffect(() => {
+  const fetchOrderData = async () => {
     if (id) {
       console.log(`Fetching order with ID: ${id}`);
       
@@ -78,6 +80,10 @@ const OrderDetail = () => {
         fetchOrderDirectly(id);
       }
     }
+  };
+
+  useEffect(() => {
+    fetchOrderData();
   }, [id, getOrderById]);
 
   const fetchOrderDirectly = async (orderId: string) => {
@@ -202,7 +208,7 @@ const OrderDetail = () => {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Pedido #${order.orderNumber || '1'} - Impressão</title>
+        <title>Pedido #${order?.orderNumber || '1'} - Impressão</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -257,7 +263,7 @@ const OrderDetail = () => {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Faturamento #${order.orderNumber || '1'} - Impressão</title>
+        <title>Faturamento #${order?.orderNumber || '1'} - Impressão</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -333,29 +339,29 @@ const OrderDetail = () => {
     );
   }
 
-  const orderNumber = order.orderNumber || order.order_number || 1;
-  const totalDiscount = order.totalDiscount || order.total_discount || 0;
-  const appliedDiscounts = order.appliedDiscounts || order.discountOptions || [];
+  const orderNumber = order.orderNumber || 1;
+  const totalDiscount = order.totalDiscount || 0;
+  const appliedDiscounts = order.appliedDiscounts || [];
   const items = order.items || [];
   const shipping = order.shipping || 'delivery';
   const notes = order.observations || order.notes || '';
-  const fullInvoice = order.fullInvoice !== undefined ? order.fullInvoice : (order.full_invoice !== undefined ? order.full_invoice : true);
-  const taxSubstitution = order.taxSubstitution !== undefined ? order.taxSubstitution : (order.tax_substitution !== undefined ? order.tax_substitution : false);
-  const withSuframa = order.withSuframa !== undefined ? order.withSuframa : (order.with_suframa !== undefined ? order.with_suframa : false);
-  const paymentMethod = order.paymentMethod || order.payment_method || 'cash';
-  const paymentTerms = order.paymentTerms || order.payment_terms || '';
-  const deliveryLocation = order.deliveryLocation || order.delivery_location || null;
-  const deliveryFee = order.deliveryFee || order.delivery_fee || 0;
-  const halfInvoicePercentage = order.halfInvoicePercentage || order.half_invoice_percentage || 50;
-  const withIPI = order.withIPI !== undefined ? order.withIPI : (order.with_ipi !== undefined ? order.with_ipi : false);
+  const fullInvoice = order.fullInvoice !== undefined ? order.fullInvoice : true;
+  const taxSubstitution = order.taxSubstitution !== undefined ? order.taxSubstitution : false;
+  const withSuframa = order.withSuframa !== undefined ? order.withSuframa : false;
+  const paymentMethod = order.paymentMethod || 'cash';
+  const paymentTerms = order.paymentTerms || '';
+  const deliveryLocation = order.deliveryLocation || null;
+  const deliveryFee = order.deliveryFee || 0;
+  const halfInvoicePercentage = order.halfInvoicePercentage || 50;
+  const withIPI = order.withIPI !== undefined ? order.withIPI : false;
   
   const ipiValue = withIPI 
-    ? (order.ipiValue || order.ipi_value || 0)
+    ? (order.ipiValue || 0)
     : 0;
   
   const userName = order.user?.name || 'Usuário do Sistema';
   console.log("OrderDetail - Order user details:", {
-    userId: order.userId || order.user_id,
+    userId: order.userId,
     userName: order.user?.name,
     userObject: order.user
   });
@@ -380,7 +386,7 @@ const OrderDetail = () => {
               <div className="ml-4">{getStatusBadge(order.status)}</div>
             </div>
             <p className="text-muted-foreground">
-              Criado em {format(new Date(order.createdAt || order.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+              Criado em {format(new Date(order.createdAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
             </p>
           </div>
         </div>
@@ -418,10 +424,10 @@ const OrderDetail = () => {
             <div>
               <h3 className="text-sm font-medium text-gray-500">Empresa</h3>
               <p className="text-lg font-semibold">
-                {order.customer?.companyName || order.customers?.company_name || "Cliente não identificado"}
+                {order.customer?.companyName || "Cliente não identificado"}
               </p>
               <p className="text-sm text-gray-500">
-                CNPJ/CPF: {order.customer?.document || order.customers?.document || "N/A"}
+                CNPJ/CPF: {order.customer?.document || "N/A"}
               </p>
             </div>
             
@@ -433,20 +439,20 @@ const OrderDetail = () => {
                 Endereço
               </h3>
               <p className="text-md">
-                {order.customer?.street || order.customers?.street || "Endereço não disponível"}, 
-                {order.customer?.number || order.customers?.number || "S/N"}
-                {(order.customer?.complement || order.customers?.complement) && 
-                  ` - ${order.customer?.complement || order.customers?.complement}`}
+                {order.customer?.street || "Endereço não disponível"}, 
+                {order.customer?.number || "S/N"}
+                {(order.customer?.complement) && 
+                  ` - ${order.customer?.complement}`}
               </p>
-              {(order.customer?.neighborhood || order.customers?.neighborhood) && (
+              {(order.customer?.neighborhood) && (
                 <p className="text-md">
-                  Bairro: {order.customer?.neighborhood || order.customers?.neighborhood}
+                  Bairro: {order.customer?.neighborhood}
                 </p>
               )}
               <p className="text-md">
-                {order.customer?.city || order.customers?.city || "Cidade não informada"}/
-                {order.customer?.state || order.customers?.state || "Estado não informado"} - 
-                {order.customer?.zipCode || order.customers?.zip_code || "CEP não informado"}
+                {order.customer?.city || "Cidade não informada"}/
+                {order.customer?.state || "Estado não informado"} - 
+                {order.customer?.zipCode || "CEP não informado"}
               </p>
             </div>
             
@@ -458,7 +464,7 @@ const OrderDetail = () => {
                   <Phone className="h-4 w-4 mr-1 text-gray-400" />
                   Telefone
                 </h3>
-                <p className="text-md">{formatPhoneNumber(order.customer?.phone || order.customers?.phone)}</p>
+                <p className="text-md">{formatPhoneNumber(order.customer?.phone)}</p>
               </div>
               
               <div>
@@ -466,15 +472,15 @@ const OrderDetail = () => {
                   <Mail className="h-4 w-4 mr-1 text-gray-400" />
                   Email
                 </h3>
-                <p className="text-md">{order.customer?.email || order.customers?.email || "Não informado"}</p>
+                <p className="text-md">{order.customer?.email || "Não informado"}</p>
               </div>
             </div>
             
-            {(order.customer?.id || order.customers?.id) && (
+            {(order.customer?.id) && (
               <Button 
                 variant="outline" 
                 className="w-full"
-                onClick={() => navigate(`/customers/${order.customer?.id || order.customers?.id}`)}
+                onClick={() => navigate(`/customers/${order.customer?.id}`)}
               >
                 <User className="mr-2 h-4 w-4" />
                 Ver Detalhes do Cliente

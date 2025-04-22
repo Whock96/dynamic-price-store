@@ -16,7 +16,7 @@ export const useOrderData = ({ customerId, userId, startDate, endDate }: UseOrde
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { setOrder } = useOrders();
+  const { orders: contextOrders } = useOrders(); // Changed from setOrder to orders
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -60,6 +60,21 @@ export const useOrderData = ({ customerId, userId, startDate, endDate }: UseOrde
       } else if (data) {
         // Convert Supabase orders to app Order type using the adapter
         const processedOrders = data.map(order => {
+          const userName = order.user ? 
+                          (typeof order.user === 'object' && order.user !== null && 'name' in order.user ? 
+                            order.user.name : 'Usuário do Sistema') : 
+                          'Usuário do Sistema';
+
+          const transportCompanyName = order.transport_company_id ? 
+                                     (order.transport_companies ? 
+                                       (typeof order.transport_companies === 'object' ? 
+                                         (Array.isArray(order.transport_companies) && order.transport_companies.length > 0 ? 
+                                           order.transport_companies[0].name : 
+                                           (order.transport_companies.name || null)) : 
+                                         null) : 
+                                       null) : 
+                                     null;
+
           return {
             id: order.id,
             orderNumber: order.order_number,
@@ -89,7 +104,7 @@ export const useOrderData = ({ customerId, userId, startDate, endDate }: UseOrde
             user: {
               id: order.user_id || '',
               username: '',
-              name: order.user?.name || 'Usuário do Sistema',
+              name: userName,
               email: '',
               createdAt: new Date(),
               userTypeId: '',
@@ -116,7 +131,7 @@ export const useOrderData = ({ customerId, userId, startDate, endDate }: UseOrde
             withIPI: order.with_ipi || false,
             ipiValue: Number(order.ipi_value || 0),
             transportCompanyId: order.transport_company_id,
-            transportCompanyName: order.transport_company_name,
+            transportCompanyName: transportCompanyName,
             invoiceNumber: order.invoice_number || null,
             invoicePdfPath: order.invoice_pdf_path || null,
             productsTotal: Number(order.products_total || 0),
@@ -133,7 +148,7 @@ export const useOrderData = ({ customerId, userId, startDate, endDate }: UseOrde
     };
 
     fetchOrders();
-  }, [customerId, userId, startDate, endDate, setOrder]);
+  }, [customerId, userId, startDate, endDate]);
 
   return { orders, loading, error };
 };
