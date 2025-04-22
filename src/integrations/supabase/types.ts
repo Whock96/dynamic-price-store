@@ -9,6 +9,30 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      bancos: {
+        Row: {
+          codigo: string | null
+          created_at: string | null
+          id: string
+          nome: string
+          updated_at: string | null
+        }
+        Insert: {
+          codigo?: string | null
+          created_at?: string | null
+          id?: string
+          nome: string
+          updated_at?: string | null
+        }
+        Update: {
+          codigo?: string | null
+          created_at?: string | null
+          id?: string
+          nome?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string
@@ -236,6 +260,133 @@ export type Database = {
         }
         Relationships: []
       }
+      duplicatas: {
+        Row: {
+          banco_id: string | null
+          banco_pagamento_id: string | null
+          created_at: string | null
+          data_emissao: string
+          data_pagamento: string | null
+          data_vencimento: string
+          id: string
+          modo_pagamento_id: string | null
+          numero_duplicata: string
+          order_id: string
+          payment_status_id: string | null
+          pdf_boleto_path: string | null
+          portador_id: string | null
+          updated_at: string | null
+          valor: number
+          valor_acrescimo: number
+          valor_desconto: number
+          valor_recebido: number | null
+        }
+        Insert: {
+          banco_id?: string | null
+          banco_pagamento_id?: string | null
+          created_at?: string | null
+          data_emissao: string
+          data_pagamento?: string | null
+          data_vencimento: string
+          id?: string
+          modo_pagamento_id?: string | null
+          numero_duplicata: string
+          order_id: string
+          payment_status_id?: string | null
+          pdf_boleto_path?: string | null
+          portador_id?: string | null
+          updated_at?: string | null
+          valor?: number
+          valor_acrescimo?: number
+          valor_desconto?: number
+          valor_recebido?: number | null
+        }
+        Update: {
+          banco_id?: string | null
+          banco_pagamento_id?: string | null
+          created_at?: string | null
+          data_emissao?: string
+          data_pagamento?: string | null
+          data_vencimento?: string
+          id?: string
+          modo_pagamento_id?: string | null
+          numero_duplicata?: string
+          order_id?: string
+          payment_status_id?: string | null
+          pdf_boleto_path?: string | null
+          portador_id?: string | null
+          updated_at?: string | null
+          valor?: number
+          valor_acrescimo?: number
+          valor_desconto?: number
+          valor_recebido?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "duplicatas_banco_id_fkey"
+            columns: ["banco_id"]
+            isOneToOne: false
+            referencedRelation: "bancos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "duplicatas_banco_pagamento_id_fkey"
+            columns: ["banco_pagamento_id"]
+            isOneToOne: false
+            referencedRelation: "bancos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "duplicatas_modo_pagamento_id_fkey"
+            columns: ["modo_pagamento_id"]
+            isOneToOne: false
+            referencedRelation: "modo_pagamento"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "duplicatas_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "duplicatas_payment_status_id_fkey"
+            columns: ["payment_status_id"]
+            isOneToOne: false
+            referencedRelation: "payment_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "duplicatas_portador_id_fkey"
+            columns: ["portador_id"]
+            isOneToOne: false
+            referencedRelation: "portador"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      modo_pagamento: {
+        Row: {
+          created_at: string | null
+          id: string
+          nome: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          nome: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          nome?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       order_discounts: {
         Row: {
           created_at: string
@@ -458,6 +609,27 @@ export type Database = {
           },
         ]
       }
+      payment_status: {
+        Row: {
+          created_at: string | null
+          id: string
+          nome: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          nome: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          nome?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       permissions: {
         Row: {
           code: string
@@ -482,6 +654,27 @@ export type Database = {
           id?: string
           name?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      portador: {
+        Row: {
+          created_at: string | null
+          id: string
+          nome: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          nome: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          nome?: string
+          updated_at?: string | null
         }
         Relationships: []
       }

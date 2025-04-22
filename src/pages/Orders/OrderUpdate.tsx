@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Download, Trash2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import { formatCurrency, formatDate } from '@/utils/formatters';
@@ -16,6 +16,9 @@ import { useOrderData } from '@/hooks/use-order-data';
 import { supabase, uploadInvoicePdf, deleteInvoicePdf } from '@/integrations/supabase/client';
 import { User, TransportCompany, Order } from '@/types/types';
 import { FileUpload } from '@/components/ui/file-upload';
+import DuplicataForm from "@/components/orders/DuplicataForm";
+import { fetchRefTable, fetchDuplicatas, upsertDuplicata, deleteDuplicata, uploadBoletoPdf, deleteBoletoPdf } from "@/integrations/supabase/duplicata";
+import { Duplicata, RefTable } from "@/types/duplicata";
 
 const OrderUpdate = () => {
   const { id } = useParams<{ id: string }>();
@@ -37,7 +40,12 @@ const OrderUpdate = () => {
   const [invoicePdfPath, setInvoicePdfPath] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeletingPdf, setIsDeletingPdf] = useState(false);
-  
+  const [duplicatas, setDuplicatas] = useState<Duplicata[]>([]);
+  const [isLoadingDuplicatas, setIsLoadingDuplicatas] = useState(true);
+  const [showDuplicataForm, setShowDuplicataForm] = useState(false);
+  const [editingDuplicata, setEditingDuplicata] = useState<Duplicata | null>(null);
+  const [isSavingDuplicata, setIsSavingDuplicata] = useState(false);
+
   const { order, isLoading, fetchOrderData } = useOrderData(id);
 
   useEffect(() => {
@@ -110,6 +118,36 @@ const OrderUpdate = () => {
       setInvoicePdfPath(order.invoicePdfPath || null);
     }
   }, [order]);
+
+  useEffect(() => {
+    async function loadLookups() {
+      setIsLoadingLookup(true);
+      try {
+        const [modos, portadores, bancos, statuses] = await Promise.all([
+          fetchRefTable("modo_pagamento"),
+          fetchRefTable("portador"),
+          fetchRefTable("bancos"),
+          fetchRefTable("payment_status"),
+        ]);
+        setLookup({ modos, portadores, bancos, statuses });
+      } catch (err) {
+        toast.error("Erro ao carregar opções para duplicatas");
+      } finally {
+        setIsLoadingLookup(false);
+      }
+    }
+    loadLookups();
+  }, []);
+
+  useEffect(() => {
+    if (id) {
+      setIsLoadingDuplicatas(true);
+      fetchDuplicatas(id)
+        .then(setDuplicatas)
+        .catch((e) => toast.error("Erro ao buscar duplicatas"))
+        .finally(() => setIsLoadingDuplicatas(false));
+    }
+  }, [id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -210,6 +248,68 @@ const OrderUpdate = () => {
   const handlePaymentMethodChange = (value: string) => {
     if (value === 'cash' || value === 'credit') {
       setPaymentMethod(value);
+    }
+  };
+
+  const handleCreateDuplicata = () => {
+    setEditingDuplicata(null);
+    setShowDuplicataForm(true);
+  };
+
+  const handleEditDuplicata = (dup: Duplicata) => {
+    setEditingDuplicata(dup);
+    setShowDuplicataForm(true);
+  };
+
+  const handleSaveDuplicata = async (form: Partial<Duplicata>, file?: File | null) => {
+    setIsSavingDuplicata(true);
+    let pdfBoletoPath = form.pdfBoletoPath || null;
+    try {
+      if (file && id) {
+        pdfBoletoPath = await uploadBoletoPdf(file, id);
+      }
+      const payload: Partial<Duplicata> = {
+        ...form,
+        orderId: id,
+        pdfBoletoPath,
+      };
+      if (form.id) payload.id = form.id;
+      const res = await upsertDuplicata(payload);
+      toast.success("Duplicata salva");
+      setShowDuplicataForm(false);
+      setEditingDuplicata(null);
+      fetchDuplicatas(id).then(setDuplicatas);
+    } catch (err: any) {
+      toast.error("Erro ao salvar duplicata: " + (err.message || "Erro desconhecido"));
+    } finally {
+      setIsSavingDuplicata(false);
+    }
+  };
+
+  const handleDeleteDuplicata = async (dup: Duplicata) => {
+    if (!window.confirm("Excluir esta duplicata?")) return;
+    try {
+      if (dup.pdfBoletoPath) {
+        await deleteBoletoPdf(dup.pdfBoletoPath);
+      }
+      await deleteDuplicata(dup.id);
+      toast.success("Duplicata excluída");
+      fetchDuplicatas(id).then(setDuplicatas);
+    } catch (err: any) {
+      toast.error("Erro ao excluir duplicata");
+    }
+  };
+
+  const handleDeleteBoletoPdf = async (dup: Duplicata) => {
+    if (!dup.pdfBoletoPath) return;
+    if (!window.confirm("Excluir o PDF do boleto?")) return;
+    try {
+      await deleteBoletoPdf(dup.pdfBoletoPath);
+      await upsertDuplicata({ id: dup.id, pdfBoletoPath: null });
+      fetchDuplicatas(id).then(setDuplicatas);
+      toast.success("PDF excluído");
+    } catch (err) {
+      toast.error("Erro ao excluir PDF");
     }
   };
 
@@ -444,6 +544,127 @@ const OrderUpdate = () => {
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Duplicatas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoadingLookup || isLoadingDuplicatas ? (
+            <div className="py-4 text-sm text-muted-foreground">Carregando...</div>
+          ) : (
+            <>
+              <div className="mb-4 flex gap-2">
+                <Button onClick={handleCreateDuplicata} size="sm">
+                  Adicionar Duplicata
+                </Button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-xs md:text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th>Número</th>
+                      <th>Emissão</th>
+                      <th>Vencimento</th>
+                      <th>Valor</th>
+                      <th>Acresc.</th>
+                      <th>Desconto</th>
+                      <th>Modo Pgto.</th>
+                      <th>Portador</th>
+                      <th>Banco</th>
+                      <th>Situação</th>
+                      <th>Valor Recebido</th>
+                      <th>Data Pgto</th>
+                      <th>Banco Pgto</th>
+                      <th>Boleto PDF</th>
+                      <th>-</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {duplicatas.map((d) => (
+                      <tr key={d.id} className="border-b hover:bg-gray-100">
+                        <td>{d.numeroDuplicata}</td>
+                        <td>{d.dataEmissao}</td>
+                        <td>{d.dataVencimento}</td>
+                        <td>{d.valor}</td>
+                        <td>{d.valorAcrescimo}</td>
+                        <td>{d.valorDesconto}</td>
+                        <td>{d.modoPagamento?.nome || '-'}</td>
+                        <td>{d.portador?.nome || '-'}</td>
+                        <td>{d.banco?.nome || '-'}</td>
+                        <td>{d.paymentStatus?.nome || '-'}</td>
+                        <td>{d.valorRecebido || '-'}</td>
+                        <td>{d.dataPagamento || '-'}</td>
+                        <td>{d.bancoPagamento?.nome || '-'}</td>
+                        <td>
+                          {d.pdfBoletoPath ? (
+                            <a href={d.pdfBoletoPath} target="_blank" rel="noopener noreferrer">
+                              <Button size="icon" variant="ghost" className="hover:bg-ferplas-50" title="Baixar PDF">
+                                <Download size={18} />
+                              </Button>
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                          {d.pdfBoletoPath && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleDeleteBoletoPdf(d)}
+                              title="Excluir PDF"
+                            >
+                              <Trash2 size={16} />
+                            </Button>
+                          )}
+                        </td>
+                        <td>
+                          <Button size="sm" variant="outline" onClick={() => handleEditDuplicata(d)}>
+                            Editar
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleDeleteDuplicata(d)}
+                            title="Excluir"
+                          >
+                            <Trash2 size={16} />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {duplicatas.length === 0 && (
+                  <div className="py-8 text-center text-muted-foreground">
+                    Nenhuma duplicata cadastrada.
+                  </div>
+                )}
+              </div>
+              {showDuplicataForm && (
+                <div className="fixed inset-0 bg-black/20 z-30 flex justify-center items-center">
+                  <div className="bg-white rounded-md p-4 max-w-lg w-full">
+                    <DuplicataForm
+                      value={editingDuplicata as Duplicata}
+                      lookup={lookup}
+                      isSaving={isSavingDuplicata}
+                      onSave={handleSaveDuplicata}
+                      onCancel={() => {
+                        setShowDuplicataForm(false);
+                        setEditingDuplicata(null);
+                      }}
+                      onDeletePdf={
+                        editingDuplicata?.pdfBoletoPath
+                          ? () => handleDeleteBoletoPdf(editingDuplicata!)
+                          : undefined
+                      }
+                    />
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
 

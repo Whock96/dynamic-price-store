@@ -30,6 +30,8 @@ import PrintableInvoice from '@/components/orders/PrintableInvoice';
 import { supabase } from '@/integrations/supabase/client';
 import { InvoiceCard } from '@/components/orders/InvoiceCard';
 import { printStyles } from '@/styles/printStyles';
+import { fetchDuplicatas } from "@/integrations/supabase/duplicata";
+import DuplicatasCard from "@/components/orders/DuplicatasCard";
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -43,6 +45,8 @@ const OrderDetail = () => {
   const [isLoadingTransport, setIsLoadingTransport] = useState(false);
   const [totalOrderWeight, setTotalOrderWeight] = useState(0);
   const [totalVolumes, setTotalVolumes] = useState(0);
+  const [duplicatas, setDuplicatas] = useState<any[]>([]);
+  const [isLoadingDuplicatas, setIsLoadingDuplicatas] = useState(true);
   const { companyInfo } = useCompany();
 
   const formatPhoneNumber = (phone: string | undefined | null) => {
@@ -274,6 +278,18 @@ const OrderDetail = () => {
   const getStatusBadge = (status: string) => {
     return <OrderStatusBadge status={status as any} />;
   };
+
+  useEffect(() => {
+    if (order?.id) {
+      setIsLoadingDuplicatas(true);
+      fetchDuplicatas(order.id)
+        .then(data => setDuplicatas(data))
+        .catch(err => {
+          console.error("Erro ao buscar duplicatas:", err);
+        })
+        .finally(() => setIsLoadingDuplicatas(false));
+    }
+  }, [order?.id]);
 
   if (loading || isSupabaseLoading) {
     return (
@@ -834,6 +850,14 @@ const OrderDetail = () => {
       )}
 
       {order && <InvoiceCard order={order} onDelete={handleInvoicePdfDelete} />}
+
+      <div>
+        {isLoadingDuplicatas ? (
+          <div className="my-3 text-center text-sm text-gray-400">Carregando duplicatas...</div>
+        ) : (
+          <DuplicatasCard duplicatas={duplicatas} />
+        )}
+      </div>
     </div>
   );
 };
