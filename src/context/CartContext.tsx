@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Product, CartItem, Customer, DiscountOption, Order, TransportCompany } from '@/types/types';
@@ -110,7 +109,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [applyDiscounts, setApplyDiscounts] = useState<boolean>(true);
   const [paymentTerms, setPaymentTerms] = useState<string>('');
   const [withIPI, setWithIPI] = useState<boolean>(false);
-  const [selectedTransportCompany, setSelectedTransportCompany] = useState<TransportCompany | null>(null);
+  const [selectedTransportCompany, setSelectedTransportCompany] = useState<string | TransportCompany | null>(null);
   const [withSuframa, setWithSuframa] = useState<boolean>(false);
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
   const [isLoadingLastOrder, setIsLoadingLastOrder] = useState<boolean>(false);

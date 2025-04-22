@@ -214,7 +214,6 @@ const ProductManagement = () => {
                       Categoria
                     </Label>
                     <Select
-                      id="category"
                       value={selectedCategory || ''}
                       onValueChange={handleCategoryChange}
                     >
@@ -236,7 +235,6 @@ const ProductManagement = () => {
                       Subcategoria
                     </Label>
                     <Select
-                      id="subcategory"
                       value={selectedSubcategory || ''}
                       onValueChange={handleSubcategoryChange}
                       disabled={!selectedCategory}

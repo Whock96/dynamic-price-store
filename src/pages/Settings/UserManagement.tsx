@@ -31,6 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { v4 as uuidv4 } from 'uuid';
 import { isAdministrador } from '@/utils/permissionUtils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface User {
   id: string;

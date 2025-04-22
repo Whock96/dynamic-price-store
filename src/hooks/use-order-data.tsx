@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Order } from '@/types/types';
@@ -16,7 +15,7 @@ export const useOrderData = ({ customerId, userId, startDate, endDate }: UseOrde
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { orders: contextOrders } = useOrders(); // Changed from setOrder to orders
+  const { orders: contextOrders } = useOrders();
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -62,14 +61,11 @@ export const useOrderData = ({ customerId, userId, startDate, endDate }: UseOrde
         setError(error.message);
         toast.error(`Erro ao buscar pedidos: ${error.message}`);
       } else if (data) {
-        // Convert Supabase orders to app Order type using the adapter
         const processedOrders = data.map(order => {
-          const userName = order.user ? 
-                          (typeof order.user === 'object' && order.user !== null && 'name' in order.user ? 
-                            order.user.name : 'Usuário do Sistema') : 
-                          'Usuário do Sistema';
+          const userName = order.user && typeof order.user === 'object' && order.user !== null && 'name' in order.user
+            ? order.user.name
+            : 'Usuário do Sistema';
 
-          // Handle transport company data safely
           let transportCompanyName = null;
           if (order.transport_company_id && order.transport_company) {
             if (typeof order.transport_company === 'object' && order.transport_company !== null) {
