@@ -306,7 +306,7 @@ const OrderUpdate = () => {
       const payload: Partial<Duplicata> = {
         ...form,
         orderId: id,
-        ...(pdfBoletoPath !== undefined ? { pdfBoletoPath } : {}),
+        pdfBoletoPath,
       };
       if (form.id) payload.id = form.id;
 
