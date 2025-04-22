@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -128,6 +129,33 @@ const DuplicataForm: React.FC<Props> = ({
               </div>
               <div />
             </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label>Data Emissão</Label>
+                <Input
+                  type="date"
+                  required
+                  value={data.dataEmissao || ""}
+                  onChange={(e) =>
+                    setData((v) => ({ ...v, dataEmissao: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <Label>Data Vencimento</Label>
+                <Input
+                  type="date"
+                  required
+                  value={data.dataVencimento || ""}
+                  onChange={(e) =>
+                    setData((v) => ({ ...v, dataVencimento: e.target.value }))
+                  }
+                />
+              </div>
+              <div />
+            </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label>Valor (R$)</Label>
