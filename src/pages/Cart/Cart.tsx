@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -834,5 +835,20 @@ const Cart = () => {
                           onCheckedChange={() => toggleDiscountOption(option.id)}
                         />
                       </div>
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-gray-500">Nenhuma opção de desconto disponível.</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
 
-                      {option.id === 'a-vista' && !isDiscountOptionSelected(option.id) && (
+export default Cart;
