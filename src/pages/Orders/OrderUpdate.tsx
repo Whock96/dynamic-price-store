@@ -286,7 +286,7 @@ const OrderUpdate = () => {
   const handleSaveDuplicata = async (form: Partial<Duplicata>, file?: File | null) => {
     setIsSavingDuplicata(true);
     try {
-      let pdfBoletoPath = form.pdfBoletoPath;
+      let pdfBoletoPath = undefined;
       let uploadId = form.id || `${id}-${Date.now()}`;
 
       if (file) {
@@ -300,12 +300,16 @@ const OrderUpdate = () => {
           setIsSavingDuplicata(false);
           return;
         }
+      } else if (form.pdfBoletoPath === null || form.pdfBoletoPath === "") {
+        pdfBoletoPath = null;
+      } else if (form.pdfBoletoPath !== undefined) {
+        pdfBoletoPath = form.pdfBoletoPath;
       }
 
       const payload: Partial<Duplicata> = {
         ...form,
         orderId: id,
-        pdfBoletoPath: pdfBoletoPath ?? null,
+        pdfBoletoPath: pdfBoletoPath,
       };
       if (form.id) payload.id = form.id;
 
