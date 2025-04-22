@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Order, User } from '@/types/types';
@@ -85,7 +86,31 @@ export const useOrderData = ({ customerId, userId, startDate, endDate }: UseOrde
           };
 
           return {
-            ...order,
+            id: order.id,
+            orderNumber: order.order_number,
+            customerId: order.customer_id,
+            customer: {
+              id: order.customer_id,
+              companyName: order.customer?.company_name || 'Cliente não encontrado',
+              document: '',
+              salesPersonId: '',
+              street: '',
+              number: '',
+              noNumber: false,
+              complement: '',
+              neighborhood: '',
+              city: '',
+              state: '',
+              zipCode: '',
+              phone: '',
+              email: '',
+              defaultDiscount: 0,
+              maxDiscount: 0,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              registerDate: new Date(),
+            },
+            userId: order.user_id,
             user: defaultUser,
             items: [],
             appliedDiscounts: [],
