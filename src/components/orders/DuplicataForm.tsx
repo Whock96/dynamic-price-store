@@ -14,7 +14,7 @@ import {
   DialogFooter,
   DialogClose
 } from "@/components/ui/dialog";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 
 interface Props {
   value?: Partial<Duplicata>;
