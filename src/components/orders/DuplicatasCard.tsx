@@ -2,10 +2,18 @@
 import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, Trash2 } from "lucide-react";
+import { Download } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Duplicata } from "@/types/duplicata";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface Props {
   duplicatas: Duplicata[];
@@ -39,42 +47,50 @@ const DuplicatasCard: React.FC<Props> = ({ duplicatas }) => {
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="border-b">
-                <th>Número</th>
-                <th>Emissão</th>
-                <th>Vencimento</th>
-                <th>Valor</th>
-                <th>Acresc.</th>
-                <th>Desconto</th>
-                <th>Modo Pgto.</th>
-                <th>Portador</th>
-                <th>Banco</th>
-                <th>Situação</th>
-                <th>Valor Recebido</th>
-                <th>Data Pgto</th>
-                <th>Banco Pgto</th>
-                <th>Boleto PDF</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table className="w-full text-sm">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="whitespace-nowrap px-4 py-2">Número</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-2">Emissão</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-2">Vencimento</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-2">Valor</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-2">Acresc.</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-2">Desconto</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-2">Modo Pgto.</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-2">Portador</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-2">Banco</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-2">Situação</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-2">Valor Recebido</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-2">Data Pgto</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-2">Banco Pgto</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-2">Boleto PDF</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {duplicatas.map((d) => (
-                <tr key={d.id} className="border-b hover:bg-gray-100 transition">
-                  <td>{d.numeroDuplicata}</td>
-                  <td>{d.dataEmissao ? format(new Date(d.dataEmissao), "dd/MM/yyyy", { locale: ptBR }) : '-'}</td>
-                  <td>{d.dataVencimento ? format(new Date(d.dataVencimento), "dd/MM/yyyy", { locale: ptBR }) : '-'}</td>
-                  <td>{formatCurrency(d.valor)}</td>
-                  <td>{formatCurrency(d.valorAcrescimo)}</td>
-                  <td>{formatCurrency(d.valorDesconto)}</td>
-                  <td>{d.modoPagamento?.nome || '-'}</td>
-                  <td>{d.portador?.nome || '-'}</td>
-                  <td>{d.banco?.nome || '-'}</td>
-                  <td>{d.paymentStatus?.nome || '-'}</td>
-                  <td>{d.valorRecebido !== undefined ? formatCurrency(d.valorRecebido) : '-'}</td>
-                  <td>{d.dataPagamento ? format(new Date(d.dataPagamento), "dd/MM/yyyy", { locale: ptBR }) : '-'}</td>
-                  <td>{d.bancoPagamento?.nome || '-'}</td>
-                  <td>
+                <TableRow key={d.id} className="hover:bg-gray-50 transition">
+                  <TableCell className="px-4 py-2">{d.numeroDuplicata}</TableCell>
+                  <TableCell className="px-4 py-2">
+                    {d.dataEmissao ? format(new Date(d.dataEmissao), "dd/MM/yyyy", { locale: ptBR }) : '-'}
+                  </TableCell>
+                  <TableCell className="px-4 py-2">
+                    {d.dataVencimento ? format(new Date(d.dataVencimento), "dd/MM/yyyy", { locale: ptBR }) : '-'}
+                  </TableCell>
+                  <TableCell className="px-4 py-2">{formatCurrency(d.valor)}</TableCell>
+                  <TableCell className="px-4 py-2">{formatCurrency(d.valorAcrescimo)}</TableCell>
+                  <TableCell className="px-4 py-2">{formatCurrency(d.valorDesconto)}</TableCell>
+                  <TableCell className="px-4 py-2">{d.modoPagamento?.nome || '-'}</TableCell>
+                  <TableCell className="px-4 py-2">{d.portador?.nome || '-'}</TableCell>
+                  <TableCell className="px-4 py-2">{d.banco?.nome || '-'}</TableCell>
+                  <TableCell className="px-4 py-2">{d.paymentStatus?.nome || '-'}</TableCell>
+                  <TableCell className="px-4 py-2">
+                    {d.valorRecebido !== undefined ? formatCurrency(d.valorRecebido) : '-'}
+                  </TableCell>
+                  <TableCell className="px-4 py-2">
+                    {d.dataPagamento ? format(new Date(d.dataPagamento), "dd/MM/yyyy", { locale: ptBR }) : '-'}
+                  </TableCell>
+                  <TableCell className="px-4 py-2">{d.bancoPagamento?.nome || '-'}</TableCell>
+                  <TableCell className="px-4 py-2">
                     {d.pdfBoletoPath ? (
                       <a href={d.pdfBoletoPath} target="_blank" rel="noopener noreferrer">
                         <Button size="icon" variant="ghost" className="text-ferplas-600 hover:bg-ferplas-50" title="Baixar Boleto PDF">
@@ -84,11 +100,11 @@ const DuplicatasCard: React.FC<Props> = ({ duplicatas }) => {
                     ) : (
                       <span className="text-muted-foreground">-</span>
                     )}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </CardContent>
     </Card>
@@ -96,3 +112,4 @@ const DuplicatasCard: React.FC<Props> = ({ duplicatas }) => {
 };
 
 export default DuplicatasCard;
+
