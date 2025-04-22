@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Duplicata, RefTable } from "@/types/duplicata";
 
@@ -29,6 +28,10 @@ export async function fetchDuplicatas(orderId: string): Promise<Duplicata[]> {
     .order("data_vencimento", { ascending: true });
   if (error) throw error;
 
+  function isRefTable(obj: any): obj is RefTable {
+    return obj && typeof obj === 'object' && 'id' in obj && 'nome' in obj;
+  }
+
   return (data || []).map((d: any) => ({
     id: d.id,
     orderId: d.order_id,
@@ -48,11 +51,11 @@ export async function fetchDuplicatas(orderId: string): Promise<Duplicata[]> {
     pdfBoletoPath: d.pdf_boleto_path,
     createdAt: d.created_at,
     updatedAt: d.updated_at,
-    modoPagamento: d.modo_pagamento as RefTable | undefined,
-    portador: d.portador as RefTable | undefined,
-    banco: d.banco as RefTable | undefined,
-    bancoPagamento: d.banco_pagamento as RefTable | undefined,
-    paymentStatus: d.payment_status as RefTable | undefined,
+    modoPagamento: isRefTable(d.modo_pagamento) ? d.modo_pagamento : undefined,
+    portador: isRefTable(d.portador) ? d.portador : undefined,
+    banco: isRefTable(d.banco) ? d.banco : undefined,
+    bancoPagamento: isRefTable(d.banco_pagamento) ? d.banco_pagamento : undefined,
+    paymentStatus: isRefTable(d.payment_status) ? d.payment_status : undefined,
   }));
 }
 
@@ -115,4 +118,3 @@ export async function deleteBoletoPdf(path: string): Promise<boolean> {
   if (error) throw error;
   return true;
 }
-
