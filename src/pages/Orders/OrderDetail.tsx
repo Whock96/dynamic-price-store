@@ -22,22 +22,21 @@ import { useAuth } from '../../context/AuthContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { useOrder } from "@/context/OrderContext";
-import { useOrderData } from '@/hooks/use-order-data';
+import { useOrders } from "@/context/OrderContext";
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import PrintableOrder from '@/components/orders/PrintableOrder';
 import PrintableInvoice from '@/components/orders/PrintableInvoice';
 import { supabase } from '@/integrations/supabase/client';
 import { InvoiceCard } from '@/components/orders/InvoiceCard';
 import { printStyles } from '@/styles/printStyles';
+import { Order } from '@/types/types';
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { getOrderById, updateOrder } = useOrder();
-  const { order: supabaseOrder, isLoading: isSupabaseLoading, fetchOrderData } = useOrderData(id);
-  const [order, setOrder] = useState<any>(null);
+  const { getOrderById, updateOrder } = useOrders();
+  const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [transportCompany, setTransportCompany] = useState<any>(null);
   const [isLoadingTransport, setIsLoadingTransport] = useState(false);
@@ -75,23 +74,59 @@ const OrderDetail = () => {
         }
         
         calculateOrderTotals(contextOrder.items);
-      } else if (supabaseOrder) {
-        console.log(`Found order in Supabase:`, supabaseOrder);
-        setOrder(supabaseOrder);
-        setLoading(false);
-        
-        if (supabaseOrder.transportCompanyId) {
-          fetchTransportCompany(supabaseOrder.transportCompanyId);
-        }
-        
-        calculateOrderTotals(supabaseOrder.items);
-      } else if (!isSupabaseLoading) {
-        console.error(`Order with ID ${id} not found`);
-        toast.error("Pedido não encontrado");
-        setLoading(false);
+      } else {
+        fetchOrderDirectly(id);
       }
     }
-  }, [id, getOrderById, supabaseOrder, isSupabaseLoading]);
+  }, [id, getOrderById]);
+
+  const fetchOrderDirectly = async (orderId: string) => {
+    try {
+      console.log(`Fetching order directly from Supabase: ${orderId}`);
+      setLoading(true);
+      
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          customers(*),
+          transport_companies(id, name)
+        `)
+        .eq('id', orderId)
+        .single();
+        
+      if (orderError) {
+        throw orderError;
+      }
+      
+      if (!orderData) {
+        throw new Error('Order not found');
+      }
+      
+      const { data: itemsData } = await supabase
+        .from('order_items')
+        .select(`
+          *,
+          products(*)
+        `)
+        .eq('order_id', orderId);
+        
+      const processedOrder = supabaseOrderToAppOrder(orderData, itemsData || []);
+      
+      setOrder(processedOrder);
+      
+      if (processedOrder.transportCompanyId) {
+        fetchTransportCompany(processedOrder.transportCompanyId);
+      }
+      
+      calculateOrderTotals(processedOrder.items);
+    } catch (error) {
+      console.error(`Error fetching order: ${error}`);
+      toast.error("Pedido não encontrado");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const calculateOrderTotals = (items: any[]) => {
     if (!items || items.length === 0) {
@@ -275,7 +310,7 @@ const OrderDetail = () => {
     return <OrderStatusBadge status={status as any} />;
   };
 
-  if (loading || isSupabaseLoading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-ferplas-500"></div>

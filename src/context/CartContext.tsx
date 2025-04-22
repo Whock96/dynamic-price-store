@@ -1,767 +1,220 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
-import { useOrder } from './OrderContext';
-import { useCustomers } from './CustomerContext';
-import { useDiscountSettings } from '../hooks/use-discount-settings';
+import { Product, CartItem, Customer, DiscountOption, Order } from '@/types/types';
+import { useOrders } from './OrderContext';
 import { useAuth } from './AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { supabaseOrderToAppOrder } from '@/utils/adapters';
 
 interface CartContextType {
-  items: CartItem[];
-  customer: Customer | null;
-  discountOptions: DiscountOption[];
-  selectedDiscountOptions: string[];
-  deliveryLocation: 'capital' | 'interior' | null;
-  halfInvoicePercentage: number;
-  halfInvoiceType: 'quantity' | 'price';
-  observations: string;
-  paymentTerms: string;
-  totalItems: number;
-  subtotal: number;
-  totalDiscount: number;
-  total: number;
-  deliveryFee: number;
-  applyDiscounts: boolean;
-  withIPI: boolean;
-  withSuframa: boolean;
-  selectedTransportCompany: string | undefined;
-  lastOrder: Order | null;
-  isLoadingLastOrder: boolean;
-  setSelectedTransportCompany: (id: string | undefined) => void;
-  setCustomer: (customer: Customer | null) => void;
-  addItem: (product: Product, quantity: number) => void;
-  removeItem: (id: string) => void;
-  updateItemQuantity: (id: string, quantity: number) => void;
-  updateItemDiscount: (id: string, discount: number) => void;
-  toggleDiscountOption: (id: string) => void;
-  setDeliveryLocation: (location: 'capital' | 'interior' | null) => void;
-  setHalfInvoicePercentage: (percentage: number) => void;
-  setHalfInvoiceType: (type: 'quantity' | 'price') => void;
-  setObservations: (text: string) => void;
-  setPaymentTerms: (terms: string) => void;
+  cart: CartItem[];
+  addToCart: (product: Product, quantity: number) => void;
+  removeFromCart: (productId: string) => void;
+  updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
-  sendOrder: () => Promise<void>;
-  isDiscountOptionSelected: (id: string) => boolean;
-  toggleApplyDiscounts: () => void;
-  calculateTaxSubstitutionValue: () => number;
-  toggleIPI: () => void;
-  toggleSuframa: () => void;
-  calculateIPIValue: () => number;
-  calculateItemTaxSubstitutionValue: (item: CartItem) => number;
+  getTotal: () => number;
+  getTotalItems: () => number;
+  applyDiscount: (discount: DiscountOption) => void;
+  removeDiscount: (discountId: string) => void;
+  appliedDiscounts: DiscountOption[];
+  setCustomer: (customer: Customer | null) => void;
+  customer: Customer | null;
+  deliveryFees: { capital: number; interior: number };
+  setDeliveryFees: (fees: { capital: number; interior: number }) => void;
+  discountSettings: {
+    pickup: number;
+    cashPayment: number;
+    halfInvoice: number;
+    taxSubstitution: number;
+    deliveryFees: {
+      capital: number;
+      interior: number;
+    };
+    ipiRate: number;
+  };
+  setDiscountSettings: (settings: {
+    pickup: number;
+    cashPayment: number;
+    halfInvoice: number;
+    taxSubstitution: number;
+    deliveryFees: {
+      capital: number;
+      interior: number;
+    };
+    ipiRate: number;
+  }) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  let addOrder: (newOrder: Partial<Order>) => Promise<string | undefined>;
-  try {
-    const { addOrder: orderContextAddOrder } = useOrder();
-    addOrder = orderContextAddOrder;
-  } catch (error) {
-    console.error("OrderContext not available:", error);
-    addOrder = async () => {
-      toast.error("Erro: Sistema de pedidos não está disponível");
-      return undefined;
-    };
-  }
-  
-  const { customers } = useCustomers();
-  const { settings } = useDiscountSettings();
-  const { user } = useAuth();
-  
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [appliedDiscounts, setAppliedDiscounts] = useState<DiscountOption[]>([]);
   const [customer, setCustomer] = useState<Customer | null>(null);
-  const [discountOptions, setDiscountOptions] = useState<DiscountOption[]>([]);
-  const [selectedDiscountOptions, setSelectedDiscountOptions] = useState<string[]>([]);
-  const [deliveryLocation, setDeliveryLocation] = useState<'capital' | 'interior' | null>(null);
-  const [halfInvoicePercentage, setHalfInvoicePercentage] = useState<number>(50);
-  const [halfInvoiceType, setHalfInvoiceType] = useState<'quantity' | 'price'>('quantity');
-  const [observations, setObservations] = useState<string>('');
-  const [paymentTerms, setPaymentTerms] = useState<string>('');
-  const [applyDiscounts, setApplyDiscounts] = useState<boolean>(true);
-  const [withIPI, setWithIPI] = useState<boolean>(false);
-  const [withSuframa, setWithSuframa] = useState<boolean>(false);
-  const [selectedTransportCompany, setSelectedTransportCompany] = useState<string | undefined>(undefined);
-
-  const [lastOrder, setLastOrder] = useState<Order | null>(null);
-  const [isLoadingLastOrder, setIsLoadingLastOrder] = useState<boolean>(false);
-
-  useEffect(() => {
-    if (settings) {
-      const updatedDiscountOptions: DiscountOption[] = [
-        {
-          id: 'retirada',
-          name: 'Retirada',
-          description: 'Desconto para retirada na loja',
-          value: settings.pickup,
-          type: 'discount',
-          isActive: true,
-        },
-        {
-          id: 'meia-nota',
-          name: 'Meia nota',
-          description: 'Desconto para meia nota fiscal',
-          value: settings.halfInvoice,
-          type: 'discount',
-          isActive: true,
-        },
-        {
-          id: 'a-vista',
-          name: 'A Vista',
-          description: 'Desconto para pagamento à vista',
-          value: settings.cashPayment,
-          type: 'discount',
-          isActive: true,
-        },
-        {
-          id: 'icms-st',
-          name: 'Substituição tributária',
-          description: 'Acréscimo para substituição tributária',
-          value: settings.taxSubstitution,
-          type: 'surcharge',
-          isActive: true,
-        },
-        {
-          id: 'ipi',
-          name: 'IPI',
-          description: 'Imposto sobre Produtos Industrializados',
-          value: settings.ipiRate,
-          type: 'surcharge',
-          isActive: true,
-        }
-      ];
-      
-      setDiscountOptions(updatedDiscountOptions);
-    }
-  }, [settings]);
-
-  const handleSetCustomer = (selectedCustomer: Customer | null) => {
-    const isSalesperson = user?.userTypeId === 'c5ee0433-3faf-46a4-a516-be7261bfe575';
-    
-    if (isSalesperson && selectedCustomer && selectedCustomer.salesPersonId !== user.id) {
-      toast.error('Você só pode selecionar clientes atribuídos a você.');
-      return;
-    }
-    
-    setCustomer(selectedCustomer);
-  };
-
-  const calculateTotalUnits = (item: CartItem): number => {
-    return item.quantity * (item.product.quantityPerVolume || 1);
-  };
-
-  const isDiscountOptionSelected = (id: string) => {
-    return selectedDiscountOptions.includes(id);
-  };
-
-  const totalItems = items.reduce((total, item) => total + item.quantity, 0);
-  
-  const rawSubtotal = items.reduce((total, item) => {
-    const totalUnits = calculateTotalUnits(item);
-    return total + (item.product.listPrice * totalUnits);
-  }, 0);
-
-  const getNetDiscountPercentage = () => {
-    if (!applyDiscounts) return 0;
-    
-    let discountPercentage = 0;
-    
-    selectedDiscountOptions.forEach(id => {
-      const option = discountOptions.find(opt => opt.id === id);
-      if (!option || option.type !== 'discount') return;
-      discountPercentage += option.value;
-    });
-    
-    return discountPercentage;
-  };
-
-  const getTaxSubstitutionRate = () => {
-    if (!isDiscountOptionSelected('icms-st')) return 0;
-    
-    const taxOption = discountOptions.find(opt => opt.id === 'icms-st');
-    if (!taxOption) return 0;
-    
-    if (isDiscountOptionSelected('meia-nota')) {
-      return (taxOption.value * halfInvoicePercentage) / 100;
-    }
-    
-    return taxOption.value;
-  };
-
-  const getIPIRate = () => {
-    if (!withIPI || !settings) return 0;
-    
-    const ipiRate = settings.ipiRate;
-    
-    if (isDiscountOptionSelected('meia-nota')) {
-      return (ipiRate * halfInvoicePercentage) / 100;
-    }
-    
-    return ipiRate;
-  };
-
-  const deliveryFee = settings && deliveryLocation === 'capital' 
-    ? settings.deliveryFees.capital 
-    : deliveryLocation === 'interior' && settings 
-      ? settings.deliveryFees.interior 
-      : 0;
-
-  const calculateTaxSubstitutionValue = () => {
-    if (!isDiscountOptionSelected('icms-st')) return 0;
-    
-    return items.reduce((total, item) => {
-      const unitTaxValue = calculateItemTaxSubstitutionValue(item);
-      const totalUnits = calculateTotalUnits(item);
-      return total + (unitTaxValue * totalUnits);
-    }, 0);
-  };
-
-  const calculateItemTaxSubstitutionValue = (item: CartItem) => {
-    if (!isDiscountOptionSelected('icms-st')) return 0;
-    
-    const icmsRate = getTaxSubstitutionRate() / 100;
-    const mva = (item.product.mva ?? 39) / 100;
-    
-    return item.finalPrice * mva * icmsRate;
-  };
-
-  const calculateIPIValue = () => {
-    if (!withIPI || !settings) return 0;
-    
-    const ipiRate = settings.ipiRate;
-    const effectiveRate = isDiscountOptionSelected('meia-nota') 
-      ? (ipiRate * halfInvoicePercentage) / 100 
-      : ipiRate;
-    
-    return items.reduce((total, item) => {
-      const totalUnits = calculateTotalUnits(item);
-      return total + (item.finalPrice * totalUnits * (effectiveRate / 100));
-    }, 0);
-  };
-
-  const recalculateCart = () => {
-    const globalDiscountPercentage = getNetDiscountPercentage();
-    
-    const updatedItems = items.map(item => {
-      const listPrice = item.product.listPrice;
-      
-      const itemDiscount = item.discount || 0;
-      const netDiscount = applyDiscounts ? itemDiscount + globalDiscountPercentage : itemDiscount;
-      
-      const finalPrice = listPrice * (1 - (netDiscount / 100));
-      const totalUnits = calculateTotalUnits(item);
-      const subtotal = finalPrice * totalUnits;
-      
-      return {
-        ...item,
-        finalPrice,
-        subtotal
-      };
-    });
-    
-    setItems(updatedItems);
-  };
+  const [deliveryFees, setDeliveryFees] = useState({ capital: 0, interior: 0 });
+   const [discountSettings, setDiscountSettings] = useState({
+    pickup: 0,
+    cashPayment: 0,
+    halfInvoice: 0,
+    taxSubstitution: 0,
+    deliveryFees: {
+      capital: 0,
+      interior: 0,
+    },
+    ipiRate: 0,
+  });
+  const { addOrder } = useOrders();
+  const { user } = useAuth();
 
   useEffect(() => {
-    recalculateCart();
-  }, [selectedDiscountOptions, applyDiscounts, halfInvoicePercentage, discountOptions]);
+    const storedCart = localStorage.getItem('ferplas_cart');
+    if (storedCart) {
+      setCart(JSON.parse(storedCart));
+    }
+
+    const storedDiscounts = localStorage.getItem('ferplas_applied_discounts');
+    if (storedDiscounts) {
+      setAppliedDiscounts(JSON.parse(storedDiscounts));
+    }
+
+    const storedCustomer = localStorage.getItem('ferplas_customer');
+    if (storedCustomer) {
+      setCustomer(JSON.parse(storedCustomer));
+    }
+
+    const storedDeliveryFees = localStorage.getItem('ferplas_delivery_fees');
+    if (storedDeliveryFees) {
+      setDeliveryFees(JSON.parse(storedDeliveryFees));
+    }
+
+    const storedDiscountSettings = localStorage.getItem('ferplas_discount_settings');
+    if (storedDiscountSettings) {
+      setDiscountSettings(JSON.parse(storedDiscountSettings));
+    }
+  }, []);
 
   useEffect(() => {
-    if (customer) {
-      setItems(prevItems => 
-        prevItems.map(item => {
-          const defaultDiscount = customer.defaultDiscount || 0;
-          const finalPrice = item.product.listPrice * (1 - defaultDiscount / 100);
-          
-          const totalUnits = calculateTotalUnits(item);
-          const subtotal = finalPrice * totalUnits;
-          
-          return {
-            ...item,
-            discount: defaultDiscount,
-            finalPrice,
-            subtotal
-          };
-        })
-      );
-    } else {
-      setItems(prevItems => 
-        prevItems.map(item => {
-          const finalPrice = item.product.listPrice;
-          
-          const totalUnits = calculateTotalUnits(item);
-          const subtotal = finalPrice * totalUnits;
-          
-          return {
-            ...item,
-            discount: 0,
-            finalPrice,
-            subtotal
-          };
-        })
-      );
-    }
-  }, [customer, discountOptions]);
+    localStorage.setItem('ferplas_cart', JSON.stringify(cart));
+  }, [cart]);
 
   useEffect(() => {
-    if (settings) {
-      recalculateCart();
-    }
-  }, [settings]);
+    localStorage.setItem('ferplas_applied_discounts', JSON.stringify(appliedDiscounts));
+  }, [appliedDiscounts]);
 
   useEffect(() => {
-    if (customer && customer.transportCompanyId) {
-      console.log('Setting transport company from customer:', customer.transportCompanyId);
-      setSelectedTransportCompany(customer.transportCompanyId === 'none' ? undefined : customer.transportCompanyId);
-    } else {
-      setSelectedTransportCompany(undefined);
-    }
+    localStorage.setItem('ferplas_customer', JSON.stringify(customer));
   }, [customer]);
 
-  const totalDiscount = items.reduce((total, item) => {
-    const totalUnits = calculateTotalUnits(item);
-    const fullPrice = item.product.listPrice * totalUnits;
-    const discountedPrice = item.finalPrice * totalUnits;
-    return total + (fullPrice - discountedPrice);
-  }, 0);
+  useEffect(() => {
+    localStorage.setItem('ferplas_delivery_fees', JSON.stringify(deliveryFees));
+  }, [deliveryFees]);
 
-  const taxSubstitutionValue = calculateTaxSubstitutionValue();
-  
-  const ipiValue = calculateIPIValue();
-  
-  const subtotal = items.reduce((total, item) => {
-    const totalUnits = calculateTotalUnits(item);
-    return total + (item.finalPrice * totalUnits);
-  }, 0);
-  
-  const total = subtotal + taxSubstitutionValue + ipiValue + deliveryFee;
+  useEffect(() => {
+    localStorage.setItem('ferplas_discount_settings', JSON.stringify(discountSettings));
+  }, [discountSettings]);
 
-  const toggleApplyDiscounts = () => {
-    setApplyDiscounts(prev => !prev);
+  const addToCart = (product: Product, quantity: number) => {
+    const existingItem = cart.find(item => item.productId === product.id);
+
+    if (existingItem) {
+      updateQuantity(product.id, existingItem.quantity + quantity);
+    } else {
+      const newItem: CartItem = {
+        id: product.id,
+        productId: product.id,
+        product: product,
+        quantity: quantity,
+        discount: 0,
+        finalPrice: product.listPrice,
+        subtotal: product.listPrice * quantity,
+        totalUnits: quantity * product.quantityPerVolume,
+        totalWeight: product.weight * quantity,
+        totalCubicVolume: product.cubicVolume * quantity
+      };
+      setCart([...cart, newItem]);
+      toast.success(`${quantity} ${product.name} adicionado ao carrinho`);
+    }
   };
 
-  const toggleIPI = () => {
-    setWithIPI(prev => {
-      const newValue = !prev;
-      if (newValue) {
-        setSelectedDiscountOptions(prev => {
-          if (!prev.includes('ipi')) {
-            return [...prev, 'ipi'];
-          }
-          return prev;
-        });
-      } else {
-        setSelectedDiscountOptions(prev => prev.filter(id => id !== 'ipi'));
-      }
-      return newValue;
-    });
+  const removeFromCart = (productId: string) => {
+    setCart(cart.filter(item => item.productId !== productId));
+    toast.success('Produto removido do carrinho');
   };
 
-  const toggleSuframa = () => {
-    setWithSuframa(prev => !prev);
-  };
-
-  const addItem = (product: Product, quantity: number) => {
-    if (!product || !product.id) {
-      toast.error("Produto inválido");
+  const updateQuantity = (productId: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeFromCart(productId);
       return;
     }
-    
-    console.log("Adicionando produto ao carrinho:", product);
-    
-    const existingItemIndex = items.findIndex(item => item.productId === product.id);
-    
-    if (existingItemIndex >= 0) {
-      const newItems = [...items];
-      const existingItem = newItems[existingItemIndex];
-      const newQuantity = existingItem.quantity + quantity;
-      
-      const totalUnits = newQuantity * (product.quantityPerVolume || 1);
-      const itemDiscount = existingItem.discount || 0;
-      const globalDiscount = getNetDiscountPercentage();
-      const netDiscount = applyDiscounts ? itemDiscount + globalDiscount : itemDiscount;
-      const finalPrice = product.listPrice * (1 - (netDiscount / 100));
-      
-      const subtotal = finalPrice * totalUnits;
-      
-      newItems[existingItemIndex] = {
-        ...existingItem,
-        quantity: newQuantity,
-        finalPrice,
-        subtotal
-      };
-      
-      setItems(newItems);
-      toast.success(`Quantidade de ${product.name} atualizada no carrinho`);
-    } else {
-      const listPrice = Number(product.listPrice) || 0;
-      const initialDiscount = customer ? Number(customer.defaultDiscount) || 0 : 0;
-      const globalDiscount = getNetDiscountPercentage();
-      const netDiscount = applyDiscounts ? initialDiscount + globalDiscount : initialDiscount;
-      
-      const finalPrice = listPrice * (1 - netDiscount / 100);
-      const totalUnits = quantity * (product.quantityPerVolume || 1);
-      
-      const newItem: CartItem = {
-        id: Date.now().toString(),
-        productId: product.id,
-        product: { ...product },
-        quantity,
-        discount: initialDiscount,
-        finalPrice,
-        subtotal: finalPrice * totalUnits
-      };
-      
-      console.log("Valores calculados:", {
-        listPrice,
-        initialDiscount,
-        globalDiscount,
-        netDiscount,
-        finalPrice,
-        quantityPerVolume: product.quantityPerVolume || 1,
-        totalUnits
-      });
-      
-      setItems(prevItems => [...prevItems, newItem]);
-      toast.success(`${product.name} adicionado ao carrinho`);
-    }
-  };
 
-  const removeItem = (id: string) => {
-    const itemToRemove = items.find(item => item.id === id);
-    if (itemToRemove) {
-      setItems(prevItems => prevItems.filter(item => item.id !== id));
-      toast.info(`${itemToRemove.product.name} removido do carrinho`);
-    }
-  };
-
-  const updateItemQuantity = (id: string, quantity: number) => {
-    if (quantity < 1) return;
-    
-    setItems(prevItems => prevItems.map(item => {
-      if (item.id === id) {
-        const totalUnits = quantity * (item.product.quantityPerVolume || 1);
-        const subtotal = item.finalPrice * totalUnits;
-        
-        return { 
-          ...item, 
-          quantity, 
-          subtotal
-        };
-      }
-      return item;
-    }));
-  };
-
-  const updateItemDiscount = (id: string, discount: number) => {
-    if (discount < 0) return;
-    
-    let appliedDiscount = discount;
-    
-    if (customer && discount > customer.maxDiscount) {
-      toast.warning(`Desconto limitado a ${customer.maxDiscount}% para o cliente ${customer.companyName}`);
-      appliedDiscount = customer.maxDiscount;
-    }
-    
-    const globalDiscount = getNetDiscountPercentage();
-    
-    setItems(prevItems => prevItems.map(item => {
-      if (item.id === id) {
-        const netDiscount = applyDiscounts ? appliedDiscount + globalDiscount : appliedDiscount;
-        const finalPrice = item.product.listPrice * (1 - netDiscount / 100);
-        
-        const totalUnits = item.quantity * (item.product.quantityPerVolume || 1);
-        const subtotal = finalPrice * totalUnits;
-        
-        return {
-          ...item,
-          discount: appliedDiscount,
-          finalPrice,
-          subtotal
-        };
-      }
-      return item;
-    }));
-  };
-
-  const toggleDiscountOption = (id: string) => {
-    setSelectedDiscountOptions(prev => {
-      if (prev.includes(id)) {
-        if (id === 'retirada') {
-          setDeliveryLocation(null);
+    setCart(
+      cart.map(item => {
+        if (item.productId === productId) {
+          const updatedItem = {
+            ...item,
+            quantity: quantity,
+            subtotal: item.product.listPrice * quantity,
+            totalUnits: quantity * item.product.quantityPerVolume,
+            totalWeight: item.product.weight * quantity,
+            totalCubicVolume: item.product.cubicVolume * quantity
+          };
+          return updatedItem;
         }
-        if (id === 'meia-nota') {
-          setHalfInvoicePercentage(50);
-          setHalfInvoiceType('quantity');
-        }
-        if (id === 'a-vista') {
-          setPaymentTerms('');
-        }
-        if (id === 'ipi') {
-          setWithIPI(false);
-        }
-        return prev.filter(optId => optId !== id);
-      } else {
-        if (id === 'ipi') {
-          setWithIPI(true);
-        }
-        return [...prev, id];
-      }
-    });
+        return item;
+      })
+    );
   };
 
   const clearCart = () => {
-    setItems([]);
+    setCart([]);
+    setAppliedDiscounts([]);
     setCustomer(null);
-    setSelectedDiscountOptions([]);
-    setDeliveryLocation(null);
-    setHalfInvoicePercentage(50);
-    setObservations('');
-    setPaymentTerms('');
-    setWithIPI(false);
-    setWithSuframa(false);
-    setSelectedTransportCompany(undefined);
-    toast.info('Carrinho limpo');
+    localStorage.removeItem('ferplas_cart');
+    localStorage.removeItem('ferplas_applied_discounts');
+    localStorage.removeItem('ferplas_customer');
+    toast.success('Carrinho limpo');
   };
 
-  const sendOrder = async () => {
-    if (!customer) {
-      toast.error('Selecione um cliente para continuar');
-      return Promise.reject('No customer selected');
-    }
-    
-    if (items.length === 0) {
-      toast.error('Adicione produtos ao carrinho para continuar');
-      return Promise.reject('Cart is empty');
-    }
-    
-    try {
-      const shippingValue: 'pickup' | 'delivery' = isDiscountOptionSelected('retirada') ? 'pickup' : 'delivery';
-      const paymentMethodValue: 'cash' | 'credit' = isDiscountOptionSelected('a-vista') ? 'cash' : 'credit';
-      
-      const ipiRate = withIPI && settings ? settings.ipiRate : 0;
-      const effectiveIpiRate = isDiscountOptionSelected('meia-nota') 
-        ? (ipiRate * halfInvoicePercentage) / 100 
-        : ipiRate;
-      
-      const itemsWithCalculatedValues = items.map(item => {
-        const totalUnits = calculateTotalUnits(item);
-        const globalDiscountPercentage = getNetDiscountPercentage();
-        const totalDiscountPercentage = (item.discount || 0) + (applyDiscounts ? globalDiscountPercentage : 0);
-        const taxSubstitutionValue = calculateItemTaxSubstitutionValue(item);
-        
-        const itemIpiValue = withIPI ? (item.finalPrice * (effectiveIpiRate / 100)) : 0;
-        const totalWithTaxes = item.finalPrice + taxSubstitutionValue + itemIpiValue;
-        
-        const unitPrice = item.product.listPrice;
-        const totalCubicVolume = item.product.cubicVolume * totalUnits;
-        const totalWeight = item.product.weight * totalUnits;
-        
-        return {
-          ...item,
-          totalDiscountPercentage,
-          taxSubstitutionValue,
-          ipiValue: itemIpiValue,
-          totalWithTaxes,
-          totalUnits,
-          unitPrice,
-          totalCubicVolume,
-          totalWeight
-        };
-      });
-
-      const orderData: Partial<Order> = {
-        customer,
-        customerId: customer.id,
-        items: itemsWithCalculatedValues,
-        appliedDiscounts: selectedDiscountOptions.map(id => {
-          const option = discountOptions.find(opt => opt.id === id);
-          return option as DiscountOption;
-        }).filter(Boolean),
-        deliveryLocation,
-        deliveryFee,
-        halfInvoicePercentage: isDiscountOptionSelected('meia-nota') ? halfInvoicePercentage : undefined,
-        halfInvoiceType: isDiscountOptionSelected('meia-nota') ? halfInvoiceType : undefined,
-        observations,
-        subtotal,
-        totalDiscount,
-        total,
-        shipping: shippingValue,
-        paymentMethod: paymentMethodValue,
-        paymentTerms: !isDiscountOptionSelected('a-vista') ? paymentTerms : undefined,
-        fullInvoice: !isDiscountOptionSelected('meia-nota'),
-        taxSubstitution: isDiscountOptionSelected('icms-st'),
-        withIPI,
-        withSuframa,
-        ipiValue: withIPI ? calculateIPIValue() : undefined,
-        status: 'pending',
-        notes: observations,
-        userId: user?.id,
-        transportCompanyId: selectedTransportCompany,
-        productsTotal: rawSubtotal,
-        taxSubstitutionTotal: calculateTaxSubstitutionValue()
-      };
-      
-      console.log('Sending order with data:', orderData);
-      console.log('SUFRAMA setting:', withSuframa);
-      console.log('Transport company being sent to order:', orderData.transportCompanyId);
-      
-      const orderId = await addOrder(orderData);
-      
-      if (!orderId) {
-        throw new Error('Erro ao criar pedido: Nenhum ID de pedido retornado');
-      }
-      
-      toast.success('Pedido enviado com sucesso!');
-      clearCart();
-      
-      return Promise.resolve();
-    } catch (error) {
-      console.error('Error sending order:', error);
-      toast.error('Erro ao enviar pedido. Tente novamente.');
-      return Promise.reject(error);
-    }
+  const getTotal = () => {
+    return cart.reduce((total, item) => total + item.subtotal, 0);
   };
 
-  const fetchLastOrder = async (customerId: string) => {
-    if (!customerId) return;
-    
-    setIsLoadingLastOrder(true);
-    
-    try {
-      // Get the most recent order for the customer with explicit join to transport_companies
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          customers(*),
-          transport_companies(id, name)
-        `)
-        .eq('customer_id', customerId)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      
-      if (error) {
-        console.error('Error fetching last order:', error);
-        setLastOrder(null);
-        return;
-      }
-      
-      console.log('Raw order data with transport company:', data?.[0]);
-      
-      if (data && data.length > 0) {
-        // Get the order items
-        const { data: itemsData } = await supabase
-          .from('order_items')
-          .select(`
-            *,
-            products(*)
-          `)
-          .eq('order_id', data[0].id);
-          
-        // Get discounts
-        const { data: discountData } = await supabase
-          .from('order_discounts')
-          .select('discount_id')
-          .eq('order_id', data[0].id);
-          
-        let discounts = [];
-        if (discountData && discountData.length > 0) {
-          const discountIds = discountData.map(d => d.discount_id);
-          const { data: discountDetails } = await supabase
-            .from('discount_options')
-            .select('*')
-            .in('id', discountIds);
-            
-          if (discountDetails) {
-            discounts = discountDetails.map(d => ({
-              id: d.id,
-              name: d.name,
-              description: d.description || '',
-              value: d.value,
-              type: d.type as 'discount' | 'surcharge',
-              isActive: d.is_active,
-            }));
-          }
-        }
-        
-        // Use adapter to convert Supabase order to app Order
-        const processedOrder = supabaseOrderToAppOrder(data[0], itemsData || [], discounts);
-        
-        setLastOrder(processedOrder);
-        console.log('Last order processed with transport company:', {
-          id: processedOrder.transportCompanyId,
-          name: processedOrder.transportCompanyName 
-        });
-      } else {
-        setLastOrder(null);
-      }
-    } catch (err) {
-      console.error('Error processing last order:', err);
-      setLastOrder(null);
-    } finally {
-      setIsLoadingLastOrder(false);
-    }
+  const getTotalItems = () => {
+    return cart.reduce((total, item) => total + item.quantity, 0);
   };
 
-  useEffect(() => {
-    if (customer) {
-      fetchLastOrder(customer.id);
+  const applyDiscount = (discount: DiscountOption) => {
+    if (!appliedDiscounts.find(d => d.id === discount.id)) {
+      setAppliedDiscounts([...appliedDiscounts, discount]);
+      toast.success(`${discount.name} aplicado`);
     } else {
-      setLastOrder(null);
-      setSelectedTransportCompany(undefined);
+      toast.error(`${discount.name} já está aplicado`);
     }
-  }, [customer]);
+  };
 
-  return (
-    <CartContext.Provider value={{
-      items,
-      customer,
-      discountOptions,
-      selectedDiscountOptions,
-      deliveryLocation,
-      halfInvoicePercentage,
-      halfInvoiceType,
-      observations,
-      paymentTerms,
-      totalItems,
-      subtotal,
-      totalDiscount,
-      total,
-      deliveryFee,
-      applyDiscounts,
-      withIPI,
-      withSuframa,
-      selectedTransportCompany,
-      lastOrder,
-      isLoadingLastOrder,
-      setSelectedTransportCompany,
-      setCustomer: handleSetCustomer,
-      addItem,
-      removeItem,
-      updateItemQuantity,
-      updateItemDiscount,
-      toggleDiscountOption,
-      setDeliveryLocation,
-      setHalfInvoicePercentage,
-      setHalfInvoiceType,
-      setObservations,
-      setPaymentTerms,
-      clearCart,
-      sendOrder,
-      isDiscountOptionSelected,
-      toggleApplyDiscounts,
-      calculateTaxSubstitutionValue,
-      toggleIPI,
-      toggleSuframa,
-      calculateIPIValue,
-      calculateItemTaxSubstitutionValue
-    }}>
-      {children}
-    </CartContext.Provider>
-  );
+  const removeDiscount = (discountId: string) => {
+    setAppliedDiscounts(appliedDiscounts.filter(discount => discount.id !== discountId));
+    toast.success('Desconto removido');
+  };
+
+  const value = {
+    cart,
+    addToCart,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
+    getTotal,
+    getTotalItems,
+    applyDiscount,
+    removeDiscount,
+    appliedDiscounts,
+    setCustomer,
+    customer,
+    deliveryFees,
+    setDeliveryFees,
+    discountSettings,
+    setDiscountSettings,
+  };
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };
 
 export const useCart = () => {

@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Order, CartItem, DiscountOption } from '@/types/types';
 import { format } from 'date-fns';
@@ -6,6 +7,7 @@ import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 import { supabase, Tables } from '@/integrations/supabase/client';
 import { supabaseOrderToAppOrder } from '@/utils/adapters';
+import { isVendedor } from '@/utils/permissionUtils';
 
 type SupabaseOrder = Tables<'orders'>;
 
@@ -55,8 +57,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
         query = query.eq('user_id', userIdStr);
       }
-      else if (user?.role === 'salesperson' && user?.id) {
-        console.log("OrderContext - Filtrando pedidos para vendedor (role):", user.id, "(tipo:", typeof user.id, ")");
+      else if (isVendedor(user?.userTypeId || '') && user?.id) {
+        console.log("OrderContext - Filtrando pedidos para vendedor (userTypeId):", user.id, "(tipo:", typeof user.id, ")");
         
         const userIdStr = String(user.id);
         console.log("OrderContext - ID do usuário convertido para string:", userIdStr);
@@ -158,8 +160,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
         console.log(`OrderContext - Resultado da filtragem específica: ${filteredOrders.length} de ${processedOrders.length} pedidos`);
       }
-      else if (user?.role === 'salesperson' && user?.id) {
-        console.log("OrderContext - Filtrando novamente pedidos para vendedor (role) após processamento");
+      else if (isVendedor(user?.userTypeId || '') && user?.id) {
+        console.log("OrderContext - Filtrando novamente pedidos para vendedor (userTypeId) após processamento");
         
         const userIdStr = String(user.id);
         filteredOrders = filteredOrders.filter(order => {
@@ -435,7 +437,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.log(`Found order for specific salesperson type:`, foundOrder);
       return foundOrder;
     }
-    else if (user?.role === 'salesperson' && user?.id) {
+    else if (isVendedor(user?.userTypeId || '') && user?.id) {
       const foundOrder = orders.find(order => order.id === id);
       
       if (!foundOrder) {
