@@ -20,7 +20,7 @@ export async function fetchDuplicatas(orderId: string): Promise<Duplicata[]> {
       `*,
       modo_pagamento:modo_pagamento_id(id,nome),
       portador:portador_id(id,nome),
-      banco:banco_id!inner(id,nome),
+      banco:banco_id(id,nome),
       banco_pagamento:banco_pagamento_id(id,nome),
       payment_status:payment_status_id(id,nome)
     `
@@ -28,9 +28,8 @@ export async function fetchDuplicatas(orderId: string): Promise<Duplicata[]> {
     .eq("order_id", orderId)
     .order("data_vencimento", { ascending: true });
   if (error) throw error;
-  
-  // Transform database fields to match our frontend model
-  return (data || []).map(d => ({
+
+  return (data || []).map((d: any) => ({
     id: d.id,
     orderId: d.order_id,
     numeroDuplicata: d.numero_duplicata,
@@ -49,16 +48,15 @@ export async function fetchDuplicatas(orderId: string): Promise<Duplicata[]> {
     pdfBoletoPath: d.pdf_boleto_path,
     createdAt: d.created_at,
     updatedAt: d.updated_at,
-    modoPagamento: d.modo_pagamento as RefTable,
-    portador: d.portador as RefTable,
-    banco: d.banco as RefTable,
-    bancoPagamento: d.banco_pagamento as RefTable,
-    paymentStatus: d.payment_status as RefTable,
+    modoPagamento: d.modo_pagamento as RefTable | undefined,
+    portador: d.portador as RefTable | undefined,
+    banco: d.banco as RefTable | undefined,
+    bancoPagamento: d.banco_pagamento as RefTable | undefined,
+    paymentStatus: d.payment_status as RefTable | undefined,
   }));
 }
 
 export async function upsertDuplicata(duplicata: Partial<Duplicata>) {
-  // Convert from frontend model to database fields
   const dbDuplicata = {
     id: duplicata.id,
     order_id: duplicata.orderId,
@@ -117,3 +115,4 @@ export async function deleteBoletoPdf(path: string): Promise<boolean> {
   if (error) throw error;
   return true;
 }
+
