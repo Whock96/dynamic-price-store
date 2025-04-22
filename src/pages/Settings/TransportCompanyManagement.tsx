@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus, Edit, Trash2, ArrowLeft } from 'lucide-react';
@@ -18,8 +19,17 @@ import { TransportCompany } from '@/types/types';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDate } from '@/utils/formatters';
 import { isAdministrador } from '@/utils/permissionUtils';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from '@/components/ui/label';
 
-interface TransportCompanyWithDates extends TransportCompany {
+interface TransportCompanyWithDates extends Omit<TransportCompany, 'created_at' | 'updated_at'> {
   created_at: Date;
   updated_at: Date;
 }
@@ -211,7 +221,7 @@ const TransportCompanyManagement = () => {
             </p>
           </div>
         </div>
-        {permissions.canCreate && isAdministrador(user?.userTypeId) && (
+        {permissions.canCreate && isAdministrador(currentUser?.userTypeId) && (
           <Button 
             className="bg-ferplas-500 hover:bg-ferplas-600"
             onClick={() => setIsCreateModalOpen(true)}
@@ -270,7 +280,7 @@ const TransportCompanyManagement = () => {
                     <TableCell>{company.phone}</TableCell>
                     <TableCell>{formatDate(company.created_at)}</TableCell>
                     <TableCell className="text-right space-x-2">
-                      {permissions.canEdit && isAdministrador(user?.userTypeId) && (
+                      {permissions.canEdit && isAdministrador(currentUser?.userTypeId) && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -290,7 +300,7 @@ const TransportCompanyManagement = () => {
                           Editar
                         </Button>
                       )}
-                      {permissions.canDelete && isAdministrador(user?.userTypeId) && (
+                      {permissions.canDelete && isAdministrador(currentUser?.userTypeId) && (
                         <Button 
                           variant="destructive" 
                           size="sm"
@@ -320,9 +330,9 @@ const TransportCompanyManagement = () => {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="name" className="text-right">
+              <Label htmlFor="name" className="text-right">
                 Nome
-              </label>
+              </Label>
               <Input
                 type="text"
                 id="name"
@@ -333,9 +343,9 @@ const TransportCompanyManagement = () => {
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="document" className="text-right">
+              <Label htmlFor="document" className="text-right">
                 Documento
-              </label>
+              </Label>
               <Input
                 type="text"
                 id="document"
@@ -346,9 +356,9 @@ const TransportCompanyManagement = () => {
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="email" className="text-right">
+              <Label htmlFor="email" className="text-right">
                 Email
-              </label>
+              </Label>
               <Input
                 type="email"
                 id="email"
@@ -359,9 +369,9 @@ const TransportCompanyManagement = () => {
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="phone" className="text-right">
+              <Label htmlFor="phone" className="text-right">
                 Telefone
-              </label>
+              </Label>
               <Input
                 type="text"
                 id="phone"
@@ -372,9 +382,9 @@ const TransportCompanyManagement = () => {
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="whatsapp" className="text-right">
+              <Label htmlFor="whatsapp" className="text-right">
                 WhatsApp
-              </label>
+              </Label>
               <Input
                 type="text"
                 id="whatsapp"
@@ -405,9 +415,9 @@ const TransportCompanyManagement = () => {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="name" className="text-right">
+              <Label htmlFor="name" className="text-right">
                 Nome
-              </label>
+              </Label>
               <Input
                 type="text"
                 id="name"
@@ -418,9 +428,9 @@ const TransportCompanyManagement = () => {
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="document" className="text-right">
+              <Label htmlFor="document" className="text-right">
                 Documento
-              </label>
+              </Label>
               <Input
                 type="text"
                 id="document"
@@ -431,9 +441,9 @@ const TransportCompanyManagement = () => {
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="email" className="text-right">
+              <Label htmlFor="email" className="text-right">
                 Email
-              </label>
+              </Label>
               <Input
                 type="email"
                 id="email"
@@ -444,9 +454,9 @@ const TransportCompanyManagement = () => {
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="phone" className="text-right">
+              <Label htmlFor="phone" className="text-right">
                 Telefone
-              </label>
+              </Label>
               <Input
                 type="text"
                 id="phone"
@@ -457,9 +467,9 @@ const TransportCompanyManagement = () => {
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="whatsapp" className="text-right">
+              <Label htmlFor="whatsapp" className="text-right">
                 WhatsApp
-              </label>
+              </Label>
               <Input
                 type="text"
                 id="whatsapp"

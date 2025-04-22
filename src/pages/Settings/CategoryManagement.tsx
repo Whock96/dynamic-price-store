@@ -11,6 +11,7 @@ import { useCategories } from '@/hooks/use-categories';
 import CategoryList from '@/components/categories/CategoryList';
 import CategoryDialog from '@/components/categories/CategoryDialog';
 import SubcategoryDialog from '@/components/categories/SubcategoryDialog';
+import { isAdministrador } from '@/utils/permissionUtils';
 
 export enum DialogType {
   NONE = 'NONE',
@@ -56,10 +57,8 @@ const CategoryManagement = () => {
   });
 
   useEffect(() => {
-    // Added additional logging to debug permissions
     console.log("CategoryManagement - User:", user);
     
-    // Verify the user type directly to ensure administrators always have access
     const isAdmin = user && isAdministrador(user.userTypeId);
     console.log("CategoryManagement - User is administrator:", isAdmin);
     
@@ -69,7 +68,6 @@ const CategoryManagement = () => {
       return;
     }
     
-    // Only fetch categories once when component mounts
     fetchCategories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -97,7 +95,6 @@ const CategoryManagement = () => {
     });
   };
 
-  // Dialog open handlers
   const openAddCategoryDialog = () => {
     setCategoryFormData({
       id: '',
@@ -123,7 +120,7 @@ const CategoryManagement = () => {
       id: '',
       name: '',
       description: '',
-      categoryId: category.id, // Pre-select the category
+      categoryId: category.id,
     });
     setActiveDialog(DialogType.ADD_SUBCATEGORY);
   };
@@ -140,14 +137,12 @@ const CategoryManagement = () => {
     setActiveDialog(DialogType.EDIT_SUBCATEGORY);
   };
 
-  // Dialog close handler
   const closeDialog = () => {
     setActiveDialog(DialogType.NONE);
     setSelectedCategory(null);
     setSelectedSubcategory(null);
   };
 
-  // Form input change handlers
   const handleCategoryInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setCategoryFormData(prev => ({
@@ -164,7 +159,6 @@ const CategoryManagement = () => {
     }));
   };
 
-  // Save handlers
   const handleSaveCategory = async () => {
     if (!categoryFormData.name) {
       toast.error('O nome da categoria é obrigatório');
@@ -185,7 +179,6 @@ const CategoryManagement = () => {
         });
         
         if (newCategory) {
-          // Automatically expand the new category
           setExpandedCategories(prev => [...prev, newCategory.id]);
         }
       }
@@ -244,7 +237,6 @@ const CategoryManagement = () => {
   const handleDeleteCategory = async (categoryId: string) => {
     try {
       await deleteCategory(categoryId);
-      // Remove from expanded list if it exists
       setExpandedCategories(prev => prev.filter(id => id !== categoryId));
     } catch (error) {
       console.error('Error deleting category:', error);
@@ -328,7 +320,6 @@ const CategoryManagement = () => {
         />
       )}
 
-      {/* Category Dialog */}
       {(activeDialog === DialogType.ADD_CATEGORY || activeDialog === DialogType.EDIT_CATEGORY) && (
         <CategoryDialog 
           isOpen={true}
@@ -340,7 +331,6 @@ const CategoryManagement = () => {
         />
       )}
 
-      {/* Subcategory Dialog */}
       {(activeDialog === DialogType.ADD_SUBCATEGORY || activeDialog === DialogType.EDIT_SUBCATEGORY) && (
         <SubcategoryDialog 
           isOpen={true}

@@ -1,488 +1,372 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Order, CartItem, DiscountOption } from '@/types/types';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { useAuth } from './AuthContext';
+import { Product, CartItem, DiscountOption, Order, Customer, DeliveryFees } from '../types/types';
+import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
-import { supabase, Tables } from '@/integrations/supabase/client';
-import { supabaseOrderToAppOrder } from '@/utils/adapters';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from './AuthContext';
+import { isAdministrador } from '@/utils/permissionUtils';
 
-type SupabaseOrder = Tables<'orders'>;
+interface CartOptions {
+  shipping: 'delivery' | 'pickup';
+  fullInvoice: boolean;
+  taxSubstitution: boolean;
+  paymentMethod: 'cash' | 'credit';
+  paymentTerms?: string;
+  notes?: string;
+  deliveryLocation?: 'capital' | 'interior' | null;
+  halfInvoiceType?: 'quantity' | 'price';
+  halfInvoicePercentage?: number;
+  discountOptions?: DiscountOption[];
+  deliveryFee?: number;
+  withIPI?: boolean;
+  transportCompanyId?: string | null;
+  transportCompanyName?: string;
+  withSuframa?: boolean;
+}
+
+interface CartTotals {
+  subtotal: number;
+  totalDiscount: number;
+  deliveryFee: number;
+  taxSubstitutionTotal: number;
+  ipiValue: number;
+  productsTotal: number;
+  total: number;
+}
 
 interface OrderContextType {
-  orders: Order[];
-  addOrder: (newOrder: Partial<Order>) => Promise<string | undefined>;
-  updateOrderStatus: (orderId: string, status: Order['status']) => void;
-  updateOrder: (orderId: string, orderData: Partial<Order>) => void;
-  getOrderById: (id: string) => Order | undefined;
-  clearAllOrders: () => void;
-  deleteOrder: (orderId: string) => void;
-  isLoading: boolean;
+  cart: CartItem[];
+  customer: Customer | null;
+  setCustomer: (customer: Customer | null) => void;
+  addToCart: (product: Product, quantity: number, discount?: number) => void;
+  removeFromCart: (itemId: string) => void;
+  updateCartItemQuantity: (itemId: string, quantity: number) => void;
+  clearCart: () => void;
+  calculateTotals: (items: CartItem[], options: CartOptions) => CartTotals;
+  saveOrder: (options: CartOptions) => Promise<Order | null>;
+  deliveryFees: DeliveryFees;
+  setDeliveryFees: (deliveryFees: DeliveryFees) => void;
+  discountOptions: DiscountOption[];
+  setDiscountOptions: (discountOptions: DiscountOption[]) => void;
+  transportCompanies: any[];
+  setTransportCompanies: (transportCompanies: any[]) => void;
+  companyInfo: any;
+  setCompanyInfo: (companyInfo: any) => void;
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
 
-export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const OrderProvider = ({ children }: { children: React.ReactNode }) => {
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [deliveryFees, setDeliveryFees] = useState<DeliveryFees>({ capital: 0, interior: 0 });
+  const [discountOptions, setDiscountOptions] = useState<DiscountOption[]>([]);
+  const [transportCompanies, setTransportCompanies] = useState<any[]>([]);
+  const [companyInfo, setCompanyInfo] = useState<any>(null);
   const { user } = useAuth();
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  
-  const isSalespersonType = user?.userTypeId === 'c5ee0433-3faf-46a4-a516-be7261bfe575';
-  
+
   useEffect(() => {
-    console.log("OrderContext - User changed, refetching orders:", user);
-    console.log("OrderContext - Tipo de usuário do vendedor:", user?.userTypeId);
-    console.log("OrderContext - É vendedor específico:", isSalespersonType);
-    fetchOrders();
-  }, [user, isSalespersonType]);
-  
-  const fetchOrders = async () => {
-    setIsLoading(true);
-    try {
-      let query = supabase
-        .from('orders')
-        .select(`
-          *,
-          customers(*),
-          transport_companies(id, name)
-        `);
-      
-      if (isSalespersonType && user?.id) {
-        console.log("OrderContext - Filtrando pedidos ESTRITAMENTE para vendedor ESPECÍFICO:", user.id, "(tipo:", typeof user.id, ")");
-        
-        const userIdStr = String(user.id);
-        console.log("OrderContext - ID do usuário convertido para string:", userIdStr);
-        
-        query = query.eq('user_id', userIdStr);
-      }
-      else if (user?.role === 'salesperson' && user?.id) {
-        console.log("OrderContext - Filtrando pedidos para vendedor (role):", user.id, "(tipo:", typeof user.id, ")");
-        
-        const userIdStr = String(user.id);
-        console.log("OrderContext - ID do usuário convertido para string:", userIdStr);
-        
-        query = query.eq('user_id', userIdStr);
-      }
-      
-      const { data: ordersData, error: ordersError } = await query
-        .order('created_at', { ascending: false });
-        
-      if (ordersError) throw ordersError;
-      
-      if (!ordersData) {
-        setOrders([]);
-        return;
-      }
-      
-      console.log("OrderContext - Dados brutos de pedidos do Supabase:", ordersData);
-      
-      const processedOrders = await Promise.all(ordersData.map(async (order) => {
-        const { data: itemsData } = await supabase
-          .from('order_items')
-          .select(`
-            *,
-            products(*)
-          `)
-          .eq('order_id', order.id);
-        
-        // Process applied_discounts from JSONB
-        let discounts: DiscountOption[] = [];
-        if (order.applied_discounts) {
-          console.log("Applied discounts from DB:", order.applied_discounts);
-          if (Array.isArray(order.applied_discounts)) {
-            discounts = (order.applied_discounts as unknown) as DiscountOption[];
-          }
-        }
-        
-        let userName = null;
-        if (order.user_id) {
-          console.log("OrderContext - Verificando ID de usu��rio do pedido:", order.user_id, "(tipo:", typeof order.user_id, ")");
-          
-          if (user && String(user.id) === String(order.user_id)) {
-            userName = user.name;
-            console.log("OrderContext - Usando nome do usuário atual para o pedido:", userName);
-          } else {
-            const { data: userData } = await supabase
-              .from('users')
-              .select('name')
-              .eq('id', order.user_id)
-              .single();
-              
-            if (userData && userData.name) {
-              userName = userData.name;
-              console.log("OrderContext - Nome do usuário buscado do DB para o pedido:", userName);
-            } else {
-              console.log("OrderContext - Não foi possível encontrar usuário para pedido com user_id:", order.user_id);
-              userName = 'Usuário do Sistema';
-            }
-          }
-        } else {
-          userName = 'Usuário do Sistema';
-        }
-        
-        const processedOrder = supabaseOrderToAppOrder(order, itemsData || []);
-        
-        if (userName) {
-          processedOrder.user = {
-            ...processedOrder.user,
-            name: userName
-          };
-        }
-        
-        processedOrder.appliedDiscounts = discounts;
-        
-        console.log("OrderContext - Pedido processado para usuário:", {
-          orderId: processedOrder.id,
-          orderNumber: processedOrder.orderNumber,
-          userId: processedOrder.userId,
-          userName: processedOrder.user?.name
-        });
-        
-        return processedOrder;
-      }));
-      
-      let filteredOrders = [...processedOrders];
-      
-      if (isSalespersonType && user?.id) {
-        console.log("OrderContext - Filtrando novamente pedidos para vendedor ESPECÍFICO após processamento");
-        
-        const userIdStr = String(user.id);
-        filteredOrders = filteredOrders.filter(order => {
-          const orderUserId = String(order.userId);
-          const matches = orderUserId === userIdStr;
-          
-          console.log(`OrderContext - Comparando: pedido ${order.orderNumber}, userID ${orderUserId} vs ${userIdStr} = ${matches}`);
-          
-          return matches;
-        });
-        
-        console.log(`OrderContext - Resultado da filtragem específica: ${filteredOrders.length} de ${processedOrders.length} pedidos`);
-      }
-      else if (user?.role === 'salesperson' && user?.id) {
-        console.log("OrderContext - Filtrando novamente pedidos para vendedor (role) após processamento");
-        
-        const userIdStr = String(user.id);
-        filteredOrders = filteredOrders.filter(order => {
-          const orderUserId = String(order.userId);
-          const matches = orderUserId === userIdStr;
-          
-          console.log(`OrderContext - Comparando: pedido ${order.orderNumber}, userID ${orderUserId} vs ${userIdStr} = ${matches}`);
-          
-          return matches;
-        });
-        
-        console.log(`OrderContext - Resultado da filtragem padrão: ${filteredOrders.length} de ${processedOrders.length} pedidos`);
-      }
-      
-      setOrders(filteredOrders);
-      console.log(`Loaded ${filteredOrders.length} orders from Supabase`);
-    } catch (error) {
-      console.error('Error loading orders:', error);
-      toast.error('Erro ao carregar pedidos');
-    } finally {
-      setIsLoading(false);
+    const storedCart = localStorage.getItem('ferplas_cart');
+    if (storedCart) {
+      setCart(JSON.parse(storedCart));
     }
-  };
+  }, []);
 
-  const clearAllOrders = async () => {
-    try {
-      const { error } = await supabase.from('orders').delete().neq('id', 'placeholder');
-      
-      if (error) throw error;
-      
-      setOrders([]);
-      toast.success('Todos os pedidos foram excluídos com sucesso!');
-    } catch (error) {
-      console.error('Error clearing orders:', error);
-      toast.error('Erro ao excluir pedidos');
-    }
-  };
+  useEffect(() => {
+    localStorage.setItem('ferplas_cart', JSON.stringify(cart));
+  }, [cart]);
 
-  const deleteOrder = async (orderId: string) => {
-    try {
-      const { error } = await supabase.from('orders').delete().eq('id', orderId);
-      
-      if (error) throw error;
-      
-      setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
-      toast.success(`Pedido excluído com sucesso!`);
-    } catch (error) {
-      console.error(`Error deleting order ${orderId}:`, error);
-      toast.error('Erro ao excluir pedido');
-    }
-  };
-
-  const addOrder = async (newOrder: Partial<Order>) => {
-    if (!newOrder.customer) {
-      toast.error('Cliente não selecionado');
+  const handleAddToCart = (product: Product, quantity: number, discount: number = 0) => {
+    if (quantity <= 0) {
+      toast.error('A quantidade deve ser maior que zero.');
       return;
     }
-    
+
+    const existingItemIndex = cart.findIndex(item => item.productId === product.id);
+
+    if (existingItemIndex !== -1) {
+      const updatedCart = [...cart];
+      const existingItem = updatedCart[existingItemIndex];
+
+      // Substituir verificação de role
+      if (user && isAdministrador(user.userTypeId)) {
+        // Lógica para administrador
+        const parsedQuantity = parseInt(String(quantity), 10);
+          if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
+              toast.error("Quantidade inválida. Por favor, insira um número maior que zero.");
+              return;
+          }
+          
+          const newQuantity = (existingItem.quantity || 0) + parsedQuantity;
+          
+          updatedCart[existingItemIndex] = {
+              ...existingItem,
+              quantity: newQuantity,
+              totalUnits: product.quantityPerVolume ? newQuantity * product.quantityPerVolume : newQuantity,
+              totalCubicVolume: product.cubicVolume ? newQuantity * product.cubicVolume : 0,
+              totalWeight: product.weight ? newQuantity * product.weight : 0
+          };
+      } else {
+        // Lógica para não administrador
+        const parsedQuantity = parseInt(String(quantity), 10);
+          if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
+              toast.error("Quantidade inválida. Por favor, insira um número maior que zero.");
+              return;
+          }
+          
+          const newQuantity = (existingItem.quantity || 0) + parsedQuantity;
+          
+          if (product.quantity !== undefined && newQuantity > product.quantity) {
+              toast.error(`Quantidade excede o estoque disponível (${product.quantity} unidades).`);
+              return;
+          }
+          
+          updatedCart[existingItemIndex] = {
+              ...existingItem,
+              quantity: newQuantity,
+              totalUnits: product.quantityPerVolume ? newQuantity * product.quantityPerVolume : newQuantity,
+              totalCubicVolume: product.cubicVolume ? newQuantity * product.cubicVolume : 0,
+              totalWeight: product.weight ? newQuantity * product.weight : 0
+          };
+      }
+
+      setCart(updatedCart);
+      toast.success(`${quantity} ${product.name} adicionado(s) ao carrinho!`);
+    } else {
+      // Substituir verificação de role
+      if (user && isAdministrador(user.userTypeId)) {
+        // Lógica para administrador
+        const parsedQuantity = parseInt(String(quantity), 10);
+          if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
+              toast.error("Quantidade inválida. Por favor, insira um número maior que zero.");
+              return;
+          }
+          
+          const newItem: CartItem = {
+              id: uuidv4(),
+              productId: product.id,
+              product: product,
+              quantity: parsedQuantity,
+              discount: discount,
+              finalPrice: product.listPrice,
+              subtotal: product.listPrice * parsedQuantity,
+              totalUnits: product.quantityPerVolume ? parsedQuantity * product.quantityPerVolume : parsedQuantity,
+              unitPrice: product.listPrice,
+              totalCubicVolume: product.cubicVolume ? parsedQuantity * product.cubicVolume : 0,
+              totalWeight: product.weight ? parsedQuantity * product.weight : 0
+          };
+          
+          setCart([...cart, newItem]);
+          toast.success(`${quantity} ${product.name} adicionado(s) ao carrinho!`);
+      } else {
+        // Lógica para não administrador
+        const parsedQuantity = parseInt(String(quantity), 10);
+          if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
+              toast.error("Quantidade inválida. Por favor, insira um número maior que zero.");
+              return;
+          }
+          
+          if (product.quantity !== undefined && quantity > product.quantity) {
+              toast.error(`Quantidade excede o estoque disponível (${product.quantity} unidades).`);
+              return;
+          }
+          
+          const newItem: CartItem = {
+              id: uuidv4(),
+              productId: product.id,
+              product: product,
+              quantity: parsedQuantity,
+              discount: discount,
+              finalPrice: product.listPrice,
+              subtotal: product.listPrice * parsedQuantity,
+              totalUnits: product.quantityPerVolume ? parsedQuantity * product.quantityPerVolume : parsedQuantity,
+              unitPrice: product.listPrice,
+              totalCubicVolume: product.cubicVolume ? parsedQuantity * product.cubicVolume : 0,
+              totalWeight: product.weight ? parsedQuantity * product.weight : 0
+          };
+          
+          setCart([...cart, newItem]);
+          toast.success(`${quantity} ${product.name} adicionado(s) ao carrinho!`);
+      }
+    }
+  };
+
+  const removeFromCart = (itemId: string) => {
+    setCart(cart.filter(item => item.id !== itemId));
+    toast.success('Item removido do carrinho.');
+  };
+
+  const updateCartItemQuantity = (itemId: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeFromCart(itemId);
+      return;
+    }
+
+    const updatedCart = cart.map(item => {
+      if (item.id === itemId) {
+        return {
+          ...item,
+          quantity: quantity,
+          subtotal: item.finalPrice * quantity
+        };
+      }
+      return item;
+    });
+
+    setCart(updatedCart);
+  };
+
+  const clearCart = () => {
+    setCart([]);
+    localStorage.removeItem('ferplas_cart');
+    toast.success('Carrinho limpo!');
+  };
+
+  const calculateTotals = (items: CartItem[], options: CartOptions): CartTotals => {
+    let subtotal = 0;
+    let totalDiscount = 0;
+    let deliveryFee = options.deliveryFee || 0;
+    let taxSubstitutionTotal = 0;
+    let ipiValue = 0;
+    let productsTotal = 0;
+
+    items.forEach(item => {
+      productsTotal += item.product.listPrice * item.quantity;
+
+      const itemDiscount = (item.product.listPrice * item.quantity) * (item.discount / 100);
+      totalDiscount += itemDiscount;
+
+      let finalPrice = item.product.listPrice - (item.product.listPrice * (item.discount / 100));
+      item.finalPrice = finalPrice;
+
+      let taxSubstitutionValue = 0;
+      if (options.taxSubstitution) {
+        const mva = item.product.mva || 0;
+        taxSubstitutionValue = (finalPrice * mva / 100) * item.quantity;
+        taxSubstitutionTotal += taxSubstitutionValue;
+      }
+      item.taxSubstitutionValue = taxSubstitutionValue;
+
+      let ipiItemValue = 0;
+      if (options.withIPI) {
+        // Substituir verificação de role
+        if (user && isAdministrador(user.userTypeId)) {
+          ipiItemValue = 0;
+        } else {
+          ipiItemValue = 0;
+        }
+        ipiValue += ipiItemValue;
+      }
+      item.ipiValue = ipiItemValue;
+
+      subtotal += (finalPrice + taxSubstitutionValue + ipiItemValue) * item.quantity;
+      item.subtotal = (finalPrice + taxSubstitutionValue + ipiItemValue) * item.quantity;
+    });
+
+    const total = subtotal + deliveryFee;
+
+    return {
+      subtotal,
+      totalDiscount,
+      deliveryFee,
+      taxSubstitutionTotal,
+      ipiValue,
+      productsTotal,
+      total
+    };
+  };
+
+  const saveOrder = async (options: CartOptions): Promise<Order | null> => {
+    if (!customer) {
+      toast.error('Por favor, selecione um cliente antes de salvar o pedido.');
+      return null;
+    }
+
+    if (cart.length === 0) {
+      toast.error('O carrinho está vazio. Adicione produtos antes de salvar o pedido.');
+      return null;
+    }
+
+    const { subtotal, totalDiscount, deliveryFee, taxSubstitutionTotal, ipiValue, productsTotal, total } = calculateTotals(cart, options);
+
+    const orderData = {
+      customerId: customer.id,
+      userId: user?.id,
+      items: cart,
+      appliedDiscounts: options.discountOptions || [],
+      totalDiscount: totalDiscount,
+      subtotal: subtotal,
+      total: total,
+      status: 'pending',
+      shipping: options.shipping,
+      fullInvoice: options.fullInvoice,
+      taxSubstitution: options.taxSubstitution,
+      paymentMethod: options.paymentMethod,
+      paymentTerms: options.paymentTerms,
+      notes: options.notes,
+      observations: options.notes,
+      deliveryLocation: options.deliveryLocation,
+      halfInvoiceType: options.halfInvoiceType,
+      halfInvoicePercentage: options.halfInvoicePercentage,
+      deliveryFee: deliveryFee,
+      withIPI: options.withIPI,
+      ipiValue: ipiValue,
+      transportCompanyId: options.transportCompanyId,
+      transportCompanyName: options.transportCompanyName,
+      productsTotal: productsTotal,
+      taxSubstitutionTotal: taxSubstitutionTotal,
+      withSuframa: options.withSuframa
+    };
+
     try {
-      console.log("Adding new order:", newOrder);
-      
-      const userId = newOrder.userId || (user?.id || null);
-      const userName = user?.name || 'Usuário do Sistema';
-      console.log("Current user information:", user);
-      console.log("Using user ID for order:", userId);
-      
-      // Convert appliedDiscounts to raw JSON for Supabase
-      const appliedDiscounts = newOrder.appliedDiscounts || [];
-      console.log("Applied discounts to be saved:", appliedDiscounts);
-      
-      // Fix: Log the transport company ID being used
-      console.log("Transport company ID for database:", newOrder.transportCompanyId);
-      
-      const orderInsert = {
-        customer_id: newOrder.customer.id,
-        user_id: userId,
-        status: 'pending',
-        shipping: newOrder.shipping || 'delivery',
-        full_invoice: newOrder.fullInvoice !== undefined ? newOrder.fullInvoice : true,
-        tax_substitution: newOrder.taxSubstitution || false,
-        payment_method: newOrder.paymentMethod || 'cash',
-        payment_terms: newOrder.paymentTerms,
-        notes: newOrder.notes || '',
-        observations: newOrder.observations || '',
-        delivery_location: newOrder.deliveryLocation,
-        half_invoice_percentage: newOrder.halfInvoicePercentage,
-        delivery_fee: newOrder.deliveryFee || 0,
-        subtotal: newOrder.subtotal || 0,
-        total_discount: newOrder.totalDiscount || 0,
-        total: newOrder.total || 0,
-        with_ipi: newOrder.withIPI || false,
-        ipi_value: newOrder.ipiValue || 0,
-        transport_company_id: newOrder.transportCompanyId,
-        applied_discounts: (appliedDiscounts as unknown) as Tables<'orders'>['applied_discounts'],
-        half_invoice_type: newOrder.halfInvoiceType || 'quantity',
-        products_total: newOrder.productsTotal || 0,
-        tax_substitution_total: newOrder.taxSubstitutionTotal || 0
-      };
-      
-      console.log("Order data being inserted:", orderInsert);
-      console.log("Transport company ID being inserted:", orderInsert.transport_company_id);
-      
-      const { data: orderData, error: orderError } = await supabase
+      const { data, error } = await supabase
         .from('orders')
-        .insert(orderInsert)
+        .insert([orderData])
         .select()
         .single();
-        
-      if (orderError) {
-        console.error("Order insert error:", orderError);
-        throw orderError;
-      }
-      
-      if (!orderData) {
-        throw new Error('Erro ao criar pedido: No data returned');
-      }
-      
-      console.log("Order created successfully:", orderData);
-      
-      if (newOrder.items && newOrder.items.length > 0) {
-        const orderItems = newOrder.items.map(item => ({
-          order_id: orderData.id,
-          product_id: item.product.id,
-          quantity: item.quantity,
-          discount: item.discount || 0,
-          final_price: item.finalPrice,
-          subtotal: item.subtotal,
-          total_discount_percentage: item.totalDiscountPercentage || 0,
-          tax_substitution_value: item.taxSubstitutionValue || 0,
-          ipi_value: item.ipiValue || 0,
-          total_with_taxes: item.totalWithTaxes || 0,
-          total_units: item.totalUnits || (item.quantity * (item.product.quantityPerVolume || 1)),
-          unit_price: item.unitPrice || 0,
-          total_cubic_volume: item.totalCubicVolume || 0,
-          total_weight: item.totalWeight || 0
-        }));
-        
-        console.log("Inserting order items:", orderItems);
-        
-        const { error: itemsError } = await supabase
-          .from('order_items')
-          .insert(orderItems);
-          
-        if (itemsError) {
-          console.error("Order items insert error:", itemsError);
-          throw itemsError;
-        }
-        
-        console.log("Order items inserted successfully");
-      }
-      
-      await fetchOrders();
-      
-      toast.success(`Pedido #${orderData.order_number} criado com sucesso!`);
-      return orderData.id;
-    } catch (error: any) {
-      console.error('Error creating order:', error);
-      toast.error(`Erro ao criar pedido: ${error.message || 'Erro desconhecido'}`);
-      return undefined;
-    }
-  };
 
-  const updateOrderStatus = async (orderId: string, status: Order['status']) => {
-    try {
-      console.log(`Updating order ${orderId} status to ${status}`);
-      
-      const { error } = await supabase
-        .from('orders')
-        .update({ 
-          status,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', orderId);
-      
       if (error) {
-        console.error("Order status update error:", error);
         throw error;
       }
-      
-      setOrders(prevOrders =>
-        prevOrders.map(order =>
-          order.id === orderId
-            ? { ...order, status, updatedAt: new Date() }
-            : order
-        )
-      );
-      
-      toast.success(`Status do pedido atualizado para ${status}`);
-    } catch (error: any) {
-      console.error('Error updating order status:', error);
-      toast.error(`Erro ao atualizar status do pedido: ${error.message || 'Erro desconhecido'}`);
-    }
-  };
-  
-  const updateOrder = async (orderId: string, orderData: Partial<Order>) => {
-    try {
-      console.log(`Updating order ${orderId} with data:`, orderData);
-      
-      const supabaseOrderData: Record<string, any> = {
-        updated_at: new Date().toISOString()
-      };
-      
-      if (orderData.status !== undefined) supabaseOrderData.status = orderData.status;
-      if (orderData.shipping !== undefined) supabaseOrderData.shipping = orderData.shipping;
-      if (orderData.fullInvoice !== undefined) supabaseOrderData.full_invoice = orderData.fullInvoice;
-      if (orderData.taxSubstitution !== undefined) supabaseOrderData.tax_substitution = orderData.taxSubstitution;
-      if (orderData.paymentMethod !== undefined) supabaseOrderData.payment_method = orderData.paymentMethod;
-      if (orderData.paymentTerms !== undefined) supabaseOrderData.payment_terms = orderData.paymentTerms;
-      if (orderData.notes !== undefined) supabaseOrderData.notes = orderData.notes;
-      if (orderData.observations !== undefined) supabaseOrderData.observations = orderData.observations;
-      if (orderData.deliveryLocation !== undefined) supabaseOrderData.delivery_location = orderData.deliveryLocation;
-      if (orderData.halfInvoicePercentage !== undefined) supabaseOrderData.half_invoice_percentage = orderData.halfInvoicePercentage;
-      if (orderData.deliveryFee !== undefined) supabaseOrderData.delivery_fee = orderData.deliveryFee;
-      if (orderData.withIPI !== undefined) supabaseOrderData.with_ipi = orderData.withIPI;
-      if (orderData.ipiValue !== undefined) supabaseOrderData.ipi_value = orderData.ipiValue;
-      if (orderData.userId !== undefined) supabaseOrderData.user_id = orderData.userId;
-      if (orderData.invoiceNumber !== undefined) supabaseOrderData.invoice_number = orderData.invoiceNumber;
-      if (orderData.invoicePdfPath !== undefined) supabaseOrderData.invoice_pdf_path = orderData.invoicePdfPath;
-      
-      if (orderData.transportCompanyId !== undefined) {
-        supabaseOrderData.transport_company_id = orderData.transportCompanyId === 'none' ? null : orderData.transportCompanyId;
-      }
 
-      console.log("Final Supabase order data for update:", supabaseOrderData);
-      
-      const { error } = await supabase
-        .from('orders')
-        .update(supabaseOrderData)
-        .eq('id', orderId);
-      
-      if (error) {
-        console.error("Order update error:", error);
-        throw error;
-      }
-      
-      setOrders(prevOrders =>
-        prevOrders.map(order =>
-          order.id === orderId
-            ? { 
-                ...order, 
-                ...orderData, 
-                updatedAt: new Date()
-              }
-            : order
-        )
-      );
-      
-      console.log('Order updated successfully');
-      return true;
+      clearCart();
+      toast.success('Pedido salvo com sucesso!');
+      return data as Order;
     } catch (error: any) {
-      console.error('Error updating order:', error);
-      throw error;
+      toast.error(`Erro ao salvar o pedido: ${error.message}`);
+      return null;
     }
-  };
-
-  const getOrderById = (id: string) => {
-    console.log(`Fetching order with ID: ${id}`);
-    console.log(`Current orders in state:`, orders.map(o => ({ id: o.id, number: o.orderNumber, user: o.user })));
-    
-    if (isSalespersonType && user?.id) {
-      const foundOrder = orders.find(order => order.id === id);
-      
-      if (!foundOrder) {
-        console.error(`Order with ID ${id} not found in state`);
-        return undefined;
-      }
-      
-      if (String(foundOrder.userId) !== String(user.id)) {
-        console.error(`Order with ID ${id} belongs to user ${foundOrder.userId}, not current user ${user.id}`);
-        return undefined;
-      }
-      
-      console.log(`Found order for specific salesperson type:`, foundOrder);
-      return foundOrder;
-    }
-    else if (user?.role === 'salesperson' && user?.id) {
-      const foundOrder = orders.find(order => order.id === id);
-      
-      if (!foundOrder) {
-        console.error(`Order with ID ${id} not found in state`);
-        return undefined;
-      }
-      
-      if (String(foundOrder.userId) !== String(user.id)) {
-        console.error(`Order with ID ${id} belongs to user ${foundOrder.userId}, not current user ${user.id}`);
-        return undefined;
-      }
-      
-      console.log(`Found order for salesperson:`, foundOrder);
-      return foundOrder;
-    }
-    
-    const foundOrder = orders.find(order => order.id === id);
-    
-    if (!foundOrder) {
-      console.error(`Order with ID ${id} not found in state`);
-      return undefined;
-    }
-    
-    console.log(`Found order:`, foundOrder);
-    return foundOrder;
   };
 
   return (
-    <OrderContext.Provider value={{ 
-      orders, 
-      addOrder, 
-      updateOrderStatus, 
-      updateOrder, 
-      getOrderById, 
-      clearAllOrders,
-      deleteOrder,
-      isLoading
+    <OrderContext.Provider value={{
+      cart,
+      customer,
+      setCustomer,
+      addToCart,
+      removeFromCart,
+      updateCartItemQuantity,
+      clearCart,
+      calculateTotals,
+      saveOrder,
+      deliveryFees,
+      setDeliveryFees,
+      discountOptions,
+      setDiscountOptions,
+      transportCompanies,
+      setTransportCompanies,
+      companyInfo,
+      setCompanyInfo
     }}>
       {children}
     </OrderContext.Provider>
   );
 };
 
-export const useOrders = () => {
+export const useOrder = () => {
   const context = useContext(OrderContext);
-  if (context === undefined) {
-    throw new Error('useOrders must be used within an OrderProvider');
+  if (!context) {
+    throw new Error('useOrder deve ser usado dentro de um OrderProvider');
   }
   return context;
 };
