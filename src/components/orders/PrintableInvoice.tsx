@@ -85,11 +85,11 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
   };
 
   const calculateQuantityWithInvoice = (totalUnits: number, percentage: number) => {
-    return Math.round(totalUnits * (percentage / 100));
+    return Number((totalUnits * (percentage / 100)).toFixed(2));
   };
 
   const calculateQuantityWithoutInvoice = (totalUnits: number, percentage: number) => {
-    return Math.round(totalUnits * ((100 - percentage) / 100));
+    return Number((totalUnits * ((100 - percentage) / 100)).toFixed(2));
   };
 
   const calculateTotalWithInvoice = (
