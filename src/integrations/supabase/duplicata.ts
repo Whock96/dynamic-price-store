@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Duplicata, RefTable } from "@/types/duplicata";
 
@@ -77,7 +76,7 @@ export async function upsertDuplicata(duplicata: Partial<Duplicata>) {
     valor_recebido: duplicata.valorRecebido,
     data_pagamento: duplicata.dataPagamento,
     banco_pagamento_id: duplicata.bancoPagamentoId,
-    pdf_boleto_path: duplicata.pdfBoletoPath ?? null, // Guarantee null when not set
+    pdf_boleto_path: duplicata.pdfBoletoPath === undefined ? null : duplicata.pdfBoletoPath,
   };
 
   console.log("[SUPABASE] upsertDuplicata - Salvando duplicata:", dbDuplicata);

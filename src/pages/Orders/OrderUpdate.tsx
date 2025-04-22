@@ -287,7 +287,6 @@ const OrderUpdate = () => {
     setIsSavingDuplicata(true);
     try {
       let pdfBoletoPath = form.pdfBoletoPath;
-
       let uploadId = form.id || `${id}-${Date.now()}`;
 
       if (file) {
@@ -306,7 +305,7 @@ const OrderUpdate = () => {
       const payload: Partial<Duplicata> = {
         ...form,
         orderId: id,
-        pdfBoletoPath,
+        pdfBoletoPath: pdfBoletoPath ?? null,
       };
       if (form.id) payload.id = form.id;
 

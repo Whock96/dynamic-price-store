@@ -96,7 +96,8 @@ const DuplicataForm: React.FC<Props> = ({
     }
     const formData = {
       ...data,
-      numeroDuplicata: numeroDuplicataFinal
+      numeroDuplicata: numeroDuplicataFinal,
+      pdfBoletoPath: value?.pdfBoletoPath ?? "",
     };
     onSave(formData, boletoFile);
   };
