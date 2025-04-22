@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -46,7 +45,6 @@ const DuplicataForm: React.FC<Props> = ({
   const notaNumber =
     invoiceNumber ||
     value?.numeroDuplicata?.split("-")[0] ||
-    value?.invoice_number || 
     "";
 
   // Descobrir o complemento inicial caso esteja editando
