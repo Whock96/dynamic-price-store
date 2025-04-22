@@ -6,7 +6,6 @@ import { useOrders } from '@/context/OrderContext';
 import { supabaseOrderToAppOrder } from '@/utils/adapters';
 import { Order } from '@/types/types';
 import { useAuth } from '@/context/AuthContext';
-import { isVendedor } from '@/utils/permissionUtils';
 
 /**
  * Custom hook to fetch order data directly from Supabase
@@ -47,9 +46,9 @@ export function useOrderData(orderId: string | undefined) {
             return;
           }
         }
-        else if (isVendedor(currentUser?.userTypeId) && String(contextOrder.userId) !== String(currentUser?.id)) {
+        else if (currentUser?.role === 'salesperson' && String(contextOrder.userId) !== String(currentUser.id)) {
           console.log("User is a salesperson but this order belongs to another salesperson");
-          console.log(`Order user ID: ${contextOrder.userId} (${typeof contextOrder.userId}) vs Current user ID: ${currentUser?.id} (${typeof currentUser?.id})`);
+          console.log(`Order user ID: ${contextOrder.userId} (${typeof contextOrder.userId}) vs Current user ID: ${currentUser.id} (${typeof currentUser.id})`);
           setError(new Error('Você não tem permissão para visualizar este pedido'));
           setOrder(null);
           setIsLoading(false);
@@ -78,9 +77,9 @@ export function useOrderData(orderId: string | undefined) {
         console.log("useOrderData - Restringindo acesso a pedidos para vendedor ESPECÍFICO:", currentUserIdStr);
         query = query.eq('user_id', currentUserIdStr);
       }
-      else if (isVendedor(currentUser?.userTypeId) && currentUser?.id) {
+      else if (currentUser?.role === 'salesperson' && currentUser?.id) {
         const currentUserIdStr = String(currentUser.id);
-        console.log("useOrderData - Restringindo acesso a pedidos para vendedor (tipo):", currentUserIdStr);
+        console.log("useOrderData - Restringindo acesso a pedidos para vendedor (role):", currentUserIdStr);
         query = query.eq('user_id', currentUserIdStr);
       }
       
@@ -88,7 +87,7 @@ export function useOrderData(orderId: string | undefined) {
 
       if (orderError) {
         if (orderError.code === 'PGRST116') {
-          if (isSalespersonType || isVendedor(currentUser?.userTypeId)) {
+          if (isSalespersonType || currentUser?.role === 'salesperson') {
             throw new Error('Você não tem permissão para visualizar este pedido');
           } else {
             throw new Error('Pedido não encontrado');
@@ -193,7 +192,7 @@ export function useOrderData(orderId: string | undefined) {
           return;
         }
       }
-      else if (isVendedor(currentUser?.userTypeId) && currentUser?.id) {
+      else if (currentUser?.role === 'salesperson' && currentUser?.id) {
         const orderUserIdStr = String(orderData.user_id);
         const currentUserIdStr = String(currentUser.id);
         

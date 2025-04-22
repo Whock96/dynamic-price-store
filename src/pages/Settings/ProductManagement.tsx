@@ -50,7 +50,6 @@ import { Tables, uploadProductImage } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/utils/formatters';
 import { FileUpload } from '@/components/ui/file-upload';
-import { isAdministrador } from '@/utils/permissionUtils';
 
 type Product = Tables<'products'>;
 type Category = Tables<'categories'>;
@@ -126,16 +125,17 @@ const ProductManagement = () => {
 
   useEffect(() => {
     console.log("ProductManagement - User:", user);
+    console.log("ProductManagement - Has products_manage permission:", hasPermission('products_manage'));
     
-    const isAdmin = user && isAdministrador(user.userTypeId);
+    const isAdmin = user?.role?.toLowerCase() === 'administrator';
     console.log("ProductManagement - User is administrator:", isAdmin);
     
-    if (!isAdmin) {
+    if (!isAdmin && !hasPermission('products_manage')) {
       toast.error('Você não tem permissão para acessar esta página');
       navigate('/dashboard');
       return;
     }
-  }, [user, navigate]);
+  }, [user, navigate, hasPermission]);
 
   useEffect(() => {
     if (productsError) toast.error(`Erro ao carregar produtos: ${productsError.message}`);

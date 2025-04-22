@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus, ArrowLeft, Loader2 } from 'lucide-react';
@@ -11,7 +12,6 @@ import { useCategories } from '@/hooks/use-categories';
 import CategoryList from '@/components/categories/CategoryList';
 import CategoryDialog from '@/components/categories/CategoryDialog';
 import SubcategoryDialog from '@/components/categories/SubcategoryDialog';
-import { isAdministrador } from '@/utils/permissionUtils';
 
 export enum DialogType {
   NONE = 'NONE',
@@ -23,7 +23,7 @@ export enum DialogType {
 
 const CategoryManagement = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const { 
     categories, 
     isLoading, 
@@ -57,17 +57,21 @@ const CategoryManagement = () => {
   });
 
   useEffect(() => {
+    // Added additional logging to debug permissions
     console.log("CategoryManagement - User:", user);
+    console.log("CategoryManagement - Has categories_manage permission:", hasPermission('categories_manage'));
     
-    const isAdmin = user && isAdministrador(user.userTypeId);
+    // Verify the user role directly to ensure administrators always have access
+    const isAdmin = user?.role?.toLowerCase() === 'administrator';
     console.log("CategoryManagement - User is administrator:", isAdmin);
     
-    if (!isAdmin) {
+    if (!isAdmin && !hasPermission('categories_manage')) {
       toast.error('Você não tem permissão para acessar esta página');
       navigate('/dashboard');
       return;
     }
     
+    // Only fetch categories once when component mounts
     fetchCategories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -95,6 +99,7 @@ const CategoryManagement = () => {
     });
   };
 
+  // Dialog open handlers
   const openAddCategoryDialog = () => {
     setCategoryFormData({
       id: '',
@@ -120,7 +125,7 @@ const CategoryManagement = () => {
       id: '',
       name: '',
       description: '',
-      categoryId: category.id,
+      categoryId: category.id, // Pre-select the category
     });
     setActiveDialog(DialogType.ADD_SUBCATEGORY);
   };
@@ -137,12 +142,14 @@ const CategoryManagement = () => {
     setActiveDialog(DialogType.EDIT_SUBCATEGORY);
   };
 
+  // Dialog close handler
   const closeDialog = () => {
     setActiveDialog(DialogType.NONE);
     setSelectedCategory(null);
     setSelectedSubcategory(null);
   };
 
+  // Form input change handlers
   const handleCategoryInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setCategoryFormData(prev => ({
@@ -159,6 +166,7 @@ const CategoryManagement = () => {
     }));
   };
 
+  // Save handlers
   const handleSaveCategory = async () => {
     if (!categoryFormData.name) {
       toast.error('O nome da categoria é obrigatório');
@@ -179,6 +187,7 @@ const CategoryManagement = () => {
         });
         
         if (newCategory) {
+          // Automatically expand the new category
           setExpandedCategories(prev => [...prev, newCategory.id]);
         }
       }
@@ -237,6 +246,7 @@ const CategoryManagement = () => {
   const handleDeleteCategory = async (categoryId: string) => {
     try {
       await deleteCategory(categoryId);
+      // Remove from expanded list if it exists
       setExpandedCategories(prev => prev.filter(id => id !== categoryId));
     } catch (error) {
       console.error('Error deleting category:', error);
@@ -320,6 +330,7 @@ const CategoryManagement = () => {
         />
       )}
 
+      {/* Category Dialog */}
       {(activeDialog === DialogType.ADD_CATEGORY || activeDialog === DialogType.EDIT_CATEGORY) && (
         <CategoryDialog 
           isOpen={true}
@@ -331,6 +342,7 @@ const CategoryManagement = () => {
         />
       )}
 
+      {/* Subcategory Dialog */}
       {(activeDialog === DialogType.ADD_SUBCATEGORY || activeDialog === DialogType.EDIT_SUBCATEGORY) && (
         <SubcategoryDialog 
           isOpen={true}
