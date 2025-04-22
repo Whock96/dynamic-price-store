@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { FileUpload } from "@/components/ui/file-upload";
 import { Duplicata, RefTable } from "@/types/duplicata";
-import { 
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -29,6 +29,7 @@ interface Props {
   onDeletePdf?: () => Promise<void>;
   isSaving: boolean;
   isOpen: boolean;
+  invoiceNumber?: string; // [NOVO] - pode ser passado do pedido para cá
 }
 
 const DuplicataForm: React.FC<Props> = ({
@@ -39,9 +40,23 @@ const DuplicataForm: React.FC<Props> = ({
   isSaving,
   onDeletePdf,
   isOpen,
+  invoiceNumber
 }) => {
+  // Extrair o número da nota do prop ou do valor
+  const notaNumber =
+    invoiceNumber ||
+    value?.numeroDuplicata?.split("-")[0] ||
+    value?.invoice_number || 
+    "";
+
+  // Descobrir o complemento inicial caso esteja editando
+  const initialComplement = value?.numeroDuplicata
+    ? value.numeroDuplicata.split("-").slice(1).join("-")
+    : "";
+
   const [data, setData] = useState<Partial<Duplicata>>({ ...value });
   const [boletoFile, setBoletoFile] = useState<File | null>(null);
+  const [complemento, setComplemento] = useState(initialComplement);
   const [showPayment, setShowPayment] = useState(
     value &&
       (value.paymentStatus?.nome === "Pago" ||
@@ -50,12 +65,15 @@ const DuplicataForm: React.FC<Props> = ({
         value.paymentStatusId === lookup.statuses.find((t) => t.nome === "Pago Parcialmente")?.id)
   );
 
-  // Always sync changes
   useEffect(() => {
     setData({ ...value });
+    setComplemento(
+      value?.numeroDuplicata
+        ? value.numeroDuplicata.split("-").slice(1).join("-")
+        : ""
+    );
   }, [value]);
 
-  // Control payment fields visibility
   useEffect(() => {
     const s =
       lookup.statuses.find((t) => t.id === data.paymentStatusId)?.nome ?? "";
@@ -71,34 +89,71 @@ const DuplicataForm: React.FC<Props> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(data, boletoFile);
+    // Ao salvar, gera o numeroDuplicata corretamente
+    const numeroDuplicataFinal =
+      notaNumber && complemento ? `${notaNumber}-${complemento}` : "";
+    const cleanData = {
+      ...data,
+      numeroDuplicata: numeroDuplicataFinal
+    };
+    onSave(cleanData, boletoFile);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) onCancel();
-    }}>
-      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onCancel();
+      }}
+    >
+      <DialogContent
+        className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto z-[130]" // aumenta z-index para ficar acima do header
+        style={{ zIndex: 130 }}
+      >
         <DialogHeader>
-          <DialogTitle>{value?.id ? 'Editar Duplicata' : 'Nova Duplicata'}</DialogTitle>
+          <DialogTitle>
+            {value?.id ? "Editar Duplicata" : "Nova Duplicata"}
+          </DialogTitle>
         </DialogHeader>
         <DialogBody>
-          <form
-            className="space-y-3"
-            onSubmit={handleSubmit}
-          >
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <form className="space-y-3" onSubmit={handleSubmit}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+              <div className="col-span-2 flex gap-3">
+                <div>
+                  <Label>Número da Nota Fiscal</Label>
+                  <Input
+                    value={notaNumber}
+                    disabled
+                    className="bg-gray-100"
+                    tabIndex={-1}
+                  />
+                </div>
+                <div>
+                  <Label>Complemento</Label>
+                  <Input
+                    value={complemento}
+                    maxLength={12}
+                    onChange={(e) => setComplemento(e.target.value)}
+                    required
+                    placeholder="Ex: A, B, N1..."
+                  />
+                </div>
+              </div>
               <div>
-                <Label>Número</Label>
+                <Label>Número da Duplicata (final)</Label>
                 <Input
-                  required
-                  value={data.numeroDuplicata || ""}
-                  maxLength={40}
-                  onChange={(e) =>
-                    setData((v) => ({ ...v, numeroDuplicata: e.target.value }))
+                  value={
+                    notaNumber && complemento
+                      ? `${notaNumber}-${complemento}`
+                      : ""
                   }
+                  disabled
+                  className="bg-gray-100"
+                  tabIndex={-1}
                 />
               </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label>Data Emissão</Label>
                 <Input
@@ -121,8 +176,6 @@ const DuplicataForm: React.FC<Props> = ({
                   }
                 />
               </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label>Valor (R$)</Label>
                 <Input
@@ -139,6 +192,8 @@ const DuplicataForm: React.FC<Props> = ({
                   }
                 />
               </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label>Valor Acréscimo (R$)</Label>
                 <Input
@@ -169,8 +224,6 @@ const DuplicataForm: React.FC<Props> = ({
                   }
                 />
               </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <Label>Modo Pagamento</Label>
                 <Select
@@ -192,6 +245,8 @@ const DuplicataForm: React.FC<Props> = ({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <Label>Portador</Label>
                 <Select
@@ -254,6 +309,9 @@ const DuplicataForm: React.FC<Props> = ({
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div>
+                {/* Espaço para manter alinhamento visual */}
               </div>
             </div>
             {showPayment && (
@@ -319,7 +377,11 @@ const DuplicataForm: React.FC<Props> = ({
                 accept="application/pdf,.pdf"
                 maxSize={15}
                 isLoading={isSaving}
-                onDelete={value?.pdfBoletoPath && onDeletePdf ? handleDeletePdf : undefined}
+                onDelete={
+                  value?.pdfBoletoPath && onDeletePdf
+                    ? handleDeletePdf
+                    : undefined
+                }
               />
               <span className="text-xs text-muted-foreground">
                 Formato: PDF, até 15MB.
