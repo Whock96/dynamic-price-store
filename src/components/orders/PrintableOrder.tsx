@@ -68,7 +68,6 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, companyInfo, onP
     totalCubicVolume += Number(item.totalCubicVolume || 0);
   });
 
-  // Usar o valor do IPI diretamente da ordem, não recalcular
   const totalIpiValue = order.ipiValue || 0;
 
   return (
@@ -129,7 +128,7 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, companyInfo, onP
             )}
             <p><span className="font-semibold">Substituição Tributária:</span> {order.taxSubstitution ? 'Sim' : 'Não'}</p>
             <p><span className="font-semibold">IPI:</span> {order.withIPI ? 'Sim' : 'Não'}</p>
-            <p><span className="font-semibold">SUFRAMA:</span> {order.suframa ? 'Sim' : 'Não'}</p>
+            <p><span className="font-semibold">SUFRAMA:</span> {order.withSuframa ? 'Sim' : 'Não'}</p>
           </div>
         </div>
       </div>

@@ -171,7 +171,7 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
             )}
             <p><span className="font-semibold">Substituição Tributária:</span> {order.taxSubstitution ? 'Sim' : 'Não'}</p>
             <p><span className="font-semibold">IPI:</span> {order.withIPI ? 'Sim' : 'Não'}</p>
-            <p><span className="font-semibold">SUFRAMA:</span> {order.suframa ? 'Sim' : 'Não'}</p>
+            <p><span className="font-semibold">SUFRAMA:</span> {order.withSuframa ? 'Sim' : 'Não'}</p>
           </div>
         </div>
       </div>
