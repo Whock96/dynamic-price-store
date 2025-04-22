@@ -63,6 +63,7 @@ export const useOrderData = ({ customerId, userId, startDate, endDate }: UseOrde
         toast.error(`Erro ao buscar pedidos: ${error.message}`);
       } else if (data) {
         const processedOrders = data.map(order => {
+          // Robust null checking for user name
           const userName = order.user && typeof order.user === 'object' && order.user !== null && 'name' in order.user
             ? order.user.name
             : 'Usuário do Sistema';
@@ -151,3 +152,4 @@ export const useOrderData = ({ customerId, userId, startDate, endDate }: UseOrde
 
   return { orders, loading, error };
 };
+
