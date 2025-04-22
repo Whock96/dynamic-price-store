@@ -666,27 +666,22 @@ const OrderUpdate = () => {
                   </TableBody>
                 </Table>
               </div>
-              {showDuplicataForm && (
-                <div className="fixed inset-0 bg-black/20 z-30 flex justify-center items-center">
-                  <div className="bg-white rounded-md p-4 max-w-lg w-full">
-                    <DuplicataForm
-                      value={editingDuplicata as Duplicata}
-                      lookup={lookup}
-                      isSaving={isSavingDuplicata}
-                      onSave={handleSaveDuplicata}
-                      onCancel={() => {
-                        setShowDuplicataForm(false);
-                        setEditingDuplicata(null);
-                      }}
-                      onDeletePdf={
-                        editingDuplicata?.pdfBoletoPath
-                          ? async () => handleDeleteBoletoPdf(editingDuplicata!)
-                          : undefined
-                      }
-                    />
-                  </div>
-                </div>
-              )}
+              <DuplicataForm
+                value={editingDuplicata as Duplicata}
+                lookup={lookup}
+                isSaving={isSavingDuplicata}
+                onSave={handleSaveDuplicata}
+                onCancel={() => {
+                  setShowDuplicataForm(false);
+                  setEditingDuplicata(null);
+                }}
+                onDeletePdf={
+                  editingDuplicata?.pdfBoletoPath
+                    ? async () => handleDeleteBoletoPdf(editingDuplicata!)
+                    : undefined
+                }
+                isOpen={showDuplicataForm}
+              />
             </>
           )}
         </CardContent>
