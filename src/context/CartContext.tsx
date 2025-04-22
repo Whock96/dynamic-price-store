@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Customer, DiscountOption, Product, Order } from '../types/types';
 import { toast } from 'sonner';
-import { useOrders } from './OrderContext';
+import { useOrder } from './OrderContext';
 import { useCustomers } from './CustomerContext';
 import { useDiscountSettings } from '../hooks/use-discount-settings';
 import { useAuth } from './AuthContext';
@@ -57,7 +57,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   let addOrder: (newOrder: Partial<Order>) => Promise<string | undefined>;
   try {
-    const { addOrder: orderContextAddOrder } = useOrders();
+    const { addOrder: orderContextAddOrder } = useOrder();
     addOrder = orderContextAddOrder;
   } catch (error) {
     console.error("OrderContext not available:", error);

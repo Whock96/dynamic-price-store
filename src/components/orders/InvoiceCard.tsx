@@ -9,6 +9,7 @@ import { Order } from '@/types/types';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { isAdministrador } from '@/utils/permissionUtils';
 
 interface InvoiceCardProps {
   order: Order;
@@ -74,7 +75,7 @@ export const InvoiceCard = ({ order, onDelete }: InvoiceCardProps) => {
             {!order.invoicePdfPath ? (
               <div className="text-center p-4 border border-dashed rounded-md">
                 <p className="text-muted-foreground mb-2">Nenhum arquivo PDF anexado</p>
-                {user?.role === 'administrator' && (
+                {user && isAdministrador(user.userTypeId) && (
                   <Button 
                     variant="outline" 
                     size="sm"
@@ -104,7 +105,7 @@ export const InvoiceCard = ({ order, onDelete }: InvoiceCardProps) => {
                     Baixar
                   </Button>
                   
-                  {user?.role === 'administrator' && (
+                  {user && isAdministrador(user.userTypeId) && (
                     <Button 
                       variant="destructive" 
                       size="sm"

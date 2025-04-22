@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useOrders } from '@/context/OrderContext';
+import { useOrder } from "@/context/OrderContext";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,7 +19,7 @@ import { FileUpload } from '@/components/ui/file-upload';
 
 const OrderUpdate = () => {
   const { id } = useParams<{ id: string }>();
-  const { updateOrder, updateOrderStatus } = useOrders();
+  const { updateOrder, updateOrderStatus } = useOrder();
   const navigate = useNavigate();
   const [status, setStatus] = useState<string>('');
   const [notes, setNotes] = useState<string>('');

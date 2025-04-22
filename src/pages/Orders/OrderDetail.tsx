@@ -22,7 +22,7 @@ import { useAuth } from '../../context/AuthContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { useOrders } from '@/context/OrderContext';
+import { useOrder } from "@/context/OrderContext";
 import { useOrderData } from '@/hooks/use-order-data';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import PrintableOrder from '@/components/orders/PrintableOrder';
@@ -35,7 +35,7 @@ const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { getOrderById, updateOrder } = useOrders();
+  const { getOrderById, updateOrder } = useOrder();
   const { order: supabaseOrder, isLoading: isSupabaseLoading, fetchOrderData } = useOrderData(id);
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
