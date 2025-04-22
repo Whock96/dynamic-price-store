@@ -287,42 +287,47 @@ const OrderUpdate = () => {
     setIsSavingDuplicata(true);
     try {
       let pdfBoletoPath = form.pdfBoletoPath;
-      
-      if (file && id) {
+
+      let duplicataIdParaUpload = form.id;
+      if (!duplicataIdParaUpload) {
+        duplicataIdParaUpload = `${id}-${Date.now()}`;
+      }
+
+      if (file) {
         try {
-          console.log("Starting PDF upload process...");
-          pdfBoletoPath = await uploadBoletoPdf(file, form.id || id);
-          console.log("PDF uploaded successfully, path:", pdfBoletoPath);
-          
+          console.log("==[UPLOAD DETALHE]== Vai fazer upload do PDF: ", file.name);
+          pdfBoletoPath = await uploadBoletoPdf(file, duplicataIdParaUpload);
+          console.log("==[UPLOAD DETALHE]== PDF enviado com sucesso, public URL:", pdfBoletoPath);
+
           if (!pdfBoletoPath) {
-            throw new Error("Upload failed: No path returned");
+            throw new Error("Upload falhou: Nenhuma URL pública retornada.");
           }
         } catch (uploadError) {
-          console.error("PDF upload failed:", uploadError);
+          console.error("O upload do PDF falhou:", uploadError);
           toast.error("Erro ao fazer upload do PDF. Tente novamente.");
           setIsSavingDuplicata(false);
           return;
         }
       }
-      
+
       const payload: Partial<Duplicata> = {
         ...form,
         orderId: id,
-        pdfBoletoPath,
+        ...(pdfBoletoPath !== undefined ? { pdfBoletoPath } : {}),
       };
-      
+
       if (form.id) payload.id = form.id;
-      
-      console.log("Saving duplicata with data:", payload);
+
+      console.log("==[SALVAR DUPLICATA]== Dados enviados:", payload);
       const res = await upsertDuplicata(payload);
-      console.log("Duplicata saved successfully:", res);
-      
+      console.log("Duplicata salva com sucesso:", res);
+
       toast.success("Duplicata salva com sucesso");
       setShowDuplicataForm(false);
       setEditingDuplicata(null);
       fetchDuplicatas(id).then(setDuplicatas);
     } catch (err: any) {
-      console.error("Error in handleSaveDuplicata:", err);
+      console.error("Erro no handleSaveDuplicata:", err);
       toast.error("Erro ao salvar duplicata: " + (err.message || "Erro desconhecido"));
     } finally {
       setIsSavingDuplicata(false);
