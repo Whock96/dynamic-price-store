@@ -286,8 +286,8 @@ const OrderUpdate = () => {
   const handleSaveDuplicata = async (form: Partial<Duplicata>, file?: File | null) => {
     setIsSavingDuplicata(true);
     try {
-      let boletoPdfPath = undefined;
-      let uploadId = form.id || `${id}-${Date.now()}`;
+      let pdfBoletoPath = form.pdfBoletoPath;
+      const uploadId = form.id || `${id}-${Date.now()}`;
 
       if (file) {
         try {
@@ -297,11 +297,11 @@ const OrderUpdate = () => {
             duplicataId: uploadId
           });
           
-          boletoPdfPath = await uploadBoletoPdf(file, uploadId);
+          pdfBoletoPath = await uploadBoletoPdf(file, uploadId);
           
-          console.log("[DUPLICATA PDF] Upload do boleto PDF concluído com sucesso:", boletoPdfPath);
+          console.log("[DUPLICATA PDF] Upload do boleto PDF concluído com sucesso:", pdfBoletoPath);
           
-          if (!boletoPdfPath) {
+          if (!pdfBoletoPath) {
             throw new Error("Upload do boleto PDF falhou: A URL pública não foi retornada.");
           }
         } catch (uploadError: any) {
@@ -311,18 +311,16 @@ const OrderUpdate = () => {
           return;
         }
       } else if (form.pdfBoletoPath === null || form.pdfBoletoPath === "") {
-        boletoPdfPath = null;
+        pdfBoletoPath = null;
         console.log("[DUPLICATA PDF] Removendo PDF da duplicata");
-      } else if (form.pdfBoletoPath !== undefined) {
-        boletoPdfPath = form.pdfBoletoPath;
-        console.log("[DUPLICATA PDF] Mantendo boleto PDF existente:", boletoPdfPath);
       }
 
       const payload: Partial<Duplicata> = {
         ...form,
         orderId: id,
-        pdfBoletoPath: boletoPdfPath,
+        pdfBoletoPath: pdfBoletoPath,
       };
+      
       if (form.id) payload.id = form.id;
 
       console.log("[DUPLICATA PDF] Salvando duplicata com dados:", {
@@ -337,7 +335,7 @@ const OrderUpdate = () => {
       setEditingDuplicata(null);
       
       console.log("[DUPLICATA PDF] Atualizando lista de duplicatas");
-      await fetchDuplicatas(id).then(setDuplicatas);
+      await fetchDuplicatas(id!).then(setDuplicatas);
     } catch (err: any) {
       console.error("[DUPLICATA PDF] Erro ao salvar duplicata:", err);
       toast.error("Erro ao salvar duplicata: " + (err.message || "Erro desconhecido"));
@@ -354,7 +352,7 @@ const OrderUpdate = () => {
       }
       await deleteDuplicata(dup.id);
       toast.success("Duplicata excluída");
-      fetchDuplicatas(id).then(setDuplicatas);
+      fetchDuplicatas(id!).then(setDuplicatas);
     } catch (err: any) {
       toast.error("Erro ao excluir duplicata");
     }
@@ -366,7 +364,7 @@ const OrderUpdate = () => {
     try {
       await deleteBoletoPdf(dup.pdfBoletoPath);
       await upsertDuplicata({ id: dup.id, pdfBoletoPath: null });
-      fetchDuplicatas(id).then(setDuplicatas);
+      fetchDuplicatas(id!).then(setDuplicatas);
       toast.success("PDF excluído");
     } catch (err) {
       toast.error("Erro ao excluir PDF");

@@ -78,7 +78,7 @@ export async function upsertDuplicata(duplicata: Partial<Duplicata>) {
     valor_recebido: duplicata.valorRecebido,
     data_pagamento: duplicata.dataPagamento,
     banco_pagamento_id: duplicata.bancoPagamentoId,
-    pdf_boleto_path: duplicata.pdfBoletoPath === undefined ? null : duplicata.pdfBoletoPath,
+    pdf_boleto_path: duplicata.pdfBoletoPath,
   };
 
   // Log detalhado para depuração
