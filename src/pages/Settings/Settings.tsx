@@ -2,7 +2,7 @@
 import React from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { SettingsTabs } from '@/components/settings/SettingsTabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { isAdministrador } from '@/utils/permissionUtils';

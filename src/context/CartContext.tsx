@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Product, CartItem, Customer, DiscountOption, Order } from '@/types/types';
+import { Product, CartItem, Customer, DiscountOption, Order, TransportCompany } from '@/types/types';
 import { useOrders } from './OrderContext';
 import { useAuth } from './AuthContext';
 

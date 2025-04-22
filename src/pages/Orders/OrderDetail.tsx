@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import * as ReactDOM from 'react-dom/client';
@@ -32,6 +31,10 @@ import { InvoiceCard } from '@/components/orders/InvoiceCard';
 import { printStyles } from '@/styles/printStyles';
 import { Order } from '@/types/types';
 import { supabaseOrderToAppOrder } from '@/utils/adapters';
+
+const formatDate = (date: Date) => {
+  return format(date, 'dd/MM/yyyy HH:mm', { locale: ptBR });
+};
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -386,7 +389,7 @@ const OrderDetail = () => {
               <div className="ml-4">{getStatusBadge(order.status)}</div>
             </div>
             <p className="text-muted-foreground">
-              Criado em {format(new Date(order.createdAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+              Criado em {formatDate(new Date(order.createdAt))} 
             </p>
           </div>
         </div>
@@ -504,7 +507,7 @@ const OrderDetail = () => {
                 <div>
                   <p className="font-medium">Pedido Criado</p>
                   <p className="text-sm text-gray-500">
-                    {format(new Date(order.createdAt || order.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                    {formatDate(new Date(order.createdAt))}
                   </p>
                   <p className="text-sm text-gray-500">Por {userName}</p>
                 </div>
@@ -518,7 +521,7 @@ const OrderDetail = () => {
                   <div>
                     <p className="font-medium">Pedido Confirmado</p>
                     <p className="text-sm text-gray-500">
-                      {format(new Date(new Date(order.createdAt || order.created_at).getTime() + 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      {formatDate(new Date(new Date(order.createdAt).getTime() + 24 * 60 * 60 * 1000))}
                     </p>
                     <p className="text-sm text-gray-500">Por Administrador</p>
                   </div>
@@ -533,7 +536,7 @@ const OrderDetail = () => {
                   <div>
                     <p className="font-medium">Pedido Faturado</p>
                     <p className="text-sm text-gray-500">
-                      {format(new Date(new Date(order.createdAt || order.created_at).getTime() + 2 * 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      {formatDate(new Date(new Date(order.createdAt).getTime() + 2 * 24 * 60 * 60 * 1000))}
                     </p>
                     <p className="text-sm text-gray-500">Por Financeiro</p>
                   </div>
@@ -548,7 +551,7 @@ const OrderDetail = () => {
                   <div>
                     <p className="font-medium">Pedido Entregue</p>
                     <p className="text-sm text-gray-500">
-                      {format(new Date(new Date(order.createdAt || order.created_at).getTime() + 3 * 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      {formatDate(new Date(new Date(order.createdAt).getTime() + 3 * 24 * 60 * 60 * 1000))}
                     </p>
                     <p className="text-sm text-gray-500">Entregue por Transporte Ferplas</p>
                   </div>
@@ -563,7 +566,7 @@ const OrderDetail = () => {
                   <div>
                     <p className="font-medium">Pedido Cancelado</p>
                     <p className="text-sm text-gray-500">
-                      {format(new Date(new Date(order.createdAt || order.created_at).getTime() + 2 * 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      {formatDate(new Date(new Date(order.createdAt).getTime() + 2 * 24 * 60 * 60 * 1000))}
                     </p>
                     <p className="text-sm text-gray-500">Por Cliente</p>
                   </div>

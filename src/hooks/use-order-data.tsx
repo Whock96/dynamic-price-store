@@ -32,6 +32,10 @@ export const useOrderData = ({ customerId, userId, startDate, endDate }: UseOrde
           ),
           user:user_id (
             name
+          ),
+          transport_company:transport_company_id (
+            id,
+            name
           )
         `)
         .order('created_at', { ascending: false });
@@ -65,15 +69,13 @@ export const useOrderData = ({ customerId, userId, startDate, endDate }: UseOrde
                             order.user.name : 'Usuário do Sistema') : 
                           'Usuário do Sistema';
 
-          const transportCompanyName = order.transport_company_id ? 
-                                     (order.transport_companies ? 
-                                       (typeof order.transport_companies === 'object' ? 
-                                         (Array.isArray(order.transport_companies) && order.transport_companies.length > 0 ? 
-                                           order.transport_companies[0].name : 
-                                           (order.transport_companies.name || null)) : 
-                                         null) : 
-                                       null) : 
-                                     null;
+          // Handle transport company data safely
+          let transportCompanyName = null;
+          if (order.transport_company_id && order.transport_company) {
+            if (typeof order.transport_company === 'object' && order.transport_company !== null) {
+              transportCompanyName = order.transport_company.name || null;
+            }
+          }
 
           return {
             id: order.id,

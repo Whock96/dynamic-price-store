@@ -21,6 +21,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { isAdministrador } from '@/utils/permissionUtils';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue 
+} from "@/components/ui/select";
 
 interface Category {
   id: string;
@@ -51,7 +58,7 @@ const CategoryManagement = () => {
   const [loading, setLoading] = useState(true);
   const [newSubcategoryName, setNewSubcategoryName] = useState('');
   const [newSubcategoryDescription, setNewSubcategoryDescription] = useState('');
-	const [selectedCategoryForSubcategory, setSelectedCategoryForSubcategory] = useState<string | null>(null);
+  const [selectedCategoryForSubcategory, setSelectedCategoryForSubcategory] = useState<string | null>(null);
   const [editingSubcategory, setEditingSubcategory] = useState<Subcategory | null>(null);
   const [editedSubcategoryName, setEditedSubcategoryName] = useState('');
   const [editedSubcategoryDescription, setEditedSubcategoryDescription] = useState('');
@@ -165,10 +172,10 @@ const CategoryManagement = () => {
   };
 
   const handleCreateSubcategory = async () => {
-		if (!selectedCategoryForSubcategory) {
-			toast.error('Selecione uma categoria para a subcategoria');
-			return;
-		}
+    if (!selectedCategoryForSubcategory) {
+      toast.error('Selecione uma categoria para a subcategoria');
+      return;
+    }
 
     if (!newSubcategoryName.trim()) {
       toast.error('Nome da subcategoria não pode estar vazio');
@@ -184,7 +191,6 @@ const CategoryManagement = () => {
 
       if (error) throw error;
 
-      // Update the categories state to include the new subcategory
       setCategories(categories.map(cat => {
         if (cat.id === selectedCategoryForSubcategory) {
           return {
@@ -197,7 +203,7 @@ const CategoryManagement = () => {
 
       setNewSubcategoryName('');
       setNewSubcategoryDescription('');
-			setSelectedCategoryForSubcategory(null);
+      setSelectedCategoryForSubcategory(null);
       toast.success('Subcategoria criada com sucesso!');
     } catch (error) {
       console.error('Error creating subcategory:', error);
@@ -226,7 +232,6 @@ const CategoryManagement = () => {
 
       if (error) throw error;
 
-      // Update the categories state to reflect the updated subcategory
       setCategories(categories.map(cat => {
         if (cat.id === editingSubcategory.category_id) {
           return {
@@ -375,18 +380,18 @@ const CategoryManagement = () => {
         <CardContent>
           <div className="grid gap-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-							<Select onValueChange={(value) => setSelectedCategoryForSubcategory(value)}>
-								<SelectTrigger className="w-full">
-									<SelectValue placeholder="Selecione a categoria" />
-								</SelectTrigger>
-								<SelectContent>
-									{categories.map((category) => (
-										<SelectItem key={category.id} value={category.id}>
-											{category.name}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
+              <Select onValueChange={(value) => setSelectedCategoryForSubcategory(value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Selecione a categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Input
                 type="text"
                 placeholder="Nome da subcategoria"
