@@ -291,19 +291,31 @@ const OrderUpdate = () => {
 
       if (file) {
         try {
-          console.log("[Duplicata] Iniciando upload do PDF:", file.name, "para duplicata:", uploadId);
+          console.log("[Duplicata] Iniciando upload do PDF para duplicata:", {
+            fileName: file.name,
+            fileSize: file.size,
+            duplicataId: uploadId
+          });
+          
           pdfBoletoPath = await uploadBoletoPdf(file, uploadId);
-          if (!pdfBoletoPath) throw new Error("Upload falhou: A URL pública não foi retornada.");
+          
+          console.log("[Duplicata] Upload do PDF concluído com sucesso:", pdfBoletoPath);
+          
+          if (!pdfBoletoPath) {
+            throw new Error("Upload falhou: A URL pública não foi retornada.");
+          }
         } catch (uploadError: any) {
-          console.error("Falha no upload do PDF:", uploadError);
+          console.error("[Duplicata] Falha no upload do PDF:", uploadError);
           toast.error("Erro ao fazer upload do PDF da duplicata. Tente novamente.");
           setIsSavingDuplicata(false);
           return;
         }
       } else if (form.pdfBoletoPath === null || form.pdfBoletoPath === "") {
         pdfBoletoPath = null;
+        console.log("[Duplicata] Removendo PDF da duplicata");
       } else if (form.pdfBoletoPath !== undefined) {
         pdfBoletoPath = form.pdfBoletoPath;
+        console.log("[Duplicata] Mantendo PDF existente:", pdfBoletoPath);
       }
 
       const payload: Partial<Duplicata> = {
@@ -313,12 +325,18 @@ const OrderUpdate = () => {
       };
       if (form.id) payload.id = form.id;
 
-      console.log("[Duplicata] Salvando duplicata com:", payload);
+      console.log("[Duplicata] Salvando duplicata com:", {
+        id: payload.id,
+        numeroDuplicata: payload.numeroDuplicata,
+        pdfBoletoPath: payload.pdfBoletoPath
+      });
 
       await upsertDuplicata(payload);
       toast.success("Duplicata salva com sucesso!");
       setShowDuplicataForm(false);
       setEditingDuplicata(null);
+      
+      console.log("[Duplicata] Atualizando lista de duplicatas");
       await fetchDuplicatas(id).then(setDuplicatas);
     } catch (err: any) {
       console.error("[Duplicata] Erro ao salvar:", err);

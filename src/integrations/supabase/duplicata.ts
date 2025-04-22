@@ -79,7 +79,11 @@ export async function upsertDuplicata(duplicata: Partial<Duplicata>) {
     pdf_boleto_path: duplicata.pdfBoletoPath === undefined ? null : duplicata.pdfBoletoPath,
   };
 
-  console.log("[SUPABASE] upsertDuplicata - Salvando duplicata:", dbDuplicata);
+  console.log("[SUPABASE] upsertDuplicata - Salvando duplicata:", {
+    id: dbDuplicata.id,
+    numero_duplicata: dbDuplicata.numero_duplicata,
+    pdf_boleto_path: dbDuplicata.pdf_boleto_path 
+  });
 
   const { data, error } = await supabase
     .from("duplicatas")
@@ -126,7 +130,7 @@ export async function uploadBoletoPdf(file: File, duplicataId: string): Promise<
       .upload(fileName, file, { upsert: true, contentType: "application/pdf" });
     
     if (error) {
-      console.error("Error uploading PDF:", error);
+      console.error("Error uploading boleto PDF:", error);
       throw error;
     }
     
@@ -138,15 +142,15 @@ export async function uploadBoletoPdf(file: File, duplicataId: string): Promise<
       .getPublicUrl(fileName);
     
     if (!urlData || !urlData.publicUrl) {
-      console.error("Failed to get public URL for uploaded file");
-      throw new Error("Failed to get public URL for uploaded file");
+      console.error("Failed to get public URL for uploaded boleto file");
+      throw new Error("Failed to get public URL for uploaded boleto file");
     }
     
-    console.log("Public URL generated:", urlData.publicUrl);
+    console.log("Boleto PDF public URL generated:", urlData.publicUrl);
     
     return urlData.publicUrl;
   } catch (error) {
-    console.error("Exception during PDF upload:", error);
+    console.error("Exception during boleto PDF upload:", error);
     throw error;
   }
 }

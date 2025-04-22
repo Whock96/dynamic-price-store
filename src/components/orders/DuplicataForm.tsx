@@ -98,6 +98,14 @@ const DuplicataForm: React.FC<Props> = ({
       ...data,
       numeroDuplicata: numeroDuplicataFinal,
     };
+    
+    console.log("[DuplicataForm] Salvando formulário:", {
+      numeroDuplicata: formData.numeroDuplicata,
+      valor: formData.valor,
+      pdfBoletoPath: formData.pdfBoletoPath,
+      temArquivo: !!boletoFile
+    });
+    
     onSave(formData, boletoFile);
   };
 
@@ -351,7 +359,10 @@ const DuplicataForm: React.FC<Props> = ({
             <div>
               <Label>Boleto PDF</Label>
               <FileUpload
-                onChange={setBoletoFile}
+                onChange={(file) => {
+                  console.log("[DuplicataForm] Arquivo selecionado:", file?.name || "nenhum");
+                  setBoletoFile(file);
+                }}
                 value={value?.pdfBoletoPath || ""}
                 accept="application/pdf,.pdf"
                 maxSize={15}
