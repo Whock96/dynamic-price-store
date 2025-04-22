@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { isVendedor } from '@/utils/permissionUtils';
 
 type DashboardData = {
   totalSales: number;
@@ -24,8 +23,8 @@ export const useDashboardData = () => {
     recentOrders: []
   });
 
-  // Check if user is a salesperson
-  const isSalespersonType = user ? isVendedor(user.userTypeId) : false;
+  // Check if user is a salesperson with this specific userTypeId
+  const isSalespersonType = user?.userTypeId === 'c5ee0433-3faf-46a4-a516-be7261bfe575';
 
   useEffect(() => {
     const fetchDashboardData = async () => {

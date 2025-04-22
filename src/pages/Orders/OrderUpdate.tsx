@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useOrders } from "@/context/OrderContext";
+import { useOrders } from '@/context/OrderContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,17 +12,15 @@ import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useOrderData } from '@/hooks/use-order-data';
 import { supabase, uploadInvoicePdf, deleteInvoicePdf } from '@/integrations/supabase/client';
 import { User, TransportCompany, Order } from '@/types/types';
 import { FileUpload } from '@/components/ui/file-upload';
-import { supabaseOrderToAppOrder } from '@/utils/adapters';
 
 const OrderUpdate = () => {
   const { id } = useParams<{ id: string }>();
-  const { updateOrder, updateOrderStatus, getOrderById } = useOrders();
+  const { updateOrder, updateOrderStatus } = useOrders();
   const navigate = useNavigate();
-  const [order, setOrder] = useState<Order | null>(null);
-  const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [shipping, setShipping] = useState<'delivery' | 'pickup'>('delivery');
@@ -40,74 +37,8 @@ const OrderUpdate = () => {
   const [invoicePdfPath, setInvoicePdfPath] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeletingPdf, setIsDeletingPdf] = useState(false);
-
-  const fetchOrderData = async () => {
-    if (!id) return;
-    
-    try {
-      setLoading(true);
-      const fetchedOrder = getOrderById(id);
-      
-      if (fetchedOrder) {
-        setOrder(fetchedOrder);
-        setStatus(fetchedOrder.status || 'pending');
-        setNotes(fetchedOrder.notes || fetchedOrder.observations || '');
-        setShipping((fetchedOrder.shipping || 'delivery') as 'delivery' | 'pickup');
-        setPaymentMethod((fetchedOrder.paymentMethod || 'cash') as 'cash' | 'credit');
-        setPaymentTerms(fetchedOrder.paymentTerms || '');
-        setSelectedSalespersonId(fetchedOrder.userId || 'none');
-        setSelectedTransportCompanyId(fetchedOrder.transportCompanyId ? fetchedOrder.transportCompanyId : 'none');
-        setInvoiceNumber(fetchedOrder.invoiceNumber || '');
-        setInvoicePdfPath(fetchedOrder.invoicePdfPath || null);
-      } else {
-        const { data, error } = await supabase
-          .from('orders')
-          .select(`
-            *,
-            customers(*),
-            transport_companies(id, name)
-          `)
-          .eq('id', id)
-          .single();
-          
-        if (error) {
-          throw error;
-        }
-        
-        if (data) {
-          const { data: itemsData } = await supabase
-            .from('order_items')
-            .select(`
-              *,
-              products(*)
-            `)
-            .eq('order_id', id);
-            
-          const processedOrder = supabaseOrderToAppOrder(data, itemsData || []);
-          
-          setOrder(processedOrder);
-          setStatus(processedOrder.status || 'pending');
-          setNotes(processedOrder.notes || processedOrder.observations || '');
-          setShipping((processedOrder.shipping || 'delivery') as 'delivery' | 'pickup');
-          setPaymentMethod((processedOrder.paymentMethod || 'cash') as 'cash' | 'credit');
-          setPaymentTerms(processedOrder.paymentTerms || '');
-          setSelectedSalespersonId(processedOrder.userId || 'none');
-          setSelectedTransportCompanyId(processedOrder.transportCompanyId ? processedOrder.transportCompanyId : 'none');
-          setInvoiceNumber(processedOrder.invoiceNumber || '');
-          setInvoicePdfPath(processedOrder.invoicePdfPath || null);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching order:', error);
-      toast.error('Erro ao carregar pedido');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchOrderData();
-  }, [id, getOrderById]);
+  
+  const { order, isLoading, fetchOrderData } = useOrderData(id);
 
   useEffect(() => {
     const fetchSalespeople = async () => {
@@ -282,7 +213,7 @@ const OrderUpdate = () => {
     }
   };
 
-  if (loading) {
+  if (isLoading || isLoadingSalespeople || isLoadingTransportCompanies) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />

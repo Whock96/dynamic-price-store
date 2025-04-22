@@ -10,7 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import { MENU_ITEMS } from '../../constants/menuItems';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { isAdministrador, isVendedor } from '@/utils/permissionUtils';
+import { isAdministrator } from '@/utils/permissionUtils';
 
 interface SidebarProps {
   isExpanded: boolean;
@@ -18,7 +18,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
-  const { user, logout, checkAccess } = useAuth();
+  const { user, logout, hasPermission, checkAccess } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -100,18 +100,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
   const hasAccessToMenu = (menuItem: typeof MENU_ITEMS[0]) => {
     if (!user) return false;
     
-    // Esconder o menu de configurações para vendedores
-    if (isVendedor(user.userTypeId) && menuItem.id === 'settings') {
-      return false;
-    }
-    
-    // Administrador tem acesso a todos os menus
-    if (isAdministrador(user.userTypeId)) {
+    // Administradores têm acesso total a todos os menus
+    if (isAdministrator(user.role)) {
       return true;
     }
 
-    // Para outros usuários, verificar acesso pelo caminho
-    return checkAccess(menuItem.path);
+    return menuItem.requiredRoles.includes(user.role) || checkAccess(menuItem.path);
   };
 
   if (!user) return null;
@@ -180,7 +174,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
                 {isExpanded && item.submenus && expandedMenu === item.id && (
                   <div className="pl-10 mt-1 space-y-1 animate-accordion-down">
                     {item.submenus
-                      .filter(submenu => isAdministrador(user.userTypeId) || checkAccess(submenu.path))
+                      .filter(submenu => isAdministrator(user.role) || checkAccess(submenu.path))
                       .map((submenu) => (
                         <button
                           key={submenu.id}

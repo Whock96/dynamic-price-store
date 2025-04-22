@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -52,7 +51,6 @@ import { supabaseOrderToAppOrder } from '@/utils/adapters';
 import { useOrders } from '@/context/OrderContext';
 import { useAuth } from '@/context/AuthContext';
 import SortableHeader from '@/components/ui/sortable-header';
-import { isVendedor } from '@/utils/permissionUtils';
 
 interface OrderWithCustomer extends Tables<'orders'> {
   customers: Tables<'customers'>;
@@ -113,8 +111,8 @@ const OrderList = () => {
         
         console.log("Após filtragem rigorosa para vendedor específico:", ordersToDisplay.length, "pedidos");
       }
-      else if (isVendedor(currentUser?.userTypeId || '') && currentUser?.id) {
-        console.log("OrderList - Filtragem padrão para vendedor (userTypeId):", currentUser.id, "(tipo:", typeof currentUser.id, ")");
+      else if (currentUser?.role === 'salesperson' && currentUser?.id) {
+        console.log("OrderList - Filtragem padrão para vendedor (role):", currentUser.id, "(tipo:", typeof currentUser.id, ")");
         console.log("Antes da filtragem:", ordersToDisplay.length, "pedidos");
         
         const currentUserIdStr = String(currentUser.id);
@@ -165,9 +163,9 @@ const OrderList = () => {
         
         query = query.eq('user_id', currentUserIdStr);
       }
-      else if (isVendedor(currentUser?.userTypeId || '') && currentUser?.id) {
+      else if (currentUser?.role === 'salesperson' && currentUser?.id) {
         const currentUserIdStr = String(currentUser.id);
-        console.log("OrderList - Filtrando consulta Supabase para vendedor (userTypeId):", currentUserIdStr);
+        console.log("OrderList - Filtrando consulta Supabase para vendedor (role):", currentUserIdStr);
         
         query = query.eq('user_id', currentUserIdStr);
       }
@@ -282,9 +280,9 @@ const OrderList = () => {
           
           console.log(`OrderList - Resultado final da filtragem específica: ${finalOrders.length} de ${processedOrders.length} pedidos`);
         }
-        else if (isVendedor(currentUser?.userTypeId || '') && currentUser?.id) {
+        else if (currentUser?.role === 'salesperson' && currentUser?.id) {
           const currentUserIdStr = String(currentUser.id);
-          console.log("OrderList - Aplicando filtragem final para vendedor (userTypeId):", currentUserIdStr);
+          console.log("OrderList - Aplicando filtragem final para vendedor (role):", currentUserIdStr);
           
           finalOrders = finalOrders.filter(order => {
             const orderUserIdStr = String(order.userId);

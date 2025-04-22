@@ -1,12 +1,44 @@
+
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  Users, Search, Plus, Edit, Trash2, ArrowLeft, Save,
+  Check, X, Shield
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Edit, Trash2, X, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card } from '@/components/ui/card';
-import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,448 +48,633 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { useAuth } from '@/context/AuthContext';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { v4 as uuidv4 } from 'uuid';
-import { isAdministrador } from '@/utils/permissionUtils';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '../../context/AuthContext';
+import { toast } from 'sonner';
+import { useSupabaseData } from '@/hooks/use-supabase-data';
+import { supabase } from '@/integrations/supabase/client';
 
-interface User {
+interface UserData {
   id: string;
   username: string;
   name: string;
+  email: string | null;
   password?: string;
-  email?: string;
   user_type_id: string;
-  user_type?: UserType;
+  user_type?: {
+    id: string;
+    name: string;
+    description: string | null;
+  };
   created_at: string;
   is_active: boolean;
 }
 
-interface UserType {
+interface UserTypeOption {
   id: string;
   name: string;
+  description: string | null;
 }
 
 const UserManagement = () => {
-  const { user: authUser } = useAuth();
-  const canManageUsers = authUser && isAdministrador(authUser.userTypeId);
+  const navigate = useNavigate();
+  const { user: currentUser, hasPermission } = useAuth();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+  const [selectedTab, setSelectedTab] = useState('basic');
+  const [formData, setFormData] = useState({
+    id: '',
+    username: '',
+    name: '',
+    userTypeId: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    isActive: true,
+  });
 
-  const [users, setUsers] = useState<User[]>([]);
-  const [userTypes, setUserTypes] = useState<UserType[]>([]);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [newUsername, setNewUsername] = useState('');
-  const [newName, setNewName] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [newEmail, setNewEmail] = useState('');
-  const [newUserTypeId, setNewUserTypeId] = useState('');
-  const [isNewUserActive, setIsNewUserActive] = useState(true);
-  const [editUsername, setEditUsername] = useState('');
-  const [editName, setEditName] = useState('');
-  const [editEmail, setEditEmail] = useState('');
-  const [editUserTypeId, setEditUserTypeId] = useState('');
-  const [isEditUserActive, setIsEditUserActive] = useState(true);
-  const [loading, setLoading] = useState(true);
+  // Use memoized options object to prevent unnecessary re-renders
+  const userQueryOptions = {
+    select: `
+      *,
+      user_type:user_types(*)
+    `,
+    orderBy: { column: 'name', ascending: true }
+  };
+
+  const userTypeQueryOptions = {
+    orderBy: { column: 'name', ascending: true }
+  };
+
+  const { 
+    data: users, 
+    isLoading: isLoadingUsers, 
+    fetchData: fetchUsers,
+    createRecord: createUser,
+    updateRecord: updateUser,
+    deleteRecord: deleteUser
+  } = useSupabaseData<UserData>('users', userQueryOptions);
+
+  const { 
+    data: userTypes, 
+    isLoading: isLoadingUserTypes 
+  } = useSupabaseData<UserTypeOption>('user_types', userTypeQueryOptions);
 
   useEffect(() => {
-    if (!canManageUsers) return;
-    fetchUsers();
-    fetchUserTypes();
-  }, [canManageUsers]);
+    if (!hasPermission('users_manage')) {
+      toast.error('Você não tem permissão para acessar esta página');
+      navigate('/dashboard');
+    }
+  }, [navigate, hasPermission]);
 
-  const fetchUsers = async () => {
-    setLoading(true);
+  const handleOpenDialog = (user?: UserData) => {
+    if (user) {
+      setIsEditMode(true);
+      setSelectedUser(user);
+      
+      const userTypeExists = userTypes.some(type => type.id === user.user_type_id);
+      
+      if (!userTypeExists) {
+        toast.warning(`O tipo de usuário atual não está mais disponível. Por favor, selecione um novo tipo.`);
+      }
+      
+      setFormData({
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        userTypeId: userTypeExists ? user.user_type_id : (userTypes.length > 0 ? userTypes[0].id : ''),
+        email: user.email || '',
+        password: '',
+        confirmPassword: '',
+        isActive: user.is_active,
+      });
+    } else {
+      setIsEditMode(false);
+      setSelectedUser(null);
+      setFormData({
+        id: '',
+        username: '',
+        name: '',
+        userTypeId: userTypes.length > 0 ? userTypes[0].id : '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        isActive: true,
+      });
+    }
+    
+    setIsDialogOpen(true);
+    setSelectedTab('basic');
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: checked
+    }));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSaveUser = async () => {
+    console.log('Form data before validation:', formData);
+    
+    if (!formData.username || !formData.name || !formData.userTypeId) {
+      toast.error('Preencha todos os campos obrigatórios');
+      return;
+    }
+
+    if (!isEditMode && (!formData.password || formData.password.length < 4)) {
+      toast.error('A senha deve ter pelo menos 4 caracteres');
+      return;
+    }
+
+    if (!isEditMode && formData.password !== formData.confirmPassword) {
+      toast.error('As senhas não coincidem');
+      return;
+    }
+
+    if (!userTypes.some(type => type.id === formData.userTypeId)) {
+      toast.error('O tipo de usuário selecionado não existe ou foi inativado');
+      return;
+    }
+
     try {
-      const { data, error } = await supabase
+      const { data: existingUsers, error: checkError } = await supabase
         .from('users')
-        .select('*, user_type:user_types(*)')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setUsers(data || []);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      toast.error('Erro ao carregar usuários');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchUserTypes = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('user_types')
-        .select('*')
-        .order('name');
-
-      if (error) throw error;
-      setUserTypes(data || []);
-    } catch (error) {
-      console.error('Error fetching user types:', error);
-      toast.error('Erro ao carregar tipos de usuário');
-    }
-  };
-
-  const handleCreateUser = async () => {
-    try {
-      if (!newUsername || !newName || !newPassword || !newUserTypeId) {
-        toast.error('Por favor, preencha todos os campos.');
+        .select('id')
+        .eq('username', formData.username)
+        .neq('id', isEditMode ? formData.id : '00000000-0000-0000-0000-000000000000');
+      
+      if (checkError) {
+        console.error('Error checking username:', checkError);
+        throw checkError;
+      }
+      
+      if (existingUsers && existingUsers.length > 0) {
+        toast.error('Este nome de usuário já está em uso');
         return;
       }
-
-      const newUser = {
-        id: uuidv4(),
-        username: newUsername,
-        name: newName,
-        password: newPassword,
-        email: newEmail,
-        user_type_id: newUserTypeId,
-        is_active: isNewUserActive,
-      };
-
-      const { error } = await supabase
-        .from('users')
-        .insert([newUser]);
-
-      if (error) throw error;
-
+      
+      if (isEditMode) {
+        const updateData: any = {
+          name: formData.name,
+          username: formData.username,
+          email: formData.email || null,
+          user_type_id: formData.userTypeId,
+          is_active: formData.isActive,
+          updated_at: new Date().toISOString()
+        };
+        
+        if (formData.password) {
+          updateData.password = formData.password;
+        }
+        
+        console.log('Update data:', updateData);
+        await updateUser(formData.id, updateData);
+        toast.success(`Usuário "${formData.name}" atualizado com sucesso`);
+      } else {
+        const userData = {
+          name: formData.name,
+          username: formData.username,
+          email: formData.email || null,
+          password: formData.password,
+          user_type_id: formData.userTypeId,
+          is_active: formData.isActive,
+        };
+        
+        console.log('User data to create:', userData);
+        await createUser(userData);
+        
+        toast.success(`Usuário "${formData.name}" adicionado com sucesso`);
+      }
+      
       fetchUsers();
-      toast.success('Usuário criado com sucesso!');
-      closeCreateDialog();
-    } catch (error) {
-      console.error('Error creating user:', error);
-      toast.error('Erro ao criar usuário');
+      handleCloseDialog();
+    } catch (err) {
+      console.error('Error saving user:', err);
+      toast.error('Erro ao salvar usuário');
     }
   };
 
-  const handleUpdateUser = async () => {
-    if (!selectedUser) return;
-
-    try {
-      const updates = {
-        username: editUsername,
-        name: editName,
-        email: editEmail,
-        user_type_id: editUserTypeId,
-        is_active: isEditUserActive,
-      };
-
-      const { error } = await supabase
-        .from('users')
-        .update(updates)
-        .eq('id', selectedUser.id);
-
-      if (error) throw error;
-
-      fetchUsers();
-      toast.success('Usuário atualizado com sucesso!');
-      closeEditDialog();
-    } catch (error) {
-      console.error('Error updating user:', error);
-      toast.error('Erro ao atualizar usuário');
+  const handleDeleteUser = async (userId: string) => {
+    if (userId === currentUser?.id) {
+      toast.error('Você não pode excluir seu próprio usuário');
+      return;
     }
-  };
-
-  const handleDeleteUser = async () => {
-    if (!selectedUser) return;
-
+    
     try {
-      const { error } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', selectedUser.id);
-
-      if (error) throw error;
-
-      fetchUsers();
-      toast.success('Usuário excluído com sucesso!');
-      closeDeleteDialog();
-    } catch (error) {
-      console.error('Error deleting user:', error);
+      await deleteUser(userId);
+      toast.success('Usuário removido com sucesso');
+    } catch (err) {
+      console.error('Error deleting user:', err);
       toast.error('Erro ao excluir usuário');
     }
   };
 
-  const openCreateDialog = () => {
-    setNewUsername('');
-    setNewName('');
-    setNewPassword('');
-    setNewEmail('');
-    setNewUserTypeId('');
-    setIsNewUserActive(true);
-    setIsCreateDialogOpen(true);
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = 
+      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (user.email && user.email.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    const matchesRole = roleFilter === 'all' || (user.user_type && user.user_type.name === roleFilter);
+    
+    return matchesSearch && matchesRole;
+  });
+
+  const uniqueUserTypes = [...new Set(users
+    .filter(user => user.user_type)
+    .map(user => user.user_type?.name)
+    .filter(Boolean))];
+
+  const getUserTypeBadge = (userType?: string) => {
+    if (!userType) return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Não definido</Badge>;
+    
+    switch (userType.toLowerCase()) {
+      case 'administrator':
+      case 'administrador':
+        return <Badge className="bg-red-100 text-red-800 border-red-200">Administrador</Badge>;
+      case 'salesperson':
+      case 'vendedor':
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Vendedor</Badge>;
+      case 'billing':
+      case 'faturamento':
+        return <Badge className="bg-green-100 text-green-800 border-green-200">Faturamento</Badge>;
+      case 'inventory':
+      case 'estoque':
+        return <Badge className="bg-purple-100 text-purple-800 border-purple-200">Estoque</Badge>;
+      default:
+        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">{userType}</Badge>;
+    }
   };
-
-  const closeCreateDialog = () => {
-    setIsCreateDialogOpen(false);
-  };
-
-  const openEditDialog = (user: User) => {
-    setSelectedUser(user);
-    setEditUsername(user.username);
-    setEditName(user.name);
-    setEditEmail(user.email || '');
-    setEditUserTypeId(user.user_type_id);
-    setIsEditUserActive(user.is_active);
-    setIsEditDialogOpen(true);
-  };
-
-  const closeEditDialog = () => {
-    setIsEditDialogOpen(false);
-  };
-
-  const openDeleteDialog = (user: User) => {
-    setSelectedUser(user);
-    setIsDeleteDialogOpen(true);
-  };
-
-  const closeDeleteDialog = () => {
-    setIsDeleteDialogOpen(false);
-  };
-
-  if (!canManageUsers) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <h2 className="text-2xl font-bold mb-2">Acesso Restrito</h2>
-        <p className="text-muted-foreground">Você não tem permissão para gerenciar usuários.</p>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center space-x-4">
-          <Skeleton className="h-12 w-12 rounded-full" />
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-[250px]" />
-            <Skeleton className="h-4 w-[200px]" />
-          </div>
-        </div>
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-32 w-full" />
-      </div>
-    );
-  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Gerenciar Usuários</h2>
-        <Button onClick={openCreateDialog} className="bg-ferplas-500 hover:bg-ferplas-600">
+    <div className="space-y-6 animate-fade-in">
+      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex items-center">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="mr-4 text-gray-500"
+            onClick={() => navigate('/settings')}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Gerenciar Usuários</h1>
+            <p className="text-muted-foreground">
+              Adicione, edite e gerencie usuários do sistema
+            </p>
+          </div>
+        </div>
+        <Button 
+          className="bg-ferplas-500 hover:bg-ferplas-600 button-transition"
+          onClick={() => handleOpenDialog()}
+        >
           <Plus className="mr-2 h-4 w-4" />
-          Criar Usuário
+          Novo Usuário
         </Button>
-      </div>
+      </header>
 
       <Card>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Usuário</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Tipo de Usuário</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>{user.name}</TableCell>
-                  <TableCell>{user.username}</TableCell>
-                  <TableCell>{user.email || 'Não informado'}</TableCell>
-                  <TableCell>{user.user_type?.name || 'Não informado'}</TableCell>
-                  <TableCell>
-                    {user.is_active ? (
-                      <div className="flex items-center">
-                        <Check className="mr-2 h-4 w-4 text-green-500" />
-                        Ativo
-                      </div>
-                    ) : (
-                      <div className="flex items-center">
-                        <X className="mr-2 h-4 w-4 text-red-500" />
-                        Inativo
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" size="icon" onClick={() => openEditDialog(user)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="icon" className="text-red-500 hover:bg-red-50" onClick={() => openDeleteDialog(user)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg font-medium">Filtros</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="Buscar usuários por nome, username ou email..."
+                className="pl-10 input-transition"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Tipo de usuário" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os tipos</SelectItem>
+                {uniqueUserTypes.map(type => (
+                  type ? <SelectItem key={type} value={type}>{type}</SelectItem> : null
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
       </Card>
 
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+      <Card>
+        <CardContent className="p-0">
+          {isLoadingUsers ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="flex flex-col items-center justify-center">
+                <div className="w-12 h-12 border-4 border-ferplas-500 border-t-transparent rounded-full animate-spin"></div>
+                <p className="mt-4 text-muted-foreground">Carregando usuários...</p>
+              </div>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Username</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Data de Cadastro</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.map(user => (
+                  <TableRow key={user.id}>
+                    <TableCell className="font-medium">{user.name}</TableCell>
+                    <TableCell>{user.username}</TableCell>
+                    <TableCell>{user.email || '-'}</TableCell>
+                    <TableCell>{user.user_type ? getUserTypeBadge(user.user_type.name) : getUserTypeBadge()}</TableCell>
+                    <TableCell>
+                      {user.is_active ? (
+                        <Badge className="bg-green-100 text-green-800">Ativo</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-gray-500">Inativo</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {user.created_at && new Date(user.created_at).toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                      })}
+                    </TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="h-8 px-2 text-amber-600"
+                        onClick={() => handleOpenDialog(user)}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Editar
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="h-8 px-2 text-red-600"
+                            disabled={user.id === currentUser?.id}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Excluir
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remover usuário?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta ação irá remover permanentemente o usuário "{user.name}" do sistema. 
+                              Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction 
+                              className="bg-red-600 hover:bg-red-700"
+                              onClick={() => handleDeleteUser(user.id)}
+                            >
+                              Remover
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+          
+          {!isLoadingUsers && filteredUsers.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Users className="h-12 w-12 text-gray-300 mb-4" />
+              <h2 className="text-xl font-medium text-gray-600">Nenhum usuário encontrado</h2>
+              <p className="text-gray-500 mt-1">Tente ajustar seus filtros ou adicione um novo usuário.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Criar Novo Usuário</DialogTitle>
+            <DialogTitle>{isEditMode ? 'Editar Usuário' : 'Novo Usuário'}</DialogTitle>
             <DialogDescription>
-              Crie um novo usuário para o sistema.
+              {isEditMode 
+                ? 'Atualize as informações do usuário abaixo.' 
+                : 'Preencha os dados para adicionar um novo usuário ao sistema.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Nome
-              </Label>
-              <Input id="name" value={newName} onChange={(e) => setNewName(e.target.value)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="username" className="text-right">
-                Usuário
-              </Label>
-              <Input id="username" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="password" className="text-right">
-                Senha
-              </Label>
-              <Input type="password" id="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="email" className="text-right">
-                Email
-              </Label>
-              <Input type="email" id="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="userTypeId" className="text-right">
-                Tipo de Usuário
-              </Label>
-              <Select value={newUserTypeId} onValueChange={setNewUserTypeId}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Selecione um tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {userTypes.map((type) => (
-                    <SelectItem key={type.id} value={type.id}>
-                      {type.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="active" className="text-right">
-                Ativo
-              </Label>
-              <Switch id="active" checked={isNewUserActive} onCheckedChange={setIsNewUserActive} className="col-span-3" />
-            </div>
-          </div>
+          
+          <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="basic">Informações Básicas</TabsTrigger>
+              <TabsTrigger value="security" disabled={!isEditMode}>Segurança</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="basic" className="mt-4">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="name">Nome Completo*</Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      placeholder="Ex: João Silva"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="username">Nome de Usuário*</Label>
+                    <Input
+                      id="username"
+                      name="username"
+                      value={formData.username}
+                      onChange={handleInputChange}
+                      placeholder="Ex: joaosilva"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      placeholder="Ex: joao@ferplas.ind.br"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="userTypeId">Tipo de Usuário*</Label>
+                    <Select 
+                      value={formData.userTypeId} 
+                      onValueChange={(value) => handleSelectChange('userTypeId', value)}
+                    >
+                      <SelectTrigger id="userTypeId">
+                        <SelectValue placeholder="Selecione um tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {userTypes.length > 0 ? (
+                          userTypes.map(type => (
+                            <SelectItem key={type.id} value={type.id}>
+                              {type.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="no_type_available">
+                            Nenhum tipo de usuário disponível
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {userTypes.length === 0 && (
+                      <p className="text-sm text-red-500 mt-1">
+                        Nenhum tipo de usuário ativo encontrado. Adicione um tipo primeiro.
+                      </p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="isActive"
+                    name="isActive"
+                    checked={formData.isActive}
+                    onChange={handleCheckboxChange}
+                    className="h-4 w-4 rounded border-gray-300 text-ferplas-600 focus:ring-ferplas-500"
+                  />
+                  <Label htmlFor="isActive" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Usuário ativo
+                  </Label>
+                </div>
+                
+                {!isEditMode && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="password">Senha*</Label>
+                      <Input
+                        id="password"
+                        name="password"
+                        type="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        placeholder="Senha"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="confirmPassword">Confirmar Senha*</Label>
+                      <Input
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type="password"
+                        value={formData.confirmPassword}
+                        onChange={handleInputChange}
+                        placeholder="Confirmar senha"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="security" className="mt-4">
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="password">Nova Senha</Label>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    placeholder="Deixe em branco para manter a senha atual"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="confirmPassword">Confirmar Nova Senha</Label>
+                  <Input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    placeholder="Confirmar nova senha"
+                  />
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="isActive"
+                    name="isActive"
+                    checked={formData.isActive}
+                    onChange={handleCheckboxChange}
+                    className="h-4 w-4 rounded border-gray-300 text-ferplas-600 focus:ring-ferplas-500"
+                  />
+                  <Label htmlFor="isActive" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Usuário ativo
+                  </Label>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+          
           <DialogFooter>
-            <Button type="button" variant="secondary" onClick={closeCreateDialog}>
+            <Button variant="outline" onClick={handleCloseDialog}>
               Cancelar
             </Button>
-            <Button type="submit" onClick={handleCreateUser} className="bg-ferplas-500 hover:bg-ferplas-600">
-              Criar
+            <Button onClick={handleSaveUser} className="bg-ferplas-500 hover:bg-ferplas-600">
+              <Save className="mr-2 h-4 w-4" />
+              {isEditMode ? 'Salvar Alterações' : 'Adicionar Usuário'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Editar Usuário</DialogTitle>
-            <DialogDescription>
-              Editar informações do usuário.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="editName" className="text-right">
-                Nome
-              </Label>
-              <Input id="editName" value={editName} onChange={(e) => setEditName(e.target.value)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="editUsername" className="text-right">
-                Usuário
-              </Label>
-              <Input id="editUsername" value={editUsername} onChange={(e) => setEditUsername(e.target.value)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="editEmail" className="text-right">
-                Email
-              </Label>
-              <Input type="email" id="editEmail" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="editUserTypeId" className="text-right">
-                Tipo de Usuário
-              </Label>
-              <Select value={editUserTypeId} onValueChange={setEditUserTypeId}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Selecione um tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {userTypes.map((type) => (
-                    <SelectItem key={type.id} value={type.id}>
-                      {type.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="editActive" className="text-right">
-                Ativo
-              </Label>
-              <Switch id="editActive" checked={isEditUserActive} onCheckedChange={setIsEditUserActive} className="col-span-3" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="secondary" onClick={closeEditDialog}>
-              Cancelar
-            </Button>
-            <Button type="submit" onClick={handleUpdateUser} className="bg-ferplas-500 hover:bg-ferplas-600">
-              Salvar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Usuário</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={closeDeleteDialog}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteUser} className="bg-red-600 hover:bg-red-700">Excluir</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };

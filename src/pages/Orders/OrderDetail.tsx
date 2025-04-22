@@ -22,26 +22,22 @@ import { useAuth } from '../../context/AuthContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { useOrders } from "@/context/OrderContext";
+import { useOrders } from '@/context/OrderContext';
+import { useOrderData } from '@/hooks/use-order-data';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import PrintableOrder from '@/components/orders/PrintableOrder';
 import PrintableInvoice from '@/components/orders/PrintableInvoice';
 import { supabase } from '@/integrations/supabase/client';
 import { InvoiceCard } from '@/components/orders/InvoiceCard';
 import { printStyles } from '@/styles/printStyles';
-import { Order } from '@/types/types';
-import { supabaseOrderToAppOrder } from '@/utils/adapters';
-
-const formatDate = (date: Date) => {
-  return format(date, 'dd/MM/yyyy HH:mm', { locale: ptBR });
-};
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { getOrderById, updateOrder } = useOrders();
-  const [order, setOrder] = useState<Order | null>(null);
+  const { order: supabaseOrder, isLoading: isSupabaseLoading, fetchOrderData } = useOrderData(id);
+  const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [transportCompany, setTransportCompany] = useState<any>(null);
   const [isLoadingTransport, setIsLoadingTransport] = useState(false);
@@ -63,7 +59,7 @@ const OrderDetail = () => {
     return phone;
   };
 
-  const fetchOrderData = async () => {
+  useEffect(() => {
     if (id) {
       console.log(`Fetching order with ID: ${id}`);
       
@@ -79,63 +75,23 @@ const OrderDetail = () => {
         }
         
         calculateOrderTotals(contextOrder.items);
-      } else {
-        fetchOrderDirectly(id);
+      } else if (supabaseOrder) {
+        console.log(`Found order in Supabase:`, supabaseOrder);
+        setOrder(supabaseOrder);
+        setLoading(false);
+        
+        if (supabaseOrder.transportCompanyId) {
+          fetchTransportCompany(supabaseOrder.transportCompanyId);
+        }
+        
+        calculateOrderTotals(supabaseOrder.items);
+      } else if (!isSupabaseLoading) {
+        console.error(`Order with ID ${id} not found`);
+        toast.error("Pedido não encontrado");
+        setLoading(false);
       }
     }
-  };
-
-  useEffect(() => {
-    fetchOrderData();
-  }, [id, getOrderById]);
-
-  const fetchOrderDirectly = async (orderId: string) => {
-    try {
-      console.log(`Fetching order directly from Supabase: ${orderId}`);
-      setLoading(true);
-      
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          customers(*),
-          transport_companies(id, name)
-        `)
-        .eq('id', orderId)
-        .single();
-        
-      if (orderError) {
-        throw orderError;
-      }
-      
-      if (!orderData) {
-        throw new Error('Order not found');
-      }
-      
-      const { data: itemsData } = await supabase
-        .from('order_items')
-        .select(`
-          *,
-          products(*)
-        `)
-        .eq('order_id', orderId);
-        
-      const processedOrder = supabaseOrderToAppOrder(orderData, itemsData || []);
-      
-      setOrder(processedOrder);
-      
-      if (processedOrder.transportCompanyId) {
-        fetchTransportCompany(processedOrder.transportCompanyId);
-      }
-      
-      calculateOrderTotals(processedOrder.items);
-    } catch (error) {
-      console.error(`Error fetching order: ${error}`);
-      toast.error("Pedido não encontrado");
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [id, getOrderById, supabaseOrder, isSupabaseLoading]);
 
   const calculateOrderTotals = (items: any[]) => {
     if (!items || items.length === 0) {
@@ -211,7 +167,7 @@ const OrderDetail = () => {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Pedido #${order?.orderNumber || '1'} - Impressão</title>
+        <title>Pedido #${order.orderNumber || '1'} - Impressão</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -266,7 +222,7 @@ const OrderDetail = () => {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Faturamento #${order?.orderNumber || '1'} - Impressão</title>
+        <title>Faturamento #${order.orderNumber || '1'} - Impressão</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -319,7 +275,7 @@ const OrderDetail = () => {
     return <OrderStatusBadge status={status as any} />;
   };
 
-  if (loading) {
+  if (loading || isSupabaseLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-ferplas-500"></div>
@@ -342,29 +298,29 @@ const OrderDetail = () => {
     );
   }
 
-  const orderNumber = order.orderNumber || 1;
-  const totalDiscount = order.totalDiscount || 0;
-  const appliedDiscounts = order.appliedDiscounts || [];
+  const orderNumber = order.orderNumber || order.order_number || 1;
+  const totalDiscount = order.totalDiscount || order.total_discount || 0;
+  const appliedDiscounts = order.appliedDiscounts || order.discountOptions || [];
   const items = order.items || [];
   const shipping = order.shipping || 'delivery';
   const notes = order.observations || order.notes || '';
-  const fullInvoice = order.fullInvoice !== undefined ? order.fullInvoice : true;
-  const taxSubstitution = order.taxSubstitution !== undefined ? order.taxSubstitution : false;
-  const withSuframa = order.withSuframa !== undefined ? order.withSuframa : false;
-  const paymentMethod = order.paymentMethod || 'cash';
-  const paymentTerms = order.paymentTerms || '';
-  const deliveryLocation = order.deliveryLocation || null;
-  const deliveryFee = order.deliveryFee || 0;
-  const halfInvoicePercentage = order.halfInvoicePercentage || 50;
-  const withIPI = order.withIPI !== undefined ? order.withIPI : false;
+  const fullInvoice = order.fullInvoice !== undefined ? order.fullInvoice : (order.full_invoice !== undefined ? order.full_invoice : true);
+  const taxSubstitution = order.taxSubstitution !== undefined ? order.taxSubstitution : (order.tax_substitution !== undefined ? order.tax_substitution : false);
+  const withSuframa = order.withSuframa !== undefined ? order.withSuframa : (order.with_suframa !== undefined ? order.with_suframa : false);
+  const paymentMethod = order.paymentMethod || order.payment_method || 'cash';
+  const paymentTerms = order.paymentTerms || order.payment_terms || '';
+  const deliveryLocation = order.deliveryLocation || order.delivery_location || null;
+  const deliveryFee = order.deliveryFee || order.delivery_fee || 0;
+  const halfInvoicePercentage = order.halfInvoicePercentage || order.half_invoice_percentage || 50;
+  const withIPI = order.withIPI !== undefined ? order.withIPI : (order.with_ipi !== undefined ? order.with_ipi : false);
   
   const ipiValue = withIPI 
-    ? (order.ipiValue || 0)
+    ? (order.ipiValue || order.ipi_value || 0)
     : 0;
   
   const userName = order.user?.name || 'Usuário do Sistema';
   console.log("OrderDetail - Order user details:", {
-    userId: order.userId,
+    userId: order.userId || order.user_id,
     userName: order.user?.name,
     userObject: order.user
   });
@@ -389,7 +345,7 @@ const OrderDetail = () => {
               <div className="ml-4">{getStatusBadge(order.status)}</div>
             </div>
             <p className="text-muted-foreground">
-              Criado em {formatDate(new Date(order.createdAt))} 
+              Criado em {format(new Date(order.createdAt || order.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
             </p>
           </div>
         </div>
@@ -427,10 +383,10 @@ const OrderDetail = () => {
             <div>
               <h3 className="text-sm font-medium text-gray-500">Empresa</h3>
               <p className="text-lg font-semibold">
-                {order.customer?.companyName || "Cliente não identificado"}
+                {order.customer?.companyName || order.customers?.company_name || "Cliente não identificado"}
               </p>
               <p className="text-sm text-gray-500">
-                CNPJ/CPF: {order.customer?.document || "N/A"}
+                CNPJ/CPF: {order.customer?.document || order.customers?.document || "N/A"}
               </p>
             </div>
             
@@ -442,20 +398,20 @@ const OrderDetail = () => {
                 Endereço
               </h3>
               <p className="text-md">
-                {order.customer?.street || "Endereço não disponível"}, 
-                {order.customer?.number || "S/N"}
-                {(order.customer?.complement) && 
-                  ` - ${order.customer?.complement}`}
+                {order.customer?.street || order.customers?.street || "Endereço não disponível"}, 
+                {order.customer?.number || order.customers?.number || "S/N"}
+                {(order.customer?.complement || order.customers?.complement) && 
+                  ` - ${order.customer?.complement || order.customers?.complement}`}
               </p>
-              {(order.customer?.neighborhood) && (
+              {(order.customer?.neighborhood || order.customers?.neighborhood) && (
                 <p className="text-md">
-                  Bairro: {order.customer?.neighborhood}
+                  Bairro: {order.customer?.neighborhood || order.customers?.neighborhood}
                 </p>
               )}
               <p className="text-md">
-                {order.customer?.city || "Cidade não informada"}/
-                {order.customer?.state || "Estado não informado"} - 
-                {order.customer?.zipCode || "CEP não informado"}
+                {order.customer?.city || order.customers?.city || "Cidade não informada"}/
+                {order.customer?.state || order.customers?.state || "Estado não informado"} - 
+                {order.customer?.zipCode || order.customers?.zip_code || "CEP não informado"}
               </p>
             </div>
             
@@ -467,7 +423,7 @@ const OrderDetail = () => {
                   <Phone className="h-4 w-4 mr-1 text-gray-400" />
                   Telefone
                 </h3>
-                <p className="text-md">{formatPhoneNumber(order.customer?.phone)}</p>
+                <p className="text-md">{formatPhoneNumber(order.customer?.phone || order.customers?.phone)}</p>
               </div>
               
               <div>
@@ -475,15 +431,15 @@ const OrderDetail = () => {
                   <Mail className="h-4 w-4 mr-1 text-gray-400" />
                   Email
                 </h3>
-                <p className="text-md">{order.customer?.email || "Não informado"}</p>
+                <p className="text-md">{order.customer?.email || order.customers?.email || "Não informado"}</p>
               </div>
             </div>
             
-            {(order.customer?.id) && (
+            {(order.customer?.id || order.customers?.id) && (
               <Button 
                 variant="outline" 
                 className="w-full"
-                onClick={() => navigate(`/customers/${order.customer?.id}`)}
+                onClick={() => navigate(`/customers/${order.customer?.id || order.customers?.id}`)}
               >
                 <User className="mr-2 h-4 w-4" />
                 Ver Detalhes do Cliente
@@ -507,7 +463,7 @@ const OrderDetail = () => {
                 <div>
                   <p className="font-medium">Pedido Criado</p>
                   <p className="text-sm text-gray-500">
-                    {formatDate(new Date(order.createdAt))}
+                    {format(new Date(order.createdAt || order.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                   </p>
                   <p className="text-sm text-gray-500">Por {userName}</p>
                 </div>
@@ -521,7 +477,7 @@ const OrderDetail = () => {
                   <div>
                     <p className="font-medium">Pedido Confirmado</p>
                     <p className="text-sm text-gray-500">
-                      {formatDate(new Date(new Date(order.createdAt).getTime() + 24 * 60 * 60 * 1000))}
+                      {format(new Date(new Date(order.createdAt || order.created_at).getTime() + 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                     </p>
                     <p className="text-sm text-gray-500">Por Administrador</p>
                   </div>
@@ -536,7 +492,7 @@ const OrderDetail = () => {
                   <div>
                     <p className="font-medium">Pedido Faturado</p>
                     <p className="text-sm text-gray-500">
-                      {formatDate(new Date(new Date(order.createdAt).getTime() + 2 * 24 * 60 * 60 * 1000))}
+                      {format(new Date(new Date(order.createdAt || order.created_at).getTime() + 2 * 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                     </p>
                     <p className="text-sm text-gray-500">Por Financeiro</p>
                   </div>
@@ -551,7 +507,7 @@ const OrderDetail = () => {
                   <div>
                     <p className="font-medium">Pedido Entregue</p>
                     <p className="text-sm text-gray-500">
-                      {formatDate(new Date(new Date(order.createdAt).getTime() + 3 * 24 * 60 * 60 * 1000))}
+                      {format(new Date(new Date(order.createdAt || order.created_at).getTime() + 3 * 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                     </p>
                     <p className="text-sm text-gray-500">Entregue por Transporte Ferplas</p>
                   </div>
@@ -566,7 +522,7 @@ const OrderDetail = () => {
                   <div>
                     <p className="font-medium">Pedido Cancelado</p>
                     <p className="text-sm text-gray-500">
-                      {formatDate(new Date(new Date(order.createdAt).getTime() + 2 * 24 * 60 * 60 * 1000))}
+                      {format(new Date(new Date(order.createdAt || order.created_at).getTime() + 2 * 24 * 60 * 60 * 1000), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                     </p>
                     <p className="text-sm text-gray-500">Por Cliente</p>
                   </div>

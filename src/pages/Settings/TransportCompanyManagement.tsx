@@ -1,236 +1,238 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { PlusCircle, Truck, Search } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import TransportCompanyForm from '@/components/settings/TransportCompanyForm';
+import { useSupabaseData } from '@/hooks/use-supabase-data';
+import TransportCompanyDialog from '@/components/transport-companies/TransportCompanyDialog';
 import { TransportCompany } from '@/types/types';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Separator } from '@/components/ui/separator';
+import { formatDate } from '@/utils/formatters';
+import TransportCompanyDetailDialog from '@/components/transport-companies/TransportCompanyDetailDialog';
 import { useAuth } from '@/context/AuthContext';
-import { isAdministrador } from '@/utils/permissionUtils';
+import { isAdministrator } from '@/utils/permissionUtils';
+import { useNavigate } from 'react-router-dom';
 
 const TransportCompanyManagement = () => {
-  const { user } = useAuth();
-  const isAdmin = user && isAdministrador(user.userTypeId);
-  
-  if (!isAdmin) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[60vh]">
-        <h2 className="text-2xl font-bold mb-2">Acesso Restrito</h2>
-        <p className="text-muted-foreground">Você não tem permissão para acessar esta página.</p>
-      </div>
-    );
-  }
-
-  const [transportCompanies, setTransportCompanies] = useState<TransportCompany[]>([]);
+  const navigate = useNavigate();
+  const { hasPermission, user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
-  const [openCreateForm, setOpenCreateForm] = useState(false);
-  const [openEditForm, setOpenEditForm] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<TransportCompany | null>(null);
-  const [openDeleteAlert, setOpenDeleteAlert] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  
+  const {
+    data: transportCompanies,
+    isLoading,
+    createRecord,
+    updateRecord,
+    deleteRecord,
+    error
+  } = useSupabaseData<TransportCompany>('transport_companies', {
+    orderBy: { column: 'name', ascending: true }
+  });
 
   useEffect(() => {
-    fetchTransportCompanies();
-  }, []);
-
-  const fetchTransportCompanies = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('transport_companies')
-        .select('*')
-        .order('name', { ascending: true });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data) {
-        setTransportCompanies(data as TransportCompany[]);
-      }
-    } catch (error) {
-      console.error('Error fetching transport companies:', error);
-      toast.error('Erro ao carregar transportadoras');
-    } finally {
-      setIsLoading(false);
+    // Verificar se houve erro ao carregar os dados
+    if (error) {
+      console.error("Erro ao carregar transportadoras:", error);
+      toast.error(`Erro ao carregar transportadoras: ${error.message}`);
     }
-  };
+  }, [error]);
 
-  const handleCreate = () => {
-    setSelectedCompany(null);
-    setOpenCreateForm(true);
-  };
-
-  const handleEdit = (company: TransportCompany) => {
-    setSelectedCompany(company);
-    setOpenEditForm(true);
-  };
-
-  const handleDelete = (company: TransportCompany) => {
-    setSelectedCompany(company);
-    setOpenDeleteAlert(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!selectedCompany) return;
-
-    try {
-      const { error } = await supabase
-        .from('transport_companies')
-        .delete()
-        .eq('id', selectedCompany.id);
-
-      if (error) {
-        throw error;
-      }
-
-      setTransportCompanies(transportCompanies.filter(tc => tc.id !== selectedCompany.id));
-      toast.success('Transportadora excluída com sucesso!');
-    } catch (error) {
-      console.error('Error deleting transport company:', error);
-      toast.error('Erro ao excluir transportadora');
-    } finally {
-      setOpenDeleteAlert(false);
-      setSelectedCompany(null);
-    }
-  };
-
-  const filteredCompanies = transportCompanies.filter(company =>
+  const filteredCompanies = transportCompanies.filter(company => 
     company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    company.document.includes(searchTerm)
+    (company.document && company.document.includes(searchTerm)) ||
+    (company.email && company.email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  const handleAddCompany = (company: Omit<TransportCompany, 'id' | 'created_at' | 'updated_at'>) => {
+    createRecord(company)
+      .then(() => {
+        toast.success('Transportadora cadastrada com sucesso');
+        setIsAddDialogOpen(false);
+      })
+      .catch((error) => {
+        toast.error(`Erro ao cadastrar transportadora: ${error.message}`);
+      });
+  };
+
+  const handleEditCompany = (id: string, company: Partial<TransportCompany>) => {
+    updateRecord(id, company)
+      .then(() => {
+        toast.success('Transportadora atualizada com sucesso');
+        setIsEditDialogOpen(false);
+        setSelectedCompany(null);
+      })
+      .catch((error) => {
+        toast.error(`Erro ao atualizar transportadora: ${error.message}`);
+      });
+  };
+
+  const handleDeleteCompany = (id: string) => {
+    if (window.confirm('Tem certeza que deseja excluir esta transportadora?')) {
+      deleteRecord(id)
+        .then(() => {
+          toast.success('Transportadora excluída com sucesso');
+          setSelectedCompany(null);
+        })
+        .catch((error) => {
+          toast.error(`Erro ao excluir transportadora: ${error.message}`);
+        });
+    }
+  };
+
+  const openEditDialog = (company: TransportCompany) => {
+    setSelectedCompany(company);
+    setIsEditDialogOpen(true);
+  };
+
+  const openDetailDialog = (company: TransportCompany) => {
+    setSelectedCompany(company);
+    setIsDetailDialogOpen(true);
+  };
+
+  // Verifica se o usuário tem permissão para gerenciar transportadoras ou é administrador
+  const canManageTransportCompanies = user && (isAdministrator(user.role) || hasPermission('transport_companies_manage'));
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Transportadoras</h1>
+          <h2 className="text-3xl font-bold tracking-tight">Transportadoras</h2>
           <p className="text-muted-foreground">
-            Gerencie as transportadoras do sistema
+            Gerencie as transportadoras utilizadas pela empresa
           </p>
         </div>
-        <Button onClick={handleCreate} className="bg-ferplas-500 hover:bg-ferplas-600">
-          <Plus className="mr-2 h-4 w-4" />
-          Adicionar
-        </Button>
+        {canManageTransportCompanies && (
+          <Button onClick={() => setIsAddDialogOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Nova Transportadora
+          </Button>
+        )}
       </div>
-
+      
+      <Separator />
+      
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Transportadoras</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4">
+          <CardTitle className="flex items-center gap-2">
+            <Truck className="h-5 w-5" /> 
+            Transportadoras Cadastradas
+          </CardTitle>
+          <CardDescription>
+            Lista de transportadoras cadastradas no sistema
+          </CardDescription>
+          <div className="flex w-full max-w-sm items-center space-x-2 mt-2">
             <Input
-              type="text"
-              placeholder="Buscar por nome ou CNPJ"
+              type="search"
+              placeholder="Buscar por nome, CNPJ ou email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full"
             />
+            <Button type="submit" size="icon" variant="secondary">
+              <Search className="h-4 w-4" />
+            </Button>
           </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Nome
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    CNPJ
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Contato
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ações
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={4} className="text-center py-4">Carregando...</td>
-                  </tr>
-                ) : filteredCompanies.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="text-center py-4">Nenhuma transportadora encontrada.</td>
-                  </tr>
-                ) : (
-                  filteredCompanies.map((company) => (
-                    <tr key={company.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{company.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{company.document}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {company.email ? `${company.email} / ` : ''}
-                        {company.phone || 'Telefone não informado'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <Button size="icon" variant="ghost" onClick={() => handleEdit(company)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost" onClick={() => handleDelete(company)}>
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="text-center py-4">Carregando transportadoras...</div>
+          ) : filteredCompanies.length === 0 ? (
+            <div className="text-center py-4">Nenhuma transportadora encontrada</div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>CNPJ</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Telefone</TableHead>
+                    <TableHead>Data de Cadastro</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCompanies.map((company) => (
+                    <TableRow key={company.id}>
+                      <TableCell className="font-medium">{company.name}</TableCell>
+                      <TableCell>{company.document}</TableCell>
+                      <TableCell>{company.email || '-'}</TableCell>
+                      <TableCell>{company.phone || '-'}</TableCell>
+                      <TableCell>{formatDate(company.created_at)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openDetailDialog(company)}
+                          >
+                            Detalhes
+                          </Button>
+                          {canManageTransportCompanies && (
+                            <>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => openEditDialog(company)}
+                              >
+                                Editar
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDeleteCompany(company.id)}
+                              >
+                                Excluir
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
+        <CardFooter className="flex justify-between">
+          <div className="text-xs text-muted-foreground">
+            Total de transportadoras: {filteredCompanies.length}
+          </div>
+        </CardFooter>
       </Card>
 
-      <Dialog open={openCreateForm} onOpenChange={setOpenCreateForm}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Adicionar Transportadora</DialogTitle>
-          </DialogHeader>
-          <TransportCompanyForm
-            onClose={() => setOpenCreateForm(false)}
-            onSuccess={fetchTransportCompanies}
-          />
-        </DialogContent>
-      </Dialog>
+      {/* Diálogos para adicionar, editar e visualizar transportadoras */}
+      <TransportCompanyDialog
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        onSubmit={handleAddCompany}
+      />
 
-      <Dialog open={openEditForm} onOpenChange={setOpenEditForm}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar Transportadora</DialogTitle>
-          </DialogHeader>
-          <TransportCompanyForm
+      {selectedCompany && (
+        <>
+          <TransportCompanyDialog
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+            onSubmit={(data) => handleEditCompany(selectedCompany.id, data)}
+            initialData={selectedCompany}
+            mode="edit"
+          />
+
+          <TransportCompanyDetailDialog
+            open={isDetailDialogOpen}
+            onOpenChange={setIsDetailDialogOpen}
             company={selectedCompany}
-            onClose={() => setOpenEditForm(false)}
-            onSuccess={fetchTransportCompanies}
           />
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={openDeleteAlert} onOpenChange={setOpenDeleteAlert}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir a transportadora <strong>{selectedCompany?.name}</strong>?
-              Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setOpenDeleteAlert(false)}>
-              Cancelar
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-600">
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        </>
+      )}
     </div>
   );
 };

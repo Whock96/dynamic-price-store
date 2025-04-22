@@ -1,157 +1,222 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Order, User } from '@/types/types';
 import { toast } from 'sonner';
-import { useOrders } from "@/context/OrderContext";
+import { useOrders } from '@/context/OrderContext';
+import { supabaseOrderToAppOrder } from '@/utils/adapters';
+import { Order } from '@/types/types';
+import { useAuth } from '@/context/AuthContext';
 
-interface UseOrderDataProps {
-  customerId?: string;
-  userId?: string;
-  startDate?: string;
-  endDate?: string;
-}
+/**
+ * Custom hook to fetch order data directly from Supabase
+ * Useful as a fallback when OrderContext might not have the data yet
+ */
+export function useOrderData(orderId: string | undefined) {
+  const [order, setOrder] = useState<Order | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const { getOrderById } = useOrders();
+  const { user: currentUser } = useAuth();
+  
+  const isSalespersonType = currentUser?.userTypeId === 'c5ee0433-3faf-46a4-a516-be7261bfe575';
 
-export const useOrderData = ({ customerId, userId, startDate, endDate }: UseOrderDataProps = {}) => {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const { orders: contextOrders } = useOrders();
+  const fetchOrderData = useCallback(async () => {
+    if (!orderId) {
+      setIsLoading(false);
+      return;
+    }
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      setLoading(true);
-      setError(null);
+    setIsLoading(true);
+    setError(null);
 
+    try {
+      const contextOrder = getOrderById(orderId);
+      if (contextOrder) {
+        console.log("Found order in context:", contextOrder);
+        
+        if (isSalespersonType && currentUser?.id) {
+          console.log("User is a specific salesperson type checking order permission");
+          
+          if (String(contextOrder.userId) !== String(currentUser.id)) {
+            console.log("User is a specific salesperson type but this order belongs to another user");
+            console.log(`Order user ID: ${contextOrder.userId} (${typeof contextOrder.userId}) vs Current user ID: ${currentUser.id} (${typeof currentUser.id})`);
+            setError(new Error('Você não tem permissão para visualizar este pedido'));
+            setOrder(null);
+            setIsLoading(false);
+            return;
+          }
+        }
+        else if (currentUser?.role === 'salesperson' && String(contextOrder.userId) !== String(currentUser.id)) {
+          console.log("User is a salesperson but this order belongs to another salesperson");
+          console.log(`Order user ID: ${contextOrder.userId} (${typeof contextOrder.userId}) vs Current user ID: ${currentUser.id} (${typeof currentUser.id})`);
+          setError(new Error('Você não tem permissão para visualizar este pedido'));
+          setOrder(null);
+          setIsLoading(false);
+          return;
+        }
+        
+        setOrder(contextOrder);
+        setIsLoading(false);
+        return;
+      }
+
+      console.log("Order not found in context, fetching from Supabase");
+      
+      // Make sure to include the explicit join with transport_companies
       let query = supabase
         .from('orders')
         .select(`
           *,
-          customer:customer_id (
-            company_name
-          ),
-          user:user_id (
-            name
-          ),
-          transport_company:transport_company_id (
-            id,
-            name
-          )
+          customers(*),
+          transport_companies(id, name)
         `)
-        .order('created_at', { ascending: false });
-
-      if (customerId) {
-        query = query.eq('customer_id', customerId);
+        .eq('id', orderId);
+      
+      if (isSalespersonType && currentUser?.id) {
+        const currentUserIdStr = String(currentUser.id);
+        console.log("useOrderData - Restringindo acesso a pedidos para vendedor ESPECÍFICO:", currentUserIdStr);
+        query = query.eq('user_id', currentUserIdStr);
       }
-
-      if (userId) {
-        query = query.eq('user_id', userId);
+      else if (currentUser?.role === 'salesperson' && currentUser?.id) {
+        const currentUserIdStr = String(currentUser.id);
+        console.log("useOrderData - Restringindo acesso a pedidos para vendedor (role):", currentUserIdStr);
+        query = query.eq('user_id', currentUserIdStr);
       }
+      
+      const { data: orderData, error: orderError } = await query.single();
 
-      if (startDate && endDate) {
-        query = query.gte('created_at', startDate).lte('created_at', endDate);
-      } else if (startDate) {
-        query = query.gte('created_at', startDate);
-      } else if (endDate) {
-        query = query.lte('created_at', endDate);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        setError(error.message);
-        toast.error(`Erro ao buscar pedidos: ${error.message}`);
-      } else if (data) {
-        const processedOrders = data.map(order => {
-          // Fix: Add proper null checking for order.user
-          const userName = order.user && typeof order.user === 'object' && order.user !== null && 'name' in order.user
-            ? order.user.name
-            : 'Usuário do Sistema';
-
-          let transportCompanyName = null;
-          if (order.transport_company_id && order.transport_company) {
-            if (typeof order.transport_company === 'object' && order.transport_company !== null) {
-              transportCompanyName = order.transport_company.name || null;
-            }
+      if (orderError) {
+        if (orderError.code === 'PGRST116') {
+          if (isSalespersonType || currentUser?.role === 'salesperson') {
+            throw new Error('Você não tem permissão para visualizar este pedido');
+          } else {
+            throw new Error('Pedido não encontrado');
           }
-
-          // Create default user object to avoid null references
-          const defaultUser: User = {
-            id: order.user_id || '',
-            username: '',
-            name: userName,
-            email: '',
-            createdAt: new Date(),
-            userTypeId: '',
-          };
-
-          return {
-            id: order.id,
-            orderNumber: order.order_number,
-            customerId: order.customer_id,
-            customer: {
-              id: order.customer_id,
-              companyName: order.customer?.company_name || 'Cliente não encontrado',
-              document: '',
-              salesPersonId: '',
-              street: '',
-              number: '',
-              noNumber: false,
-              complement: '',
-              neighborhood: '',
-              city: '',
-              state: '',
-              zipCode: '',
-              phone: '',
-              email: '',
-              defaultDiscount: 0,
-              maxDiscount: 0,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              registerDate: new Date(),
-            },
-            userId: order.user_id,
-            user: defaultUser,
-            items: [],
-            appliedDiscounts: [],
-            totalDiscount: Number(order.total_discount || 0),
-            subtotal: Number(order.subtotal || 0),
-            total: Number(order.total || 0),
-            status: order.status as Order['status'],
-            shipping: order.shipping as Order['shipping'],
-            fullInvoice: order.full_invoice,
-            taxSubstitution: order.tax_substitution,
-            paymentMethod: order.payment_method as Order['paymentMethod'],
-            paymentTerms: order.payment_terms || '',
-            notes: order.notes || '',
-            observations: order.observations || '',
-            createdAt: new Date(order.created_at),
-            updatedAt: new Date(order.updated_at),
-            deliveryLocation: order.delivery_location as Order['deliveryLocation'],
-            halfInvoiceType: order.half_invoice_type === 'price' ? 'price' : 'quantity',
-            halfInvoicePercentage: Number(order.half_invoice_percentage || 50),
-            deliveryFee: Number(order.delivery_fee || 0),
-            withIPI: order.with_ipi || false,
-            ipiValue: Number(order.ipi_value || 0),
-            transportCompanyId: order.transport_company_id,
-            transportCompanyName: transportCompanyName,
-            invoiceNumber: order.invoice_number || null,
-            invoicePdfPath: order.invoice_pdf_path || null,
-            productsTotal: Number(order.products_total || 0),
-            taxSubstitutionTotal: Number(order.tax_substitution_total || 0),
-            withSuframa: order.with_suframa || false
-          } as Order;
-        });
-        
-        setOrders(processedOrders);
-      } else {
-        setOrders([]);
+        }
+        throw orderError;
       }
 
-      setLoading(false);
-    };
+      console.log("Raw order data from database:", orderData);
+      
+      if (orderData.transport_companies) {
+        console.log("Transport company data from query:", orderData.transport_companies);
+      } else {
+        console.log("No transport company data in query result");
+      }
+      
+      const { data: itemsData } = await supabase
+        .from('order_items')
+        .select(`
+          *,
+          products(*)
+        `)
+        .eq('order_id', orderId);
+        
+      const { data: discountData } = await supabase
+        .from('order_discounts')
+        .select('discount_id')
+        .eq('order_id', orderId);
+        
+      let discounts = [];
+      if (discountData && discountData.length > 0) {
+        const discountIds = discountData.map(d => d.discount_id);
+        const { data: discountDetails } = await supabase
+          .from('discount_options')
+          .select('*')
+          .in('id', discountIds);
+          
+        if (discountDetails) {
+          discounts = discountDetails.map(d => ({
+            id: d.id,
+            name: d.name,
+            description: d.description || '',
+            value: d.value,
+            type: d.type as 'discount' | 'surcharge',
+            isActive: d.is_active,
+          }));
+        }
+      }
+      
+      let userName = null;
+      
+      if (orderData && orderData.user_id) {
+        const orderUserIdStr = String(orderData.user_id);
+        console.log("useOrderData - Verificando ID de usuário:", orderUserIdStr);
+        
+        if (currentUser && String(currentUser.id) === orderUserIdStr) {
+          userName = currentUser.name;
+          console.log("useOrderData - Usando nome do usuário atual:", userName);
+        } else {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('name')
+            .eq('id', orderData.user_id)
+            .single();
+            
+          if (userData && userData.name) {
+            userName = userData.name;
+            console.log("useOrderData - Nome do usuário recuperado do BD:", userName);
+          } else {
+            console.log("useOrderData - Não foi possível encontrar nome de usuário para ID:", orderData.user_id);
+            userName = 'Usuário do Sistema';
+          }
+        }
+      }
+      
+      const processedOrder = supabaseOrderToAppOrder(orderData, itemsData || [], discounts);
+      
+      if (userName) {
+        processedOrder.user = {
+          ...processedOrder.user,
+          name: userName
+        };
+      }
+      
+      console.log("useOrderData - Processed order with user:", processedOrder.user);
+      console.log("useOrderData - Processed order transport company:", {
+        id: processedOrder.transportCompanyId,
+        name: processedOrder.transportCompanyName
+      });
+      
+      setOrder(processedOrder);
+      
+      if (isSalespersonType && currentUser?.id) {
+        const orderUserIdStr = String(orderData.user_id);
+        const currentUserIdStr = String(currentUser.id);
+        
+        if (orderUserIdStr !== currentUserIdStr) {
+          console.log(`useOrderData - BLOQUEANDO acesso: pedido pertence a ${orderUserIdStr}, não ao usuário atual ${currentUserIdStr}`);
+          setError(new Error('Você não tem permissão para visualizar este pedido'));
+          setOrder(null);
+          setIsLoading(false);
+          return;
+        }
+      }
+      else if (currentUser?.role === 'salesperson' && currentUser?.id) {
+        const orderUserIdStr = String(orderData.user_id);
+        const currentUserIdStr = String(currentUser.id);
+        
+        if (orderUserIdStr !== currentUserIdStr) {
+          console.log(`useOrderData - BLOQUEANDO acesso: pedido pertence a ${orderUserIdStr}, não ao usuário atual ${currentUserIdStr}`);
+          setError(new Error('Você não tem permissão para visualizar este pedido'));
+          setOrder(null);
+          setIsLoading(false);
+          return;
+        }
+      }
+    } catch (err) {
+      const error = err as Error;
+      setError(error);
+      console.error(`Error fetching order ${orderId}:`, error);
+      toast.error(error.message || 'Erro ao carregar pedido');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [orderId, getOrderById, currentUser, isSalespersonType]);
 
-    fetchOrders();
-  }, [customerId, userId, startDate, endDate]);
+  useEffect(() => {
+    fetchOrderData();
+  }, [fetchOrderData]);
 
-  return { orders, loading, error };
-};
+  return { order, isLoading, error, fetchOrderData };
+}

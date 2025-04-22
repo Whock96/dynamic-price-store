@@ -58,9 +58,18 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import { useCart } from '@/context/CartContext';
-import { TransportCompany } from '@/types/types';
 
 type SupabaseProduct = Tables<'products'>;
+type TransportCompany = {
+  id: string;
+  name: string;
+  document: string;
+  phone: string | null;
+  email: string | null;
+  whatsapp: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
 const Cart = () => {
   const navigate = useNavigate();
@@ -210,11 +219,11 @@ const Cart = () => {
   useEffect(() => {
     if (customer && customer.transportCompanyId) {
       console.log('Setting transport company from customer:', customer.transportCompanyId);
-      setSelectedTransportCompany(customer.transportCompanyId === 'none' ? null : customer.transportCompanyId);
+      setSelectedTransportCompany(customer.transportCompanyId === 'none' ? undefined : customer.transportCompanyId);
     } else {
-      setSelectedTransportCompany(null);
+      setSelectedTransportCompany(undefined);
     }
-  }, [customer, setSelectedTransportCompany]);
+  }, [customer]);
   
   const handleSubmitOrder = async () => {
     if (!customer) {
@@ -788,11 +797,8 @@ const Cart = () => {
                             </div>
                             
                             <Select
-                              value={typeof selectedTransportCompany === "string" ? selectedTransportCompany : selectedTransportCompany?.id ?? "none"}
-                              onValueChange={(value) => {
-                                const transportCompany = transportCompanies.find(tc => tc.id === value);
-                                setSelectedTransportCompany(value === "none" ? null : (transportCompany || value));
-                              }}
+                              value={selectedTransportCompany || "none"}
+                              onValueChange={(value) => setSelectedTransportCompany(value === "none" ? undefined : value)}
                             >
                               <SelectTrigger className="w-full">
                                 <SelectValue placeholder="Selecione uma transportadora" />
@@ -834,15 +840,282 @@ const Cart = () => {
                           onCheckedChange={() => toggleDiscountOption(option.id)}
                         />
                       </div>
+
+                      {option.id === 'a-vista' && !isDiscountOptionSelected(option.id) && (
+                        <div className="ml-6 p-3 border-l-2 border-ferplas-100 bg-gray-50 rounded-md">
+                          <div className="flex items-center mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-ferplas-500 mr-1"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+                            <span className="text-sm font-medium text-gray-700">Prazo de pagamento:</span>
+                          </div>
+                          <Input
+                            type="text"
+                            placeholder="Ex: 30/60/90 ou 28 DDL"
+                            value={paymentTerms}
+                            onChange={(e) => setPaymentTerms(e.target.value)}
+                            className="w-full"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Informe o prazo de pagamento combinado com o cliente</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Opção Meia Nota */}
+                  {discountOptions.filter(option => option.id === 'meia-nota').map(option => (
+                    <div key={option.id} className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">
+                            {option.name} {applyDiscounts && (
+                              <span className={option.type === 'discount' ? 'text-green-600' : 'text-red-600'}>
+                                {option.type === 'discount' ? '(-' : '(+'}{option.value}%)
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-sm text-gray-500">{option.description}</p>
+                        </div>
+                        <Switch
+                          checked={isDiscountOptionSelected(option.id)}
+                          onCheckedChange={() => toggleDiscountOption(option.id)}
+                        />
+                      </div>
+                      
+                      {option.id === 'meia-nota' && isDiscountOptionSelected(option.id) && (
+                        <div className="ml-6 p-3 border-l-2 border-ferplas-100 bg-gray-50 rounded-md space-y-4">
+                          <div className="flex items-center mb-2">
+                            <Percent className="h-4 w-4 text-ferplas-500 mr-1" />
+                            <span className="text-sm font-medium text-gray-700">Percentual da nota: {halfInvoicePercentage}%</span>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <Slider
+                              value={[halfInvoicePercentage]}
+                              min={0}
+                              max={100}
+                              step={1}
+                              onValueChange={(value) => setHalfInvoicePercentage(value[0])}
+                              className="w-full"
+                            />
+                            <Input
+                              type="number"
+                              value={halfInvoicePercentage}
+                              onChange={(e) => {
+                                const val = Number(e.target.value);
+                                if (val >= 0 && val <= 100) {
+                                  setHalfInvoicePercentage(val);
+                                }
+                              }}
+                              className="w-20"
+                              min={0}
+                              max={100}
+                            />
+                          </div>
+                          
+                          <div className="flex flex-col space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Tipo de aplicação:</label>
+                            <Select 
+                              value={halfInvoiceType}
+                              onValueChange={(value: 'quantity' | 'price') => setHalfInvoiceType(value)}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Selecione o tipo" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="quantity">Na quantidade</SelectItem>
+                                <SelectItem value="price">No preço</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {halfInvoiceType === 'quantity' 
+                                ? 'A nota fiscal será emitida com quantidade reduzida mantendo o preço original' 
+                                : 'A nota fiscal será emitida com preço reduzido mantendo a quantidade original'}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </>
               ) : (
-                <div className="text-center py-6">
-                  <p className="text-gray-500">Nenhuma opção de desconto disponível.</p>
+                <div className="text-center py-4">
+                  <p className="text-gray-500">Nenhuma opção de desconto cadastrada.</p>
+                </div>
+              )}
+
+              {!applyDiscounts && (
+                <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-md">
+                  <div className="flex items-start">
+                    <Tags className="h-5 w-5 text-amber-600 mr-2 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-700">Descontos desativados</p>
+                      <p className="text-sm text-amber-600">
+                        As opções selecionadas não afetarão o preço dos produtos, mas serão registradas no pedido.
+                        {deliveryLocation && <span className="block mt-1 font-medium">A taxa de entrega ainda será aplicada.</span>}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-medium">Opções Tributárias</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Opção de Substituição Tributária */}
+              {discountOptions.filter(option => option.id === 'icms-st').map(option => (
+                <div key={option.id} className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">
+                        ICMS Substituição tributária <span className="text-red-600">(+{option.value}%)</span>
+                        {option.id === 'icms-st' && isDiscountOptionSelected('meia-nota') && (
+                          <span className="text-red-600 ml-1">
+                            (Ajustado: +{(option.value * halfInvoicePercentage / 100).toFixed(2)}%)
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Acréscimo do ICMS por substituição tributária (calculado com MVA de cada produto)
+                      </p>
+                    </div>
+                    <Switch
+                      checked={isDiscountOptionSelected(option.id)}
+                      onCheckedChange={() => toggleDiscountOption(option.id)}
+                    />
+                  </div>
+                </div>
+              ))}
+
+              {/* Opção de IPI */}
+              <div className="space-y-3 pt-2 border-t border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">
+                      IPI {settings && (
+                        <span className="text-red-600">(+{settings.ipiRate}%)</span>
+                      )}
+                      {isDiscountOptionSelected('meia-nota') && (
+                        <span className="text-red-600 ml-1">
+                          (Ajustado: +{effectiveIPIRate.toFixed(2)}%)
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-sm text-gray-500">Acréscimo de Imposto sobre Produtos Industrializados</p>
+                  </div>
+                  <Switch
+                    checked={withIPI}
+                    onCheckedChange={toggleIPI}
+                  />
+                </div>
+              </div>
+
+              {/* Opção SUFRAMA */}
+              <div className="space-y-3 pt-2 border-t border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">SUFRAMA</p>
+                    <p className="text-sm text-gray-500">
+                      Ativar para operações com registro SUFRAMA (Zona Franca de Manaus)
+                    </p>
+                  </div>
+                  <Switch
+                    checked={withSuframa}
+                    onCheckedChange={toggleSuframa}
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-medium">Observaç��es do Pedido</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              placeholder="Digite aqui observações importantes sobre este pedido, como instruções de entrega, detalhes específicos ou outras informações relevantes..."
+              className="min-h-[120px] resize-y"
+              value={observations}
+              onChange={(e) => setObservations(e.target.value)}
+            />
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-medium">Resumo do Pedido</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Total Produtos:</span>
+                <span>{formatCurrency(items.reduce((total, item) => {
+                  const totalUnits = calculateTotalUnits(item);
+                  return total + (item.product.listPrice * totalUnits);
+                }, 0))}</span>
+              </div>
+              <div className="flex justify-between text-sm text-red-600">
+                <span>Descontos:</span>
+                <span>-{formatCurrency(
+                  items.reduce((total, item) => {
+                    const totalUnits = calculateTotalUnits(item);
+                    const fullPrice = item.product.listPrice * totalUnits;
+                    const discountedPrice = item.finalPrice * totalUnits;
+                    return total + (fullPrice - discountedPrice);
+                  }, 0)
+                )}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Subtotal Pedido:</span>
+                <span>{formatCurrency(subtotal)}</span>
+              </div>
+              {withIPI && ipiValue > 0 && (
+                <div className="flex justify-between text-sm text-orange-600">
+                  <span>IPI ({effectiveIPIRate.toFixed(2)}%):</span>
+                  <span>+{formatCurrency(ipiValue)}</span>
+                </div>
+              )}
+              {isDiscountOptionSelected('icms-st') && taxSubstitutionValue > 0 && (
+                <div className="flex justify-between text-sm text-orange-600">
+                  <span>ICMS Substituição Tributária ({effectiveTaxRate.toFixed(2)}% ICMS-ST):</span>
+                  <span>+{formatCurrency(taxSubstitutionValue)}</span>
+                </div>
+              )}
+              {deliveryLocation && (
+                <div className="flex justify-between text-sm text-amber-600">
+                  <span>Taxa de entrega ({deliveryLocation === 'capital' ? 'Capital' : 'Interior'}):</span>
+                  <span>{formatCurrency(deliveryFee)}</span>
+                </div>
+              )}
+              <Separator className="my-2" />
+              <div className="flex justify-between font-medium text-lg">
+                <span>Total:</span>
+                <span className="text-ferplas-600">{formatCurrency(total)}</span>
+              </div>
+            </div>
+            
+            <Button 
+              className="w-full bg-ferplas-500 hover:bg-ferplas-600 button-transition py-6"
+              onClick={handleSubmitOrder}
+              disabled={isSubmitting || items.length === 0 || !customer}
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 h-5 w-5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+                  Finalizar Pedido
+                </>
+              )}
+            </Button>
           </CardContent>
         </Card>
       </div>
