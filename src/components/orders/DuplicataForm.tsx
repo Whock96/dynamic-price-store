@@ -6,7 +6,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { FileUpload } from "@/components/ui/file-upload";
 import { Duplicata, RefTable } from "@/types/duplicata";
-import { format } from "date-fns";
 
 interface Props {
   value?: Partial<Duplicata>;

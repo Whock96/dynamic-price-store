@@ -17,6 +17,8 @@ import { supabase, uploadInvoicePdf, deleteInvoicePdf } from '@/integrations/sup
 import { User, TransportCompany, Order } from '@/types/types';
 import { FileUpload } from '@/components/ui/file-upload';
 import DuplicataForm from "@/components/orders/DuplicataForm";
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { 
   Table,
   TableBody,

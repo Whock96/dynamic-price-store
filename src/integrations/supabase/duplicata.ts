@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Duplicata, RefTable } from "@/types/duplicata";
 
 // LOOKUP TABLE FETCHERS
-export async function fetchRefTable(table: string): Promise<RefTable[]> {
+export async function fetchRefTable(table: "modo_pagamento" | "portador" | "bancos" | "payment_status"): Promise<RefTable[]> {
   const { data, error } = await supabase
     .from(table)
     .select("*")
@@ -49,11 +49,11 @@ export async function fetchDuplicatas(orderId: string): Promise<Duplicata[]> {
     pdfBoletoPath: d.pdf_boleto_path,
     createdAt: d.created_at,
     updatedAt: d.updated_at,
-    modoPagamento: d.modo_pagamento,
-    portador: d.portador,
-    banco: d.banco,
-    bancoPagamento: d.banco_pagamento,
-    paymentStatus: d.payment_status,
+    modoPagamento: d.modo_pagamento as RefTable,
+    portador: d.portador as RefTable,
+    banco: d.banco as RefTable,
+    bancoPagamento: d.banco_pagamento as RefTable,
+    paymentStatus: d.payment_status as RefTable,
   }));
 }
 
