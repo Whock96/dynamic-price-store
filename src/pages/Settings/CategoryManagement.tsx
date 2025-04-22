@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus, ArrowLeft, Loader2 } from 'lucide-react';
@@ -23,7 +22,7 @@ export enum DialogType {
 
 const CategoryManagement = () => {
   const navigate = useNavigate();
-  const { user, hasPermission } = useAuth();
+  const { user } = useAuth();
   const { 
     categories, 
     isLoading, 
@@ -59,13 +58,12 @@ const CategoryManagement = () => {
   useEffect(() => {
     // Added additional logging to debug permissions
     console.log("CategoryManagement - User:", user);
-    console.log("CategoryManagement - Has categories_manage permission:", hasPermission('categories_manage'));
     
-    // Verify the user role directly to ensure administrators always have access
-    const isAdmin = user?.role?.toLowerCase() === 'administrator';
+    // Verify the user type directly to ensure administrators always have access
+    const isAdmin = user && isAdministrador(user.userTypeId);
     console.log("CategoryManagement - User is administrator:", isAdmin);
     
-    if (!isAdmin && !hasPermission('categories_manage')) {
+    if (!isAdmin) {
       toast.error('Você não tem permissão para acessar esta página');
       navigate('/dashboard');
       return;

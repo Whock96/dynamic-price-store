@@ -7,12 +7,12 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import MigrationTool from '@/components/settings/MigrationTool';
 import { useAuth } from '@/context/AuthContext';
-import { isAdministrator } from '@/utils/permissionUtils';
+import { isAdministrador } from '@/utils/permissionUtils';
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { hasPermission, user } = useAuth();
-  const isAdmin = user && isAdministrator(user.role);
+  const { user } = useAuth();
+  const isAdmin = user && isAdministrador(user.userTypeId);
 
   const settingsLinks = [
     { 
@@ -66,8 +66,8 @@ const Settings = () => {
     },
   ];
 
-  // Filtra os links com base nas permissões do usuário ou concede todos os acessos para administradores
-  const filteredLinks = isAdmin ? settingsLinks : settingsLinks.filter(link => hasPermission(link.permission));
+  // Com o sistema simplificado, administradores têm acesso a tudo
+  const filteredLinks = isAdmin ? settingsLinks : [];
 
   return (
     <div className="space-y-6">
