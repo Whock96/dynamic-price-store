@@ -47,50 +47,50 @@ const DuplicatasCard: React.FC<Props> = ({ duplicatas }) => {
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
-          <Table className="w-full text-sm">
+          <Table className="w-full">
             <TableHeader>
               <TableRow>
-                <TableHead className="whitespace-nowrap px-4 py-2">Número</TableHead>
-                <TableHead className="whitespace-nowrap px-4 py-2">Emissão</TableHead>
-                <TableHead className="whitespace-nowrap px-4 py-2">Vencimento</TableHead>
-                <TableHead className="whitespace-nowrap px-4 py-2">Valor</TableHead>
-                <TableHead className="whitespace-nowrap px-4 py-2">Acresc.</TableHead>
-                <TableHead className="whitespace-nowrap px-4 py-2">Desconto</TableHead>
-                <TableHead className="whitespace-nowrap px-4 py-2">Modo Pgto.</TableHead>
-                <TableHead className="whitespace-nowrap px-4 py-2">Portador</TableHead>
-                <TableHead className="whitespace-nowrap px-4 py-2">Banco</TableHead>
-                <TableHead className="whitespace-nowrap px-4 py-2">Situação</TableHead>
-                <TableHead className="whitespace-nowrap px-4 py-2">Valor Recebido</TableHead>
-                <TableHead className="whitespace-nowrap px-4 py-2">Data Pgto</TableHead>
-                <TableHead className="whitespace-nowrap px-4 py-2">Banco Pgto</TableHead>
-                <TableHead className="whitespace-nowrap px-4 py-2">Boleto PDF</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Número</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Emissão</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Vencimento</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Valor</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Acresc.</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Desconto</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Modo Pgto.</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Portador</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Banco</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Situação</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Valor Recebido</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Data Pgto</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Banco Pgto</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Boleto PDF</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {duplicatas.map((d) => (
                 <TableRow key={d.id} className="hover:bg-gray-50 transition">
-                  <TableCell className="px-4 py-2">{d.numeroDuplicata}</TableCell>
-                  <TableCell className="px-4 py-2">
+                  <TableCell className="px-4 py-3 border-t">{d.numeroDuplicata}</TableCell>
+                  <TableCell className="px-4 py-3 border-t">
                     {d.dataEmissao ? format(new Date(d.dataEmissao), "dd/MM/yyyy", { locale: ptBR }) : '-'}
                   </TableCell>
-                  <TableCell className="px-4 py-2">
+                  <TableCell className="px-4 py-3 border-t">
                     {d.dataVencimento ? format(new Date(d.dataVencimento), "dd/MM/yyyy", { locale: ptBR }) : '-'}
                   </TableCell>
-                  <TableCell className="px-4 py-2">{formatCurrency(d.valor)}</TableCell>
-                  <TableCell className="px-4 py-2">{formatCurrency(d.valorAcrescimo)}</TableCell>
-                  <TableCell className="px-4 py-2">{formatCurrency(d.valorDesconto)}</TableCell>
-                  <TableCell className="px-4 py-2">{d.modoPagamento?.nome || '-'}</TableCell>
-                  <TableCell className="px-4 py-2">{d.portador?.nome || '-'}</TableCell>
-                  <TableCell className="px-4 py-2">{d.banco?.nome || '-'}</TableCell>
-                  <TableCell className="px-4 py-2">{d.paymentStatus?.nome || '-'}</TableCell>
-                  <TableCell className="px-4 py-2">
+                  <TableCell className="px-4 py-3 border-t">{formatCurrency(d.valor)}</TableCell>
+                  <TableCell className="px-4 py-3 border-t">{formatCurrency(d.valorAcrescimo)}</TableCell>
+                  <TableCell className="px-4 py-3 border-t">{formatCurrency(d.valorDesconto)}</TableCell>
+                  <TableCell className="px-4 py-3 border-t">{d.modoPagamento?.nome || '-'}</TableCell>
+                  <TableCell className="px-4 py-3 border-t">{d.portador?.nome || '-'}</TableCell>
+                  <TableCell className="px-4 py-3 border-t">{d.banco?.nome || '-'}</TableCell>
+                  <TableCell className="px-4 py-3 border-t">{d.paymentStatus?.nome || '-'}</TableCell>
+                  <TableCell className="px-4 py-3 border-t">
                     {d.valorRecebido !== undefined ? formatCurrency(d.valorRecebido) : '-'}
                   </TableCell>
-                  <TableCell className="px-4 py-2">
+                  <TableCell className="px-4 py-3 border-t">
                     {d.dataPagamento ? format(new Date(d.dataPagamento), "dd/MM/yyyy", { locale: ptBR }) : '-'}
                   </TableCell>
-                  <TableCell className="px-4 py-2">{d.bancoPagamento?.nome || '-'}</TableCell>
-                  <TableCell className="px-4 py-2">
+                  <TableCell className="px-4 py-3 border-t">{d.bancoPagamento?.nome || '-'}</TableCell>
+                  <TableCell className="px-4 py-3 border-t">
                     {d.pdfBoletoPath ? (
                       <a href={d.pdfBoletoPath} target="_blank" rel="noopener noreferrer">
                         <Button size="icon" variant="ghost" className="text-ferplas-600 hover:bg-ferplas-50" title="Baixar Boleto PDF">
@@ -112,4 +112,3 @@ const DuplicatasCard: React.FC<Props> = ({ duplicatas }) => {
 };
 
 export default DuplicatasCard;
-

@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Duplicata, RefTable } from "@/types/duplicata";
 
@@ -99,14 +100,32 @@ export async function deleteDuplicata(id: string) {
 // FILE UPLOAD/DELETE
 export async function uploadBoletoPdf(file: File, duplicataId: string): Promise<string | null> {
   const fileName = `boleto_${duplicataId}_${Date.now()}.pdf`;
+  
+  // Log the file information for debugging
+  console.log(`Uploading PDF for duplicata: ${duplicataId}`, {
+    fileName,
+    fileSize: file.size,
+    fileType: file.type
+  });
+  
   const { data, error } = await supabase.storage
     .from('boleto_pdfs')
     .upload(fileName, file, { upsert: true, contentType: "application/pdf" });
-  if (error) throw error;
+  
+  if (error) {
+    console.error("Error uploading PDF:", error);
+    throw error;
+  }
+  
+  console.log("Upload successful, getting public URL", data);
+  
   // get public url
   const { data: urlData } = supabase.storage
     .from('boleto_pdfs')
     .getPublicUrl(fileName);
+  
+  console.log("Public URL:", urlData.publicUrl);
+  
   return urlData.publicUrl ?? null;
 }
 
@@ -114,7 +133,13 @@ export async function deleteBoletoPdf(path: string): Promise<boolean> {
   // path could be full url or bucket path; we'll normalize
   const fileName = path.split('/').pop();
   if (!fileName) return false;
+  
+  console.log(`Deleting file: ${fileName}`);
+  
   const { error } = await supabase.storage.from('boleto_pdfs').remove([fileName]);
-  if (error) throw error;
+  if (error) {
+    console.error("Error deleting PDF:", error);
+    throw error;
+  }
   return true;
 }
