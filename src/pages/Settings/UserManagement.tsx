@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Users, Search, Plus, Edit, Trash2, ArrowLeft, Save,
-  Check, X, Shield
+  Check, X 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,6 +53,7 @@ import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
 import { useSupabaseData } from '@/hooks/use-supabase-data';
 import { supabase } from '@/integrations/supabase/client';
+import { ADMIN_USER_TYPE_ID, VENDEDOR_USER_TYPE_ID, isAdministrador } from '@/utils/permissionUtils';
 
 interface UserData {
   id: string;
@@ -79,7 +79,7 @@ interface UserTypeOption {
 
 const UserManagement = () => {
   const navigate = useNavigate();
-  const { user: currentUser, hasPermission } = useAuth();
+  const { user: currentUser, fetchUserTypes } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -97,7 +97,6 @@ const UserManagement = () => {
     isActive: true,
   });
 
-  // Use memoized options object to prevent unnecessary re-renders
   const userQueryOptions = {
     select: `
       *,
@@ -125,11 +124,11 @@ const UserManagement = () => {
   } = useSupabaseData<UserTypeOption>('user_types', userTypeQueryOptions);
 
   useEffect(() => {
-    if (!hasPermission('users_manage')) {
+    if (!currentUser || !isAdministrador(currentUser.userTypeId)) {
       toast.error('Você não tem permissão para acessar esta página');
       navigate('/dashboard');
     }
-  }, [navigate, hasPermission]);
+  }, [navigate, currentUser]);
 
   const handleOpenDialog = (user?: UserData) => {
     if (user) {
@@ -310,24 +309,16 @@ const UserManagement = () => {
     .map(user => user.user_type?.name)
     .filter(Boolean))];
 
-  const getUserTypeBadge = (userType?: string) => {
-    if (!userType) return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Não definido</Badge>;
+  const getUserTypeBadge = (userType?: { name?: string, id?: string }) => {
+    if (!userType || !userType.id) return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Não definido</Badge>;
     
-    switch (userType.toLowerCase()) {
-      case 'administrator':
-      case 'administrador':
+    switch (userType.id) {
+      case ADMIN_USER_TYPE_ID:
         return <Badge className="bg-red-100 text-red-800 border-red-200">Administrador</Badge>;
-      case 'salesperson':
-      case 'vendedor':
+      case VENDEDOR_USER_TYPE_ID:
         return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Vendedor</Badge>;
-      case 'billing':
-      case 'faturamento':
-        return <Badge className="bg-green-100 text-green-800 border-green-200">Faturamento</Badge>;
-      case 'inventory':
-      case 'estoque':
-        return <Badge className="bg-purple-100 text-purple-800 border-purple-200">Estoque</Badge>;
       default:
-        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">{userType}</Badge>;
+        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">{userType.name || 'Desconhecido'}</Badge>;
     }
   };
 
@@ -417,7 +408,7 @@ const UserManagement = () => {
                     <TableCell className="font-medium">{user.name}</TableCell>
                     <TableCell>{user.username}</TableCell>
                     <TableCell>{user.email || '-'}</TableCell>
-                    <TableCell>{user.user_type ? getUserTypeBadge(user.user_type.name) : getUserTypeBadge()}</TableCell>
+                    <TableCell>{user.user_type ? getUserTypeBadge(user.user_type) : getUserTypeBadge()}</TableCell>
                     <TableCell>
                       {user.is_active ? (
                         <Badge className="bg-green-100 text-green-800">Ativo</Badge>

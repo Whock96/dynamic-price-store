@@ -1,24 +1,60 @@
 
-export const PERMISSION_MENU_MAP: Record<string, string[]> = {
-  'dashboard_access': ['/dashboard'],
-  'products_view': ['/products'],
-  'products_manage': ['/settings/products'],
-  'customers_view': ['/customers'],
-  'customers_manage': ['/customers/new', '/customers/:id/edit'],
-  'orders_view': ['/orders', '/orders/:id'],
-  'orders_manage': ['/orders/:id/edit', '/cart'],
-  'users_view': ['/settings/users'],
-  'users_manage': ['/settings/users'],
-  'user_types_manage': ['/settings/user-types'],
-  'settings_view': ['/settings'],
-  'settings_manage': ['/settings/company'],
-  'categories_manage': ['/settings/categories'],
-  'discounts_manage': ['/settings/discounts'],
-  'transport_companies_view': ['/settings/transport-companies'],
-  'transport_companies_manage': ['/settings/transport-companies']
+// IDs fixos dos tipos de usuário
+export const ADMIN_USER_TYPE_ID = '548dae75-9f43-4dd5-a476-5996430c40b7';
+export const VENDEDOR_USER_TYPE_ID = 'c5ee0433-3faf-46a4-a516-be7261bfe575';
+
+// Verifica se o usuário é um administrador
+export const isAdministrador = (userTypeId: string): boolean => {
+  return userTypeId === ADMIN_USER_TYPE_ID;
 };
 
-// Function to check if a user is an administrator
-export const isAdministrator = (role: string): boolean => {
-  return role.toLowerCase() === 'administrator' || role.toLowerCase() === 'administrador';
+// Verifica se o usuário é um vendedor
+export const isVendedor = (userTypeId: string): boolean => {
+  return userTypeId === VENDEDOR_USER_TYPE_ID;
+};
+
+// Verifica se o usuário tem acesso à rota especificada
+export const hasAccessToRoute = (userTypeId: string, route: string): boolean => {
+  // Administrador tem acesso a todas as rotas
+  if (isAdministrador(userTypeId)) {
+    return true;
+  }
+  
+  // Rotas específicas que vendedores têm acesso
+  const vendedorRoutes = [
+    '/dashboard',
+    '/customers',
+    '/customers/new',
+    '/customers/:id/edit',
+    '/orders',
+    '/orders/:id',
+    '/cart'
+  ];
+  
+  // Verifica se a rota está na lista ou se é um padrão com parâmetros
+  return vendedorRoutes.some(path => {
+    if (path.includes(':')) {
+      const regexPath = path.replace(/:\w+/g, '[^/]+');
+      const pattern = new RegExp(`^${regexPath}$`);
+      return pattern.test(route);
+    }
+    return path === route;
+  });
+};
+
+// Verifica se o menu deve ser mostrado para o usuário
+export const shouldShowMenuItem = (userTypeId: string, menuId: string): boolean => {
+  // Administrador vê todos os menus
+  if (isAdministrador(userTypeId)) {
+    return true;
+  }
+  
+  // Vendedor não vê o menu de configurações
+  if (isVendedor(userTypeId) && menuId === 'settings') {
+    return false;
+  }
+  
+  // Menus que vendedores têm acesso
+  const vendedorMenus = ['dashboard', 'customers', 'orders', 'cart'];
+  return vendedorMenus.includes(menuId);
 };
