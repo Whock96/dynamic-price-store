@@ -77,22 +77,22 @@ export async function upsertDuplicata(duplicata: Partial<Duplicata>) {
     valor_recebido: duplicata.valorRecebido,
     data_pagamento: duplicata.dataPagamento,
     banco_pagamento_id: duplicata.bancoPagamentoId,
-    pdf_boleto_path: duplicata.pdfBoletoPath
+    pdf_boleto_path: duplicata.pdfBoletoPath ?? null, // Guarantee null when not set
   };
 
-  console.log("Saving duplicata with PDF path:", duplicata.pdfBoletoPath);
+  console.log("[SUPABASE] upsertDuplicata - Salvando duplicata:", dbDuplicata);
 
   const { data, error } = await supabase
-    .from('duplicatas')
-    .upsert(dbDuplicata, { onConflict: 'id' })
+    .from("duplicatas")
+    .upsert(dbDuplicata, { onConflict: "id" })
     .select();
-  
+
   if (error) {
-    console.error("Error saving duplicata:", error);
+    console.error("[SUPABASE] upsertDuplicata - Erro ao salvar duplicata:", error);
     throw error;
   }
-  
-  console.log("Duplicata saved successfully:", data && data[0]);
+
+  console.log("[SUPABASE] upsertDuplicata - Dados salvos com sucesso:", data && data[0]);
   return data && data[0];
 }
 

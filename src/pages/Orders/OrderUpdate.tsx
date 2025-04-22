@@ -288,23 +288,16 @@ const OrderUpdate = () => {
     try {
       let pdfBoletoPath = form.pdfBoletoPath;
 
-      let duplicataIdParaUpload = form.id;
-      if (!duplicataIdParaUpload) {
-        duplicataIdParaUpload = `${id}-${Date.now()}`;
-      }
+      let uploadId = form.id || `${id}-${Date.now()}`;
 
       if (file) {
         try {
-          console.log("==[UPLOAD DETALHE]== Vai fazer upload do PDF: ", file.name);
-          pdfBoletoPath = await uploadBoletoPdf(file, duplicataIdParaUpload);
-          console.log("==[UPLOAD DETALHE]== PDF enviado com sucesso, public URL:", pdfBoletoPath);
-
-          if (!pdfBoletoPath) {
-            throw new Error("Upload falhou: Nenhuma URL pública retornada.");
-          }
-        } catch (uploadError) {
-          console.error("O upload do PDF falhou:", uploadError);
-          toast.error("Erro ao fazer upload do PDF. Tente novamente.");
+          console.log("[Duplicata] Iniciando upload do PDF:", file.name, "para duplicata:", uploadId);
+          pdfBoletoPath = await uploadBoletoPdf(file, uploadId);
+          if (!pdfBoletoPath) throw new Error("Upload falhou: A URL pública não foi retornada.");
+        } catch (uploadError: any) {
+          console.error("Falha no upload do PDF:", uploadError);
+          toast.error("Erro ao fazer upload do PDF da duplicata. Tente novamente.");
           setIsSavingDuplicata(false);
           return;
         }
@@ -315,19 +308,17 @@ const OrderUpdate = () => {
         orderId: id,
         ...(pdfBoletoPath !== undefined ? { pdfBoletoPath } : {}),
       };
-
       if (form.id) payload.id = form.id;
 
-      console.log("==[SALVAR DUPLICATA]== Dados enviados:", payload);
-      const res = await upsertDuplicata(payload);
-      console.log("Duplicata salva com sucesso:", res);
+      console.log("[Duplicata] Salvando duplicata com:", payload);
 
-      toast.success("Duplicata salva com sucesso");
+      await upsertDuplicata(payload);
+      toast.success("Duplicata salva com sucesso!");
       setShowDuplicataForm(false);
       setEditingDuplicata(null);
-      fetchDuplicatas(id).then(setDuplicatas);
+      await fetchDuplicatas(id).then(setDuplicatas);
     } catch (err: any) {
-      console.error("Erro no handleSaveDuplicata:", err);
+      console.error("[Duplicata] Erro ao salvar:", err);
       toast.error("Erro ao salvar duplicata: " + (err.message || "Erro desconhecido"));
     } finally {
       setIsSavingDuplicata(false);

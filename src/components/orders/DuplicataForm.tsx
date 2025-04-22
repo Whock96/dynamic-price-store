@@ -55,6 +55,7 @@ const DuplicataForm: React.FC<Props> = ({
 
   useEffect(() => {
     setData({ ...value });
+    setBoletoFile(null);
     if (value?.numeroDuplicata && invoiceNumber) {
       const prefix = `${invoiceNumber}-`;
       if (value.numeroDuplicata.startsWith(prefix)) {
@@ -70,28 +71,21 @@ const DuplicataForm: React.FC<Props> = ({
   useEffect(() => {
     const s =
       lookup.statuses.find((t) => t.id === data.paymentStatusId)?.nome ?? "";
-    if (s === "Pago" || s === "Pago Parcialmente") setShowPayment(true);
-    else setShowPayment(false);
+    setShowPayment(s === "Pago" || s === "Pago Parcialmente");
   }, [data.paymentStatusId, lookup.statuses]);
 
   const handleDeletePdf = async () => {
-    if (onDeletePdf) {
-      await onDeletePdf();
-    }
+    if (onDeletePdf) await onDeletePdf();
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validation to ensure all required fields are present
-    if (!data.dataEmissao || !data.dataVencimento || !data.valor || 
-        !data.modoPagamentoId || !data.portadorId || !data.bancoId || 
-        !data.paymentStatusId) {
+    if (!data.dataEmissao || !data.dataVencimento || !data.valor ||
+      !data.modoPagamentoId || !data.portadorId || !data.bancoId ||
+      !data.paymentStatusId) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
-    
-    // Create the correct numero duplicata format
     let numeroDuplicataFinal = "";
     if (invoiceNumber && numeroComplemento.trim()) {
       numeroDuplicataFinal = `${invoiceNumber}-${numeroComplemento.trim()}`;
@@ -100,32 +94,21 @@ const DuplicataForm: React.FC<Props> = ({
     } else {
       numeroDuplicataFinal = numeroComplemento.trim();
     }
-    
-    // Prepare the data object to send
-    const formData = { 
-      ...data, 
-      numeroDuplicata: numeroDuplicataFinal 
+    const formData = {
+      ...data,
+      numeroDuplicata: numeroDuplicataFinal
     };
-    
-    console.log("Submitting duplicata form with data:", formData);
-    console.log("File to upload:", boletoFile);
-    
     onSave(formData, boletoFile);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) onCancel();
-    }}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onCancel(); }}>
       <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{value?.id ? 'Editar Duplicata' : 'Nova Duplicata'}</DialogTitle>
+          <DialogTitle>{value?.id ? "Editar Duplicata" : "Nova Duplicata"}</DialogTitle>
         </DialogHeader>
         <DialogBody>
-          <form
-            className="space-y-3"
-            onSubmit={handleSubmit}
-          >
+          <form className="space-y-3" onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="col-span-2 flex gap-2">
                 <div className="w-1/2">
@@ -368,7 +351,7 @@ const DuplicataForm: React.FC<Props> = ({
             <div>
               <Label>Boleto PDF</Label>
               <FileUpload
-                onChange={(file) => setBoletoFile(file)}
+                onChange={setBoletoFile}
                 value={value?.pdfBoletoPath || ""}
                 accept="application/pdf,.pdf"
                 maxSize={15}
@@ -389,7 +372,6 @@ const DuplicataForm: React.FC<Props> = ({
                 type="submit"
                 disabled={isSaving}
                 className="bg-ferplas-500 hover:bg-ferplas-600"
-                onClick={handleSubmit}
               >
                 {isSaving ? "Salvando..." : "Salvar"}
               </Button>
