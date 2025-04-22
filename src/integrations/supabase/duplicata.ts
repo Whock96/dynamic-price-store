@@ -20,7 +20,7 @@ export async function fetchDuplicatas(orderId: string): Promise<Duplicata[]> {
       `*,
       modo_pagamento:modo_pagamento_id(id,nome),
       portador:portador_id(id,nome),
-      banco:banco_id(id,nome),
+      banco:banco_id!inner(id,nome),
       banco_pagamento:banco_pagamento_id(id,nome),
       payment_status:payment_status_id(id,nome)
     `
