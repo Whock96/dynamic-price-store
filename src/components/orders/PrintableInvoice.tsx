@@ -158,14 +158,20 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
               order.status === 'invoiced' ? 'Faturado' : 
               order.status === 'completed' ? 'Concluído' : 'Cancelado'
             }</p>
-            <p><span className="font-semibold">Tipo de Nota:</span> {invoiceTypeText} {halfInvoiceText}</p>
-            {!order.fullInvoice && (
-              <p><span className="font-semibold">Tipo de Meia Nota:</span> {halfInvoiceType === 'quantity' ? 'Na Quantidade' : 'No Preço'}</p>
-            )}
-            <p><span className="font-semibold">Pagamento:</span> {order.paymentMethod === 'cash' ? 'À Vista' : 'A Prazo'}</p>
+            <p><span className="font-semibold">Forma de Pagamento:</span> {order.paymentMethod === 'cash' ? 'À Vista' : 'A Prazo'}</p>
             {order.paymentMethod === 'credit' && order.paymentTerms && (
-              <p><span className="font-semibold">Prazos:</span> {order.paymentTerms}</p>
+              <p><span className="font-semibold">Prazos de Pagamento:</span> {order.paymentTerms}</p>
             )}
+            <p><span className="font-semibold">Tipo de Nota:</span> {invoiceTypeText}</p>
+            {!order.fullInvoice && order.halfInvoicePercentage && (
+              <p><span className="font-semibold">Percentual da Nota:</span> {order.halfInvoicePercentage}%</p>
+            )}
+            {!order.fullInvoice && order.halfInvoiceType && (
+              <p><span className="font-semibold">Tipo de Meia Nota:</span> {order.halfInvoiceType === 'quantity' ? 'Na Quantidade' : 'No Preço'}</p>
+            )}
+            <p><span className="font-semibold">Substituição Tributária:</span> {order.taxSubstitution ? 'Sim' : 'Não'}</p>
+            <p><span className="font-semibold">IPI:</span> {order.withIPI ? 'Sim' : 'Não'}</p>
+            <p><span className="font-semibold">SUFRAMA:</span> {order.suframa ? 'Sim' : 'Não'}</p>
           </div>
         </div>
       </div>

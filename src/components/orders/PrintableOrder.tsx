@@ -108,27 +108,28 @@ const PrintableOrder: React.FC<PrintableOrderProps> = ({ order, companyInfo, onP
         <div className="print-card">
           <div className="print-card-title">Dados do Pedido</div>
           <div className="print-card-content">
-            <div className="grid grid-cols-2 gap-1">
-              <div>
-                <p><span className="font-semibold">Data:</span> {format(new Date(order.createdAt), "dd/MM/yyyy", { locale: ptBR })}</p>
-                <p><span className="font-semibold">Vendedor:</span> {order.user?.name || 'Não informado'}</p>
-                <p><span className="font-semibold">Status:</span> {
-                  order.status === 'pending' ? 'Pendente' : 
-                  order.status === 'confirmed' ? 'Confirmado' : 
-                  order.status === 'invoiced' ? 'Faturado' : 
-                  order.status === 'completed' ? 'Concluído' : 'Cancelado'
-                }</p>
-                <p><span className="font-semibold">Pagamento:</span> {order.paymentMethod === 'cash' ? 'À Vista' : 'A Prazo'}</p>
-              </div>
-              <div>
-                {order.paymentMethod === 'credit' && order.paymentTerms && (
-                  <p><span className="font-semibold">Prazos:</span> {order.paymentTerms}</p>
-                )}
-                <p><span className="font-semibold">Tipo de Nota:</span> {invoiceTypeText} {halfInvoiceText}</p>
-                <p><span className="font-semibold">ST:</span> {order.taxSubstitution ? 'Sim' : 'Não'}</p>
-                <p><span className="font-semibold">IPI:</span> {order.withIPI ? 'Sim' : 'Não'}</p>
-              </div>
-            </div>
+            <p><span className="font-semibold">Data:</span> {format(new Date(order.createdAt), "dd/MM/yyyy", { locale: ptBR })}</p>
+            <p><span className="font-semibold">Vendedor:</span> {order.user?.name || 'Não informado'}</p>
+            <p><span className="font-semibold">Status:</span> {
+              order.status === 'pending' ? 'Pendente' : 
+              order.status === 'confirmed' ? 'Confirmado' : 
+              order.status === 'invoiced' ? 'Faturado' : 
+              order.status === 'completed' ? 'Concluído' : 'Cancelado'
+            }</p>
+            <p><span className="font-semibold">Forma de Pagamento:</span> {order.paymentMethod === 'cash' ? 'À Vista' : 'A Prazo'}</p>
+            {order.paymentMethod === 'credit' && order.paymentTerms && (
+              <p><span className="font-semibold">Prazos de Pagamento:</span> {order.paymentTerms}</p>
+            )}
+            <p><span className="font-semibold">Tipo de Nota:</span> {invoiceTypeText}</p>
+            {!order.fullInvoice && order.halfInvoicePercentage && (
+              <p><span className="font-semibold">Percentual da Nota:</span> {order.halfInvoicePercentage}%</p>
+            )}
+            {!order.fullInvoice && order.halfInvoiceType && (
+              <p><span className="font-semibold">Tipo de Meia Nota:</span> {order.halfInvoiceType === 'quantity' ? 'Na Quantidade' : 'No Preço'}</p>
+            )}
+            <p><span className="font-semibold">Substituição Tributária:</span> {order.taxSubstitution ? 'Sim' : 'Não'}</p>
+            <p><span className="font-semibold">IPI:</span> {order.withIPI ? 'Sim' : 'Não'}</p>
+            <p><span className="font-semibold">SUFRAMA:</span> {order.suframa ? 'Sim' : 'Não'}</p>
           </div>
         </div>
       </div>
