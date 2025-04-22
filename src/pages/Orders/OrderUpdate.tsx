@@ -670,6 +670,7 @@ const OrderUpdate = () => {
                 value={editingDuplicata as Duplicata}
                 lookup={lookup}
                 isSaving={isSavingDuplicata}
+                invoiceNumber={order?.invoiceNumber || ""}
                 onSave={handleSaveDuplicata}
                 onCancel={() => {
                   setShowDuplicataForm(false);

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -29,6 +28,7 @@ interface Props {
   onDeletePdf?: () => Promise<void>;
   isSaving: boolean;
   isOpen: boolean;
+  invoiceNumber?: string | null;
 }
 
 const DuplicataForm: React.FC<Props> = ({
@@ -39,6 +39,7 @@ const DuplicataForm: React.FC<Props> = ({
   isSaving,
   onDeletePdf,
   isOpen,
+  invoiceNumber,
 }) => {
   const [data, setData] = useState<Partial<Duplicata>>({ ...value });
   const [boletoFile, setBoletoFile] = useState<File | null>(null);
@@ -49,13 +50,22 @@ const DuplicataForm: React.FC<Props> = ({
         value.paymentStatusId === lookup.statuses.find((t) => t.nome === "Pago")?.id ||
         value.paymentStatusId === lookup.statuses.find((t) => t.nome === "Pago Parcialmente")?.id)
   );
+  const [numeroComplemento, setNumeroComplemento] = useState("");
 
-  // Always sync changes
   useEffect(() => {
     setData({ ...value });
-  }, [value]);
+    if (value?.numeroDuplicata && invoiceNumber) {
+      const prefix = `${invoiceNumber}-`;
+      if (value.numeroDuplicata.startsWith(prefix)) {
+        setNumeroComplemento(value.numeroDuplicata.slice(prefix.length));
+      } else {
+        setNumeroComplemento("");
+      }
+    } else {
+      setNumeroComplemento("");
+    }
+  }, [value, invoiceNumber]);
 
-  // Control payment fields visibility
   useEffect(() => {
     const s =
       lookup.statuses.find((t) => t.id === data.paymentStatusId)?.nome ?? "";
@@ -71,7 +81,15 @@ const DuplicataForm: React.FC<Props> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(data, boletoFile);
+    let numeroDuplicataFinal = "";
+    if (invoiceNumber && numeroComplemento.trim()) {
+      numeroDuplicataFinal = `${invoiceNumber}-${numeroComplemento.trim()}`;
+    } else if (invoiceNumber) {
+      numeroDuplicataFinal = invoiceNumber;
+    } else {
+      numeroDuplicataFinal = numeroComplemento.trim();
+    }
+    onSave({ ...data, numeroDuplicata: numeroDuplicataFinal }, boletoFile);
   };
 
   return (
@@ -88,39 +106,27 @@ const DuplicataForm: React.FC<Props> = ({
             onSubmit={handleSubmit}
           >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label>Número</Label>
-                <Input
-                  required
-                  value={data.numeroDuplicata || ""}
-                  maxLength={40}
-                  onChange={(e) =>
-                    setData((v) => ({ ...v, numeroDuplicata: e.target.value }))
-                  }
-                />
+              <div className="col-span-2 flex gap-2">
+                <div className="w-1/2">
+                  <Label>Número da NFe</Label>
+                  <Input
+                    value={invoiceNumber || ""}
+                    readOnly
+                    className="bg-gray-100"
+                  />
+                </div>
+                <div className="w-1/2">
+                  <Label>Complemento</Label>
+                  <Input
+                    required
+                    maxLength={12}
+                    placeholder="A / B / N1"
+                    value={numeroComplemento}
+                    onChange={(e) => setNumeroComplemento(e.target.value.toUpperCase())}
+                  />
+                </div>
               </div>
-              <div>
-                <Label>Data Emissão</Label>
-                <Input
-                  type="date"
-                  required
-                  value={data.dataEmissao || ""}
-                  onChange={(e) =>
-                    setData((v) => ({ ...v, dataEmissao: e.target.value }))
-                  }
-                />
-              </div>
-              <div>
-                <Label>Data Vencimento</Label>
-                <Input
-                  type="date"
-                  required
-                  value={data.dataVencimento || ""}
-                  onChange={(e) =>
-                    setData((v) => ({ ...v, dataVencimento: e.target.value }))
-                  }
-                />
-              </div>
+              <div />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
