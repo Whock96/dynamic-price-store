@@ -86,6 +86,7 @@ const DuplicataForm: React.FC<Props> = ({
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
+    
     let numeroDuplicataFinal = "";
     if (invoiceNumber && numeroComplemento.trim()) {
       numeroDuplicataFinal = `${invoiceNumber}-${numeroComplemento.trim()}`;
@@ -94,16 +95,18 @@ const DuplicataForm: React.FC<Props> = ({
     } else {
       numeroDuplicataFinal = numeroComplemento.trim();
     }
+    
     const formData = {
       ...data,
       numeroDuplicata: numeroDuplicataFinal,
     };
     
-    console.log("[DuplicataForm] Salvando formulário:", {
+    console.log("[DuplicataForm PDF] Enviando formulário para salvar:", {
       numeroDuplicata: formData.numeroDuplicata,
       valor: formData.valor,
       pdfBoletoPath: formData.pdfBoletoPath,
-      temArquivo: !!boletoFile
+      temArquivoParaUpload: !!boletoFile,
+      arquivoNome: boletoFile?.name
     });
     
     onSave(formData, boletoFile);
@@ -360,7 +363,8 @@ const DuplicataForm: React.FC<Props> = ({
               <Label>Boleto PDF</Label>
               <FileUpload
                 onChange={(file) => {
-                  console.log("[DuplicataForm] Arquivo selecionado:", file?.name || "nenhum");
+                  console.log("[DuplicataForm PDF] Arquivo de boleto selecionado:", 
+                    file ? `${file.name} (${Math.round(file.size/1024)}KB)` : "nenhum");
                   setBoletoFile(file);
                 }}
                 value={value?.pdfBoletoPath || ""}

@@ -286,46 +286,46 @@ const OrderUpdate = () => {
   const handleSaveDuplicata = async (form: Partial<Duplicata>, file?: File | null) => {
     setIsSavingDuplicata(true);
     try {
-      let pdfBoletoPath = undefined;
+      let boletoPdfPath = undefined;
       let uploadId = form.id || `${id}-${Date.now()}`;
 
       if (file) {
         try {
-          console.log("[Duplicata] Iniciando upload do PDF para duplicata:", {
+          console.log("[DUPLICATA PDF] Iniciando upload do boleto PDF:", {
             fileName: file.name,
             fileSize: file.size,
             duplicataId: uploadId
           });
           
-          pdfBoletoPath = await uploadBoletoPdf(file, uploadId);
+          boletoPdfPath = await uploadBoletoPdf(file, uploadId);
           
-          console.log("[Duplicata] Upload do PDF concluído com sucesso:", pdfBoletoPath);
+          console.log("[DUPLICATA PDF] Upload do boleto PDF concluído com sucesso:", boletoPdfPath);
           
-          if (!pdfBoletoPath) {
-            throw new Error("Upload falhou: A URL pública não foi retornada.");
+          if (!boletoPdfPath) {
+            throw new Error("Upload do boleto PDF falhou: A URL pública não foi retornada.");
           }
         } catch (uploadError: any) {
-          console.error("[Duplicata] Falha no upload do PDF:", uploadError);
+          console.error("[DUPLICATA PDF] Falha no upload do boleto PDF:", uploadError);
           toast.error("Erro ao fazer upload do PDF da duplicata. Tente novamente.");
           setIsSavingDuplicata(false);
           return;
         }
       } else if (form.pdfBoletoPath === null || form.pdfBoletoPath === "") {
-        pdfBoletoPath = null;
-        console.log("[Duplicata] Removendo PDF da duplicata");
+        boletoPdfPath = null;
+        console.log("[DUPLICATA PDF] Removendo PDF da duplicata");
       } else if (form.pdfBoletoPath !== undefined) {
-        pdfBoletoPath = form.pdfBoletoPath;
-        console.log("[Duplicata] Mantendo PDF existente:", pdfBoletoPath);
+        boletoPdfPath = form.pdfBoletoPath;
+        console.log("[DUPLICATA PDF] Mantendo boleto PDF existente:", boletoPdfPath);
       }
 
       const payload: Partial<Duplicata> = {
         ...form,
         orderId: id,
-        pdfBoletoPath: pdfBoletoPath,
+        pdfBoletoPath: boletoPdfPath,
       };
       if (form.id) payload.id = form.id;
 
-      console.log("[Duplicata] Salvando duplicata com:", {
+      console.log("[DUPLICATA PDF] Salvando duplicata com dados:", {
         id: payload.id,
         numeroDuplicata: payload.numeroDuplicata,
         pdfBoletoPath: payload.pdfBoletoPath
@@ -336,10 +336,10 @@ const OrderUpdate = () => {
       setShowDuplicataForm(false);
       setEditingDuplicata(null);
       
-      console.log("[Duplicata] Atualizando lista de duplicatas");
+      console.log("[DUPLICATA PDF] Atualizando lista de duplicatas");
       await fetchDuplicatas(id).then(setDuplicatas);
     } catch (err: any) {
-      console.error("[Duplicata] Erro ao salvar:", err);
+      console.error("[DUPLICATA PDF] Erro ao salvar duplicata:", err);
       toast.error("Erro ao salvar duplicata: " + (err.message || "Erro desconhecido"));
     } finally {
       setIsSavingDuplicata(false);

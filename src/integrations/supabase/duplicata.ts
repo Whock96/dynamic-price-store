@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Duplicata, RefTable } from "@/types/duplicata";
 
@@ -60,6 +61,7 @@ export async function fetchDuplicatas(orderId: string): Promise<Duplicata[]> {
 }
 
 export async function upsertDuplicata(duplicata: Partial<Duplicata>) {
+  // Mapeamento explícito para o formato do banco de dados
   const dbDuplicata = {
     id: duplicata.id,
     order_id: duplicata.orderId,
@@ -79,10 +81,11 @@ export async function upsertDuplicata(duplicata: Partial<Duplicata>) {
     pdf_boleto_path: duplicata.pdfBoletoPath === undefined ? null : duplicata.pdfBoletoPath,
   };
 
-  console.log("[SUPABASE] upsertDuplicata - Salvando duplicata:", {
+  // Log detalhado para depuração
+  console.log("[SUPABASE DUPLICATA] upsertDuplicata - Salvando duplicata:", {
     id: dbDuplicata.id,
     numero_duplicata: dbDuplicata.numero_duplicata,
-    pdf_boleto_path: dbDuplicata.pdf_boleto_path 
+    pdf_boleto_path: dbDuplicata.pdf_boleto_path  // Verificamos que o caminho do PDF está sendo enviado corretamente
   });
 
   const { data, error } = await supabase
@@ -91,11 +94,11 @@ export async function upsertDuplicata(duplicata: Partial<Duplicata>) {
     .select();
 
   if (error) {
-    console.error("[SUPABASE] upsertDuplicata - Erro ao salvar duplicata:", error);
+    console.error("[SUPABASE DUPLICATA] upsertDuplicata - Erro ao salvar duplicata:", error);
     throw error;
   }
 
-  console.log("[SUPABASE] upsertDuplicata - Dados salvos com sucesso:", data && data[0]);
+  console.log("[SUPABASE DUPLICATA] upsertDuplicata - Dados salvos com sucesso:", data && data[0]);
   return data && data[0];
 }
 
@@ -108,66 +111,68 @@ export async function deleteDuplicata(id: string) {
   return true;
 }
 
-// FILE UPLOAD/DELETE
+// FILE UPLOAD/DELETE para BOLETO
 export async function uploadBoletoPdf(file: File, duplicataId: string): Promise<string> {
   if (!file) {
-    console.error("No file provided for upload");
-    throw new Error("No file provided for upload");
+    console.error("[SUPABASE BOLETO] Nenhum arquivo fornecido para upload");
+    throw new Error("Nenhum arquivo fornecido para upload");
   }
 
+  // Nome de arquivo único para o boleto
   const fileName = `boleto_${duplicataId}_${Date.now()}.pdf`;
   
-  // Log the file information for debugging
-  console.log(`Starting PDF upload for duplicata: ${duplicataId}`, {
+  // Log do arquivo para depuração
+  console.log(`[SUPABASE BOLETO] Iniciando upload do PDF de boleto para duplicata: ${duplicataId}`, {
     fileName,
     fileSize: file.size,
     fileType: file.type
   });
   
   try {
+    // Upload para o bucket específico de boletos
     const { data, error } = await supabase.storage
       .from('boleto_pdfs')
       .upload(fileName, file, { upsert: true, contentType: "application/pdf" });
     
     if (error) {
-      console.error("Error uploading boleto PDF:", error);
+      console.error("[SUPABASE BOLETO] Erro ao fazer upload do PDF de boleto:", error);
       throw error;
     }
     
-    console.log("Upload successful, getting public URL", data);
+    console.log("[SUPABASE BOLETO] Upload bem-sucedido, obtendo URL pública", data);
     
-    // get public url
+    // Obtém a URL pública do bucket de boletos
     const { data: urlData } = supabase.storage
       .from('boleto_pdfs')
       .getPublicUrl(fileName);
     
     if (!urlData || !urlData.publicUrl) {
-      console.error("Failed to get public URL for uploaded boleto file");
-      throw new Error("Failed to get public URL for uploaded boleto file");
+      console.error("[SUPABASE BOLETO] Falha ao obter URL pública para o arquivo de boleto");
+      throw new Error("Falha ao obter URL pública para o arquivo de boleto");
     }
     
-    console.log("Boleto PDF public URL generated:", urlData.publicUrl);
+    console.log("[SUPABASE BOLETO] URL pública do PDF do boleto gerada:", urlData.publicUrl);
     
     return urlData.publicUrl;
   } catch (error) {
-    console.error("Exception during boleto PDF upload:", error);
+    console.error("[SUPABASE BOLETO] Exceção durante o upload do PDF de boleto:", error);
     throw error;
   }
 }
 
 export async function deleteBoletoPdf(path: string): Promise<boolean> {
-  // path could be full url or bucket path; we'll normalize
+  // Normalização do caminho, que pode ser uma URL completa ou apenas o caminho do bucket
   const fileName = path.split('/').pop();
   if (!fileName) {
-    console.error("Invalid file path for deletion:", path);
+    console.error("[SUPABASE BOLETO] Caminho de arquivo inválido para exclusão:", path);
     return false;
   }
   
-  console.log(`Deleting file: ${fileName}`);
+  console.log(`[SUPABASE BOLETO] Excluindo arquivo de boleto: ${fileName}`);
   
   const { error } = await supabase.storage.from('boleto_pdfs').remove([fileName]);
   if (error) {
-    console.error("Error deleting PDF:", error);
+    console.error("[SUPABASE BOLETO] Erro ao excluir PDF do boleto:", error);
     throw error;
   }
   return true;
