@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Order } from '@/types/types';
+import { Order, User } from '@/types/types';
 import { toast } from 'sonner';
 import { useOrders } from "@/context/OrderContext";
 
@@ -75,40 +74,19 @@ export const useOrderData = ({ customerId, userId, startDate, endDate }: UseOrde
             }
           }
 
+          // Ensure a default user object is created even if no user is found
+          const defaultUser: User = {
+            id: order.user_id || '',
+            username: '',
+            name: userName,
+            email: '',
+            createdAt: new Date(),
+            userTypeId: '',
+          };
+
           return {
-            id: order.id,
-            orderNumber: order.order_number,
-            customerId: order.customer_id,
-            customer: {
-              id: order.customer_id,
-              companyName: order.customer?.company_name || 'Cliente não encontrado',
-              document: '',
-              salesPersonId: '',
-              street: '',
-              number: '',
-              noNumber: false,
-              complement: '',
-              neighborhood: '',
-              city: '',
-              state: '',
-              zipCode: '',
-              phone: '',
-              email: '',
-              defaultDiscount: 0,
-              maxDiscount: 0,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              registerDate: new Date(),
-            },
-            userId: order.user_id,
-            user: {
-              id: order.user_id || '',
-              username: '',
-              name: userName,
-              email: '',
-              createdAt: new Date(),
-              userTypeId: '',
-            },
+            ...order,
+            user: defaultUser,
             items: [],
             appliedDiscounts: [],
             totalDiscount: Number(order.total_discount || 0),
@@ -139,6 +117,7 @@ export const useOrderData = ({ customerId, userId, startDate, endDate }: UseOrde
             withSuframa: order.with_suframa || false
           } as Order;
         });
+        
         setOrders(processedOrders);
       } else {
         setOrders([]);
@@ -152,4 +131,3 @@ export const useOrderData = ({ customerId, userId, startDate, endDate }: UseOrde
 
   return { orders, loading, error };
 };
-
