@@ -80,11 +80,19 @@ export async function upsertDuplicata(duplicata: Partial<Duplicata>) {
     pdf_boleto_path: duplicata.pdfBoletoPath
   };
 
+  console.log("Saving duplicata with PDF path:", duplicata.pdfBoletoPath);
+
   const { data, error } = await supabase
     .from('duplicatas')
     .upsert(dbDuplicata, { onConflict: 'id' })
     .select();
-  if (error) throw error;
+  
+  if (error) {
+    console.error("Error saving duplicata:", error);
+    throw error;
+  }
+  
+  console.log("Duplicata saved successfully:", data && data[0]);
   return data && data[0];
 }
 
@@ -98,41 +106,59 @@ export async function deleteDuplicata(id: string) {
 }
 
 // FILE UPLOAD/DELETE
-export async function uploadBoletoPdf(file: File, duplicataId: string): Promise<string | null> {
+export async function uploadBoletoPdf(file: File, duplicataId: string): Promise<string> {
+  if (!file) {
+    console.error("No file provided for upload");
+    throw new Error("No file provided for upload");
+  }
+
   const fileName = `boleto_${duplicataId}_${Date.now()}.pdf`;
   
   // Log the file information for debugging
-  console.log(`Uploading PDF for duplicata: ${duplicataId}`, {
+  console.log(`Starting PDF upload for duplicata: ${duplicataId}`, {
     fileName,
     fileSize: file.size,
     fileType: file.type
   });
   
-  const { data, error } = await supabase.storage
-    .from('boleto_pdfs')
-    .upload(fileName, file, { upsert: true, contentType: "application/pdf" });
-  
-  if (error) {
-    console.error("Error uploading PDF:", error);
+  try {
+    const { data, error } = await supabase.storage
+      .from('boleto_pdfs')
+      .upload(fileName, file, { upsert: true, contentType: "application/pdf" });
+    
+    if (error) {
+      console.error("Error uploading PDF:", error);
+      throw error;
+    }
+    
+    console.log("Upload successful, getting public URL", data);
+    
+    // get public url
+    const { data: urlData } = supabase.storage
+      .from('boleto_pdfs')
+      .getPublicUrl(fileName);
+    
+    if (!urlData || !urlData.publicUrl) {
+      console.error("Failed to get public URL for uploaded file");
+      throw new Error("Failed to get public URL for uploaded file");
+    }
+    
+    console.log("Public URL generated:", urlData.publicUrl);
+    
+    return urlData.publicUrl;
+  } catch (error) {
+    console.error("Exception during PDF upload:", error);
     throw error;
   }
-  
-  console.log("Upload successful, getting public URL", data);
-  
-  // get public url
-  const { data: urlData } = supabase.storage
-    .from('boleto_pdfs')
-    .getPublicUrl(fileName);
-  
-  console.log("Public URL:", urlData.publicUrl);
-  
-  return urlData.publicUrl ?? null;
 }
 
 export async function deleteBoletoPdf(path: string): Promise<boolean> {
   // path could be full url or bucket path; we'll normalize
   const fileName = path.split('/').pop();
-  if (!fileName) return false;
+  if (!fileName) {
+    console.error("Invalid file path for deletion:", path);
+    return false;
+  }
   
   console.log(`Deleting file: ${fileName}`);
   

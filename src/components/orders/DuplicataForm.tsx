@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -15,6 +14,7 @@ import {
   DialogFooter,
   DialogClose
 } from "@/components/ui/dialog";
+import { toast } from "react-toastify";
 
 interface Props {
   value?: Partial<Duplicata>;
@@ -82,6 +82,16 @@ const DuplicataForm: React.FC<Props> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validation to ensure all required fields are present
+    if (!data.dataEmissao || !data.dataVencimento || !data.valor || 
+        !data.modoPagamentoId || !data.portadorId || !data.bancoId || 
+        !data.paymentStatusId) {
+      toast.error("Preencha todos os campos obrigatórios");
+      return;
+    }
+    
+    // Create the correct numero duplicata format
     let numeroDuplicataFinal = "";
     if (invoiceNumber && numeroComplemento.trim()) {
       numeroDuplicataFinal = `${invoiceNumber}-${numeroComplemento.trim()}`;
@@ -90,7 +100,17 @@ const DuplicataForm: React.FC<Props> = ({
     } else {
       numeroDuplicataFinal = numeroComplemento.trim();
     }
-    onSave({ ...data, numeroDuplicata: numeroDuplicataFinal }, boletoFile);
+    
+    // Prepare the data object to send
+    const formData = { 
+      ...data, 
+      numeroDuplicata: numeroDuplicataFinal 
+    };
+    
+    console.log("Submitting duplicata form with data:", formData);
+    console.log("File to upload:", boletoFile);
+    
+    onSave(formData, boletoFile);
   };
 
   return (

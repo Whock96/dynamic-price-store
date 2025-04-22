@@ -285,23 +285,44 @@ const OrderUpdate = () => {
 
   const handleSaveDuplicata = async (form: Partial<Duplicata>, file?: File | null) => {
     setIsSavingDuplicata(true);
-    let pdfBoletoPath = form.pdfBoletoPath || null;
     try {
+      let pdfBoletoPath = form.pdfBoletoPath;
+      
       if (file && id) {
-        pdfBoletoPath = await uploadBoletoPdf(file, id);
+        try {
+          console.log("Starting PDF upload process...");
+          pdfBoletoPath = await uploadBoletoPdf(file, form.id || id);
+          console.log("PDF uploaded successfully, path:", pdfBoletoPath);
+          
+          if (!pdfBoletoPath) {
+            throw new Error("Upload failed: No path returned");
+          }
+        } catch (uploadError) {
+          console.error("PDF upload failed:", uploadError);
+          toast.error("Erro ao fazer upload do PDF. Tente novamente.");
+          setIsSavingDuplicata(false);
+          return;
+        }
       }
+      
       const payload: Partial<Duplicata> = {
         ...form,
         orderId: id,
         pdfBoletoPath,
       };
+      
       if (form.id) payload.id = form.id;
+      
+      console.log("Saving duplicata with data:", payload);
       const res = await upsertDuplicata(payload);
-      toast.success("Duplicata salva");
+      console.log("Duplicata saved successfully:", res);
+      
+      toast.success("Duplicata salva com sucesso");
       setShowDuplicataForm(false);
       setEditingDuplicata(null);
       fetchDuplicatas(id).then(setDuplicatas);
     } catch (err: any) {
+      console.error("Error in handleSaveDuplicata:", err);
       toast.error("Erro ao salvar duplicata: " + (err.message || "Erro desconhecido"));
     } finally {
       setIsSavingDuplicata(false);
