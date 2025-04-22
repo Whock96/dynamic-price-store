@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Product, CartItem, Customer, DiscountOption, Order, TransportCompany } from '@/types/types';
@@ -115,7 +114,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { addOrder } = useOrders();
   const { user } = useAuth();
 
-  // Define default discount options
   const [discountOptions, setDiscountOptions] = useState<DiscountOption[]>([
     {
       id: 'retirada',
@@ -151,7 +149,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   ]);
 
-  // Update discount options when settings change
   useEffect(() => {
     setDiscountOptions([
       {
@@ -320,7 +317,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     toast.success('Desconto removido');
   };
 
-  // Implement proper discount and tax calculation functions
   const updateItemDiscount = (productId: string, discount: number) => {
     if (discount < 0) discount = 0;
     if (discount > 100) discount = 100;
@@ -363,7 +359,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setApplyDiscounts(!applyDiscounts);
   };
 
-  // Calculate tax substitution value
+  const toggleIPI = () => {
+    setWithIPI(!withIPI);
+  };
+
   const calculateTaxSubstitutionValue = () => {
     if (!isDiscountOptionSelected('icms-st') || !applyDiscounts) {
       return 0;
@@ -372,7 +371,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const subtotal = getTotal();
     const taxRate = discountSettings.taxSubstitution / 100;
     
-    // Apply half invoice if selected
     if (isDiscountOptionSelected('meia-nota')) {
       return subtotal * taxRate * (halfInvoicePercentage / 100);
     }
@@ -380,7 +378,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return subtotal * taxRate;
   };
   
-  // Calculate IPI value
   const calculateIPIValue = () => {
     if (!withIPI) {
       return 0;
@@ -389,7 +386,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const subtotal = getTotal();
     const ipiRate = discountSettings.ipiRate / 100;
     
-    // Apply half invoice if selected
     if (isDiscountOptionSelected('meia-nota')) {
       return subtotal * ipiRate * (halfInvoicePercentage / 100);
     }
@@ -397,7 +393,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return subtotal * ipiRate;
   };
   
-  // Calculate tax substitution value for a specific item
   const calculateItemTaxSubstitutionValue = (item: CartItem) => {
     if (!isDiscountOptionSelected('icms-st') || !applyDiscounts) {
       return 0;
@@ -406,7 +401,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const taxRate = discountSettings.taxSubstitution / 100;
     let value = item.finalPrice * taxRate;
     
-    // Apply half invoice if selected
     if (isDiscountOptionSelected('meia-nota')) {
       value = value * (halfInvoicePercentage / 100);
     }
@@ -418,7 +412,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setWithSuframa(!withSuframa);
   };
 
-  // Calculate total discount
   const calculateTotalDiscount = () => {
     if (!applyDiscounts) {
       return 0;
@@ -427,12 +420,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let totalDiscount = 0;
     const subtotal = getTotal();
     
-    // Calculate discount based on applied discount options
     appliedDiscounts.forEach(discount => {
       if (discount.type === 'discount') {
         let discountValue = subtotal * (discount.value / 100);
         
-        // Apply half invoice percentage for 'meia-nota'
         if (discount.id === 'meia-nota') {
           discountValue = subtotal * (discount.value / 100) * (halfInvoicePercentage / 100);
         }
@@ -444,7 +435,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return totalDiscount;
   };
   
-  // Calculate delivery fee
   const calculateDeliveryFee = () => {
     if (isDiscountOptionSelected('retirada') || !deliveryLocation) {
       return 0;
@@ -455,7 +445,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       : deliveryFees.interior;
   };
   
-  // Calculate final total
   const calculateTotal = () => {
     const subtotal = getTotal();
     const totalDiscount = calculateTotalDiscount();
@@ -480,8 +469,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoadingLastOrder(true);
     
     try {
-      // Implementation of sending order logic would go here
-      // For now, just simulate success
       toast.success('Pedido enviado com sucesso!');
       clearCart();
       return Promise.resolve();
@@ -520,6 +507,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setDeliveryFees,
     discountSettings,
     setDiscountSettings,
+    
     items: cart,
     addItem: addToCart,
     removeItem: removeFromCart,

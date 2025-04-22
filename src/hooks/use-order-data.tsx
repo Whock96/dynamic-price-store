@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Order, User } from '@/types/types';
@@ -63,7 +62,7 @@ export const useOrderData = ({ customerId, userId, startDate, endDate }: UseOrde
         toast.error(`Erro ao buscar pedidos: ${error.message}`);
       } else if (data) {
         const processedOrders = data.map(order => {
-          // Robust null checking for user name
+          // Fix: Add proper null checking for order.user
           const userName = order.user && typeof order.user === 'object' && order.user !== null && 'name' in order.user
             ? order.user.name
             : 'Usuário do Sistema';
@@ -75,7 +74,7 @@ export const useOrderData = ({ customerId, userId, startDate, endDate }: UseOrde
             }
           }
 
-          // Ensure a default user object is created even if no user is found
+          // Create default user object to avoid null references
           const defaultUser: User = {
             id: order.user_id || '',
             username: '',
