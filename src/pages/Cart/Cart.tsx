@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -211,11 +210,11 @@ const Cart = () => {
   useEffect(() => {
     if (customer && customer.transportCompanyId) {
       console.log('Setting transport company from customer:', customer.transportCompanyId);
-      setSelectedTransportCompany(customer.transportCompanyId === 'none' ? undefined : customer.transportCompanyId);
+      setSelectedTransportCompany(customer.transportCompanyId === 'none' ? null : customer.transportCompanyId);
     } else {
-      setSelectedTransportCompany(undefined);
+      setSelectedTransportCompany(null);
     }
-  }, [customer]);
+  }, [customer, setSelectedTransportCompany]);
   
   const handleSubmitOrder = async () => {
     if (!customer) {
