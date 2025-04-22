@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Product, CartItem, Customer, DiscountOption, Order, TransportCompany } from '@/types/types';
@@ -43,7 +42,6 @@ interface CartContextType {
     ipiRate: number;
   }) => void;
   
-  // Added properties to maintain compatibility with Cart.tsx
   items: CartItem[];
   addItem: (product: Product, quantity: number) => void;
   removeItem: (productId: string) => void;
@@ -101,8 +99,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
     ipiRate: 0,
   });
-  
-  // Added state for compatibility
   const [deliveryLocation, setDeliveryLocation] = useState<'capital' | 'interior' | null>(null);
   const [halfInvoicePercentage, setHalfInvoicePercentage] = useState<number>(50);
   const [halfInvoiceType, setHalfInvoiceType] = useState<'quantity' | 'price'>('quantity');
@@ -110,11 +106,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [applyDiscounts, setApplyDiscounts] = useState<boolean>(true);
   const [paymentTerms, setPaymentTerms] = useState<string>('');
   const [withIPI, setWithIPI] = useState<boolean>(false);
-  const [selectedTransportCompany, setSelectedTransportCompany] = useState<TransportCompany | null>(null);
+  const [selectedTransportCompany, setSelectedTransportCompanyState] = useState<TransportCompany | null>(null);
   const [withSuframa, setWithSuframa] = useState<boolean>(false);
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
   const [isLoadingLastOrder, setIsLoadingLastOrder] = useState<boolean>(false);
-  
+
   const { addOrder } = useOrders();
   const { user } = useAuth();
 
@@ -248,53 +244,55 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAppliedDiscounts(appliedDiscounts.filter(discount => discount.id !== discountId));
     toast.success('Desconto removido');
   };
-  
-  // Added compatibility functions
+
   const updateItemDiscount = (productId: string, discount: number) => {
-    // Placeholder - implement if needed
     console.log('updateItemDiscount called with', productId, discount);
   };
-  
+
   const toggleDiscountOption = (discountId: string) => {
-    // Placeholder - implement if needed
     console.log('toggleDiscountOption called with', discountId);
   };
-  
+
   const isDiscountOptionSelected = (discountId: string) => {
     return appliedDiscounts.some(d => d.id === discountId);
   };
-  
+
   const toggleApplyDiscounts = () => {
     setApplyDiscounts(!applyDiscounts);
   };
-  
+
   const calculateTaxSubstitutionValue = () => {
-    // Placeholder - implement if needed
     return 0;
   };
-  
+
   const toggleIPI = () => {
     setWithIPI(!withIPI);
   };
-  
+
   const calculateIPIValue = () => {
-    // Placeholder - implement if needed
     return 0;
   };
-  
+
   const calculateItemTaxSubstitutionValue = (item: CartItem) => {
-    // Placeholder - implement if needed
     return 0;
   };
-  
+
   const toggleSuframa = () => {
     setWithSuframa(!withSuframa);
   };
-  
+
   const sendOrder = async () => {
-    // Placeholder - implement if needed
     console.log('sendOrder called');
     return Promise.resolve();
+  };
+
+  const setSelectedTransportCompany = (company: TransportCompany | string | null) => {
+    if (typeof company === 'string') {
+      console.log('Transport company ID provided:', company);
+      setSelectedTransportCompanyState(null);
+    } else {
+      setSelectedTransportCompanyState(company);
+    }
   };
 
   const value = {
@@ -314,14 +312,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setDeliveryFees,
     discountSettings,
     setDiscountSettings,
-    
-    // Compatibility properties and functions
     items: cart,
     addItem: addToCart,
     removeItem: removeFromCart,
     updateItemQuantity: updateQuantity,
     updateItemDiscount,
-    discountOptions: [], // Would need to be populated appropriately
+    discountOptions: [],
     toggleDiscountOption,
     isDiscountOptionSelected,
     deliveryLocation,
@@ -334,10 +330,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setObservations,
     totalItems: getTotalItems(),
     subtotal: getTotal(),
-    totalDiscount: 0, // Would need to be calculated appropriately
-    total: getTotal(), // Would need to consider discounts
+    totalDiscount: 0,
+    total: getTotal(),
     sendOrder,
-    deliveryFee: 0, // Would need to be calculated appropriately
+    deliveryFee: 0,
     applyDiscounts,
     toggleApplyDiscounts,
     paymentTerms,
