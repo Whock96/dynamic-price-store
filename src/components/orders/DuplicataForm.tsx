@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -42,26 +43,23 @@ const DuplicataForm: React.FC<Props> = ({
   isOpen,
   invoiceNumber,
 }) => {
-  const [data, setData] = useState<Partial<Duplicata>>({ ...value });
+  const [data, setData] = useState<Partial<Duplicata>>({});
   const [boletoFile, setBoletoFile] = useState<File | null>(null);
-  const [showPayment, setShowPayment] = useState(
-    value &&
-      (value.paymentStatus?.nome === "Pago" ||
-        value.paymentStatus?.nome === "Pago Parcialmente" ||
-        value.paymentStatusId === lookup.statuses.find((t) => t.nome === "Pago")?.id ||
-        value.paymentStatusId === lookup.statuses.find((t) => t.nome === "Pago Parcialmente")?.id)
-  );
+  const [showPayment, setShowPayment] = useState(false);
   const [numeroComplemento, setNumeroComplemento] = useState("");
 
+  // Reset form data when the modal opens with a new value
   useEffect(() => {
     console.log("[DUPLICATA FORM] Recebendo valor inicial:", {
       duplicataId: value?.id,
       pdfBoletoPath: value?.pdfBoletoPath
     });
     
+    // Reset form data with the value from props
     setData({ ...value });
     setBoletoFile(null);
     
+    // Handle numero duplicata formatting
     if (value?.numeroDuplicata && invoiceNumber) {
       const prefix = `${invoiceNumber}-`;
       if (value.numeroDuplicata.startsWith(prefix)) {
@@ -72,8 +70,16 @@ const DuplicataForm: React.FC<Props> = ({
     } else {
       setNumeroComplemento("");
     }
-  }, [value, invoiceNumber]);
+    
+    // Determine if payment fields should be shown
+    const s =
+      value?.paymentStatus?.nome || 
+      lookup.statuses.find((t) => t.id === value?.paymentStatusId)?.nome || 
+      "";
+    setShowPayment(s === "Pago" || s === "Pago Parcialmente");
+  }, [value, invoiceNumber, lookup.statuses]);
 
+  // Update payment fields visibility when status changes
   useEffect(() => {
     const s =
       lookup.statuses.find((t) => t.id === data.paymentStatusId)?.nome ?? "";
@@ -102,6 +108,7 @@ const DuplicataForm: React.FC<Props> = ({
       return;
     }
     
+    // Format the numero duplicata by combining invoice number with complement
     let numeroDuplicataFinal = "";
     if (invoiceNumber && numeroComplemento.trim()) {
       numeroDuplicataFinal = `${invoiceNumber}-${numeroComplemento.trim()}`;

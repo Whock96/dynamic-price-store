@@ -208,18 +208,18 @@ const OrderUpdate = () => {
     if (invoicePdf) {
       setIsUploading(true);
       try {
-        console.log('[INVOICE PDF] Tentando fazer upload do PDF da nota fiscal:', invoicePdf.name);
+        console.log('[ORDER UPDATE] Tentando fazer upload do PDF da nota fiscal:', invoicePdf.name);
         const publicUrl = await uploadInvoicePdf(invoicePdf, id);
-        console.log('[INVOICE PDF] Upload bem-sucedido, URL recebida:', publicUrl);
+        console.log('[ORDER UPDATE] Upload bem-sucedido, URL recebida:', publicUrl);
         
         if (!publicUrl) {
           throw new Error('Falha ao fazer upload do arquivo da nota fiscal');
         }
         
         updates.invoicePdfPath = publicUrl;
-        console.log('[INVOICE PDF] URL do PDF da nota fiscal atualizada:', publicUrl);
+        console.log('[ORDER UPDATE] URL do PDF da nota fiscal atualizada:', publicUrl);
       } catch (error: any) {
-        console.error('[INVOICE PDF] Erro no upload do PDF da nota fiscal:', error);
+        console.error('[ORDER UPDATE] Erro no upload do PDF da nota fiscal:', error);
         let errorMessage = error.message || 'Erro desconhecido';
         toast.error(`Erro ao fazer upload do arquivo da nota fiscal: ${errorMessage}`);
         setIsUploading(false);
@@ -313,7 +313,7 @@ const OrderUpdate = () => {
 
       if (file) {
         try {
-          console.log("[DUPLICATA PDF] Iniciando upload do boleto PDF:", {
+          console.log("[DUPLICATA DEBUG] Iniciando upload do boleto PDF:", {
             fileName: file.name,
             fileSize: file.size,
             duplicataId: uploadId
@@ -330,14 +330,14 @@ const OrderUpdate = () => {
             throw new Error("Upload do boleto PDF falhou: A URL pública não foi retornada.");
           }
         } catch (uploadError: any) {
-          console.error("[DUPLICATA PDF] Falha no upload do boleto PDF:", uploadError);
+          console.error("[DUPLICATA DEBUG] Falha no upload do boleto PDF:", uploadError);
           toast.error("Erro ao fazer upload do PDF da duplicata. Tente novamente.");
           setIsSavingDuplicata(false);
           return;
         }
       } else if (form.pdfBoletoPath === null || form.pdfBoletoPath === "") {
         pdfBoletoPath = null;
-        console.log("[DUPLICATA PDF] Removendo PDF da duplicata");
+        console.log("[DUPLICATA DEBUG] Removendo PDF da duplicata");
       }
 
       const payload: Partial<Duplicata> = {
@@ -360,12 +360,12 @@ const OrderUpdate = () => {
       setShowDuplicataForm(false);
       setEditingDuplicata(null);
       
-      console.log("[DUPLICATA PDF] Atualizando lista de duplicatas");
+      console.log("[DUPLICATA DEBUG] Atualizando lista de duplicatas");
       if (id) {
         await fetchDuplicatas(id).then(setDuplicatas);
       }
     } catch (err: any) {
-      console.error("[DUPLICATA PDF] Erro ao salvar duplicata:", err);
+      console.error("[DUPLICATA DEBUG] Erro ao salvar duplicata:", err);
       toast.error("Erro ao salvar duplicata: " + (err.message || "Erro desconhecido"));
     } finally {
       setIsSavingDuplicata(false);
@@ -780,7 +780,7 @@ const OrderUpdate = () => {
               <Label>Arquivo PDF da NFe</Label>
               <FileUpload
                 onChange={(file) => {
-                  console.log('[INVOICE PDF] Arquivo da nota fiscal selecionado:', file?.name);
+                  console.log('[ORDER UPDATE] Arquivo da nota fiscal selecionado:', file?.name);
                   setInvoicePdf(file);
                 }}
                 value={invoicePdfPath}
