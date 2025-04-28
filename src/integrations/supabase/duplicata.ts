@@ -85,7 +85,8 @@ export async function upsertDuplicata(duplicata: Partial<Duplicata>) {
   console.log("[SUPABASE DUPLICATA] upsertDuplicata - Salvando duplicata:", {
     id: dbDuplicata.id,
     numero_duplicata: dbDuplicata.numero_duplicata,
-    pdf_boleto_path: dbDuplicata.pdf_boleto_path  // Verificamos que o caminho do PDF está sendo enviado corretamente
+    pdf_boleto_path: dbDuplicata.pdf_boleto_path,  // Verificamos que o caminho do PDF está sendo enviado corretamente
+    data_tipada: typeof dbDuplicata.pdf_boleto_path,
   });
 
   const { data, error } = await supabase
@@ -111,7 +112,7 @@ export async function deleteDuplicata(id: string) {
   return true;
 }
 
-// FILE UPLOAD/DELETE para BOLETO
+// FILE UPLOAD/DELETE para BOLETO - Completamente separado do upload de notas fiscais
 export async function uploadBoletoPdf(file: File, duplicataId: string): Promise<string> {
   if (!file) {
     console.error("[SUPABASE BOLETO] Nenhum arquivo fornecido para upload");
@@ -129,7 +130,7 @@ export async function uploadBoletoPdf(file: File, duplicataId: string): Promise<
   });
   
   try {
-    // Upload para o bucket específico de boletos
+    // Upload para o bucket específico de boletos - NÃO usa o mesmo bucket das notas fiscais
     const { data, error } = await supabase.storage
       .from('boleto_pdfs')
       .upload(fileName, file, { upsert: true, contentType: "application/pdf" });

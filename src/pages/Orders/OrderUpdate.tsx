@@ -45,11 +45,13 @@ const OrderUpdate = () => {
   const [transportCompanies, setTransportCompanies] = useState<TransportCompany[]>([]);
   const [selectedTransportCompanyId, setSelectedTransportCompanyId] = useState<string>('none');
   const [isLoadingTransportCompanies, setIsLoadingTransportCompanies] = useState(true);
+  
   const [invoiceNumber, setInvoiceNumber] = useState<string>('');
   const [invoicePdf, setInvoicePdf] = useState<File | null>(null);
   const [invoicePdfPath, setInvoicePdfPath] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeletingPdf, setIsDeletingPdf] = useState(false);
+  
   const [duplicatas, setDuplicatas] = useState<Duplicata[]>([]);
   const [isLoadingDuplicatas, setIsLoadingDuplicatas] = useState(true);
   const [showDuplicataForm, setShowDuplicataForm] = useState(false);
@@ -136,6 +138,7 @@ const OrderUpdate = () => {
       setPaymentTerms(order.paymentTerms || '');
       setSelectedSalespersonId(order.userId || 'none');
       setSelectedTransportCompanyId(order.transportCompanyId ? order.transportCompanyId : 'none');
+      
       setInvoiceNumber(order.invoiceNumber || '');
       setInvoicePdfPath(order.invoicePdfPath || null);
     }
@@ -199,19 +202,20 @@ const OrderUpdate = () => {
     if (invoicePdf) {
       setIsUploading(true);
       try {
-        console.log('Attempting to upload PDF file:', invoicePdf.name);
+        console.log('[INVOICE PDF] Tentando fazer upload do PDF da nota fiscal:', invoicePdf.name);
         const publicUrl = await uploadInvoicePdf(invoicePdf, id);
-        console.log('Upload successful, received URL:', publicUrl);
+        console.log('[INVOICE PDF] Upload bem-sucedido, URL recebida:', publicUrl);
         
         if (!publicUrl) {
-          throw new Error('Falha ao fazer upload do arquivo');
+          throw new Error('Falha ao fazer upload do arquivo da nota fiscal');
         }
         
         updates.invoicePdfPath = publicUrl;
+        console.log('[INVOICE PDF] URL do PDF da nota fiscal atualizada:', publicUrl);
       } catch (error: any) {
-        console.error('Error uploading PDF:', error);
+        console.error('[INVOICE PDF] Erro no upload do PDF da nota fiscal:', error);
         let errorMessage = error.message || 'Erro desconhecido';
-        toast.error(`Erro ao fazer upload do arquivo: ${errorMessage}`);
+        toast.error(`Erro ao fazer upload do arquivo da nota fiscal: ${errorMessage}`);
         setIsUploading(false);
         return;
       }
@@ -219,6 +223,7 @@ const OrderUpdate = () => {
 
     if (Object.keys(updates).length > 0) {
       try {
+        console.log('[INVOICE PDF] Atualizando pedido com novos dados:', updates);
         await updateOrder(id, updates);
         toast.success('Pedido atualizado com sucesso');
         navigate(`/orders/${id}`);
@@ -237,10 +242,11 @@ const OrderUpdate = () => {
     
     setIsDeletingPdf(true);
     try {
+      console.log('[INVOICE PDF] Tentando excluir PDF da nota fiscal:', invoicePdfPath);
       const deleteSuccess = await deleteInvoicePdf(invoicePdfPath);
       
       if (!deleteSuccess) {
-        throw new Error('Falha ao excluir o arquivo PDF');
+        throw new Error('Falha ao excluir o arquivo PDF da nota fiscal');
       }
       
       await updateOrder(id, { invoicePdfPath: null });
@@ -248,14 +254,15 @@ const OrderUpdate = () => {
       setInvoicePdfPath(null);
       setInvoicePdf(null);
       
-      toast.success('Arquivo PDF excluído com sucesso');
+      toast.success('Arquivo PDF da nota fiscal excluído com sucesso');
+      console.log('[INVOICE PDF] PDF da nota fiscal excluído com sucesso');
       
       if (fetchOrderData) {
         await fetchOrderData();
       }
     } catch (error: any) {
-      console.error('Error deleting PDF:', error);
-      toast.error(`Erro ao excluir o arquivo: ${error.message || 'Erro desconhecido'}`);
+      console.error('[INVOICE PDF] Erro ao excluir PDF da nota fiscal:', error);
+      toast.error(`Erro ao excluir o arquivo da nota fiscal: ${error.message || 'Erro desconhecido'}`);
     } finally {
       setIsDeletingPdf(false);
     }
@@ -285,13 +292,20 @@ const OrderUpdate = () => {
 
   const handleSaveDuplicata = async (form: Partial<Duplicata>, file?: File | null) => {
     setIsSavingDuplicata(true);
+    
+    console.log("[DUPLICATA DEBUG] Início do salvamento da duplicata", { 
+      temArquivo: !!file,
+      pdfPathOriginal: form.pdfBoletoPath,
+      arquivoNome: file?.name
+    });
+    
     try {
       let pdfBoletoPath = form.pdfBoletoPath;
       const uploadId = form.id || `${id}-${Date.now()}`;
 
       if (file) {
         try {
-          console.log("[DUPLICATA PDF] Iniciando upload do boleto PDF:", {
+          console.log("[DUPLICATA PDF] Iniciando upload do boleto PDF para duplicata:", {
             fileName: file.name,
             fileSize: file.size,
             duplicataId: uploadId
@@ -299,7 +313,10 @@ const OrderUpdate = () => {
           
           pdfBoletoPath = await uploadBoletoPdf(file, uploadId);
           
-          console.log("[DUPLICATA PDF] Upload do boleto PDF concluído com sucesso:", pdfBoletoPath);
+          console.log("[DUPLICATA DEBUG] Resultado do upload do PDF", {
+            novoPath: pdfBoletoPath,
+            uploadId,
+          });
           
           if (!pdfBoletoPath) {
             throw new Error("Upload do boleto PDF falhou: A URL pública não foi retornada.");
@@ -317,16 +334,17 @@ const OrderUpdate = () => {
 
       const payload: Partial<Duplicata> = {
         ...form,
-        orderId: id,
+        orderId: id || '',
         pdfBoletoPath: pdfBoletoPath,
       };
       
       if (form.id) payload.id = form.id;
 
-      console.log("[DUPLICATA PDF] Salvando duplicata com dados:", {
+      console.log("[DUPLICATA DEBUG] Objeto duplicata a ser salvo", {
         id: payload.id,
-        numeroDuplicata: payload.numeroDuplicata,
-        pdfBoletoPath: payload.pdfBoletoPath
+        orderId: payload.orderId,
+        pdfBoletoPath: payload.pdfBoletoPath,
+        numeroDuplicata: payload.numeroDuplicata
       });
 
       await upsertDuplicata(payload);
@@ -335,7 +353,9 @@ const OrderUpdate = () => {
       setEditingDuplicata(null);
       
       console.log("[DUPLICATA PDF] Atualizando lista de duplicatas");
-      await fetchDuplicatas(id!).then(setDuplicatas);
+      if (id) {
+        await fetchDuplicatas(id).then(setDuplicatas);
+      }
     } catch (err: any) {
       console.error("[DUPLICATA PDF] Erro ao salvar duplicata:", err);
       toast.error("Erro ao salvar duplicata: " + (err.message || "Erro desconhecido"));
@@ -348,11 +368,14 @@ const OrderUpdate = () => {
     if (!window.confirm("Excluir esta duplicata?")) return;
     try {
       if (dup.pdfBoletoPath) {
+        console.log("[DUPLICATA PDF] Excluindo PDF do boleto antes de excluir duplicata:", dup.pdfBoletoPath);
         await deleteBoletoPdf(dup.pdfBoletoPath);
       }
       await deleteDuplicata(dup.id);
       toast.success("Duplicata excluída");
-      fetchDuplicatas(id!).then(setDuplicatas);
+      if (id) {
+        fetchDuplicatas(id).then(setDuplicatas);
+      }
     } catch (err: any) {
       toast.error("Erro ao excluir duplicata");
     }
@@ -362,9 +385,12 @@ const OrderUpdate = () => {
     if (!dup.pdfBoletoPath) return;
     if (!window.confirm("Excluir o PDF do boleto?")) return;
     try {
+      console.log("[DUPLICATA PDF] Excluindo PDF do boleto:", dup.pdfBoletoPath);
       await deleteBoletoPdf(dup.pdfBoletoPath);
       await upsertDuplicata({ id: dup.id, pdfBoletoPath: null });
-      fetchDuplicatas(id!).then(setDuplicatas);
+      if (id) {
+        fetchDuplicatas(id).then(setDuplicatas);
+      }
       toast.success("PDF excluído");
     } catch (err) {
       toast.error("Erro ao excluir PDF");
@@ -746,7 +772,7 @@ const OrderUpdate = () => {
               <Label>Arquivo PDF da NFe</Label>
               <FileUpload
                 onChange={(file) => {
-                  console.log('File selected:', file?.name);
+                  console.log('[INVOICE PDF] Arquivo da nota fiscal selecionado:', file?.name);
                   setInvoicePdf(file);
                 }}
                 value={invoicePdfPath}

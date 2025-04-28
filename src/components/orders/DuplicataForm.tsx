@@ -56,6 +56,7 @@ const DuplicataForm: React.FC<Props> = ({
   useEffect(() => {
     setData({ ...value });
     setBoletoFile(null);
+    
     if (value?.numeroDuplicata && invoiceNumber) {
       const prefix = `${invoiceNumber}-`;
       if (value.numeroDuplicata.startsWith(prefix)) {
@@ -75,11 +76,20 @@ const DuplicataForm: React.FC<Props> = ({
   }, [data.paymentStatusId, lookup.statuses]);
 
   const handleDeletePdf = async () => {
-    if (onDeletePdf) await onDeletePdf();
+    if (onDeletePdf) {
+      try {
+        console.log("[BOLETO PDF] Solicitando exclusão do PDF do boleto");
+        await onDeletePdf();
+        console.log("[BOLETO PDF] PDF do boleto excluído com sucesso");
+      } catch (error) {
+        console.error("[BOLETO PDF] Erro ao excluir PDF do boleto:", error);
+      }
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!data.dataEmissao || !data.dataVencimento || !data.valor ||
       !data.modoPagamentoId || !data.portadorId || !data.bancoId ||
       !data.paymentStatusId) {
@@ -101,7 +111,7 @@ const DuplicataForm: React.FC<Props> = ({
       numeroDuplicata: numeroDuplicataFinal,
     };
     
-    console.log("[DuplicataForm PDF] Enviando formulário para salvar:", {
+    console.log("[BOLETO PDF] Enviando formulário para salvar duplicata:", {
       numeroDuplicata: formData.numeroDuplicata,
       valor: formData.valor,
       pdfBoletoPath: formData.pdfBoletoPath,
@@ -363,7 +373,7 @@ const DuplicataForm: React.FC<Props> = ({
               <Label>Boleto PDF</Label>
               <FileUpload
                 onChange={(file) => {
-                  console.log("[DuplicataForm PDF] Arquivo de boleto selecionado:", 
+                  console.log("[BOLETO PDF] Arquivo de boleto selecionado:", 
                     file ? `${file.name} (${Math.round(file.size/1024)}KB)` : "nenhum");
                   setBoletoFile(file);
                 }}
