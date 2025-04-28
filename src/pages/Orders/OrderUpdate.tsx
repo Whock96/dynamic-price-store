@@ -27,7 +27,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { fetchRefTable, fetchDuplicatas, upsertDuplicata, deleteDuplicata, uploadBoletoPdf, deleteBoletoPdf } from "@/integrations/supabase/duplicata";
+import { fetchRefTable, fetchDuplicatas, upsertDuplicata, deleteDuplicata } from "@/integrations/supabase/duplicata";
+import { uploadBoletoPdf, deleteBoletoPdf } from "@/integrations/supabase/boletoPdfService";
 import { Duplicata, RefTable } from "@/types/duplicata";
 
 const OrderUpdate = () => {
@@ -301,7 +302,7 @@ const OrderUpdate = () => {
   const handleSaveDuplicata = async (form: Partial<Duplicata>, file?: File | null) => {
     setIsSavingDuplicata(true);
     
-    console.log("[DUPLICATA DEBUG] Início do salvamento da duplicata", { 
+    console.log("[DUPLICATA SAVE] Início do salvamento da duplicata", { 
       temArquivo: !!file,
       pdfPathOriginal: form.pdfBoletoPath,
       arquivoNome: file?.name
@@ -313,7 +314,7 @@ const OrderUpdate = () => {
 
       if (file) {
         try {
-          console.log("[DUPLICATA DEBUG] Iniciando upload do boleto PDF:", {
+          console.log("[DUPLICATA SAVE] Iniciando upload do boleto PDF:", {
             fileName: file.name,
             fileSize: file.size,
             duplicataId: uploadId
@@ -321,7 +322,7 @@ const OrderUpdate = () => {
           
           pdfBoletoPath = await uploadBoletoPdf(file, uploadId);
           
-          console.log("[DUPLICATA DEBUG] Resultado do upload do PDF do boleto:", {
+          console.log("[DUPLICATA SAVE] Resultado do upload do PDF do boleto:", {
             novoPath: pdfBoletoPath,
             uploadId,
           });
@@ -330,14 +331,15 @@ const OrderUpdate = () => {
             throw new Error("Upload do boleto PDF falhou: A URL pública não foi retornada.");
           }
         } catch (uploadError: any) {
-          console.error("[DUPLICATA DEBUG] Falha no upload do boleto PDF:", uploadError);
+          console.error("[DUPLICATA SAVE] Falha no upload do boleto PDF:", uploadError);
           toast.error("Erro ao fazer upload do PDF da duplicata. Tente novamente.");
           setIsSavingDuplicata(false);
           return;
         }
-      } else if (form.pdfBoletoPath === null || form.pdfBoletoPath === "") {
+      } 
+      else if (form.pdfBoletoPath === null || form.pdfBoletoPath === "") {
         pdfBoletoPath = null;
-        console.log("[DUPLICATA DEBUG] Removendo PDF da duplicata");
+        console.log("[DUPLICATA SAVE] Removendo PDF da duplicata");
       }
 
       const payload: Partial<Duplicata> = {
@@ -348,7 +350,7 @@ const OrderUpdate = () => {
       
       if (form.id) payload.id = form.id;
 
-      console.log("[DUPLICATA DEBUG] Objeto duplicata a ser salvo:", {
+      console.log("[DUPLICATA SAVE] Objeto duplicata a ser salvo:", {
         id: payload.id,
         orderId: payload.orderId,
         pdfBoletoPath: payload.pdfBoletoPath,
@@ -360,12 +362,12 @@ const OrderUpdate = () => {
       setShowDuplicataForm(false);
       setEditingDuplicata(null);
       
-      console.log("[DUPLICATA DEBUG] Atualizando lista de duplicatas");
+      console.log("[DUPLICATA SAVE] Atualizando lista de duplicatas");
       if (id) {
         await fetchDuplicatas(id).then(setDuplicatas);
       }
     } catch (err: any) {
-      console.error("[DUPLICATA DEBUG] Erro ao salvar duplicata:", err);
+      console.error("[DUPLICATA SAVE] Erro ao salvar duplicata:", err);
       toast.error("Erro ao salvar duplicata: " + (err.message || "Erro desconhecido"));
     } finally {
       setIsSavingDuplicata(false);
@@ -376,7 +378,7 @@ const OrderUpdate = () => {
     if (!window.confirm("Excluir esta duplicata?")) return;
     try {
       if (dup.pdfBoletoPath) {
-        console.log("[DUPLICATA PDF] Excluindo PDF do boleto antes de excluir duplicata:", dup.pdfBoletoPath);
+        console.log("[DUPLICATA DELETE] Excluindo PDF do boleto antes de excluir duplicata:", dup.pdfBoletoPath);
         await deleteBoletoPdf(dup.pdfBoletoPath);
       }
       await deleteDuplicata(dup.id);

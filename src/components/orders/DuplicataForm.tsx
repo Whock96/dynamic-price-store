@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,6 +15,7 @@ import {
   DialogClose
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useBoletoPdf } from "@/hooks/use-boleto-pdf";
 
 interface Props {
   value?: Partial<Duplicata>;
@@ -44,22 +44,30 @@ const DuplicataForm: React.FC<Props> = ({
   invoiceNumber,
 }) => {
   const [data, setData] = useState<Partial<Duplicata>>({});
-  const [boletoFile, setBoletoFile] = useState<File | null>(null);
   const [showPayment, setShowPayment] = useState(false);
   const [numeroComplemento, setNumeroComplemento] = useState("");
+  
+  const { 
+    boletoPdfFile, 
+    boletoPdfPath, 
+    isUploading: isUploadingBoleto, 
+    isDeleting: isDeletingBoleto,
+    handleFileChange: handleBoletoPdfChange,
+    deleteFile: handleDeleteBoletoPdf
+  } = useBoletoPdf({ 
+    initialPath: value?.pdfBoletoPath || null,
+    duplicataId: value?.id,
+    onDelete: onDeletePdf
+  });
 
-  // Reset form data when the modal opens with a new value
   useEffect(() => {
     console.log("[DUPLICATA FORM] Recebendo valor inicial:", {
       duplicataId: value?.id,
       pdfBoletoPath: value?.pdfBoletoPath
     });
     
-    // Reset form data with the value from props
     setData({ ...value });
-    setBoletoFile(null);
     
-    // Handle numero duplicata formatting
     if (value?.numeroDuplicata && invoiceNumber) {
       const prefix = `${invoiceNumber}-`;
       if (value.numeroDuplicata.startsWith(prefix)) {
@@ -71,7 +79,6 @@ const DuplicataForm: React.FC<Props> = ({
       setNumeroComplemento("");
     }
     
-    // Determine if payment fields should be shown
     const s =
       value?.paymentStatus?.nome || 
       lookup.statuses.find((t) => t.id === value?.paymentStatusId)?.nome || 
@@ -79,24 +86,11 @@ const DuplicataForm: React.FC<Props> = ({
     setShowPayment(s === "Pago" || s === "Pago Parcialmente");
   }, [value, invoiceNumber, lookup.statuses]);
 
-  // Update payment fields visibility when status changes
   useEffect(() => {
     const s =
       lookup.statuses.find((t) => t.id === data.paymentStatusId)?.nome ?? "";
     setShowPayment(s === "Pago" || s === "Pago Parcialmente");
   }, [data.paymentStatusId, lookup.statuses]);
-
-  const handleDeletePdf = async () => {
-    if (onDeletePdf) {
-      try {
-        console.log("[DUPLICATA FORM] Solicitando exclusão do PDF do boleto");
-        await onDeletePdf();
-        console.log("[DUPLICATA FORM] PDF do boleto excluído com sucesso");
-      } catch (error) {
-        console.error("[DUPLICATA FORM] Erro ao excluir PDF do boleto:", error);
-      }
-    }
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,7 +102,6 @@ const DuplicataForm: React.FC<Props> = ({
       return;
     }
     
-    // Format the numero duplicata by combining invoice number with complement
     let numeroDuplicataFinal = "";
     if (invoiceNumber && numeroComplemento.trim()) {
       numeroDuplicataFinal = `${invoiceNumber}-${numeroComplemento.trim()}`;
@@ -127,12 +120,11 @@ const DuplicataForm: React.FC<Props> = ({
       numeroDuplicata: formData.numeroDuplicata,
       valor: formData.valor,
       pdfBoletoPath: formData.pdfBoletoPath,
-      temArquivoParaUpload: !!boletoFile,
-      arquivoNome: boletoFile?.name
+      temArquivoParaUpload: !!boletoPdfFile,
+      arquivoNome: boletoPdfFile?.name
     });
     
-    // Importante: passamos o arquivo para upload e os dados da duplicata
-    onSave(formData, boletoFile);
+    onSave(formData, boletoPdfFile);
   };
 
   return (
@@ -385,16 +377,12 @@ const DuplicataForm: React.FC<Props> = ({
             <div>
               <Label>Boleto PDF</Label>
               <FileUpload
-                onChange={(file) => {
-                  console.log("[DUPLICATA FORM] Arquivo de boleto selecionado:", 
-                    file ? `${file.name} (${Math.round(file.size/1024)}KB)` : "nenhum");
-                  setBoletoFile(file);
-                }}
-                value={value?.pdfBoletoPath || ""}
+                onChange={handleBoletoPdfChange}
+                value={boletoPdfPath || ""}
                 accept="application/pdf,.pdf"
                 maxSize={15}
-                isLoading={isSaving}
-                onDelete={value?.pdfBoletoPath && onDeletePdf ? handleDeletePdf : undefined}
+                isLoading={isSaving || isUploadingBoleto || isDeletingBoleto}
+                onDelete={boletoPdfPath ? handleDeleteBoletoPdf : undefined}
               />
               <span className="text-xs text-muted-foreground">
                 Formato: PDF, até 15MB.
@@ -402,16 +390,16 @@ const DuplicataForm: React.FC<Props> = ({
             </div>
             <DialogFooter className="mt-6">
               <DialogClose asChild>
-                <Button variant="outline" type="button" disabled={isSaving}>
+                <Button variant="outline" type="button" disabled={isSaving || isUploadingBoleto || isDeletingBoleto}>
                   Cancelar
                 </Button>
               </DialogClose>
               <Button
                 type="submit"
-                disabled={isSaving}
+                disabled={isSaving || isUploadingBoleto || isDeletingBoleto}
                 className="bg-ferplas-500 hover:bg-ferplas-600"
               >
-                {isSaving ? "Salvando..." : "Salvar"}
+                {(isSaving || isUploadingBoleto) ? "Salvando..." : "Salvar"}
               </Button>
             </DialogFooter>
           </form>
