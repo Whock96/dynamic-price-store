@@ -141,6 +141,12 @@ const OrderUpdate = () => {
       
       setInvoiceNumber(order.invoiceNumber || '');
       setInvoicePdfPath(order.invoicePdfPath || null);
+      
+      console.log("[ORDER UPDATE] Carregando dados do pedido:", {
+        orderId: order.id,
+        invoiceNumber: order.invoiceNumber,
+        invoicePdfPath: order.invoicePdfPath
+      });
     }
   }, [order]);
 
@@ -218,12 +224,14 @@ const OrderUpdate = () => {
         toast.error(`Erro ao fazer upload do arquivo da nota fiscal: ${errorMessage}`);
         setIsUploading(false);
         return;
+      } finally {
+        setIsUploading(false);
       }
     }
 
     if (Object.keys(updates).length > 0) {
       try {
-        console.log('[INVOICE PDF] Atualizando pedido com novos dados:', updates);
+        console.log('[ORDER UPDATE] Atualizando pedido com novos dados:', updates);
         await updateOrder(id, updates);
         toast.success('Pedido atualizado com sucesso');
         navigate(`/orders/${id}`);
@@ -305,7 +313,7 @@ const OrderUpdate = () => {
 
       if (file) {
         try {
-          console.log("[DUPLICATA PDF] Iniciando upload do boleto PDF para duplicata:", {
+          console.log("[DUPLICATA PDF] Iniciando upload do boleto PDF:", {
             fileName: file.name,
             fileSize: file.size,
             duplicataId: uploadId
@@ -313,7 +321,7 @@ const OrderUpdate = () => {
           
           pdfBoletoPath = await uploadBoletoPdf(file, uploadId);
           
-          console.log("[DUPLICATA DEBUG] Resultado do upload do PDF", {
+          console.log("[DUPLICATA DEBUG] Resultado do upload do PDF do boleto:", {
             novoPath: pdfBoletoPath,
             uploadId,
           });
@@ -340,7 +348,7 @@ const OrderUpdate = () => {
       
       if (form.id) payload.id = form.id;
 
-      console.log("[DUPLICATA DEBUG] Objeto duplicata a ser salvo", {
+      console.log("[DUPLICATA DEBUG] Objeto duplicata a ser salvo:", {
         id: payload.id,
         orderId: payload.orderId,
         pdfBoletoPath: payload.pdfBoletoPath,

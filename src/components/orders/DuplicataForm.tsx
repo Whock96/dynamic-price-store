@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -55,6 +54,11 @@ const DuplicataForm: React.FC<Props> = ({
   const [numeroComplemento, setNumeroComplemento] = useState("");
 
   useEffect(() => {
+    console.log("[DUPLICATA FORM] Recebendo valor inicial:", {
+      duplicataId: value?.id,
+      pdfBoletoPath: value?.pdfBoletoPath
+    });
+    
     setData({ ...value });
     setBoletoFile(null);
     
@@ -79,11 +83,11 @@ const DuplicataForm: React.FC<Props> = ({
   const handleDeletePdf = async () => {
     if (onDeletePdf) {
       try {
-        console.log("[BOLETO PDF] Solicitando exclusão do PDF do boleto");
+        console.log("[DUPLICATA FORM] Solicitando exclusão do PDF do boleto");
         await onDeletePdf();
-        console.log("[BOLETO PDF] PDF do boleto excluído com sucesso");
+        console.log("[DUPLICATA FORM] PDF do boleto excluído com sucesso");
       } catch (error) {
-        console.error("[BOLETO PDF] Erro ao excluir PDF do boleto:", error);
+        console.error("[DUPLICATA FORM] Erro ao excluir PDF do boleto:", error);
       }
     }
   };
@@ -112,7 +116,7 @@ const DuplicataForm: React.FC<Props> = ({
       numeroDuplicata: numeroDuplicataFinal,
     };
     
-    console.log("[BOLETO PDF] Enviando formulário para salvar duplicata:", {
+    console.log("[DUPLICATA FORM] Enviando formulário para salvar duplicata:", {
       numeroDuplicata: formData.numeroDuplicata,
       valor: formData.valor,
       pdfBoletoPath: formData.pdfBoletoPath,
@@ -375,7 +379,7 @@ const DuplicataForm: React.FC<Props> = ({
               <Label>Boleto PDF</Label>
               <FileUpload
                 onChange={(file) => {
-                  console.log("[BOLETO PDF] Arquivo de boleto selecionado:", 
+                  console.log("[DUPLICATA FORM] Arquivo de boleto selecionado:", 
                     file ? `${file.name} (${Math.round(file.size/1024)}KB)` : "nenhum");
                   setBoletoFile(file);
                 }}
