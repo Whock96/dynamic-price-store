@@ -85,7 +85,7 @@ export async function upsertDuplicata(duplicata: Partial<Duplicata>) {
   console.log("[SUPABASE DUPLICATA] upsertDuplicata - Salvando duplicata:", {
     id: dbDuplicata.id,
     numero_duplicata: dbDuplicata.numero_duplicata,
-    pdf_boleto_path: dbDuplicata.pdf_boleto_path,  // Verificamos que o caminho do PDF está sendo enviado corretamente
+    pdf_boleto_path: dbDuplicata.pdf_boleto_path,
     data_tipada: typeof dbDuplicata.pdf_boleto_path,
   });
 

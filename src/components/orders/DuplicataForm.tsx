@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -119,6 +120,7 @@ const DuplicataForm: React.FC<Props> = ({
       arquivoNome: boletoFile?.name
     });
     
+    // Importante: passamos o arquivo para upload e os dados da duplicata
     onSave(formData, boletoFile);
   };
 
