@@ -350,6 +350,108 @@ const OrderDetail = () => {
     }
   }, [order?.id]);
 
+  const handleCreateDuplicata = () => {
+    const newDuplicata: Partial<Duplicata> = {
+      orderId: order?.id,
+      dataEmissao: new Date().toISOString().split('T')[0],
+      dataVencimento: new Date().toISOString().split('T')[0],
+      valor: 0,
+      valorAcrescimo: 0,
+      valorDesconto: 0,
+      numeroDuplicata: ''
+    };
+    
+    setEditingDuplicata(newDuplicata as Duplicata);
+    setShowDuplicataForm(true);
+  };
+
+  const handleEditDuplicata = (duplicata: Duplicata) => {
+    setEditingDuplicata(duplicata);
+    setShowDuplicataForm(true);
+  };
+
+  const handleDeleteDuplicata = async (duplicata: Duplicata) => {
+    if (window.confirm(`Deseja excluir a duplicata ${duplicata.numeroDuplicata}?`)) {
+      try {
+        await deleteDuplicata(duplicata.id);
+        toast.success("Duplicata excluída com sucesso");
+        
+        // Recarregar a lista de duplicatas
+        if (order?.id) {
+          const updatedDuplicatas = await fetchDuplicatas(order.id);
+          setDuplicatas(updatedDuplicatas);
+        }
+      } catch (error) {
+        console.error("Erro ao excluir duplicata:", error);
+        toast.error("Erro ao excluir duplicata");
+      }
+    }
+  };
+
+  const handleDeleteBoletoPdf = async (duplicata: Duplicata) => {
+    if (!duplicata.id || !duplicata.pdfBoletoPath) return;
+    
+    if (window.confirm("Tem certeza que deseja excluir o PDF do boleto?")) {
+      try {
+        await deleteBoletoPdf(duplicata.pdfBoletoPath);
+        
+        // Atualizar a duplicata sem o PDF
+        await upsertDuplicata({
+          ...duplicata,
+          pdfBoletoPath: null
+        });
+        
+        toast.success("PDF da duplicata excluído com sucesso");
+        
+        // Recarregar a lista de duplicatas
+        if (order?.id) {
+          const updatedDuplicatas = await fetchDuplicatas(order.id);
+          setDuplicatas(updatedDuplicatas);
+        }
+      } catch (error) {
+        console.error("Erro ao excluir o PDF do boleto:", error);
+        toast.error("Erro ao excluir o PDF do boleto");
+      }
+    }
+  };
+
+  const handleSaveDuplicata = async (formData: Partial<Duplicata>, file: File | null) => {
+    try {
+      setIsSavingDuplicata(true);
+      
+      // Garantir que orderId está definido
+      if (!formData.orderId && order?.id) {
+        formData.orderId = order.id;
+      }
+      
+      // Processar o upload do arquivo PDF se houver
+      if (file) {
+        const pdfPath = await uploadBoletoPdf(file, formData.id);
+        formData.pdfBoletoPath = pdfPath;
+      }
+      
+      // Salvar ou atualizar a duplicata
+      const savedDuplicata = await upsertDuplicata(formData);
+      
+      toast.success(formData.id ? "Duplicata atualizada com sucesso" : "Duplicata criada com sucesso");
+      
+      // Fechar o formulário e recarregar a lista
+      setShowDuplicataForm(false);
+      setEditingDuplicata(null);
+      
+      // Atualizar a lista de duplicatas
+      if (order?.id) {
+        const updatedDuplicatas = await fetchDuplicatas(order.id);
+        setDuplicatas(updatedDuplicatas);
+      }
+    } catch (error) {
+      console.error("Erro ao salvar duplicata:", error);
+      toast.error("Erro ao salvar duplicata");
+    } finally {
+      setIsSavingDuplicata(false);
+    }
+  };
+
   if (loading || isSupabaseLoading) {
     return (
       <div className="flex items-center justify-center h-64">

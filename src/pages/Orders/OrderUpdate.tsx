@@ -120,6 +120,78 @@ const OrderUpdate = () => {
       });
     }
   }, [order]);
+  
+  const handleShippingChange = (value: 'delivery' | 'pickup') => {
+    setShipping(value);
+  };
+  
+  const handlePaymentMethodChange = (value: 'cash' | 'credit') => {
+    setPaymentMethod(value);
+    if (value === 'cash') {
+      setPaymentTerms('');
+    }
+  };
+  
+  const handlePdfDelete = async () => {
+    if (!invoicePdfPath) return;
+    
+    try {
+      setIsDeletingPdf(true);
+      await deleteInvoicePdf(invoicePdfPath);
+      setInvoicePdfPath(null);
+      toast.success('PDF da nota fiscal excluído com sucesso');
+    } catch (error) {
+      console.error("Error deleting invoice PDF:", error);
+      toast.error('Erro ao excluir o PDF da nota fiscal');
+    } finally {
+      setIsDeletingPdf(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!id || !order) return;
+    
+    try {
+      setIsUploading(true);
+      
+      let finalInvoicePdfPath = invoicePdfPath;
+      
+      // Upload do PDF da nota fiscal, se houver
+      if (invoicePdf) {
+        finalInvoicePdfPath = await uploadInvoicePdf(invoicePdf);
+      }
+      
+      // Dados para atualização do pedido
+      const updateData = {
+        status,
+        notes,
+        shipping,
+        paymentMethod,
+        paymentTerms,
+        userId: selectedSalespersonId !== 'none' ? selectedSalespersonId : null,
+        transportCompanyId: selectedTransportCompanyId !== 'none' ? selectedTransportCompanyId : null,
+        invoiceNumber,
+        invoicePdfPath: finalInvoicePdfPath
+      };
+      
+      // Remove propriedades nulas para não sobrescrever com null
+      Object.keys(updateData).forEach(key => {
+        if (updateData[key as keyof typeof updateData] === null) {
+          delete updateData[key as keyof typeof updateData];
+        }
+      });
+      
+      await updateOrder(id, updateData);
+      
+      toast.success('Pedido atualizado com sucesso');
+      navigate(`/orders/${id}`);
+    } catch (error) {
+      console.error("Error updating order:", error);
+      toast.error('Erro ao atualizar o pedido');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   if (isLoading || isLoadingSalespeople || isLoadingTransportCompanies) {
     return (
