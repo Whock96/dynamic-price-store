@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -143,19 +142,7 @@ const DuplicatasCard: React.FC<Props> = ({
                             variant="ghost" 
                             onClick={() => onDelete(d)}
                             className="h-8 w-8 text-red-600 hover:bg-red-50"
-                            title="Excluir"
-                          >
-                            <Trash2 size={16} />
-                          </Button>
-                        )}
-                        
-                        {!readOnly && onDeletePdf && d.pdfBoletoPath && (
-                          <Button 
-                            size="icon" 
-                            variant="ghost" 
-                            onClick={() => onDeletePdf(d)} 
-                            className="text-red-600 hover:bg-red-50"
-                            title="Excluir PDF"
+                            title="Excluir duplicata"
                           >
                             <Trash2 size={16} />
                           </Button>
