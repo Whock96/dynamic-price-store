@@ -517,12 +517,6 @@ const OrderDetail = () => {
   
   const taxSubstitutionValue = taxSubstitution ? (7.8 / 100) * order.subtotal : 0;
 
-  // Check if any item has a different discount than total discount percentage
-  // If all items have the same discount as total discount percentage, we'll hide the card
-  const shouldShowDiscountCard = items.some(item => 
-    item.discount !== item.totalDiscountPercentage
-  );
-
   return (
     <div className="space-y-6 animate-fade-in">
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -800,65 +794,275 @@ const OrderDetail = () => {
                     </div>
                   </>
                 )}
+                <div className="flex justify-between text-sm">
+                  <span>Substituição Tributária:</span>
+                  <span>{taxSubstitution ? 'sim' : 'não'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>IPI:</span>
+                  <span>{withIPI ? 'sim' : 'não'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>SUFRAMA:</span>
+                  <span>{withSuframa ? 'sim' : 'não'}</span>
+                </div>
+                {order.deliveryFee > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span>Taxa de Entrega:</span>
+                    <span>{formatCurrency(order.deliveryFee || 0)}</span>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {shouldShowDiscountCard && (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg font-medium flex items-center">
+            <ShoppingCart className="mr-2 h-5 w-5" />
+            Itens do Pedido
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Produto</TableHead>
+                <TableHead>Preço Unitário</TableHead>
+                <TableHead>Desconto Produto</TableHead>
+                <TableHead>Desc. Total (%)</TableHead>
+                <TableHead>Preço Final</TableHead>
+                {order.taxSubstitution && (
+                  <TableHead>Valor ST Und.</TableHead>
+                )}
+                {order.withIPI && (
+                  <TableHead>Valor IPI Und.</TableHead>
+                )}
+                <TableHead>Valor Und. c/ Impostos</TableHead>
+                <TableHead>Quantidade Volumes</TableHead>
+                <TableHead>Total de Unidades</TableHead>
+                <TableHead>Subtotal</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((item: any, index: number) => (
+                <TableRow key={item?.id || `item-${index}`}>
+                  <TableCell className="font-medium">
+                    {item?.product?.name || "Produto não encontrado"}
+                  </TableCell>
+                  <TableCell>{formatCurrency(item?.product?.listPrice || 0)}</TableCell>
+                  <TableCell>{item?.discount || 0}%</TableCell>
+                  <TableCell>{item?.totalDiscountPercentage || item?.discount || 0}%</TableCell>
+                  <TableCell>{formatCurrency(item?.finalPrice || 0)}</TableCell>
+                  {order.taxSubstitution && (
+                    <TableCell>{formatCurrency(item?.taxSubstitutionValue || 0)}</TableCell>
+                  )}
+                  {order.withIPI && (
+                    <TableCell>{formatCurrency(item?.ipiValue || 0)}</TableCell>
+                  )}
+                  <TableCell>{formatCurrency(item?.totalWithTaxes || 0)}</TableCell>
+                  <TableCell>{item?.quantity || 0}</TableCell>
+                  <TableCell>{item?.totalUnits || 0}</TableCell>
+                  <TableCell>{formatCurrency(item?.subtotal || 0)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          
+          {items.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Package className="h-12 w-12 text-gray-300 mb-4" />
+              <h2 className="text-xl font-medium text-gray-600">Nenhum item no pedido</h2>
+              <p className="text-muted-foreground">Este pedido não contém itens ou os dados não estão disponíveis.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg font-medium flex items-center">
+            <Receipt className="mr-2 h-5 w-5" />
+            Descontos e Acréscimos Aplicados
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {appliedDiscounts && appliedDiscounts.length > 0 ? (
+              appliedDiscounts.map((discount: any, index: number) => (
+                <div key={index} className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full ${discount.type === 'discount' ? 'bg-green-100' : 'bg-red-100'} flex items-center justify-center mr-3`}>
+                      <span className={`${discount.type === 'discount' ? 'text-green-600' : 'text-red-600'} font-bold`}>
+                        {discount.type === 'discount' ? '-' : '+'}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-medium">{discount.name}</p>
+                      <p className="text-sm text-gray-500">
+                        {discount.type === 'discount' ? 'Desconto' : 'Acréscimo'} de {discount.value}%
+                      </p>
+                    </div>
+                  </div>
+                  <span className={`font-medium ${discount.type === 'discount' ? 'text-green-600' : 'text-red-600'}`}>
+                    {discount.type === 'discount' ? '-' : '+'}
+                    {discount.value}%
+                  </span>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-4 text-gray-500">
+                Nenhum desconto ou acréscimo aplicado.
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg font-medium flex items-center">
+            <Truck className="mr-2 h-5 w-5" />
+            Entrega
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Tipo de Entrega</h3>
+              <p className="text-lg flex items-center">
+                {shipping === 'delivery' ? (
+                  <>
+                    <Truck className="h-4 w-4 mr-2 text-ferplas-500" />
+                    Entrega
+                  </>
+                ) : (
+                  <>
+                    <Package className="h-4 w-4 mr-2 text-ferplas-500" />
+                    Retirada
+                  </>
+                )}
+              </p>
+            </div>
+            
+            {shipping === 'delivery' && deliveryLocation && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-500">Região de Entrega</h3>
+                <p className="text-lg">
+                  {deliveryLocation === 'capital' ? 'Capital' : 'Interior'}
+                </p>
+              </div>
+            )}
+            
+            {shipping === 'delivery' && deliveryFee > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-500">Taxa de Entrega</h3>
+                <p className="text-lg">{formatCurrency(deliveryFee)}</p>
+              </div>
+            )}
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Peso Total do Pedido</h3>
+              <p className="text-lg">{formatWeight(totalOrderWeight)}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Total de Volumes</h3>
+              <p className="text-lg">{totalVolumes}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Cubagem Total</h3>
+              <p className="text-lg">{formatCubicVolume(items.reduce((sum, item) => sum + Number(item.totalCubicVolume || 0), 0))}</p>
+            </div>
+          </div>
+          
+          {(order.transportCompanyId || transportCompany) && (
+            <>
+              <Separator className="my-4" />
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Transportadora</h3>
+                
+                {isLoadingTransport ? (
+                  <div className="h-6 bg-gray-100 animate-pulse rounded w-48"></div>
+                ) : transportCompany ? (
+                  <div className="space-y-2">
+                    <p className="text-lg font-medium">{transportCompany.name}</p>
+                    <p className="text-sm text-gray-500">CNPJ: {transportCompany.document}</p>
+                    {transportCompany.phone && (
+                      <p className="text-sm text-gray-500">Telefone: {transportCompany.phone}</p>
+                    )}
+                    {transportCompany.email && (
+                      <p className="text-sm text-gray-500">Email: {transportCompany.email}</p>
+                    )}
+                    {transportCompany.whatsapp && (
+                      <p className="text-sm text-gray-500">WhatsApp: {transportCompany.whatsapp}</p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-gray-500">Informações da transportadora não disponíveis</p>
+                )}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {notes && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-medium">Descontos e Acréscimos Aplicados</CardTitle>
+            <CardTitle className="text-lg font-medium">Observações</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {/* Discount options applied globally */}
-              {appliedDiscounts && appliedDiscounts.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">Descontos Globais</h3>
-                  <div className="bg-gray-50 p-3 rounded-md">
-                    <ul className="list-disc pl-5 space-y-1">
-                      {appliedDiscounts.map((discount: any, index: number) => (
-                        <li key={index} className="text-sm">
-                          {discount.name}: <span className="font-medium text-red-600">{discount.value}%</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              )}
-
-              {/* Special discounts per item */}
-              <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-2">Descontos por Item</h3>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Produto</TableHead>
-                        <TableHead className="text-right">Desconto Padrão</TableHead>
-                        <TableHead className="text-right">Desconto Especial</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {items.filter(item => item.discount !== item.totalDiscountPercentage).map((item: any, index: number) => (
-                        <TableRow key={index}>
-                          <TableCell>{item.product?.name || `Produto #${index + 1}`}</TableCell>
-                          <TableCell className="text-right">{item.totalDiscountPercentage}%</TableCell>
-                          <TableCell className="text-right font-medium text-red-600">{item.discount}%</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            </div>
+            <p className="text-sm bg-gray-50 border border-gray-200 rounded p-3">
+              {notes}
+            </p>
           </CardContent>
         </Card>
       )}
 
-      {/* ... keep existing code for remaining content */}
+      {order && <InvoiceCard order={order} onDelete={handleInvoicePdfDelete} />}
+
+      <div>
+        {isLoadingDuplicatas ? (
+          <div className="my-3 text-center text-sm text-gray-400">Carregando duplicatas...</div>
+        ) : (
+          <DuplicatasCard 
+            duplicatas={duplicatas} 
+            onAdd={handleCreateDuplicata} 
+            onEdit={handleEditDuplicata} 
+            onDelete={handleDeleteDuplicata}
+            onDeletePdf={handleDeleteBoletoPdf}
+            onViewDetails={handleViewDuplicataDetails}
+          />
+        )}
+      </div>
+
+      <DuplicataForm
+        value={editingDuplicata as Duplicata}
+        lookup={lookup}
+        isSaving={isSavingDuplicata}
+        invoiceNumber={order?.invoiceNumber || ""}
+        onSave={handleSaveDuplicata}
+        onCancel={() => {
+          setShowDuplicataForm(false);
+          setEditingDuplicata(null);
+        }}
+        onDeletePdf={
+          editingDuplicata?.pdfBoletoPath
+            ? async () => handleDeleteBoletoPdf(editingDuplicata!)
+            : undefined
+        }
+        isOpen={showDuplicataForm}
+      />
+
+      <DuplicataDetailsDialog 
+        duplicata={selectedDuplicata} 
+        open={showDuplicataDetails} 
+        onClose={handleCloseDuplicataDetails}
+      />
     </div>
   );
 };
