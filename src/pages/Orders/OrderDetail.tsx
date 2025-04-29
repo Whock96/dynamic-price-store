@@ -796,4 +796,71 @@ const OrderDetail = () => {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>Tipo de Meia Nota:</span>
-                      <span>{order.halfInvoiceType === 'quantity' ? 'Na Quantidade' : '
+                      <span>{order.halfInvoiceType === 'quantity' ? 'Na Quantidade' : 'No Preço'}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {shouldShowDiscountCard && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-medium">Descontos e Acréscimos Aplicados</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Discount options applied globally */}
+              {appliedDiscounts && appliedDiscounts.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Descontos Globais</h3>
+                  <div className="bg-gray-50 p-3 rounded-md">
+                    <ul className="list-disc pl-5 space-y-1">
+                      {appliedDiscounts.map((discount: any, index: number) => (
+                        <li key={index} className="text-sm">
+                          {discount.name}: <span className="font-medium text-red-600">{discount.value}%</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+
+              {/* Special discounts per item */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Descontos por Item</h3>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Produto</TableHead>
+                        <TableHead className="text-right">Desconto Padrão</TableHead>
+                        <TableHead className="text-right">Desconto Especial</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {items.filter(item => item.discount !== item.totalDiscountPercentage).map((item: any, index: number) => (
+                        <TableRow key={index}>
+                          <TableCell>{item.product?.name || `Produto #${index + 1}`}</TableCell>
+                          <TableCell className="text-right">{item.totalDiscountPercentage}%</TableCell>
+                          <TableCell className="text-right font-medium text-red-600">{item.discount}%</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ... keep existing code for remaining content */}
+    </div>
+  );
+};
+
+export default OrderDetail;
