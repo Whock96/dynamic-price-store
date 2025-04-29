@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import * as ReactDOM from 'react-dom/client';
@@ -6,7 +5,8 @@ import { useCompany } from '@/context/CompanyContext';
 import { PrintContextWrapper } from '@/components/orders/PrintContextWrapper';
 import { 
   ArrowLeft, Edit, Printer, Truck, Package, 
-  Calendar, User, Phone, Mail, MapPin, Receipt, ShoppingCart
+  Calendar, User, Phone, Mail, MapPin, Receipt, ShoppingCart,
+  Plus, Download, Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,9 +49,11 @@ const OrderDetail = () => {
   const [isLoadingTransport, setIsLoadingTransport] = useState(false);
   const [totalOrderWeight, setTotalOrderWeight] = useState(0);
   const [totalVolumes, setTotalVolumes] = useState(0);
+  
+  // Duplicatas states
   const [duplicatas, setDuplicatas] = useState<Duplicata[]>([]);
   const [isLoadingDuplicatas, setIsLoadingDuplicatas] = useState(true);
-  const [showDuplicataForm, setShowDuplicataForm] = useState(false);
+  const [isAddingDuplicata, setIsAddingDuplicata] = useState(false);
   const [editingDuplicata, setEditingDuplicata] = useState<Duplicata | null>(null);
   const [isSavingDuplicata, setIsSavingDuplicata] = useState(false);
   const [isLoadingLookup, setIsLoadingLookup] = useState(true);
@@ -66,6 +68,7 @@ const OrderDetail = () => {
     bancos: [],
     statuses: []
   });
+  
   const { companyInfo } = useCompany();
 
   const formatPhoneNumber = (phone: string | undefined | null) => {
@@ -115,6 +118,46 @@ const OrderDetail = () => {
       }
     }
   }, [id, getOrderById, supabaseOrder, isSupabaseLoading]);
+
+  // Fetch lookup tables for duplicatas
+  useEffect(() => {
+    const loadLookups = async () => {
+      setIsLoadingLookup(true);
+      try {
+        const [modos, portadores, bancos, statuses] = await Promise.all([
+          fetchRefTable("modo_pagamento"),
+          fetchRefTable("portador"),
+          fetchRefTable("bancos"),
+          fetchRefTable("payment_status"),
+        ]);
+        setLookup({ modos, portadores, bancos, statuses });
+      } catch (error: any) {
+        console.error('Error loading lookup tables:', error);
+        toast.error("Erro ao carregar opções para duplicatas");
+      } finally {
+        setIsLoadingLookup(false);
+      }
+    };
+    
+    loadLookups();
+  }, []);
+
+  // Fetch duplicatas when order is loaded
+  useEffect(() => {
+    if (order?.id) {
+      setIsLoadingDuplicatas(true);
+      fetchDuplicatas(order.id)
+        .then(data => {
+          console.log("[ORDER DETAIL] Duplicatas loaded:", data.length);
+          setDuplicatas(data);
+        })
+        .catch(err => {
+          console.error("Error fetching duplicatas:", err);
+          toast.error("Erro ao carregar duplicatas");
+        })
+        .finally(() => setIsLoadingDuplicatas(false));
+    }
+  }, [order?.id]);
 
   const calculateOrderTotals = (items: any[]) => {
     if (!items || items.length === 0) {
@@ -297,54 +340,63 @@ const OrderDetail = () => {
   const getStatusBadge = (status: string) => {
     return <OrderStatusBadge status={status as any} />;
   };
-
-  useEffect(() => {
-    if (order?.id) {
-      setIsLoadingDuplicatas(true);
-      fetchDuplicatas(order.id)
-        .then(data => {
-          console.log("[ORDER DETAIL] Duplicatas loaded:", data.length);
-          setDuplicatas(data);
-        })
-        .catch(err => {
-          console.error("Error fetching duplicatas:", err);
-          toast.error("Erro ao carregar duplicatas");
-        })
-        .finally(() => setIsLoadingDuplicatas(false));
-    }
-  }, [order?.id]);
-
-  useEffect(() => {
-    async function loadLookups() {
-      setIsLoadingLookup(true);
-      try {
-        const [modos, portadores, bancos, statuses] = await Promise.all([
-          fetchRefTable("modo_pagamento"),
-          fetchRefTable("portador"),
-          fetchRefTable("bancos"),
-          fetchRefTable("payment_status"),
-        ]);
-        setLookup({ modos, portadores, bancos, statuses });
-      } catch (err) {
-        console.error("Error loading lookup tables:", err);
-        toast.error("Erro ao carregar opções para duplicatas");
-      } finally {
-        setIsLoadingLookup(false);
-      }
-    }
-    loadLookups();
-  }, []);
-
+  
+  // Duplicata management functions
   const handleCreateDuplicata = () => {
     setEditingDuplicata(null);
-    setShowDuplicataForm(true);
+    setIsAddingDuplicata(true);
   };
 
   const handleEditDuplicata = (duplicata: Duplicata) => {
     setEditingDuplicata(duplicata);
-    setShowDuplicataForm(true);
+    setIsAddingDuplicata(true);
   };
 
+  const handleDeleteDuplicata = async (duplicata: Duplicata) => {
+    if (!window.confirm("Tem certeza que deseja excluir esta duplicata?")) return;
+    
+    try {
+      // Delete associated PDF if it exists
+      if (duplicata.pdfBoletoPath) {
+        console.log("[DUPLICATA DELETE] Deleting boleto PDF before deleting duplicata:", duplicata.pdfBoletoPath);
+        await deleteBoletoPdf(duplicata.pdfBoletoPath);
+      }
+      
+      // Delete the duplicata from database
+      await deleteDuplicata(duplicata.id);
+      toast.success("Duplicata excluída com sucesso");
+      
+      // Refresh duplicatas list if order ID exists
+      if (order?.id) {
+        await fetchDuplicatas(order.id).then(setDuplicatas);
+      }
+    } catch (err: any) {
+      console.error("[DUPLICATA DELETE] Error deleting duplicata:", err);
+      toast.error("Erro ao excluir duplicata");
+    }
+  };
+
+  const handleDeleteBoletoPdf = async (duplicata: Duplicata) => {
+    if (!duplicata.pdfBoletoPath) return;
+    if (!window.confirm("Tem certeza que deseja excluir o PDF do boleto?")) return;
+    
+    try {
+      console.log("[DUPLICATA PDF] Deleting boleto PDF:", duplicata.pdfBoletoPath);
+      await deleteBoletoPdf(duplicata.pdfBoletoPath);
+      await upsertDuplicata({ id: duplicata.id, pdfBoletoPath: null });
+      
+      // Refresh duplicatas list if order ID exists
+      if (order?.id) {
+        await fetchDuplicatas(order.id).then(setDuplicatas);
+      }
+      
+      toast.success("PDF excluído com sucesso");
+    } catch (err) {
+      console.error("[DUPLICATA PDF] Error deleting PDF:", err);
+      toast.error("Erro ao excluir PDF");
+    }
+  };
+  
   const handleSaveDuplicata = async (form: Partial<Duplicata>, file?: File | null) => {
     if (!order?.id) {
       toast.error("ID do pedido não encontrado");
@@ -413,7 +465,7 @@ const OrderDetail = () => {
       // Save duplicata to database
       await upsertDuplicata(payload);
       toast.success("Duplicata salva com sucesso!");
-      setShowDuplicataForm(false);
+      setIsAddingDuplicata(false);
       setEditingDuplicata(null);
       
       // Refresh duplicatas list
@@ -424,51 +476,6 @@ const OrderDetail = () => {
       toast.error("Erro ao salvar duplicata: " + (err.message || "Erro desconhecido"));
     } finally {
       setIsSavingDuplicata(false);
-    }
-  };
-
-  const handleDeleteDuplicata = async (duplicata: Duplicata) => {
-    if (!window.confirm("Tem certeza que deseja excluir esta duplicata?")) return;
-    
-    try {
-      // Delete associated PDF if it exists
-      if (duplicata.pdfBoletoPath) {
-        console.log("[DUPLICATA DELETE] Deleting boleto PDF before deleting duplicata:", duplicata.pdfBoletoPath);
-        await deleteBoletoPdf(duplicata.pdfBoletoPath);
-      }
-      
-      // Delete the duplicata from database
-      await deleteDuplicata(duplicata.id);
-      toast.success("Duplicata excluída com sucesso");
-      
-      // Refresh duplicatas list if order ID exists
-      if (order?.id) {
-        await fetchDuplicatas(order.id).then(setDuplicatas);
-      }
-    } catch (err: any) {
-      console.error("[DUPLICATA DELETE] Error deleting duplicata:", err);
-      toast.error("Erro ao excluir duplicata");
-    }
-  };
-
-  const handleDeleteBoletoPdf = async (duplicata: Duplicata) => {
-    if (!duplicata.pdfBoletoPath) return;
-    if (!window.confirm("Tem certeza que deseja excluir o PDF do boleto?")) return;
-    
-    try {
-      console.log("[DUPLICATA PDF] Deleting boleto PDF:", duplicata.pdfBoletoPath);
-      await deleteBoletoPdf(duplicata.pdfBoletoPath);
-      await upsertDuplicata({ id: duplicata.id, pdfBoletoPath: null });
-      
-      // Refresh duplicatas list if order ID exists
-      if (order?.id) {
-        await fetchDuplicatas(order.id).then(setDuplicatas);
-      }
-      
-      toast.success("PDF excluído com sucesso");
-    } catch (err) {
-      console.error("[DUPLICATA PDF] Error deleting PDF:", err);
-      toast.error("Erro ao excluir PDF");
     }
   };
 
@@ -1053,10 +1060,10 @@ const OrderDetail = () => {
               invoiceNumber={order?.invoiceNumber || ""}
               onSave={handleSaveDuplicata}
               onCancel={() => {
-                setShowDuplicataForm(false);
+                setIsAddingDuplicata(false);
                 setEditingDuplicata(null);
               }}
-              isOpen={showDuplicataForm}
+              isOpen={isAddingDuplicata}
             />
           </>
         )}
