@@ -58,6 +58,13 @@ const DuplicatasCard: React.FC<Props> = ({
   onViewDetails,
   readOnly = false 
 }) => {
+  // Ordenar duplicatas por data de vencimento em ordem crescente
+  const sortedDuplicatas = [...duplicatas].sort((a, b) => {
+    if (!a.dataVencimento) return 1;
+    if (!b.dataVencimento) return -1;
+    return new Date(a.dataVencimento).getTime() - new Date(b.dataVencimento).getTime();
+  });
+  
   if (!duplicatas?.length && readOnly) {
     return (
       <Card>
@@ -104,8 +111,8 @@ const DuplicatasCard: React.FC<Props> = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {duplicatas.length > 0 ? (
-                duplicatas.map((d) => {
+              {sortedDuplicatas.length > 0 ? (
+                sortedDuplicatas.map((d) => {
                   const isOverdue = isDuplicataOverdue(d);
                   return (
                     <TableRow key={d.id} className="hover:bg-gray-50 transition">
