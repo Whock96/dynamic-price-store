@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Download, Trash2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import { formatCurrency, formatDate } from '@/utils/formatters';
@@ -16,6 +16,20 @@ import { useOrderData } from '@/hooks/use-order-data';
 import { supabase, uploadInvoicePdf, deleteInvoicePdf } from '@/integrations/supabase/client';
 import { User, TransportCompany, Order } from '@/types/types';
 import { FileUpload } from '@/components/ui/file-upload';
+import DuplicataForm from "@/components/orders/DuplicataForm";
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { fetchRefTable, fetchDuplicatas, upsertDuplicata, deleteDuplicata } from "@/integrations/supabase/duplicata";
+import { uploadBoletoPdf, deleteBoletoPdf } from "@/integrations/supabase/boletoPdfService";
+import { Duplicata, RefTable } from "@/types/duplicata";
 
 const OrderUpdate = () => {
   const { id } = useParams<{ id: string }>();
@@ -39,6 +53,24 @@ const OrderUpdate = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isDeletingPdf, setIsDeletingPdf] = useState(false);
   
+  const [duplicatas, setDuplicatas] = useState<Duplicata[]>([]);
+  const [isLoadingDuplicatas, setIsLoadingDuplicatas] = useState(true);
+  const [showDuplicataForm, setShowDuplicataForm] = useState(false);
+  const [editingDuplicata, setEditingDuplicata] = useState<Duplicata | null>(null);
+  const [isSavingDuplicata, setIsSavingDuplicata] = useState(false);
+  const [isLoadingLookup, setIsLoadingLookup] = useState(true);
+  const [lookup, setLookup] = useState<{
+    modos: RefTable[];
+    portadores: RefTable[];
+    bancos: RefTable[];
+    statuses: RefTable[];
+  }>({
+    modos: [],
+    portadores: [],
+    bancos: [],
+    statuses: []
+  });
+
   const { order, isLoading, fetchOrderData } = useOrderData(id);
 
   useEffect(() => {
@@ -111,7 +143,7 @@ const OrderUpdate = () => {
       setInvoiceNumber(order.invoiceNumber || '');
       setInvoicePdfPath(order.invoicePdfPath || null);
       
-      console.log("[ORDER UPDATE] Loading order data:", {
+      console.log("[ORDER UPDATE] Carregando dados do pedido:", {
         orderId: order.id,
         invoiceNumber: order.invoiceNumber,
         invoicePdfPath: order.invoicePdfPath
@@ -177,20 +209,20 @@ const OrderUpdate = () => {
     if (invoicePdf) {
       setIsUploading(true);
       try {
-        console.log('[ORDER UPDATE] Trying to upload invoice PDF:', invoicePdf.name);
+        console.log('[ORDER UPDATE] Tentando fazer upload do PDF da nota fiscal:', invoicePdf.name);
         const publicUrl = await uploadInvoicePdf(invoicePdf, id);
-        console.log('[ORDER UPDATE] Upload successful, URL received:', publicUrl);
+        console.log('[ORDER UPDATE] Upload bem-sucedido, URL recebida:', publicUrl);
         
         if (!publicUrl) {
-          throw new Error('Failed to upload invoice file');
+          throw new Error('Falha ao fazer upload do arquivo da nota fiscal');
         }
         
         updates.invoicePdfPath = publicUrl;
-        console.log('[ORDER UPDATE] Invoice PDF URL updated:', publicUrl);
+        console.log('[ORDER UPDATE] URL do PDF da nota fiscal atualizada:', publicUrl);
       } catch (error: any) {
-        console.error('[ORDER UPDATE] Error uploading invoice PDF:', error);
-        let errorMessage = error.message || 'Unknown error';
-        toast.error(`Error uploading invoice file: ${errorMessage}`);
+        console.error('[ORDER UPDATE] Erro no upload do PDF da nota fiscal:', error);
+        let errorMessage = error.message || 'Erro desconhecido';
+        toast.error(`Erro ao fazer upload do arquivo da nota fiscal: ${errorMessage}`);
         setIsUploading(false);
         return;
       } finally {
@@ -200,7 +232,7 @@ const OrderUpdate = () => {
 
     if (Object.keys(updates).length > 0) {
       try {
-        console.log('[ORDER UPDATE] Updating order with new data:', updates);
+        console.log('[ORDER UPDATE] Atualizando pedido com novos dados:', updates);
         await updateOrder(id, updates);
         toast.success('Pedido atualizado com sucesso');
         navigate(`/orders/${id}`);
@@ -219,11 +251,11 @@ const OrderUpdate = () => {
     
     setIsDeletingPdf(true);
     try {
-      console.log('[INVOICE PDF] Trying to delete invoice PDF:', invoicePdfPath);
+      console.log('[INVOICE PDF] Tentando excluir PDF da nota fiscal:', invoicePdfPath);
       const deleteSuccess = await deleteInvoicePdf(invoicePdfPath);
       
       if (!deleteSuccess) {
-        throw new Error('Failed to delete invoice PDF file');
+        throw new Error('Falha ao excluir o arquivo PDF da nota fiscal');
       }
       
       await updateOrder(id, { invoicePdfPath: null });
@@ -231,15 +263,15 @@ const OrderUpdate = () => {
       setInvoicePdfPath(null);
       setInvoicePdf(null);
       
-      toast.success('Invoice PDF file deleted successfully');
-      console.log('[INVOICE PDF] Invoice PDF deleted successfully');
+      toast.success('Arquivo PDF da nota fiscal excluído com sucesso');
+      console.log('[INVOICE PDF] PDF da nota fiscal excluído com sucesso');
       
       if (fetchOrderData) {
         await fetchOrderData();
       }
     } catch (error: any) {
-      console.error('[INVOICE PDF] Error deleting invoice PDF:', error);
-      toast.error(`Error deleting invoice file: ${error.message || 'Unknown error'}`);
+      console.error('[INVOICE PDF] Erro ao excluir PDF da nota fiscal:', error);
+      toast.error(`Erro ao excluir o arquivo da nota fiscal: ${error.message || 'Erro desconhecido'}`);
     } finally {
       setIsDeletingPdf(false);
     }
@@ -254,6 +286,124 @@ const OrderUpdate = () => {
   const handlePaymentMethodChange = (value: string) => {
     if (value === 'cash' || value === 'credit') {
       setPaymentMethod(value);
+    }
+  };
+
+  const handleCreateDuplicata = () => {
+    setEditingDuplicata(null);
+    setShowDuplicataForm(true);
+  };
+
+  const handleEditDuplicata = (dup: Duplicata) => {
+    setEditingDuplicata(dup);
+    setShowDuplicataForm(true);
+  };
+
+  const handleSaveDuplicata = async (form: Partial<Duplicata>, file?: File | null) => {
+    setIsSavingDuplicata(true);
+    
+    console.log("[DUPLICATA SAVE] Início do salvamento da duplicata", { 
+      temArquivo: !!file,
+      pdfPathOriginal: form.pdfBoletoPath,
+      arquivoNome: file?.name
+    });
+    
+    try {
+      let pdfBoletoPath = form.pdfBoletoPath;
+      const uploadId = form.id || `${id}-${Date.now()}`;
+
+      if (file) {
+        try {
+          console.log("[DUPLICATA SAVE] Iniciando upload do boleto PDF:", {
+            fileName: file.name,
+            fileSize: file.size,
+            duplicataId: uploadId
+          });
+          
+          pdfBoletoPath = await uploadBoletoPdf(file, uploadId);
+          
+          console.log("[DUPLICATA SAVE] Resultado do upload do PDF do boleto:", {
+            novoPath: pdfBoletoPath,
+            uploadId,
+          });
+          
+          if (!pdfBoletoPath) {
+            throw new Error("Upload do boleto PDF falhou: A URL pública não foi retornada.");
+          }
+        } catch (uploadError: any) {
+          console.error("[DUPLICATA SAVE] Falha no upload do boleto PDF:", uploadError);
+          toast.error("Erro ao fazer upload do PDF da duplicata. Tente novamente.");
+          setIsSavingDuplicata(false);
+          return;
+        }
+      } 
+      else if (form.pdfBoletoPath === null || form.pdfBoletoPath === "") {
+        pdfBoletoPath = null;
+        console.log("[DUPLICATA SAVE] Removendo PDF da duplicata");
+      }
+
+      const payload: Partial<Duplicata> = {
+        ...form,
+        orderId: id || '',
+        pdfBoletoPath: pdfBoletoPath,
+      };
+      
+      if (form.id) payload.id = form.id;
+
+      console.log("[DUPLICATA SAVE] Objeto duplicata a ser salvo:", {
+        id: payload.id,
+        orderId: payload.orderId,
+        pdfBoletoPath: payload.pdfBoletoPath,
+        numeroDuplicata: payload.numeroDuplicata
+      });
+
+      await upsertDuplicata(payload);
+      toast.success("Duplicata salva com sucesso!");
+      setShowDuplicataForm(false);
+      setEditingDuplicata(null);
+      
+      console.log("[DUPLICATA SAVE] Atualizando lista de duplicatas");
+      if (id) {
+        await fetchDuplicatas(id).then(setDuplicatas);
+      }
+    } catch (err: any) {
+      console.error("[DUPLICATA SAVE] Erro ao salvar duplicata:", err);
+      toast.error("Erro ao salvar duplicata: " + (err.message || "Erro desconhecido"));
+    } finally {
+      setIsSavingDuplicata(false);
+    }
+  };
+
+  const handleDeleteDuplicata = async (dup: Duplicata) => {
+    if (!window.confirm("Excluir esta duplicata?")) return;
+    try {
+      if (dup.pdfBoletoPath) {
+        console.log("[DUPLICATA DELETE] Excluindo PDF do boleto antes de excluir duplicata:", dup.pdfBoletoPath);
+        await deleteBoletoPdf(dup.pdfBoletoPath);
+      }
+      await deleteDuplicata(dup.id);
+      toast.success("Duplicata excluída");
+      if (id) {
+        fetchDuplicatas(id).then(setDuplicatas);
+      }
+    } catch (err: any) {
+      toast.error("Erro ao excluir duplicata");
+    }
+  };
+
+  const handleDeleteBoletoPdf = async (dup: Duplicata) => {
+    if (!dup.pdfBoletoPath) return;
+    if (!window.confirm("Excluir o PDF do boleto?")) return;
+    try {
+      console.log("[DUPLICATA PDF] Excluindo PDF do boleto:", dup.pdfBoletoPath);
+      await deleteBoletoPdf(dup.pdfBoletoPath);
+      await upsertDuplicata({ id: dup.id, pdfBoletoPath: null });
+      if (id) {
+        fetchDuplicatas(id).then(setDuplicatas);
+      }
+      toast.success("PDF excluído");
+    } catch (err) {
+      toast.error("Erro ao excluir PDF");
     }
   };
 
@@ -632,7 +782,7 @@ const OrderUpdate = () => {
               <Label>Arquivo PDF da NFe</Label>
               <FileUpload
                 onChange={(file) => {
-                  console.log('[ORDER UPDATE] Invoice file selected:', file?.name);
+                  console.log('[ORDER UPDATE] Arquivo da nota fiscal selecionado:', file?.name);
                   setInvoicePdf(file);
                 }}
                 value={invoicePdfPath}
