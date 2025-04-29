@@ -886,6 +886,7 @@ export type Database = {
       }
       users: {
         Row: {
+          commission: number | null
           created_at: string
           email: string | null
           id: string
@@ -897,6 +898,7 @@ export type Database = {
           username: string
         }
         Insert: {
+          commission?: number | null
           created_at?: string
           email?: string | null
           id?: string
@@ -908,6 +910,7 @@ export type Database = {
           username: string
         }
         Update: {
+          commission?: number | null
           created_at?: string
           email?: string | null
           id?: string

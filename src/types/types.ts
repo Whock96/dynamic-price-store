@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   username: string;
@@ -7,6 +8,7 @@ export interface User {
   email: string;
   createdAt: Date;
   userTypeId: string;
+  commission?: number;
 }
 
 export interface Permission {

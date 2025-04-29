@@ -62,6 +62,7 @@ interface UserData {
   email: string | null;
   password?: string;
   user_type_id: string;
+  commission: number | null;
   user_type?: {
     id: string;
     name: string;
@@ -95,6 +96,7 @@ const UserManagement = () => {
     password: '',
     confirmPassword: '',
     isActive: true,
+    commission: 0,
   });
 
   // Use memoized options object to prevent unnecessary re-renders
@@ -151,6 +153,7 @@ const UserManagement = () => {
         password: '',
         confirmPassword: '',
         isActive: user.is_active,
+        commission: user.commission || 0,
       });
     } else {
       setIsEditMode(false);
@@ -164,6 +167,7 @@ const UserManagement = () => {
         password: '',
         confirmPassword: '',
         isActive: true,
+        commission: 0,
       });
     }
     
@@ -245,6 +249,7 @@ const UserManagement = () => {
           email: formData.email || null,
           user_type_id: formData.userTypeId,
           is_active: formData.isActive,
+          commission: Number(formData.commission),
           updated_at: new Date().toISOString()
         };
         
@@ -263,6 +268,7 @@ const UserManagement = () => {
           password: formData.password,
           user_type_id: formData.userTypeId,
           is_active: formData.isActive,
+          commission: Number(formData.commission),
         };
         
         console.log('User data to create:', userData);
@@ -406,6 +412,7 @@ const UserManagement = () => {
                   <TableHead>Username</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Tipo</TableHead>
+                  <TableHead>Comissão</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Data de Cadastro</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -418,6 +425,7 @@ const UserManagement = () => {
                     <TableCell>{user.username}</TableCell>
                     <TableCell>{user.email || '-'}</TableCell>
                     <TableCell>{user.user_type ? getUserTypeBadge(user.user_type.name) : getUserTypeBadge()}</TableCell>
+                    <TableCell>{user.commission !== null ? `${user.commission}%` : '-'}</TableCell>
                     <TableCell>
                       {user.is_active ? (
                         <Badge className="bg-green-100 text-green-800">Ativo</Badge>
@@ -577,18 +585,34 @@ const UserManagement = () => {
                   </div>
                 </div>
                 
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="isActive"
-                    name="isActive"
-                    checked={formData.isActive}
-                    onChange={handleCheckboxChange}
-                    className="h-4 w-4 rounded border-gray-300 text-ferplas-600 focus:ring-ferplas-500"
-                  />
-                  <Label htmlFor="isActive" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    Usuário ativo
-                  </Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="commission">Comissão (%)</Label>
+                    <Input
+                      id="commission"
+                      name="commission"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.commission}
+                      onChange={handleInputChange}
+                      placeholder="Ex: 5.5"
+                    />
+                  </div>
+                  
+                  <div className="flex items-center space-x-2 mt-8">
+                    <input
+                      type="checkbox"
+                      id="isActive"
+                      name="isActive"
+                      checked={formData.isActive}
+                      onChange={handleCheckboxChange}
+                      className="h-4 w-4 rounded border-gray-300 text-ferplas-600 focus:ring-ferplas-500"
+                    />
+                    <Label htmlFor="isActive" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      Usuário ativo
+                    </Label>
+                  </div>
                 </div>
                 
                 {!isEditMode && (
