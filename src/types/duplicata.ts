@@ -8,6 +8,7 @@ export interface Duplicata {
   valor: number;
   valorAcrescimo: number;
   valorDesconto: number;
+  valorFinal: number;
   modoPagamentoId: string;
   portadorId: string;
   bancoId: string;

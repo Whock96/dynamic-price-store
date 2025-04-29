@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ const DuplicataForm: React.FC<Props> = ({
   const [data, setData] = useState<Partial<Duplicata>>({});
   const [showPayment, setShowPayment] = useState(false);
   const [numeroComplemento, setNumeroComplemento] = useState("");
+  const [valorFinal, setValorFinal] = useState<number>(0);
   
   const { 
     boletoPdfFile, 
@@ -63,10 +65,12 @@ const DuplicataForm: React.FC<Props> = ({
   useEffect(() => {
     console.log("[DUPLICATA FORM] Recebendo valor inicial:", {
       duplicataId: value?.id,
-      pdfBoletoPath: value?.pdfBoletoPath
+      pdfBoletoPath: value?.pdfBoletoPath,
+      valorFinal: value?.valorFinal
     });
     
     setData({ ...value });
+    setValorFinal(value?.valorFinal || 0);
     
     if (value?.numeroDuplicata && invoiceNumber) {
       const prefix = `${invoiceNumber}-`;
@@ -92,6 +96,17 @@ const DuplicataForm: React.FC<Props> = ({
     setShowPayment(s === "Pago" || s === "Pago Parcialmente");
   }, [data.paymentStatusId, lookup.statuses]);
 
+  // Calculate valor final whenever valor, acréscimo or desconto changes
+  useEffect(() => {
+    const valor = Number(data.valor || 0);
+    const acrescimo = Number(data.valorAcrescimo || 0);
+    const desconto = Number(data.valorDesconto || 0);
+    
+    const calculatedValorFinal = valor + acrescimo - desconto;
+    setValorFinal(calculatedValorFinal);
+    setData(prev => ({...prev, valorFinal: calculatedValorFinal}));
+  }, [data.valor, data.valorAcrescimo, data.valorDesconto]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -114,11 +129,15 @@ const DuplicataForm: React.FC<Props> = ({
     const formData = {
       ...data,
       numeroDuplicata: numeroDuplicataFinal,
+      valorFinal: valorFinal
     };
     
     console.log("[DUPLICATA FORM] Enviando formulário para salvar duplicata:", {
       numeroDuplicata: formData.numeroDuplicata,
       valor: formData.valor,
+      valorAcrescimo: formData.valorAcrescimo,
+      valorDesconto: formData.valorDesconto,
+      valorFinal: formData.valorFinal,
       pdfBoletoPath: formData.pdfBoletoPath,
       temArquivoParaUpload: !!boletoPdfFile,
       arquivoNome: boletoPdfFile?.name
@@ -185,7 +204,7 @@ const DuplicataForm: React.FC<Props> = ({
               <div />
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <Label>Valor (R$)</Label>
                 <Input
@@ -230,6 +249,15 @@ const DuplicataForm: React.FC<Props> = ({
                       valorDesconto: parseFloat(e.target.value) || 0,
                     }))
                   }
+                />
+              </div>
+              <div>
+                <Label>Valor Final (R$)</Label>
+                <Input
+                  type="number"
+                  readOnly
+                  className="bg-gray-100 text-ferplas-600 font-medium"
+                  value={valorFinal}
                 />
               </div>
             </div>

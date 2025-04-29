@@ -42,6 +42,7 @@ export async function fetchDuplicatas(orderId: string): Promise<Duplicata[]> {
     valor: d.valor,
     valorAcrescimo: d.valor_acrescimo,
     valorDesconto: d.valor_desconto,
+    valorFinal: d.valor_final,
     modoPagamentoId: d.modo_pagamento_id,
     portadorId: d.portador_id,
     bancoId: d.banco_id,
@@ -71,6 +72,7 @@ export async function upsertDuplicata(duplicata: Partial<Duplicata>) {
     valor: duplicata.valor,
     valor_acrescimo: duplicata.valorAcrescimo,
     valor_desconto: duplicata.valorDesconto,
+    valor_final: duplicata.valorFinal,
     modo_pagamento_id: duplicata.modoPagamentoId,
     portador_id: duplicata.portadorId,
     banco_id: duplicata.bancoId,
@@ -85,6 +87,7 @@ export async function upsertDuplicata(duplicata: Partial<Duplicata>) {
   console.log("[SUPABASE DUPLICATA] upsertDuplicata - Salvando duplicata:", {
     id: dbDuplicata.id,
     numero_duplicata: dbDuplicata.numero_duplicata,
+    valor_final: dbDuplicata.valor_final,
     pdf_boleto_path: dbDuplicata.pdf_boleto_path,
     data_tipada: typeof dbDuplicata.pdf_boleto_path,
   });

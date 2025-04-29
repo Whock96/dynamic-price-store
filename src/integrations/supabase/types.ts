@@ -279,6 +279,7 @@ export type Database = {
           valor: number
           valor_acrescimo: number
           valor_desconto: number
+          valor_final: number | null
           valor_recebido: number | null
         }
         Insert: {
@@ -299,6 +300,7 @@ export type Database = {
           valor?: number
           valor_acrescimo?: number
           valor_desconto?: number
+          valor_final?: number | null
           valor_recebido?: number | null
         }
         Update: {
@@ -319,6 +321,7 @@ export type Database = {
           valor?: number
           valor_acrescimo?: number
           valor_desconto?: number
+          valor_final?: number | null
           valor_recebido?: number | null
         }
         Relationships: [

@@ -80,6 +80,7 @@ const DuplicatasCard: React.FC<Props> = ({
                 <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Valor</TableHead>
                 <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Acresc.</TableHead>
                 <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Desconto</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Valor Final</TableHead>
                 <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Modo Pgto.</TableHead>
                 <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Portador</TableHead>
                 <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Banco</TableHead>
@@ -107,6 +108,7 @@ const DuplicatasCard: React.FC<Props> = ({
                     <TableCell className="px-4 py-3 border-t">{formatCurrency(d.valor)}</TableCell>
                     <TableCell className="px-4 py-3 border-t">{formatCurrency(d.valorAcrescimo)}</TableCell>
                     <TableCell className="px-4 py-3 border-t">{formatCurrency(d.valorDesconto)}</TableCell>
+                    <TableCell className="px-4 py-3 border-t font-medium text-ferplas-600">{formatCurrency(d.valorFinal)}</TableCell>
                     <TableCell className="px-4 py-3 border-t">{d.modoPagamento?.nome || '-'}</TableCell>
                     <TableCell className="px-4 py-3 border-t">{d.portador?.nome || '-'}</TableCell>
                     <TableCell className="px-4 py-3 border-t">{d.banco?.nome || '-'}</TableCell>
@@ -174,7 +176,7 @@ const DuplicatasCard: React.FC<Props> = ({
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={!readOnly ? 15 : 14} className="h-24 text-center">
+                  <TableCell colSpan={!readOnly ? 16 : 15} className="h-24 text-center">
                     <span className="text-muted-foreground">
                       Nenhuma duplicata cadastrada
                     </span>

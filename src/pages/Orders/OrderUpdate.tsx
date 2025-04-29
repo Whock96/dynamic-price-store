@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useOrders } from '@/context/OrderContext';
@@ -19,7 +20,7 @@ import { FileUpload } from '@/components/ui/file-upload';
 
 const OrderUpdate = () => {
   const { id } = useParams<{ id: string }>();
-  const { updateOrder, updateOrderStatus } = useOrders();
+  const { updateOrder } = useOrders();
   const navigate = useNavigate();
   const [status, setStatus] = useState<Order['status']>('pending');
   const [notes, setNotes] = useState<string>('');
