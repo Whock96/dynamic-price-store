@@ -53,6 +53,8 @@ export async function fetchDuplicatas(orderId: string): Promise<Duplicata[]> {
     pdfBoletoPath: d.pdf_boleto_path,
     createdAt: d.created_at,
     updatedAt: d.updated_at,
+    comissionDuplicata: d.comission_duplicata,
+    comissionValue: d.comission_value,
     modoPagamento: isRefTable(d.modo_pagamento) ? d.modo_pagamento : undefined,
     portador: isRefTable(d.portador) ? d.portador : undefined,
     banco: isRefTable(d.banco) ? d.banco : undefined,
@@ -81,6 +83,8 @@ export async function upsertDuplicata(duplicata: Partial<Duplicata>) {
     data_pagamento: duplicata.dataPagamento,
     banco_pagamento_id: duplicata.bancoPagamentoId,
     pdf_boleto_path: duplicata.pdfBoletoPath,
+    comission_duplicata: duplicata.comissionDuplicata,
+    comission_value: duplicata.comissionValue,
   };
 
   // Log detalhado para depuração
@@ -89,6 +93,8 @@ export async function upsertDuplicata(duplicata: Partial<Duplicata>) {
     numero_duplicata: dbDuplicata.numero_duplicata,
     valor_final: dbDuplicata.valor_final,
     pdf_boleto_path: dbDuplicata.pdf_boleto_path,
+    comission_duplicata: dbDuplicata.comission_duplicata,
+    comission_value: dbDuplicata.comission_value,
     data_tipada: typeof dbDuplicata.pdf_boleto_path,
   });
 

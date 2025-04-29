@@ -19,6 +19,8 @@ export interface Duplicata {
   pdfBoletoPath?: string | null;
   createdAt?: string;
   updatedAt?: string;
+  comissionDuplicata?: number; // Percentual de comissão
+  comissionValue?: number; // Valor em reais da comissão
   // Table lookups for selects
   modoPagamento?: RefTable;
   portador?: RefTable;

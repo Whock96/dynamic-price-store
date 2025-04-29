@@ -27,7 +27,7 @@ const DuplicataDetailsDialog: React.FC<DuplicataDetailsDialogProps> = ({ duplica
     <Dialog open={open} onOpenChange={(isOpen) => {
       if (!isOpen) onClose();
     }}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -65,6 +65,16 @@ const DuplicataDetailsDialog: React.FC<DuplicataDetailsDialogProps> = ({ duplica
             <div>
               <h4 className="font-medium text-sm text-muted-foreground">Valor de Desconto</h4>
               <p>{formatCurrency(duplicata.valorDesconto)}</p>
+            </div>
+            
+            <div>
+              <h4 className="font-medium text-sm text-muted-foreground">Comissão (%)</h4>
+              <p>{duplicata.comissionDuplicata ? `${duplicata.comissionDuplicata}%` : '0%'}</p>
+            </div>
+            
+            <div>
+              <h4 className="font-medium text-sm text-muted-foreground">Valor da Comissão</h4>
+              <p>{formatCurrency(duplicata.comissionValue)}</p>
             </div>
           </div>
           

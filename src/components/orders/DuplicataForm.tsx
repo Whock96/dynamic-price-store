@@ -6,6 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { FileUpload } from "@/components/ui/file-upload";
 import { Duplicata, RefTable } from "@/types/duplicata";
+import { Order } from "@/types/types";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   Dialog,
   DialogContent,
@@ -32,6 +34,8 @@ interface Props {
   isSaving: boolean;
   isOpen: boolean;
   invoiceNumber?: string | null;
+  order?: Order;
+  duplicatas?: Duplicata[];
 }
 
 const DuplicataForm: React.FC<Props> = ({
@@ -43,6 +47,8 @@ const DuplicataForm: React.FC<Props> = ({
   onDeletePdf,
   isOpen,
   invoiceNumber,
+  order,
+  duplicatas = []
 }) => {
   const [data, setData] = useState<Partial<Duplicata>>({});
   const [showPayment, setShowPayment] = useState(false);
@@ -66,7 +72,9 @@ const DuplicataForm: React.FC<Props> = ({
     console.log("[DUPLICATA FORM] Recebendo valor inicial:", {
       duplicataId: value?.id,
       pdfBoletoPath: value?.pdfBoletoPath,
-      valorFinal: value?.valorFinal
+      valorFinal: value?.valorFinal,
+      comissionDuplicata: value?.comissionDuplicata,
+      comissionValue: value?.comissionValue
     });
     
     setData({ ...value });
@@ -89,6 +97,55 @@ const DuplicataForm: React.FC<Props> = ({
       "";
     setShowPayment(s === "Pago" || s === "Pago Parcialmente");
   }, [value, invoiceNumber, lookup.statuses]);
+
+  // Efeito para buscar a comissão do vendedor quando criar uma nova duplicata
+  useEffect(() => {
+    const fetchUserCommission = async (userId: string) => {
+      try {
+        const { data: userData, error } = await supabase
+          .from('users')
+          .select('commission')
+          .eq('id', userId)
+          .single();
+          
+        if (error) throw error;
+        
+        if (userData && userData.commission !== null) {
+          console.log("[DUPLICATA FORM] Comissão do vendedor carregada:", userData.commission);
+          setData(prev => ({ ...prev, comissionDuplicata: userData.commission }));
+        }
+      } catch (error) {
+        console.error("[DUPLICATA FORM] Erro ao buscar comissão do vendedor:", error);
+      }
+    };
+    
+    // Se for uma nova duplicata e temos o ID do usuário no pedido
+    if (!value?.id && order?.userId) {
+      console.log("[DUPLICATA FORM] Buscando comissão do vendedor:", order.userId);
+      fetchUserCommission(order.userId);
+    }
+  }, [value?.id, order?.userId]);
+
+  // Efeito para calcular o valor da comissão
+  useEffect(() => {
+    if (order?.productsTotal && data.comissionDuplicata !== undefined) {
+      // Número total de duplicatas (incluindo esta se for nova)
+      const totalDuplicatas = duplicatas.length + (value?.id ? 0 : 1);
+      
+      if (totalDuplicatas > 0) {
+        const comissionValue = (data.comissionDuplicata / 100) * order.productsTotal / totalDuplicatas;
+        
+        console.log("[DUPLICATA FORM] Calculando valor da comissão:", {
+          comissionPercentage: data.comissionDuplicata,
+          productsTotal: order.productsTotal,
+          totalDuplicatas,
+          comissionValue
+        });
+        
+        setData(prev => ({ ...prev, comissionValue: Number(comissionValue.toFixed(2)) }));
+      }
+    }
+  }, [data.comissionDuplicata, order?.productsTotal, duplicatas.length, value?.id]);
 
   useEffect(() => {
     const s =
@@ -129,7 +186,9 @@ const DuplicataForm: React.FC<Props> = ({
     const formData = {
       ...data,
       numeroDuplicata: numeroDuplicataFinal,
-      valorFinal: valorFinal
+      valorFinal: valorFinal,
+      comissionDuplicata: data.comissionDuplicata || 0,
+      comissionValue: data.comissionValue || 0
     };
     
     console.log("[DUPLICATA FORM] Enviando formulário para salvar duplicata:", {
@@ -139,6 +198,8 @@ const DuplicataForm: React.FC<Props> = ({
       valorDesconto: formData.valorDesconto,
       valorFinal: formData.valorFinal,
       pdfBoletoPath: formData.pdfBoletoPath,
+      comissionDuplicata: formData.comissionDuplicata,
+      comissionValue: formData.comissionValue,
       temArquivoParaUpload: !!boletoPdfFile,
       arquivoNome: boletoPdfFile?.name
     });
@@ -261,6 +322,35 @@ const DuplicataForm: React.FC<Props> = ({
                 />
               </div>
             </div>
+
+            {/* Seção de comissão */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Comissão (%)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={data.comissionDuplicata || ""}
+                  onChange={(e) =>
+                    setData((v) => ({
+                      ...v,
+                      comissionDuplicata: parseFloat(e.target.value) || 0,
+                    }))
+                  }
+                />
+              </div>
+              <div>
+                <Label>Valor da Comissão (R$)</Label>
+                <Input
+                  type="number"
+                  readOnly
+                  className="bg-gray-100 text-ferplas-600 font-medium"
+                  value={data.comissionValue || 0}
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <Label>Modo Pagamento</Label>

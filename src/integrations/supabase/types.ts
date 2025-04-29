@@ -264,6 +264,8 @@ export type Database = {
         Row: {
           banco_id: string | null
           banco_pagamento_id: string | null
+          comission_duplicata: number | null
+          comission_value: number | null
           created_at: string | null
           data_emissao: string
           data_pagamento: string | null
@@ -285,6 +287,8 @@ export type Database = {
         Insert: {
           banco_id?: string | null
           banco_pagamento_id?: string | null
+          comission_duplicata?: number | null
+          comission_value?: number | null
           created_at?: string | null
           data_emissao: string
           data_pagamento?: string | null
@@ -306,6 +310,8 @@ export type Database = {
         Update: {
           banco_id?: string | null
           banco_pagamento_id?: string | null
+          comission_duplicata?: number | null
+          comission_value?: number | null
           created_at?: string | null
           data_emissao?: string
           data_pagamento?: string | null
