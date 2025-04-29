@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useOrders } from '@/context/OrderContext';
@@ -118,36 +119,6 @@ const OrderUpdate = () => {
       });
     }
   }, [order]);
-
-  useEffect(() => {
-    async function loadLookups() {
-      setIsLoadingLookup(true);
-      try {
-        const [modos, portadores, bancos, statuses] = await Promise.all([
-          fetchRefTable("modo_pagamento"),
-          fetchRefTable("portador"),
-          fetchRefTable("bancos"),
-          fetchRefTable("payment_status"),
-        ]);
-        setLookup({ modos, portadores, bancos, statuses });
-      } catch (err) {
-        toast.error("Erro ao carregar opções para duplicatas");
-      } finally {
-        setIsLoadingLookup(false);
-      }
-    }
-    loadLookups();
-  }, []);
-
-  useEffect(() => {
-    if (id) {
-      setIsLoadingDuplicatas(true);
-      fetchDuplicatas(id)
-        .then(setDuplicatas)
-        .catch((e) => toast.error("Erro ao buscar duplicatas"))
-        .finally(() => setIsLoadingDuplicatas(false));
-    }
-  }, [id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -488,125 +459,6 @@ const OrderUpdate = () => {
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Duplicatas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoadingLookup || isLoadingDuplicatas ? (
-            <div className="py-4 text-sm text-muted-foreground">Carregando...</div>
-          ) : (
-            <>
-              <div className="mb-4 flex gap-2">
-                <Button onClick={handleCreateDuplicata} size="sm">
-                  Adicionar Duplicata
-                </Button>
-              </div>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Número</TableHead>
-                      <TableHead>Emissão</TableHead>
-                      <TableHead>Vencimento</TableHead>
-                      <TableHead>Valor</TableHead>
-                      <TableHead>Acresc.</TableHead>
-                      <TableHead>Desconto</TableHead>
-                      <TableHead>Modo Pgto.</TableHead>
-                      <TableHead>Portador</TableHead>
-                      <TableHead>Banco</TableHead>
-                      <TableHead>Situação</TableHead>
-                      <TableHead>Valor Recebido</TableHead>
-                      <TableHead>Data Pgto</TableHead>
-                      <TableHead>Banco Pgto</TableHead>
-                      <TableHead>Boleto PDF</TableHead>
-                      <TableHead>Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {duplicatas.map((d) => (
-                      <TableRow key={d.id}>
-                        <TableCell>{d.numeroDuplicata}</TableCell>
-                        <TableCell>{d.dataEmissao ? format(new Date(d.dataEmissao), "dd/MM/yyyy", { locale: ptBR }) : '-'}</TableCell>
-                        <TableCell>{d.dataVencimento ? format(new Date(d.dataVencimento), "dd/MM/yyyy", { locale: ptBR }) : '-'}</TableCell>
-                        <TableCell>{formatCurrency(d.valor)}</TableCell>
-                        <TableCell>{formatCurrency(d.valorAcrescimo)}</TableCell>
-                        <TableCell>{formatCurrency(d.valorDesconto)}</TableCell>
-                        <TableCell>{d.modoPagamento?.nome || '-'}</TableCell>
-                        <TableCell>{d.portador?.nome || '-'}</TableCell>
-                        <TableCell>{d.banco?.nome || '-'}</TableCell>
-                        <TableCell>{d.paymentStatus?.nome || '-'}</TableCell>
-                        <TableCell>{d.valorRecebido !== undefined ? formatCurrency(d.valorRecebido) : '-'}</TableCell>
-                        <TableCell>{d.dataPagamento ? format(new Date(d.dataPagamento), "dd/MM/yyyy", { locale: ptBR }) : '-'}</TableCell>
-                        <TableCell>{d.bancoPagamento?.nome || '-'}</TableCell>
-                        <TableCell>
-                          {d.pdfBoletoPath ? (
-                            <a href={d.pdfBoletoPath} target="_blank" rel="noopener noreferrer">
-                              <Button size="icon" variant="ghost" className="hover:bg-ferplas-50" title="Baixar PDF">
-                                <Download size={18} />
-                              </Button>
-                            </a>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                          {d.pdfBoletoPath && (
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => handleDeleteBoletoPdf(d)}
-                              title="Excluir PDF"
-                            >
-                              <Trash2 size={16} />
-                            </Button>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Button size="sm" variant="outline" onClick={() => handleEditDuplicata(d)}>
-                            Editar
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => handleDeleteDuplicata(d)}
-                            title="Excluir"
-                          >
-                            <Trash2 size={16} />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {duplicatas.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={15} className="text-center py-8 text-muted-foreground">
-                          Nenhuma duplicata cadastrada.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-              <DuplicataForm
-                value={editingDuplicata as Duplicata}
-                lookup={lookup}
-                isSaving={isSavingDuplicata}
-                invoiceNumber={order?.invoiceNumber || ""}
-                onSave={handleSaveDuplicata}
-                onCancel={() => {
-                  setShowDuplicataForm(false);
-                  setEditingDuplicata(null);
-                }}
-                onDeletePdf={
-                  editingDuplicata?.pdfBoletoPath
-                    ? async () => handleDeleteBoletoPdf(editingDuplicata!)
-                    : undefined
-                }
-                isOpen={showDuplicataForm}
-              />
-            </>
-          )}
         </CardContent>
       </Card>
 
