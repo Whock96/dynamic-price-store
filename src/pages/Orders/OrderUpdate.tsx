@@ -147,43 +147,47 @@ const OrderUpdate = () => {
   };
 
   const handleSubmit = async () => {
-    if (!id || !order) return;
+    if (!id || !order) {
+      toast.error('Dados do pedido não encontrados');
+      return;
+    }
     
     try {
       setIsUploading(true);
       
-      let finalInvoicePdfPath = invoicePdfPath;
-      
-      // Upload do PDF da nota fiscal, se houver
+      // Gerenciar upload do PDF se houver
+      let pdfPath = invoicePdfPath;
       if (invoicePdf) {
-        finalInvoicePdfPath = await uploadInvoicePdf(invoicePdf);
+        pdfPath = await uploadInvoicePdf(invoicePdf);
       }
       
-      // Dados para atualização do pedido
-      const updateData = {
+      // Preparar dados para atualização
+      const orderUpdateData: Partial<Order> = {
         status,
         notes,
         shipping,
         paymentMethod,
-        paymentTerms,
+        paymentTerms: paymentMethod === 'credit' ? paymentTerms : '',
         userId: selectedSalespersonId !== 'none' ? selectedSalespersonId : null,
         transportCompanyId: selectedTransportCompanyId !== 'none' ? selectedTransportCompanyId : null,
         invoiceNumber,
-        invoicePdfPath: finalInvoicePdfPath
+        invoicePdfPath: pdfPath
       };
       
-      // Remove propriedades nulas para não sobrescrever com null
-      Object.keys(updateData).forEach(key => {
-        if (updateData[key as keyof typeof updateData] === null) {
-          delete updateData[key as keyof typeof updateData];
+      // Remover campos nulos
+      Object.keys(orderUpdateData).forEach(key => {
+        const typedKey = key as keyof typeof orderUpdateData;
+        if (orderUpdateData[typedKey] === null) {
+          delete orderUpdateData[typedKey];
         }
       });
       
-      // Fixed: Pass the two arguments separately - orderId and updateData
-      await updateOrder(id, updateData as Partial<Order>);
+      // Chamada explícita com os dois argumentos separados
+      const orderId = id;
+      await updateOrder(orderId, orderUpdateData);
       
       toast.success('Pedido atualizado com sucesso');
-      navigate(`/orders/${id}`);
+      navigate(`/orders/${orderId}`);
     } catch (error) {
       console.error("Error updating order:", error);
       toast.error('Erro ao atualizar o pedido');
