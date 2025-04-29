@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useOrders } from '@/context/OrderContext';
@@ -181,7 +180,9 @@ const OrderUpdate = () => {
       });
       
       // Fixed: Pass id and the update data as separate arguments
-      await updateOrder(id, updateData as Partial<Order>);
+      if (id) {
+        await updateOrder(id, updateData as Partial<Order>);
+      }
       
       toast.success('Pedido atualizado com sucesso');
       navigate(`/orders/${id}`);
