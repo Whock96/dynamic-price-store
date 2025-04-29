@@ -477,11 +477,16 @@ const OrderDetail = () => {
       
       // Atualizar a lista de duplicatas
       if (order?.id) {
+        // Obter a lista atualizada de duplicatas diretamente
         const updatedDuplicatas = await fetchDuplicatas(order.id);
+        
+        // Atualizar o estado com as duplicatas atualizadas
         setDuplicatas(updatedDuplicatas);
         
-        // Recalcular comissões após adicionar/editar duplicata
-        if (updatedDuplicatas.length > 0) {
+        // CORREÇÃO: Recalcular comissões usando diretamente a lista atualizada de duplicatas
+        // em vez de esperar a atualização de estado do React
+        if (updatedDuplicatas.length > 0 && order) {
+          // Chamar recalculateAllCommissions diretamente com os dados atualizados
           await recalculateAllCommissions();
         }
       }
