@@ -14,6 +14,8 @@ export async function fetchRefTable(table: "modo_pagamento" | "portador" | "banc
 
 // DUPLICATAS
 export async function fetchDuplicatas(orderId: string): Promise<Duplicata[]> {
+  console.log("[SUPABASE DUPLICATA] Buscando duplicatas para pedido:", orderId);
+  
   const { data, error } = await supabase
     .from("duplicatas")
     .select(
@@ -27,7 +29,24 @@ export async function fetchDuplicatas(orderId: string): Promise<Duplicata[]> {
     )
     .eq("order_id", orderId)
     .order("data_vencimento", { ascending: true });
-  if (error) throw error;
+    
+  if (error) {
+    console.error("[SUPABASE DUPLICATA] Erro ao buscar duplicatas:", error);
+    throw error;
+  }
+  
+  console.log("[SUPABASE DUPLICATA] Duplicatas encontradas:", data?.length);
+  
+  // Log das datas para depuração
+  if (data?.length) {
+    console.log("[SUPABASE DUPLICATA] Datas de vencimento ordenadas:", 
+      data.map(d => ({
+        numero: d.numero_duplicata,
+        vencimento: d.data_vencimento,
+        valor: d.valor_final
+      }))
+    );
+  }
 
   function isRefTable(obj: any): obj is RefTable {
     return obj && typeof obj === 'object' && 'id' in obj && 'nome' in obj;

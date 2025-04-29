@@ -58,12 +58,25 @@ const DuplicatasCard: React.FC<Props> = ({
   onViewDetails,
   readOnly = false 
 }) => {
-  // Ordenar duplicatas por data de vencimento em ordem crescente
+  // Garantir ordenação por data de vencimento em ordem crescente (da mais próxima para a mais distante)
+  // Convertendo explicitamente para objetos Date para comparação correta
   const sortedDuplicatas = [...duplicatas].sort((a, b) => {
+    // Converter para objeto Date ou usar data atual como fallback
     const dateA = a.dataVencimento ? new Date(a.dataVencimento) : new Date();
     const dateB = b.dataVencimento ? new Date(b.dataVencimento) : new Date();
+    
+    // Comparar timestamps para ordenação
     return dateA.getTime() - dateB.getTime();
   });
+  
+  // Adicionar log para depuração
+  console.log("Duplicatas ordenadas por vencimento:", 
+    sortedDuplicatas.map(d => ({
+      numero: d.numeroDuplicata,
+      vencimento: d.dataVencimento,
+      timestamp: d.dataVencimento ? new Date(d.dataVencimento).getTime() : 0
+    }))
+  );
 
   if (!sortedDuplicatas?.length && readOnly) {
     return (
