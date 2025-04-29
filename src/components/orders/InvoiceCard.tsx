@@ -12,11 +12,10 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface InvoiceCardProps {
   order: Order;
-  onDelete?: () => Promise<void>;
-  onInvoicePdfDelete?: () => Promise<void>; // Added this prop to match what's used in OrderDetail.tsx
+  onDelete: () => Promise<void>;
 }
 
-export const InvoiceCard = ({ order, onDelete, onInvoicePdfDelete }: InvoiceCardProps) => {
+export const InvoiceCard = ({ order, onDelete }: InvoiceCardProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -42,13 +41,7 @@ export const InvoiceCard = ({ order, onDelete, onInvoicePdfDelete }: InvoiceCard
           throw error;
         }
         
-        // Use the appropriate callback based on which one was provided
-        if (onInvoicePdfDelete) {
-          await onInvoicePdfDelete();
-        } else if (onDelete) {
-          await onDelete();
-        }
-        
+        await onDelete();
         toast.success('Arquivo excluído com sucesso');
       } catch (error) {
         console.error('Error deleting PDF:', error);
