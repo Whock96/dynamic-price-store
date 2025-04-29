@@ -180,7 +180,7 @@ const OrderUpdate = () => {
         }
       });
       
-      // Fix: Pass id and the update data as separate arguments
+      // Fixed: Pass id and the update data as separate arguments
       await updateOrder(id, updateData as Partial<Order>);
       
       toast.success('Pedido atualizado com sucesso');
