@@ -14,10 +14,10 @@ export const useDuplicataCommission = ({ order, duplicatas }: UseDuplicataCommis
   const [isRecalculating, setIsRecalculating] = useState(false);
 
   const recalculateAllCommissions = useCallback(async () => {
-    if (!order?.id || !order.productsTotal || duplicatas.length === 0) {
+    if (!order?.id || !order.subtotal || duplicatas.length === 0) {
       console.log("[COMISSÃO] Não foi possível recalcular comissões: dados insuficientes", {
         orderId: order?.id,
-        productsTotal: order?.productsTotal,
+        subtotal: order?.subtotal,
         duplicatasCount: duplicatas.length
       });
       return;
@@ -28,14 +28,14 @@ export const useDuplicataCommission = ({ order, duplicatas }: UseDuplicataCommis
     try {
       console.log("[COMISSÃO] Recalculando comissões para todas duplicatas", {
         orderId: order.id,
-        productsTotal: order.productsTotal,
+        subtotal: order.subtotal,
         duplicatasCount: duplicatas.length
       });
       
       // Para cada duplicata, recalcular o valor da comissão
       for (const duplicata of duplicatas) {
         if (duplicata.comissionDuplicata !== undefined && duplicata.id) {
-          const comissionValue = (duplicata.comissionDuplicata / 100) * order.productsTotal / duplicatas.length;
+          const comissionValue = (duplicata.comissionDuplicata / 100) * order.subtotal / duplicatas.length;
           const roundedComissionValue = Number(comissionValue.toFixed(2));
           
           // Verificar se o valor calculado é diferente do valor atual para evitar updates desnecessários
@@ -45,7 +45,7 @@ export const useDuplicataCommission = ({ order, duplicatas }: UseDuplicataCommis
               comissionPercentage: duplicata.comissionDuplicata,
               oldComissionValue: duplicata.comissionValue,
               newComissionValue: roundedComissionValue,
-              productsTotal: order.productsTotal,
+              subtotal: order.subtotal,
               totalDuplicatas: duplicatas.length
             });
             

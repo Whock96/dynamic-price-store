@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -128,16 +127,16 @@ const DuplicataForm: React.FC<Props> = ({
 
   // Efeito para calcular o valor da comissão
   useEffect(() => {
-    if (order?.productsTotal && data.comissionDuplicata !== undefined) {
+    if (order?.subtotal && data.comissionDuplicata !== undefined) {
       // Número total de duplicatas (incluindo esta se for nova)
       const totalDuplicatas = duplicatas.length + (value?.id ? 0 : 1);
       
       if (totalDuplicatas > 0) {
-        const comissionValue = (data.comissionDuplicata / 100) * order.productsTotal / totalDuplicatas;
+        const comissionValue = (data.comissionDuplicata / 100) * order.subtotal / totalDuplicatas;
         
         console.log("[DUPLICATA FORM] Calculando valor da comissão:", {
           comissionPercentage: data.comissionDuplicata,
-          productsTotal: order.productsTotal,
+          subtotal: order.subtotal,
           totalDuplicatas,
           comissionValue
         });
@@ -145,7 +144,7 @@ const DuplicataForm: React.FC<Props> = ({
         setData(prev => ({ ...prev, comissionValue: Number(comissionValue.toFixed(2)) }));
       }
     }
-  }, [data.comissionDuplicata, order?.productsTotal, duplicatas.length, value?.id]);
+  }, [data.comissionDuplicata, order?.subtotal, duplicatas.length, value?.id]);
 
   useEffect(() => {
     const s =
