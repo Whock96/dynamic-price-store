@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import * as ReactDOM from 'react-dom/client';
@@ -1035,27 +1036,29 @@ const OrderDetail = () => {
         {isLoadingDuplicatas ? (
           <div className="my-3 text-center text-sm text-gray-400">Carregando duplicatas...</div>
         ) : (
-          <DuplicatasCard 
-            duplicatas={duplicatas} 
-            onAdd={handleCreateDuplicata}
-            onEdit={handleEditDuplicata}
-            onDelete={handleDeleteDuplicata}
-            onDeletePdf={handleDeleteBoletoPdf}
-            isLoading={isLoadingDuplicatas}
-          />
-          
-          <DuplicataForm
-            value={editingDuplicata as Duplicata}
-            lookup={lookup}
-            isSaving={isSavingDuplicata}
-            invoiceNumber={order?.invoiceNumber || ""}
-            onSave={handleSaveDuplicata}
-            onCancel={() => {
-              setShowDuplicataForm(false);
-              setEditingDuplicata(null);
-            }}
-            isOpen={showDuplicataForm}
-          />
+          <>
+            <DuplicatasCard 
+              duplicatas={duplicatas} 
+              onAdd={handleCreateDuplicata}
+              onEdit={handleEditDuplicata}
+              onDelete={handleDeleteDuplicata}
+              onDeletePdf={handleDeleteBoletoPdf}
+              isLoading={isLoadingDuplicatas}
+            />
+            
+            <DuplicataForm
+              value={editingDuplicata as Duplicata}
+              lookup={lookup}
+              isSaving={isSavingDuplicata}
+              invoiceNumber={order?.invoiceNumber || ""}
+              onSave={handleSaveDuplicata}
+              onCancel={() => {
+                setShowDuplicataForm(false);
+                setEditingDuplicata(null);
+              }}
+              isOpen={showDuplicataForm}
+            />
+          </>
         )}
       </div>
     </div>
