@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -100,24 +99,11 @@ const DuplicatasCard: React.FC<Props> = ({
                     <TableCell className="px-4 py-3 border-t">{d.paymentStatus?.nome || '-'}</TableCell>
                     <TableCell className="px-4 py-3 border-t">
                       {d.pdfBoletoPath ? (
-                        <div className="flex items-center gap-1">
-                          <a href={d.pdfBoletoPath} target="_blank" rel="noopener noreferrer">
-                            <Button size="icon" variant="ghost" className="text-ferplas-600 hover:bg-ferplas-50" title="Baixar Boleto PDF">
-                              <Download size={18} />
-                            </Button>
-                          </a>
-                          {!readOnly && onDeletePdf && (
-                            <Button 
-                              size="icon" 
-                              variant="ghost" 
-                              onClick={() => onDeletePdf(d)} 
-                              className="text-red-600 hover:bg-red-50"
-                              title="Excluir PDF"
-                            >
-                              <Trash2 size={16} />
-                            </Button>
-                          )}
-                        </div>
+                        <a href={d.pdfBoletoPath} target="_blank" rel="noopener noreferrer">
+                          <Button size="icon" variant="ghost" className="text-ferplas-600 hover:bg-ferplas-50" title="Baixar Boleto PDF">
+                            <Download size={18} />
+                          </Button>
+                        </a>
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
@@ -156,7 +142,7 @@ const DuplicatasCard: React.FC<Props> = ({
                             variant="ghost" 
                             onClick={() => onDelete(d)}
                             className="h-8 w-8 text-red-600 hover:bg-red-50"
-                            title="Excluir"
+                            title="Excluir duplicata"
                           >
                             <Trash2 size={16} />
                           </Button>
