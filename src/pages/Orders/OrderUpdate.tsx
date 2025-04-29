@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useOrders } from '@/context/OrderContext';
@@ -17,8 +16,6 @@ import { useOrderData } from '@/hooks/use-order-data';
 import { supabase, uploadInvoicePdf, deleteInvoicePdf } from '@/integrations/supabase/client';
 import { User, TransportCompany, Order } from '@/types/types';
 import { FileUpload } from '@/components/ui/file-upload';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 
 const OrderUpdate = () => {
   const { id } = useParams<{ id: string }>();
@@ -182,6 +179,7 @@ const OrderUpdate = () => {
         }
       });
       
+      // Fix: Pass id and the update data as separate arguments
       await updateOrder(id, updateData as Partial<Order>);
       
       toast.success('Pedido atualizado com sucesso');
