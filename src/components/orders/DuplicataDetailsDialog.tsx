@@ -5,13 +5,12 @@ import { ptBR } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Duplicata } from '@/types/duplicata';
-import { X, Download, FileText, Trash2 } from 'lucide-react';
+import { X, Download, FileText } from 'lucide-react';
 
 interface DuplicataDetailsDialogProps {
   duplicata: Duplicata | null;
   open: boolean;
   onClose: () => void;
-  onDeletePdf?: (duplicata: Duplicata) => void; // Add optional prop for deleting PDF
 }
 
 const formatCurrency = (val: number | undefined) => {
@@ -21,12 +20,7 @@ const formatCurrency = (val: number | undefined) => {
   }).format(val || 0);
 };
 
-const DuplicataDetailsDialog: React.FC<DuplicataDetailsDialogProps> = ({ 
-  duplicata, 
-  open, 
-  onClose,
-  onDeletePdf
-}) => {
+const DuplicataDetailsDialog: React.FC<DuplicataDetailsDialogProps> = ({ duplicata, open, onClose }) => {
   if (!duplicata) return null;
 
   return (
@@ -121,30 +115,15 @@ const DuplicataDetailsDialog: React.FC<DuplicataDetailsDialogProps> = ({
           {duplicata.pdfBoletoPath && (
             <div className="pt-2">
               <h4 className="font-medium text-sm text-muted-foreground">Boleto</h4>
-              <div className="flex items-center gap-2">
-                <a 
-                  href={duplicata.pdfBoletoPath} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center text-ferplas-600 hover:text-ferplas-700 font-medium mt-1"
-                >
-                  <Download size={18} className="mr-1" />
-                  Baixar PDF do boleto
-                </a>
-                
-                {onDeletePdf && (
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
-                    onClick={() => onDeletePdf(duplicata)}
-                    className="text-red-600 hover:bg-red-50 mt-1"
-                    title="Excluir PDF do boleto"
-                  >
-                    <Trash2 size={18} className="mr-1" />
-                    Excluir PDF
-                  </Button>
-                )}
-              </div>
+              <a 
+                href={duplicata.pdfBoletoPath} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center text-ferplas-600 hover:text-ferplas-700 font-medium mt-1"
+              >
+                <Download size={18} className="mr-1" />
+                Baixar PDF do boleto
+              </a>
             </div>
           )}
         </div>
