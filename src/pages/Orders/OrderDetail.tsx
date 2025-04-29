@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import * as ReactDOM from 'react-dom/client';
@@ -796,3 +797,101 @@ const OrderDetail = () => {
                   <span>Tipo de Nota:</span>
                   <span>{fullInvoice ? 'Nota Cheia' : 'Meia Nota'}</span>
                 </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Duplicatas Card */}
+      <DuplicatasCard 
+        duplicatas={duplicatas} 
+        isLoading={isLoadingDuplicatas}
+        onAdd={handleCreateDuplicata}
+        onEdit={handleEditDuplicata}
+        onDelete={handleDeleteDuplicata}
+        onDeletePdf={handleDeleteBoletoPdf}
+      />
+
+      {/* Duplicata Form Dialog */}
+      {isAddingDuplicata && (
+        <DuplicataForm 
+          isOpen={isAddingDuplicata}
+          value={editingDuplicata || {}}
+          lookup={lookup}
+          onSave={handleSaveDuplicata}
+          onCancel={() => {
+            setIsAddingDuplicata(false);
+            setEditingDuplicata(null);
+          }}
+          isSaving={isSavingDuplicata}
+          invoiceNumber={order.invoiceNumber}
+        />
+      )}
+
+      {/* Invoice Card for order */}
+      <InvoiceCard 
+        order={order}
+        onInvoicePdfDelete={handleInvoicePdfDelete}
+      />
+
+      {/* Products Table */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-lg font-medium">
+            Produtos
+          </CardTitle>
+          <div className="flex items-center text-sm text-gray-500">
+            <Package className="h-4 w-4 mr-1" />
+            <span>{items.length} itens</span>
+            <span className="mx-2">•</span>
+            <span>{formatWeight(totalOrderWeight)}</span>
+            <span className="mx-2">•</span>
+            <span>{totalVolumes} volumes</span>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">Item</TableHead>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead>Qtd.</TableHead>
+                  <TableHead>Unidade</TableHead>
+                  <TableHead>Valor Unit.</TableHead>
+                  <TableHead>Desconto</TableHead>
+                  <TableHead>Valor Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((item: any, index: number) => (
+                  <TableRow key={item.id || index}>
+                    <TableCell className="font-medium">{index + 1}</TableCell>
+                    <TableCell>
+                      {item.name || item.product?.name || "Produto"}
+                    </TableCell>
+                    <TableCell>{item.quantity}</TableCell>
+                    <TableCell>{item.unit || 'un'}</TableCell>
+                    <TableCell>{formatCurrency(item.price || 0)}</TableCell>
+                    <TableCell>{item.discount ? `${item.discount}%` : '-'}</TableCell>
+                    <TableCell>{formatCurrency(item.totalPrice || 0)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          
+          {notes && (
+            <div className="mt-6">
+              <h4 className="font-medium mb-2">Observações:</h4>
+              <p className="text-sm text-gray-600 whitespace-pre-line">{notes}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default OrderDetail;
