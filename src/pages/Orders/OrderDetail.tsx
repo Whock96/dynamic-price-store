@@ -36,6 +36,7 @@ import DuplicatasCard from "@/components/orders/DuplicatasCard";
 import DuplicataForm from "@/components/orders/DuplicataForm";
 import DuplicataDetailsDialog from "@/components/orders/DuplicataDetailsDialog";
 import { Duplicata, RefTable } from "@/types/duplicata";
+import { useDuplicataCommission } from "@/hooks/use-duplicata-commission";
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -397,6 +398,11 @@ const OrderDetail = () => {
         if (order?.id) {
           const updatedDuplicatas = await fetchDuplicatas(order.id);
           setDuplicatas(updatedDuplicatas);
+          
+          // Recalcular comissões após excluir duplicata
+          if (updatedDuplicatas.length > 0) {
+            await recalculateAllCommissions();
+          }
         }
       } catch (error) {
         console.error("Erro ao excluir duplicata:", error);
@@ -447,6 +453,12 @@ const OrderDetail = () => {
         formData.pdfBoletoPath = pdfPath;
       }
       
+      // Garantir que os valores de comissão estão incluídos
+      console.log("[ORDER DETAIL] Salvando duplicata com comissão:", {
+        comissionDuplicata: formData.comissionDuplicata,
+        comissionValue: formData.comissionValue
+      });
+      
       // Salvar ou atualizar a duplicata
       const savedDuplicata = await upsertDuplicata(formData);
       
@@ -460,6 +472,11 @@ const OrderDetail = () => {
       if (order?.id) {
         const updatedDuplicatas = await fetchDuplicatas(order.id);
         setDuplicatas(updatedDuplicatas);
+        
+        // Recalcular comissões após adicionar/editar duplicata
+        if (updatedDuplicatas.length > 0) {
+          await recalculateAllCommissions();
+        }
       }
     } catch (error) {
       console.error("Erro ao salvar duplicata:", error);

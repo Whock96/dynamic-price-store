@@ -64,6 +64,12 @@ export async function fetchDuplicatas(orderId: string): Promise<Duplicata[]> {
 }
 
 export async function upsertDuplicata(duplicata: Partial<Duplicata>) {
+  // Logging para depuração dos campos de comissão
+  console.log("[SUPABASE DUPLICATA] upsertDuplicata - Valores de comissão recebidos:", {
+    comissionDuplicata: duplicata.comissionDuplicata,
+    comissionValue: duplicata.comissionValue
+  });
+
   // Mapeamento explícito para o formato do banco de dados
   const dbDuplicata = {
     id: duplicata.id,

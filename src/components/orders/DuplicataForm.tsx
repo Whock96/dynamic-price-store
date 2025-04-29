@@ -183,6 +183,7 @@ const DuplicataForm: React.FC<Props> = ({
       numeroDuplicataFinal = numeroComplemento.trim();
     }
     
+    // Garantir que os campos de comissão estejam incluídos nos dados
     const formData = {
       ...data,
       numeroDuplicata: numeroDuplicataFinal,

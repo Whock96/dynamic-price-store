@@ -15,6 +15,11 @@ export const useDuplicataCommission = ({ order, duplicatas }: UseDuplicataCommis
 
   const recalculateAllCommissions = useCallback(async () => {
     if (!order?.id || !order.productsTotal || duplicatas.length === 0) {
+      console.log("[COMISSÃO] Não foi possível recalcular comissões: dados insuficientes", {
+        orderId: order?.id,
+        productsTotal: order?.productsTotal,
+        duplicatasCount: duplicatas.length
+      });
       return;
     }
     
@@ -31,22 +36,32 @@ export const useDuplicataCommission = ({ order, duplicatas }: UseDuplicataCommis
       for (const duplicata of duplicatas) {
         if (duplicata.comissionDuplicata !== undefined && duplicata.id) {
           const comissionValue = (duplicata.comissionDuplicata / 100) * order.productsTotal / duplicatas.length;
+          const roundedComissionValue = Number(comissionValue.toFixed(2));
           
-          console.log("[COMISSÃO] Recalculando comissão para duplicata", {
-            duplicataId: duplicata.id,
-            comissionPercentage: duplicata.comissionDuplicata,
-            comissionValue: comissionValue,
-            productsTotal: order.productsTotal,
-            totalDuplicatas: duplicatas.length
-          });
-          
-          // Atualizar a duplicata
-          const updatedDuplicata = {
-            ...duplicata,
-            comissionValue: Number(comissionValue.toFixed(2))
-          };
-          
-          await upsertDuplicata(updatedDuplicata);
+          // Verificar se o valor calculado é diferente do valor atual para evitar updates desnecessários
+          if (duplicata.comissionValue !== roundedComissionValue) {
+            console.log("[COMISSÃO] Recalculando comissão para duplicata", {
+              duplicataId: duplicata.id,
+              comissionPercentage: duplicata.comissionDuplicata,
+              oldComissionValue: duplicata.comissionValue,
+              newComissionValue: roundedComissionValue,
+              productsTotal: order.productsTotal,
+              totalDuplicatas: duplicatas.length
+            });
+            
+            // Atualizar a duplicata
+            const updatedDuplicata = {
+              ...duplicata,
+              comissionValue: roundedComissionValue
+            };
+            
+            await upsertDuplicata(updatedDuplicata);
+          } else {
+            console.log("[COMISSÃO] Valor da comissão já está correto para duplicata", {
+              duplicataId: duplicata.id,
+              comissionValue: duplicata.comissionValue
+            });
+          }
         }
       }
       
