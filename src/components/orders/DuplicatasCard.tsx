@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -128,27 +127,25 @@ const DuplicatasCard: React.FC<Props> = ({
                       <div className="flex items-center justify-end gap-1">
                         {onViewDetails && (
                           <Button 
-                            size="sm" 
+                            size="icon" 
                             variant="outline" 
                             onClick={() => onViewDetails(d)}
-                            className="h-8 px-2 text-ferplas-600 border-ferplas-200 hover:bg-ferplas-50"
+                            className="h-8 w-8 text-ferplas-600 border-ferplas-200 hover:bg-ferplas-50"
                             title="Ver detalhes"
                           >
-                            <Eye size={16} className="mr-1" />
-                            Detalhes
+                            <Eye size={16} />
                           </Button>
                         )}
                         
                         {!readOnly && onEdit && (
                           <Button 
-                            size="sm" 
+                            size="icon" 
                             variant="outline" 
                             onClick={() => onEdit(d)}
-                            className="h-8 px-2"
+                            className="h-8 w-8"
                             title="Editar"
                           >
-                            <Edit size={16} className="mr-1" />
-                            Editar
+                            <Edit size={16} />
                           </Button>
                         )}
                         
