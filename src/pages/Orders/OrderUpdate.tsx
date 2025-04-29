@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useOrders } from '@/context/OrderContext';
@@ -23,7 +24,7 @@ const OrderUpdate = () => {
   const { id } = useParams<{ id: string }>();
   const { updateOrder, updateOrderStatus } = useOrders();
   const navigate = useNavigate();
-  const [status, setStatus] = useState<string>('');
+  const [status, setStatus] = useState<Order['status']>('pending');
   const [notes, setNotes] = useState<string>('');
   const [shipping, setShipping] = useState<'delivery' | 'pickup'>('delivery');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit'>('cash');
@@ -181,7 +182,7 @@ const OrderUpdate = () => {
         }
       });
       
-      await updateOrder(id, updateData);
+      await updateOrder(id, updateData as Partial<Order>);
       
       toast.success('Pedido atualizado com sucesso');
       navigate(`/orders/${id}`);
@@ -245,7 +246,7 @@ const OrderUpdate = () => {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Informações do Pedido</span>
-            <OrderStatusBadge status={status as any} />
+            <OrderStatusBadge status={status} />
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -309,7 +310,7 @@ const OrderUpdate = () => {
 
                 <div>
                   <label className="text-sm font-medium">Status</label>
-                  <Select value={status} onValueChange={setStatus}>
+                  <Select value={status} onValueChange={(value: Order['status']) => setStatus(value)}>
                     <SelectTrigger className="w-full mt-1">
                       <SelectValue placeholder="Selecione um status" />
                     </SelectTrigger>
