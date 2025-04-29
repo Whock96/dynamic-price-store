@@ -69,6 +69,13 @@ const OrderDetail = () => {
     bancos: [],
     statuses: []
   });
+  
+  // Initialize the useDuplicataCommission hook
+  const { isRecalculating, recalculateAllCommissions } = useDuplicataCommission({ 
+    order: order, 
+    duplicatas: duplicatas 
+  });
+  
   const { companyInfo } = useCompany();
 
   // Function to check if all order items have the same discount value as their total discount percentage
