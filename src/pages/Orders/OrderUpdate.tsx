@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useOrders } from '@/context/OrderContext';
@@ -158,7 +159,8 @@ const OrderUpdate = () => {
       // Gerenciar upload do PDF se houver
       let pdfPath = invoicePdfPath;
       if (invoicePdf) {
-        pdfPath = await uploadInvoicePdf(invoicePdf);
+        // Correção: Passando o id do pedido como segundo argumento para uploadInvoicePdf
+        pdfPath = await uploadInvoicePdf(invoicePdf, id);
       }
       
       // Preparar dados para atualização
