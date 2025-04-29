@@ -2,7 +2,7 @@
 import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Edit, Plus, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Duplicata } from "@/types/duplicata";
@@ -17,6 +17,11 @@ import {
 
 interface Props {
   duplicatas: Duplicata[];
+  onAdd?: () => void;
+  onEdit?: (duplicata: Duplicata) => void;
+  onDelete?: (duplicata: Duplicata) => void;
+  onDeletePdf?: (duplicata: Duplicata) => void;
+  isLoading?: boolean;
 }
 
 const formatCurrency = (val: number | undefined) => {
@@ -26,12 +31,50 @@ const formatCurrency = (val: number | undefined) => {
   }).format(val || 0);
 };
 
-const DuplicatasCard: React.FC<Props> = ({ duplicatas }) => {
+const DuplicatasCard: React.FC<Props> = ({ 
+  duplicatas, 
+  onAdd, 
+  onEdit, 
+  onDelete, 
+  onDeletePdf,
+  isLoading = false 
+}) => {
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Duplicatas</span>
+            {onAdd && (
+              <Button size="sm" onClick={onAdd}>
+                <Plus className="h-4 w-4 mr-1" />
+                Adicionar Duplicata
+              </Button>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-ferplas-500"></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!duplicatas?.length) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Duplicatas</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Duplicatas</span>
+            {onAdd && (
+              <Button size="sm" onClick={onAdd}>
+                <Plus className="h-4 w-4 mr-1" />
+                Adicionar Duplicata
+              </Button>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground">Nenhuma duplicata cadastrada para este pedido.</p>
@@ -43,7 +86,15 @@ const DuplicatasCard: React.FC<Props> = ({ duplicatas }) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Duplicatas</CardTitle>
+        <CardTitle className="flex items-center justify-between">
+          <span>Duplicatas</span>
+          {onAdd && (
+            <Button size="sm" onClick={onAdd}>
+              <Plus className="h-4 w-4 mr-1" />
+              Adicionar Duplicata
+            </Button>
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
@@ -64,6 +115,9 @@ const DuplicatasCard: React.FC<Props> = ({ duplicatas }) => {
                 <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Data Pgto</TableHead>
                 <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Banco Pgto</TableHead>
                 <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Boleto PDF</TableHead>
+                {(onEdit || onDelete) && (
+                  <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Ações</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -92,15 +146,56 @@ const DuplicatasCard: React.FC<Props> = ({ duplicatas }) => {
                   <TableCell className="px-4 py-3 border-t">{d.bancoPagamento?.nome || '-'}</TableCell>
                   <TableCell className="px-4 py-3 border-t">
                     {d.pdfBoletoPath ? (
-                      <a href={d.pdfBoletoPath} target="_blank" rel="noopener noreferrer">
-                        <Button size="icon" variant="ghost" className="text-ferplas-600 hover:bg-ferplas-50" title="Baixar Boleto PDF">
-                          <Download size={18} />
-                        </Button>
-                      </a>
+                      <div className="flex items-center space-x-1">
+                        <a href={d.pdfBoletoPath} target="_blank" rel="noopener noreferrer">
+                          <Button size="icon" variant="ghost" className="text-ferplas-600 hover:bg-ferplas-50" title="Baixar Boleto PDF">
+                            <Download size={18} />
+                          </Button>
+                        </a>
+                        {onDeletePdf && (
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="text-red-600 hover:bg-red-50" 
+                            title="Excluir PDF"
+                            onClick={() => onDeletePdf(d)}
+                          >
+                            <Trash2 size={18} />
+                          </Button>
+                        )}
+                      </div>
                     ) : (
                       <span className="text-muted-foreground">-</span>
                     )}
                   </TableCell>
+                  {(onEdit || onDelete) && (
+                    <TableCell className="px-4 py-3 border-t">
+                      <div className="flex items-center space-x-1">
+                        {onEdit && (
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-8 px-2" 
+                            onClick={() => onEdit(d)}
+                          >
+                            <Edit size={16} className="mr-1" /> 
+                            Editar
+                          </Button>
+                        )}
+                        {onDelete && (
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-8 px-2 text-red-600 hover:bg-red-50"
+                            onClick={() => onDelete(d)}
+                          >
+                            <Trash2 size={16} className="mr-1" />
+                            Excluir
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
