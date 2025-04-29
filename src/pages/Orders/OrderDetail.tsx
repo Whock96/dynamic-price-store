@@ -70,6 +70,20 @@ const OrderDetail = () => {
   });
   const { companyInfo } = useCompany();
 
+  // Function to check if all order items have the same discount value as their total discount percentage
+  const shouldHideDiscountCard = () => {
+    if (!order || !order.items || order.items.length === 0) {
+      return true;
+    }
+
+    return order.items.every((item: any) => {
+      const itemDiscount = Number(item.discount || 0);
+      const itemTotalDiscountPercentage = Number(item.totalDiscountPercentage || 0);
+      
+      return itemDiscount === itemTotalDiscountPercentage;
+    });
+  };
+
   const formatPhoneNumber = (phone: string | undefined | null) => {
     if (!phone) return 'Não informado';
     
@@ -881,45 +895,48 @@ const OrderDetail = () => {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-medium flex items-center">
-            <Receipt className="mr-2 h-5 w-5" />
-            Descontos e Acréscimos Aplicados
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {appliedDiscounts && appliedDiscounts.length > 0 ? (
-              appliedDiscounts.map((discount: any, index: number) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className={`w-8 h-8 rounded-full ${discount.type === 'discount' ? 'bg-green-100' : 'bg-red-100'} flex items-center justify-center mr-3`}>
-                      <span className={`${discount.type === 'discount' ? 'text-green-600' : 'text-red-600'} font-bold`}>
-                        {discount.type === 'discount' ? '-' : '+'}
-                      </span>
+      {/* Conditionally render the Discount card based on the check */}
+      {!shouldHideDiscountCard() && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-medium flex items-center">
+              <Receipt className="mr-2 h-5 w-5" />
+              Descontos e Acréscimos Aplicados
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {appliedDiscounts && appliedDiscounts.length > 0 ? (
+                appliedDiscounts.map((discount: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className={`w-8 h-8 rounded-full ${discount.type === 'discount' ? 'bg-green-100' : 'bg-red-100'} flex items-center justify-center mr-3`}>
+                        <span className={`${discount.type === 'discount' ? 'text-green-600' : 'text-red-600'} font-bold`}>
+                          {discount.type === 'discount' ? '-' : '+'}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-medium">{discount.name}</p>
+                        <p className="text-sm text-gray-500">
+                          {discount.type === 'discount' ? 'Desconto' : 'Acréscimo'} de {discount.value}%
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium">{discount.name}</p>
-                      <p className="text-sm text-gray-500">
-                        {discount.type === 'discount' ? 'Desconto' : 'Acréscimo'} de {discount.value}%
-                      </p>
-                    </div>
+                    <span className={`font-medium ${discount.type === 'discount' ? 'text-green-600' : 'text-red-600'}`}>
+                      {discount.type === 'discount' ? '-' : '+'}
+                      {discount.value}%
+                    </span>
                   </div>
-                  <span className={`font-medium ${discount.type === 'discount' ? 'text-green-600' : 'text-red-600'}`}>
-                    {discount.type === 'discount' ? '-' : '+'}
-                    {discount.value}%
-                  </span>
+                ))
+              ) : (
+                <div className="text-center py-4 text-gray-500">
+                  Nenhum desconto ou acréscimo aplicado.
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-4 text-gray-500">
-                Nenhum desconto ou acréscimo aplicado.
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader className="pb-3">
