@@ -34,6 +34,7 @@ import { fetchDuplicatas, upsertDuplicata, deleteDuplicata } from "@/integration
 import { uploadBoletoPdf, deleteBoletoPdf } from "@/integrations/supabase/boletoPdfService";
 import DuplicatasCard from "@/components/orders/DuplicatasCard";
 import DuplicataForm from "@/components/orders/DuplicataForm";
+import DuplicataDetailsDialog from "@/components/orders/DuplicataDetailsDialog";
 import { Duplicata, RefTable } from "@/types/duplicata";
 
 const OrderDetail = () => {
@@ -53,6 +54,8 @@ const OrderDetail = () => {
   const [showDuplicataForm, setShowDuplicataForm] = useState(false);
   const [editingDuplicata, setEditingDuplicata] = useState<Duplicata | null>(null);
   const [isSavingDuplicata, setIsSavingDuplicata] = useState(false);
+  const [showDuplicataDetails, setShowDuplicataDetails] = useState(false);
+  const [selectedDuplicata, setSelectedDuplicata] = useState<Duplicata | null>(null);
   const [isLoadingLookup, setIsLoadingLookup] = useState(true);
   const [lookup, setLookup] = useState<{
     modos: RefTable[];
@@ -450,6 +453,16 @@ const OrderDetail = () => {
     } finally {
       setIsSavingDuplicata(false);
     }
+  };
+
+  const handleViewDuplicataDetails = (duplicata: Duplicata) => {
+    setSelectedDuplicata(duplicata);
+    setShowDuplicataDetails(true);
+  };
+
+  const handleCloseDuplicataDetails = () => {
+    setShowDuplicataDetails(false);
+    setSelectedDuplicata(null);
   };
 
   if (loading || isSupabaseLoading) {
@@ -1022,6 +1035,7 @@ const OrderDetail = () => {
             onEdit={handleEditDuplicata} 
             onDelete={handleDeleteDuplicata}
             onDeletePdf={handleDeleteBoletoPdf}
+            onViewDetails={handleViewDuplicataDetails}
           />
         )}
       </div>
@@ -1042,6 +1056,12 @@ const OrderDetail = () => {
             : undefined
         }
         isOpen={showDuplicataForm}
+      />
+
+      <DuplicataDetailsDialog 
+        duplicata={selectedDuplicata} 
+        open={showDuplicataDetails} 
+        onClose={handleCloseDuplicataDetails}
       />
     </div>
   );
