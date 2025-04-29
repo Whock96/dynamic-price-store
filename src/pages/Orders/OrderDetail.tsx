@@ -30,8 +30,11 @@ import PrintableInvoice from '@/components/orders/PrintableInvoice';
 import { supabase } from '@/integrations/supabase/client';
 import { InvoiceCard } from '@/components/orders/InvoiceCard';
 import { printStyles } from '@/styles/printStyles';
-import { fetchDuplicatas } from "@/integrations/supabase/duplicata";
+import { fetchDuplicatas, upsertDuplicata, deleteDuplicata } from "@/integrations/supabase/duplicata";
+import { uploadBoletoPdf, deleteBoletoPdf } from "@/integrations/supabase/boletoPdfService";
 import DuplicatasCard from "@/components/orders/DuplicatasCard";
+import DuplicataForm from "@/components/orders/DuplicataForm";
+import { Duplicata, RefTable } from "@/types/duplicata";
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -45,8 +48,23 @@ const OrderDetail = () => {
   const [isLoadingTransport, setIsLoadingTransport] = useState(false);
   const [totalOrderWeight, setTotalOrderWeight] = useState(0);
   const [totalVolumes, setTotalVolumes] = useState(0);
-  const [duplicatas, setDuplicatas] = useState<any[]>([]);
+  const [duplicatas, setDuplicatas] = useState<Duplicata[]>([]);
   const [isLoadingDuplicatas, setIsLoadingDuplicatas] = useState(true);
+  const [showDuplicataForm, setShowDuplicataForm] = useState(false);
+  const [editingDuplicata, setEditingDuplicata] = useState<Duplicata | null>(null);
+  const [isSavingDuplicata, setIsSavingDuplicata] = useState(false);
+  const [isLoadingLookup, setIsLoadingLookup] = useState(true);
+  const [lookup, setLookup] = useState<{
+    modos: RefTable[];
+    portadores: RefTable[];
+    bancos: RefTable[];
+    statuses: RefTable[];
+  }>({
+    modos: [],
+    portadores: [],
+    bancos: [],
+    statuses: []
+  });
   const { companyInfo } = useCompany();
 
   const formatPhoneNumber = (phone: string | undefined | null) => {
@@ -280,12 +298,53 @@ const OrderDetail = () => {
   };
 
   useEffect(() => {
+    async function loadLookups() {
+      setIsLoadingLookup(true);
+      try {
+        const { data: modosData } = await supabase
+          .from("modo_pagamento")
+          .select("*")
+          .order("nome", { ascending: true });
+          
+        const { data: portadoresData } = await supabase
+          .from("portador")
+          .select("*")
+          .order("nome", { ascending: true });
+          
+        const { data: bancosData } = await supabase
+          .from("bancos")
+          .select("*")
+          .order("nome", { ascending: true });
+          
+        const { data: statusesData } = await supabase
+          .from("payment_status")
+          .select("*")
+          .order("nome", { ascending: true });
+          
+        setLookup({
+          modos: modosData as RefTable[] || [],
+          portadores: portadoresData as RefTable[] || [],
+          bancos: bancosData as RefTable[] || [],
+          statuses: statusesData as RefTable[] || [],
+        });
+      } catch (err) {
+        console.error("Erro ao carregar opções para duplicatas:", err);
+        toast.error("Erro ao carregar opções para duplicatas");
+      } finally {
+        setIsLoadingLookup(false);
+      }
+    }
+    loadLookups();
+  }, []);
+
+  useEffect(() => {
     if (order?.id) {
       setIsLoadingDuplicatas(true);
       fetchDuplicatas(order.id)
         .then(data => setDuplicatas(data))
         .catch(err => {
           console.error("Erro ao buscar duplicatas:", err);
+          toast.error("Erro ao buscar duplicatas");
         })
         .finally(() => setIsLoadingDuplicatas(false));
     }
@@ -855,9 +914,33 @@ const OrderDetail = () => {
         {isLoadingDuplicatas ? (
           <div className="my-3 text-center text-sm text-gray-400">Carregando duplicatas...</div>
         ) : (
-          <DuplicatasCard duplicatas={duplicatas} />
+          <DuplicatasCard 
+            duplicatas={duplicatas} 
+            onAdd={handleCreateDuplicata} 
+            onEdit={handleEditDuplicata} 
+            onDelete={handleDeleteDuplicata}
+            onDeletePdf={handleDeleteBoletoPdf}
+          />
         )}
       </div>
+
+      <DuplicataForm
+        value={editingDuplicata as Duplicata}
+        lookup={lookup}
+        isSaving={isSavingDuplicata}
+        invoiceNumber={order?.invoiceNumber || ""}
+        onSave={handleSaveDuplicata}
+        onCancel={() => {
+          setShowDuplicataForm(false);
+          setEditingDuplicata(null);
+        }}
+        onDeletePdf={
+          editingDuplicata?.pdfBoletoPath
+            ? async () => handleDeleteBoletoPdf(editingDuplicata!)
+            : undefined
+        }
+        isOpen={showDuplicataForm}
+      />
     </div>
   );
 };
