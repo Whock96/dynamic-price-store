@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, Edit, Trash2, Plus, Eye } from "lucide-react";
@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import SortableHeader from "@/components/ui/sortable-header";
 
 interface Props {
   duplicatas: Duplicata[];
@@ -58,22 +59,78 @@ const DuplicatasCard: React.FC<Props> = ({
   onViewDetails,
   readOnly = false 
 }) => {
-  // Garantir ordenação por data de vencimento em ordem crescente (da mais próxima para a mais distante)
-  // Convertendo explicitamente para objetos Date para comparação correta
-  const sortedDuplicatas = [...duplicatas].sort((a, b) => {
-    // Converter para objeto Date ou usar data atual como fallback
-    const dateA = a.dataVencimento ? new Date(a.dataVencimento) : new Date();
-    const dateB = b.dataVencimento ? new Date(b.dataVencimento) : new Date();
+  // Estado para controle da ordenação
+  const [sortKey, setSortKey] = useState<string>("dataVencimento");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc" | null>("asc");
+  
+  // Função para alternar a ordenação
+  const handleSort = (key: string) => {
+    if (sortKey === key) {
+      // Se já estamos ordenando por esta coluna, alterna a direção
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      // Se mudou a coluna, começa com ascendente
+      setSortKey(key);
+      setSortDirection("asc");
+    }
+  };
+
+  // Função para ordenar as duplicatas com base nos critérios atuais
+  const getSortedDuplicatas = () => {
+    if (!duplicatas?.length) return [];
     
-    // Comparar timestamps para ordenação
-    return dateA.getTime() - dateB.getTime();
-  });
+    return [...duplicatas].sort((a, b) => {
+      let valueA: any;
+      let valueB: any;
+      
+      // Determinar os valores a comparar com base na chave de ordenação
+      switch (sortKey) {
+        case "numeroDuplicata":
+          valueA = a.numeroDuplicata;
+          valueB = b.numeroDuplicata;
+          break;
+        case "dataVencimento":
+          valueA = a.dataVencimento ? new Date(a.dataVencimento).getTime() : 0;
+          valueB = b.dataVencimento ? new Date(b.dataVencimento).getTime() : 0;
+          break;
+        case "valorFinal":
+          valueA = a.valorFinal || 0;
+          valueB = b.valorFinal || 0;
+          break;
+        case "modoPagamento":
+          valueA = a.modoPagamento?.nome || "";
+          valueB = b.modoPagamento?.nome || "";
+          break;
+        case "banco":
+          valueA = a.banco?.nome || "";
+          valueB = b.banco?.nome || "";
+          break;
+        case "situacao":
+          valueA = a.paymentStatus?.nome || "";
+          valueB = b.paymentStatus?.nome || "";
+          break;
+        default:
+          valueA = a.dataVencimento ? new Date(a.dataVencimento).getTime() : 0;
+          valueB = b.dataVencimento ? new Date(b.dataVencimento).getTime() : 0;
+      }
+      
+      // Comparar os valores com base na direção da ordenação
+      if (sortDirection === "asc") {
+        return valueA > valueB ? 1 : valueA < valueB ? -1 : 0;
+      } else {
+        return valueA < valueB ? 1 : valueA > valueB ? -1 : 0;
+      }
+    });
+  };
+  
+  const sortedDuplicatas = getSortedDuplicatas();
   
   // Adicionar log para depuração
-  console.log("Duplicatas ordenadas por vencimento:", 
+  console.log(`Duplicatas ordenadas por ${sortKey} em ordem ${sortDirection}:`, 
     sortedDuplicatas.map(d => ({
       numero: d.numeroDuplicata,
       vencimento: d.dataVencimento,
+      valorFinal: d.valorFinal,
       timestamp: d.dataVencimento ? new Date(d.dataVencimento).getTime() : 0
     }))
   );
@@ -113,14 +170,62 @@ const DuplicatasCard: React.FC<Props> = ({
           <Table className="w-full">
             <TableHeader>
               <TableRow>
-                <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Número</TableHead>
-                <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Vencimento</TableHead>
-                <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Valor Final</TableHead>
-                <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Modo Pgto.</TableHead>
-                <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Banco</TableHead>
-                <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Situação</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-3">
+                  <SortableHeader
+                    label="Número"
+                    sortKey="numeroDuplicata"
+                    currentSortKey={sortKey}
+                    currentSortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                </TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-3">
+                  <SortableHeader
+                    label="Vencimento"
+                    sortKey="dataVencimento"
+                    currentSortKey={sortKey}
+                    currentSortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                </TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-3">
+                  <SortableHeader
+                    label="Valor Final"
+                    sortKey="valorFinal"
+                    currentSortKey={sortKey}
+                    currentSortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                </TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-3">
+                  <SortableHeader
+                    label="Modo Pgto."
+                    sortKey="modoPagamento"
+                    currentSortKey={sortKey}
+                    currentSortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                </TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-3">
+                  <SortableHeader
+                    label="Banco"
+                    sortKey="banco"
+                    currentSortKey={sortKey}
+                    currentSortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                </TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-3">
+                  <SortableHeader
+                    label="Situação"
+                    sortKey="situacao"
+                    currentSortKey={sortKey}
+                    currentSortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                </TableHead>
                 <TableHead className="whitespace-nowrap px-4 py-3 font-medium">Boleto</TableHead>
-                <TableHead className="whitespace-nowrap px-4 py-3 font-medium text-right">Ações</TableHead>
+                <TableHead className="whitespace-nowrap px-4 py-3 text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
