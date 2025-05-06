@@ -406,9 +406,9 @@ const OrderDetail = () => {
           const updatedDuplicatas = await fetchDuplicatas(order.id);
           setDuplicatas(updatedDuplicatas);
           
-          // Recalcular comissões após excluir duplicata
+          // CORREÇÃO: Passar os dados atualizados diretamente para o recálculo de comissões
           if (updatedDuplicatas.length > 0) {
-            await recalculateAllCommissions();
+            await recalculateAllCommissions(order, updatedDuplicatas);
           }
         }
       } catch (error) {
@@ -483,11 +483,15 @@ const OrderDetail = () => {
         // Atualizar o estado com as duplicatas atualizadas
         setDuplicatas(updatedDuplicatas);
         
-        // CORREÇÃO: Recalcular comissões usando diretamente a lista atualizada de duplicatas
-        // em vez de esperar a atualização de estado do React
+        // CORREÇÃO: Passar os dados atualizados diretamente para o recálculo de comissões
         if (updatedDuplicatas.length > 0 && order) {
-          // Chamar recalculateAllCommissions diretamente com os dados atualizados
-          await recalculateAllCommissions();
+          console.log("[ORDER DETAIL] Chamando recalculateAllCommissions com dados atualizados", {
+            orderSubtotal: order.subtotal,
+            duplicatasCount: updatedDuplicatas.length
+          });
+          
+          // Passar os parâmetros atualizados para o recálculo
+          await recalculateAllCommissions(order, updatedDuplicatas);
         }
       }
     } catch (error) {

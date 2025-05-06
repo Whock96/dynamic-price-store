@@ -13,12 +13,20 @@ export interface UseDuplicataCommissionProps {
 export const useDuplicataCommission = ({ order, duplicatas }: UseDuplicataCommissionProps) => {
   const [isRecalculating, setIsRecalculating] = useState(false);
 
-  const recalculateAllCommissions = useCallback(async () => {
-    if (!order?.id || !order.subtotal || duplicatas.length === 0) {
+  // Modificamos esta função para aceitar parâmetros opcionais para dados atualizados
+  const recalculateAllCommissions = useCallback(async (
+    currentOrder?: Order,
+    currentDuplicatas?: Duplicata[]
+  ) => {
+    // Use os parâmetros passados ou, caso contrário, use os valores do estado do hook
+    const orderToUse = currentOrder || order;
+    const duplicatasToUse = currentDuplicatas || duplicatas;
+    
+    if (!orderToUse?.id || !orderToUse.subtotal || duplicatasToUse.length === 0) {
       console.log("[COMISSÃO] Não foi possível recalcular comissões: dados insuficientes", {
-        orderId: order?.id,
-        subtotal: order?.subtotal,
-        duplicatasCount: duplicatas.length
+        orderId: orderToUse?.id,
+        subtotal: orderToUse?.subtotal,
+        duplicatasCount: duplicatasToUse.length
       });
       return;
     }
@@ -27,15 +35,15 @@ export const useDuplicataCommission = ({ order, duplicatas }: UseDuplicataCommis
     
     try {
       console.log("[COMISSÃO] Recalculando comissões para todas duplicatas", {
-        orderId: order.id,
-        subtotal: order.subtotal,
-        duplicatasCount: duplicatas.length
+        orderId: orderToUse.id,
+        subtotal: orderToUse.subtotal,
+        duplicatasCount: duplicatasToUse.length
       });
       
       // Para cada duplicata, recalcular o valor da comissão
-      for (const duplicata of duplicatas) {
+      for (const duplicata of duplicatasToUse) {
         if (duplicata.comissionDuplicata !== undefined && duplicata.id) {
-          const comissionValue = (duplicata.comissionDuplicata / 100) * order.subtotal / duplicatas.length;
+          const comissionValue = (duplicata.comissionDuplicata / 100) * orderToUse.subtotal / duplicatasToUse.length;
           const roundedComissionValue = Number(comissionValue.toFixed(2));
           
           // Verificar se o valor calculado é diferente do valor atual para evitar updates desnecessários
@@ -45,8 +53,9 @@ export const useDuplicataCommission = ({ order, duplicatas }: UseDuplicataCommis
               comissionPercentage: duplicata.comissionDuplicata,
               oldComissionValue: duplicata.comissionValue,
               newComissionValue: roundedComissionValue,
-              subtotal: order.subtotal,
-              totalDuplicatas: duplicatas.length
+              subtotal: orderToUse.subtotal,
+              totalDuplicatas: duplicatasToUse.length,
+              formula: `(${duplicata.comissionDuplicata}% / 100) * ${orderToUse.subtotal} / ${duplicatasToUse.length} = ${roundedComissionValue}`
             });
             
             // Atualizar a duplicata
@@ -66,9 +75,11 @@ export const useDuplicataCommission = ({ order, duplicatas }: UseDuplicataCommis
       }
       
       console.log("[COMISSÃO] Recálculo de comissões concluído com sucesso");
+      return true;
     } catch (error) {
       console.error("[COMISSÃO] Erro ao recalcular comissões:", error);
       toast.error("Erro ao recalcular as comissões das duplicatas");
+      return false;
     } finally {
       setIsRecalculating(false);
     }
