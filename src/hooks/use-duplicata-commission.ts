@@ -46,31 +46,29 @@ export const useDuplicataCommission = ({ order, duplicatas }: UseDuplicataCommis
           const comissionValue = (duplicata.comissionDuplicata / 100) * orderToUse.subtotal / duplicatasToUse.length;
           const roundedComissionValue = Number(comissionValue.toFixed(2));
           
-          // Verificar se o valor calculado é diferente do valor atual para evitar updates desnecessários
-          if (duplicata.comissionValue !== roundedComissionValue) {
-            console.log("[COMISSÃO] Recalculando comissão para duplicata", {
-              duplicataId: duplicata.id,
-              comissionPercentage: duplicata.comissionDuplicata,
-              oldComissionValue: duplicata.comissionValue,
-              newComissionValue: roundedComissionValue,
-              subtotal: orderToUse.subtotal,
-              totalDuplicatas: duplicatasToUse.length,
-              formula: `(${duplicata.comissionDuplicata}% / 100) * ${orderToUse.subtotal} / ${duplicatasToUse.length} = ${roundedComissionValue}`
-            });
-            
-            // Atualizar a duplicata
-            const updatedDuplicata = {
-              ...duplicata,
-              comissionValue: roundedComissionValue
-            };
-            
-            await upsertDuplicata(updatedDuplicata);
-          } else {
-            console.log("[COMISSÃO] Valor da comissão já está correto para duplicata", {
-              duplicataId: duplicata.id,
-              comissionValue: duplicata.comissionValue
-            });
-          }
+          // MODIFICAÇÃO: Removemos a verificação que impedia a atualização quando os valores eram iguais
+          // e sempre atualizamos o valor da comissão para garantir que alterações recentes sejam aplicadas
+          console.log("[COMISSÃO] Recalculando comissão para duplicata", {
+            duplicataId: duplicata.id,
+            comissionPercentage: duplicata.comissionDuplicata,
+            oldComissionValue: duplicata.comissionValue,
+            newComissionValue: roundedComissionValue,
+            subtotal: orderToUse.subtotal,
+            totalDuplicatas: duplicatasToUse.length,
+            formula: `(${duplicata.comissionDuplicata}% / 100) * ${orderToUse.subtotal} / ${duplicatasToUse.length} = ${roundedComissionValue}`
+          });
+          
+          // Atualizar a duplicata
+          const updatedDuplicata = {
+            ...duplicata,
+            comissionValue: roundedComissionValue
+          };
+          
+          await upsertDuplicata(updatedDuplicata);
+          console.log("[COMISSÃO] Valor da comissão atualizado para duplicata", {
+            duplicataId: duplicata.id,
+            novoValorComissao: roundedComissionValue
+          });
         }
       }
       
