@@ -483,17 +483,14 @@ const OrderDetail = () => {
         // Atualizar o estado com as duplicatas atualizadas
         setDuplicatas(updatedDuplicatas);
         
-        // CORREÇÃO: Forçar o recálculo de comissões com os dados atualizados, 
-        // sempre que uma duplicata for salva
+        // CORREÇÃO: Passar os dados atualizados diretamente para o recálculo de comissões
         if (updatedDuplicatas.length > 0 && order) {
           console.log("[ORDER DETAIL] Chamando recalculateAllCommissions com dados atualizados", {
             orderSubtotal: order.subtotal,
-            duplicatasCount: updatedDuplicatas.length,
-            isEditing: !!formData.id, 
-            comissionPercentage: formData.comissionDuplicata
+            duplicatasCount: updatedDuplicatas.length
           });
           
-          // Passar os parâmetros atualizados para o recálculo, agora forçando sempre o recálculo
+          // Passar os parâmetros atualizados para o recálculo
           await recalculateAllCommissions(order, updatedDuplicatas);
         }
       }

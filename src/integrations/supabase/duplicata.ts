@@ -43,9 +43,7 @@ export async function fetchDuplicatas(orderId: string): Promise<Duplicata[]> {
       data.map(d => ({
         numero: d.numero_duplicata,
         vencimento: d.data_vencimento,
-        valor: d.valor_final,
-        comissaoPercent: d.comission_duplicata,
-        comissaoValue: d.comission_value
+        valor: d.valor_final
       }))
     );
   }
